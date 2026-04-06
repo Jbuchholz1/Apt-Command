@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { getPlacements, updateJobInBullhorn } from '../lib/api';
+import { getPlacements, updateJobInBullhorn, getOpportunities } from '../lib/api';
 import { getFollowUpUrgency } from './ReqBoard';
 import EditableDate from './EditableDate';
 
@@ -7,8 +7,11 @@ export default function StatsStrip({ stats, jobs, loading }) {
   const [showContractors, setShowContractors] = useState(false);
   const [showCE, setShowCE] = useState(false);
   const [showPerm, setShowPerm] = useState(false);
+  const [showOpportunities, setShowOpportunities] = useState(false);
   const [placements, setPlacements] = useState([]);
   const [placementsLoading, setPlacementsLoading] = useState(false);
+  const [opportunities, setOpportunities] = useState([]);
+  const [opportunitiesLoading, setOpportunitiesLoading] = useState(false);
 
   // Compute stats from jobs array
   const openReqs = stats?.openReqs ?? 0;
@@ -20,11 +23,10 @@ export default function StatsStrip({ stats, jobs, loading }) {
   // Missed follow-ups: no follow-up + past-due follow-ups (red urgency)
   const missedFollowUps = (jobs || []).filter(j => getFollowUpUrgency(j.followUp) === 'red').length;
 
-  // A + B reqs combined: covered vs not covered
+  // A + B reqs combined: covered = has an assigned TR
   const abReqs = (jobs || []).filter(j => j.priority === 'A' || j.priority === 'B');
   const abTotal = abReqs.length;
-  const abCovered = abReqs.filter(j => j.coverageNeeded === 'Y' || (j.recruiter || '').trim()).length;
-  const abNotCovered = abTotal - abCovered;
+  const abCovered = abReqs.filter(j => (j.recruiter || '').trim()).length;
 
   // C reqs only
   const cReqCount = (jobs || []).filter(j => j.priority === 'C').length;
@@ -52,6 +54,19 @@ export default function StatsStrip({ stats, jobs, loading }) {
     }
   };
 
+  const handleOpportunitiesClick = async () => {
+    setShowOpportunities(true);
+    setOpportunitiesLoading(true);
+    try {
+      const res = await getOpportunities();
+      setOpportunities(res.data || []);
+    } catch (err) {
+      console.error('Failed to load opportunities:', err);
+    } finally {
+      setOpportunitiesLoading(false);
+    }
+  };
+
   const handlePlacementDateSave = async (placementIndex, field, tsValue) => {
     const p = placements[placementIndex];
     if (!p || !p.jobOrderId) return;
@@ -76,12 +91,12 @@ export default function StatsStrip({ stats, jobs, loading }) {
 
   const items = [
     { label: 'Open Reqs', value: openReqs, color: '#c9a227' },
-    { label: 'Accepting', value: acceptingCandidates, color: '#16a34a' },
+    { label: 'Accepting Candidates', value: acceptingCandidates, color: '#16a34a' },
     { label: 'Missed Follow Ups', value: missedFollowUps, color: '#dc2626' },
-    { label: 'A + B Reqs', value: `${abTotal} / ${abNotCovered} uncov`, color: '#c9a227' },
+    { label: 'Covered', value: `${abCovered} / ${abTotal}`, color: '#c9a227' },
     { label: 'C Reqs', value: cReqCount, color: '#94a3b8' },
     { label: 'On The Board', value: filledCount, color: '#7c3aed' },
-    { label: 'Total Opportunities', value: totalOpportunities, color: '#0369a1' },
+    { label: 'Total Opportunities', value: totalOpportunities, color: '#0369a1', onClick: handleOpportunitiesClick },
     { label: 'Active Contractors', value: activeContractors, color: '#0d9488', onClick: handleContractorsClick },
     { label: 'Total CE Input', value: fmtCurrency(totalCE), color: '#2563eb', onClick: () => setShowCE(true) },
     { label: 'Total Perm Input', value: fmtCurrency(totalPerm), color: '#9333ea', onClick: () => setShowPerm(true) },
@@ -271,6 +286,58 @@ export default function StatsStrip({ stats, jobs, loading }) {
                 </tr>
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Opportunities Modal */}
+      {showOpportunities && (
+        <div className="modal-overlay" onClick={() => setShowOpportunities(false)}>
+          <div className="modal-content contractors-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Open Opportunities ({opportunities.length})</h2>
+              <button className="modal-close" onClick={() => setShowOpportunities(false)}>✕</button>
+            </div>
+            {opportunitiesLoading ? (
+              <div className="modal-loading">Loading opportunities...</div>
+            ) : (
+              <table className="contractors-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Title</th>
+                    <th>Client</th>
+                    <th>Owner</th>
+                    <th>Status</th>
+                    <th>Date Added</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {opportunities.map(o => (
+                    <tr key={o.id}>
+                      <td>
+                        <a
+                          href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=Opportunity&id=${o.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="bh-link"
+                        >
+                          {o.id}
+                        </a>
+                      </td>
+                      <td>{o.title || '—'}</td>
+                      <td>{o.client || '—'}</td>
+                      <td>{o.owner || '—'}</td>
+                      <td>{o.status || '—'}</td>
+                      <td>{formatDate(o.dateAdded)}</td>
+                    </tr>
+                  ))}
+                  {opportunities.length === 0 && (
+                    <tr><td colSpan="6" style={{ textAlign: 'center', padding: '20px' }}>No open opportunities found</td></tr>
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       )}

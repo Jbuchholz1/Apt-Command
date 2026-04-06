@@ -3,7 +3,7 @@ import StatusBadge from './StatusBadge';
 import EditableCell from './EditableCell';
 import EditableSelect from './EditableSelect';
 import EditableDate from './EditableDate';
-import { updateJobOverrides, updateJobInBullhorn, getUsers } from '../lib/api';
+import { updateJobOverrides, updateJobInBullhorn, getUsers, getRecruiters } from '../lib/api';
 
 const PRIORITY_COLORS = {
   A: { bg: '#16a34a', text: '#fff' },
@@ -113,7 +113,7 @@ const COLUMNS = [
   { key: 'id', label: 'Req#', sortable: true, width: '55px' },
   { key: 'dateAdded', label: 'Date', sortable: true, width: '80px' },
   { key: 'ownerInitials', label: 'AM', sortable: true, width: '50px', editType: 'select', bullhornField: 'owner' },
-  { key: 'recruiter', label: 'TR', sortable: true, width: '60px' },
+  { key: 'recruiter', label: 'TR', sortable: true, width: '60px', editType: 'select', bullhornField: 'assignedUsers' },
   { key: 'coverageNeeded', label: 'Cov', sortable: true, width: '45px', editable: true, editType: 'localSelect' },
   { key: 'title', label: 'Job Title', sortable: true },
   { key: 'client', label: 'Client', sortable: true, width: '150px' },
@@ -121,7 +121,7 @@ const COLUMNS = [
   { key: 'notes', label: 'Notes', sortable: true, width: '140px', editable: true },
   { key: 'deadline', label: 'Deadline', sortable: true, width: '110px', editable: true },
   { key: 'followUp', label: 'Follow Up', sortable: true, width: '120px', editable: true },
-  { key: 'brSalary', label: 'BR/Salary', sortable: true, width: '110px' },
+  { key: 'brSalary', label: 'PrBr/Salary (low)', sortable: true, width: '130px' },
   { key: 'ceSpread', label: 'CE $', sortable: true, width: '70px' },
   { key: 'permFee', label: 'Perm $', sortable: true, width: '75px' },
   { key: 'clientContact', label: 'Manager', sortable: true, width: '120px' },
@@ -130,7 +130,6 @@ const COLUMNS = [
   { key: 'numOpenings', label: '# Op', sortable: true, width: '45px' },
   { key: 'filled', label: '# Fl', sortable: true, width: '45px' },
   { key: 'startDate', label: 'Start', sortable: true, width: '95px', editType: 'date', bullhornField: 'startDate' },
-  { key: 'estimatedEndDate', label: 'End', sortable: true, width: '95px', editType: 'date', bullhornField: 'estimatedEndDate' },
 ];
 
 // Maps column keys to the API field names for overrides
@@ -149,9 +148,11 @@ const COVERAGE_OPTIONS = [
 export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, onJobUpdated }) {
   const [sort, setSort] = useState({ key: 'dateAdded', dir: 'desc' });
   const [users, setUsers] = useState([]);
+  const [recruiters, setRecruiters] = useState([]);
 
   useEffect(() => {
     getUsers().then(res => setUsers(res.data || [])).catch(() => {});
+    getRecruiters().then(res => setRecruiters(res.data || [])).catch(() => {});
   }, []);
 
   const handleSort = (key) => {
@@ -180,8 +181,16 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
     let bullhornValue = rawValue;
     let displayUpdates = {};
 
-    if (bhField === 'owner') {
+    if (bhField === 'assignedUsers') {
       // rawValue is the user ID string from the select
+      const userId = parseInt(rawValue, 10);
+      const user = recruiters.find(u => u.id === userId);
+      bullhornValue = { replaceAll: [userId] };
+      displayUpdates = {
+        recruiter: user?.initials || '',
+        assignedUserIds: [userId],
+      };
+    } else if (bhField === 'owner') {
       const userId = parseInt(rawValue, 10);
       const user = users.find(u => u.id === userId);
       bullhornValue = { id: userId };
@@ -288,7 +297,12 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
     // Bullhorn-editable select fields
     if (col.editType === 'select') {
       let options, currentValue, displayValue;
-      if (col.bullhornField === 'owner') {
+      if (col.bullhornField === 'assignedUsers') {
+        options = recruiters.map(u => ({ value: String(u.id), label: u.initials }));
+        const firstAssigned = (job.assignedUserIds || [])[0];
+        currentValue = firstAssigned ? String(firstAssigned) : '';
+        displayValue = job.recruiter || '—';
+      } else if (col.bullhornField === 'owner') {
         options = users.map(u => ({ value: String(u.id), label: u.initials }));
         currentValue = String(job.ownerId || '');
         displayValue = job.ownerInitials || '—';
@@ -359,8 +373,6 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
         );
       case 'dateAdded':
         return <td key={col.key} className="cell-date">{formatDate(job.dateAdded)}</td>;
-      case 'recruiter':
-        return <td key={col.key} className="cell-initials">{job.recruiter || '—'}</td>;
       case 'title':
         return <td key={col.key} className="cell-title">{job.title}</td>;
       case 'client':

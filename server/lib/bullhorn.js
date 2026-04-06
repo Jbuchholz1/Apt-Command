@@ -170,8 +170,18 @@ async function getCorporateUsers() {
   return callTool('query_entity', {
     entityType: 'CorporateUser',
     where: 'isDeleted = false AND enabled = true',
-    fields: 'id,firstName,lastName',
+    fields: 'id,firstName,lastName,customText1',
     count: 100,
+  });
+}
+
+async function getOpenOpportunitiesFull() {
+  return callTool('query_entity', {
+    entityType: 'Opportunity',
+    where: 'isOpen = true AND isDeleted = false',
+    fields: 'id,title,status,owner,clientCorporation,dateAdded',
+    orderBy: '-dateAdded',
+    count: 500,
   });
 }
 
@@ -192,6 +202,7 @@ module.exports = {
   getSubmissions,
   getActivePlacements,
   getOpenOpportunities,
+  getOpenOpportunitiesFull,
   searchJobs,
   addNoteToJob,
   updateJobField,

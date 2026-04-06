@@ -1,6 +1,6 @@
 const express = require('express');
 const ExcelJS = require('exceljs');
-const { getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getSubmissions, addNoteToJob, updateJobField, getCorporateUsers } = require('../lib/bullhorn');
+const { getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getSubmissions, addNoteToJob, updateJobField, getCorporateUsers, getOpenOpportunitiesFull } = require('../lib/bullhorn');
 const { getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote } = require('../lib/db');
 
 const router = express.Router();
@@ -177,9 +177,8 @@ router.get('/:id', async (req, res, next) => {
 router.get('/users', async (req, res, next) => {
   try {
     const result = await getCorporateUsers();
-    const users = (result?.data || [])
+    const allUsers = (result?.data || [])
       .filter(u => {
-        // Filter out API/system users
         const name = `${u.firstName} ${u.lastName}`.toLowerCase();
         return !name.includes('api') && !name.includes('admin') && !name.includes('herefish')
           && !name.includes('unassigned') && !name.includes('analytics') && !name.includes('bbo')
@@ -191,10 +190,35 @@ router.get('/users', async (req, res, next) => {
         lastName: u.lastName,
         initials: `${(u.firstName || '')[0] || ''}${(u.lastName || '')[0] || ''}`.toUpperCase(),
         name: `${u.firstName || ''} ${u.lastName || ''}`.trim(),
+        role: (u.customText1 || '').trim(),
       }))
       .sort((a, b) => a.lastName.localeCompare(b.lastName));
 
+    // Filter by role if query param provided
+    const roleFilter = req.query.role;
+    const users = roleFilter
+      ? allUsers.filter(u => u.role.toLowerCase().includes(roleFilter.toLowerCase()))
+      : allUsers;
+
     res.json({ data: users });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/jobs/opportunities — All open opportunities for modal
+router.get('/opportunities', async (req, res, next) => {
+  try {
+    const result = await getOpenOpportunitiesFull();
+    const opportunities = (result?.data || []).map(o => ({
+      id: o.id,
+      title: o.title || null,
+      status: o.status || null,
+      owner: o.owner ? `${o.owner.firstName || ''} ${o.owner.lastName || ''}`.trim() : null,
+      client: o.clientCorporation?.name || null,
+      dateAdded: o.dateAdded ? new Date(o.dateAdded).toISOString() : null,
+    }));
+    res.json({ total: opportunities.length, data: opportunities });
   } catch (err) {
     next(err);
   }
@@ -216,7 +240,7 @@ router.post('/:id/bullhorn-update', async (req, res, next) => {
     // Whitelist of allowed Bullhorn fields
     const ALLOWED_FIELDS = new Set([
       'status', 'owner', 'employmentType', 'customText1',
-      'startDate', 'estimatedEndDate',
+      'startDate', 'estimatedEndDate', 'assignedUsers',
     ]);
 
     const sanitized = {};

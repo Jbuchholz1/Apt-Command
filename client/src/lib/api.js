@@ -102,6 +102,14 @@ export function getUsers() {
   return fetchAPI('/api/jobs/users');
 }
 
+export function getRecruiters() {
+  return fetchAPI('/api/jobs/users?role=recruiter');
+}
+
+export function getOpportunities() {
+  return fetchAPI('/api/jobs/opportunities');
+}
+
 // --- Export ---
 
 export async function exportJobs() {
