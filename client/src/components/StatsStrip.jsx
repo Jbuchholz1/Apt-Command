@@ -23,6 +23,11 @@ export default function StatsStrip({ stats, jobs, loading }) {
   // B + C reqs
   const bcReqCount = (jobs || []).filter(j => j.priority === 'B' || j.priority === 'C').length;
 
+  // Total CE$ and Perm$
+  const totalCE = (jobs || []).reduce((sum, j) => sum + (j.ceSpread || 0), 0);
+  const totalPerm = (jobs || []).reduce((sum, j) => sum + (j.permFee || 0), 0);
+  const fmtCurrency = (val) => `$${Math.round(val).toLocaleString('en-US')}`;
+
   const handleContractorsClick = async () => {
     setShowContractors(true);
     setPlacementsLoading(true);
@@ -50,6 +55,8 @@ export default function StatsStrip({ stats, jobs, loading }) {
     { label: 'A Reqs', value: `${aReqCount} / ${aReqsNoTR} no TR`, color: '#c9a227' },
     { label: 'B + C Reqs', value: bcReqCount, color: '#475569' },
     { label: 'Active Contractors', value: activeContractors, color: '#0d9488', clickable: true },
+    { label: 'Total CE Input', value: fmtCurrency(totalCE), color: '#2563eb' },
+    { label: 'Total Perm Input', value: fmtCurrency(totalPerm), color: '#9333ea' },
   ];
 
   return (
