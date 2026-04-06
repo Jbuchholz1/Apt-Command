@@ -1,6 +1,6 @@
 const express = require('express');
 const ExcelJS = require('exceljs');
-const { getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getSubmissions } = require('../lib/bullhorn');
+const { getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getSubmissions, addNoteToJob } = require('../lib/bullhorn');
 const { getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote } = require('../lib/db');
 
 const router = express.Router();
@@ -191,6 +191,16 @@ router.patch('/:id/overrides', async (req, res, next) => {
       deadline,
       updated_by: updatedBy,
     });
+
+    // Push notes to Bullhorn as a Note entity on the JobOrder
+    if (notes !== undefined && notes.trim()) {
+      try {
+        await addNoteToJob(jobId, notes.trim());
+      } catch (err) {
+        console.error(`Failed to push note to Bullhorn for job ${jobId}:`, err.message);
+        // Don't fail the request — local save succeeded
+      }
+    }
 
     res.json({ success: true, data: result });
   } catch (err) {

@@ -2,8 +2,6 @@ const MCP_URL = process.env.BULLHORN_MCP_URL || 'https://bullhorn-mcp-production
 
 let requestId = 0;
 
-// READ-ONLY ENFORCEMENT: Only these MCP tools are allowed.
-// Nothing writes back to Bullhorn.
 const ALLOWED_TOOLS = new Set([
   'query_entity',
   'search_jobs',
@@ -11,6 +9,7 @@ const ALLOWED_TOOLS = new Set([
   'get_candidate',
   'search_candidates',
   'get_entity_fields',
+  'add_note',
 ]);
 
 /**
@@ -149,8 +148,15 @@ async function searchJobs(query) {
   });
 }
 
-// NOTE: callTool is intentionally NOT exported.
-// Nothing writes back to Bullhorn.
+async function addNoteToJob(jobOrderId, comments) {
+  return callTool('add_note', {
+    entityType: 'JobOrder',
+    entityId: parseInt(jobOrderId, 10),
+    comments,
+    action: 'General Note',
+  });
+}
+
 module.exports = {
   getOpenJobs,
   getRecentlyClosedJobs,
@@ -159,4 +165,5 @@ module.exports = {
   getSubmissions,
   getActivePlacements,
   searchJobs,
+  addNoteToJob,
 };
