@@ -10,6 +10,7 @@ const ALLOWED_TOOLS = new Set([
   'search_candidates',
   'get_entity_fields',
   'add_note',
+  'update_entity',
 ]);
 
 /**
@@ -148,6 +149,23 @@ async function searchJobs(query) {
   });
 }
 
+async function updateJobField(jobOrderId, fields) {
+  return callTool('update_entity', {
+    entityType: 'JobOrder',
+    entityId: parseInt(jobOrderId, 10),
+    fields,
+  });
+}
+
+async function getCorporateUsers() {
+  return callTool('query_entity', {
+    entityType: 'CorporateUser',
+    where: 'isDeleted = false AND enabled = true',
+    fields: 'id,firstName,lastName',
+    count: 100,
+  });
+}
+
 async function addNoteToJob(jobOrderId, comments) {
   return callTool('add_note', {
     entityType: 'JobOrder',
@@ -166,4 +184,6 @@ module.exports = {
   getActivePlacements,
   searchJobs,
   addNoteToJob,
+  updateJobField,
+  getCorporateUsers,
 };

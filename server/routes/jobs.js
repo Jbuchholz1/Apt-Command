@@ -1,6 +1,6 @@
 const express = require('express');
 const ExcelJS = require('exceljs');
-const { getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getSubmissions, addNoteToJob } = require('../lib/bullhorn');
+const { getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getSubmissions, addNoteToJob, updateJobField, getCorporateUsers } = require('../lib/bullhorn');
 const { getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote } = require('../lib/db');
 
 const router = express.Router();
@@ -168,6 +168,67 @@ router.get('/:id', async (req, res, next) => {
       },
       notes,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/jobs/users — CorporateUser list for AM dropdown
+router.get('/users', async (req, res, next) => {
+  try {
+    const result = await getCorporateUsers();
+    const users = (result?.data || [])
+      .filter(u => {
+        // Filter out API/system users
+        const name = `${u.firstName} ${u.lastName}`.toLowerCase();
+        return !name.includes('api') && !name.includes('admin') && !name.includes('herefish')
+          && !name.includes('unassigned') && !name.includes('analytics') && !name.includes('bbo')
+          && !name.includes('synety') && !name.includes('newbury') && !name.includes('linkedin');
+      })
+      .map(u => ({
+        id: u.id,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        initials: `${(u.firstName || '')[0] || ''}${(u.lastName || '')[0] || ''}`.toUpperCase(),
+        name: `${u.firstName || ''} ${u.lastName || ''}`.trim(),
+      }))
+      .sort((a, b) => a.lastName.localeCompare(b.lastName));
+
+    res.json({ data: users });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/jobs/:id/bullhorn-update — Push field changes to Bullhorn
+router.post('/:id/bullhorn-update', async (req, res, next) => {
+  try {
+    const jobId = parseInt(req.params.id, 10);
+    if (isNaN(jobId)) {
+      return res.status(400).json({ error: 'Invalid job ID' });
+    }
+
+    const { fields } = req.body;
+    if (!fields || typeof fields !== 'object' || Object.keys(fields).length === 0) {
+      return res.status(400).json({ error: 'fields object is required' });
+    }
+
+    // Whitelist of allowed Bullhorn fields
+    const ALLOWED_FIELDS = new Set([
+      'status', 'owner', 'employmentType', 'customText1',
+      'startDate', 'estimatedEndDate',
+    ]);
+
+    const sanitized = {};
+    for (const [key, value] of Object.entries(fields)) {
+      if (!ALLOWED_FIELDS.has(key)) {
+        return res.status(400).json({ error: `Field "${key}" is not allowed` });
+      }
+      sanitized[key] = value;
+    }
+
+    const result = await updateJobField(jobId, sanitized);
+    res.json({ success: true, data: result });
   } catch (err) {
     next(err);
   }

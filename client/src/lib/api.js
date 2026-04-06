@@ -91,6 +91,17 @@ export function addJobNote(id, comment) {
   });
 }
 
+export function updateJobInBullhorn(id, fields) {
+  return fetchAPI(`/api/jobs/${id}/bullhorn-update`, {
+    method: 'POST',
+    body: { fields },
+  });
+}
+
+export function getUsers() {
+  return fetchAPI('/api/jobs/users');
+}
+
 // --- Export ---
 
 export async function exportJobs() {

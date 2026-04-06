@@ -1,7 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import StatusBadge from './StatusBadge';
 import EditableCell from './EditableCell';
-import { updateJobOverrides } from '../lib/api';
+import EditableSelect from './EditableSelect';
+import EditableDate from './EditableDate';
+import { updateJobOverrides, updateJobInBullhorn, getUsers } from '../lib/api';
 
 const PRIORITY_COLORS = {
   A: { bg: '#c9a227', text: '#fff' },
@@ -62,15 +64,29 @@ const DEADLINE_STYLES = {
   yellow: { backgroundColor: '#fef08a', color: '#854d0e' },
 };
 
+const STATUS_OPTIONS = [
+  'Accepting Candidates', 'Covered', 'Offer Out', 'Placed', 'Filled', 'Lost', 'Wash', 'Archive',
+].map(s => ({ value: s, label: s }));
+
+const TYPE_OPTIONS = [
+  'Direct Hire', 'Contract', 'Contract To Hire', 'Project',
+].map(s => ({ value: s, label: s }));
+
+const REMOTE_OPTIONS = [
+  { value: 'Yes', label: 'Yes' },
+  { value: 'No', label: 'No' },
+  { value: 'Hybrid', label: 'Hybrid' },
+];
+
 const COLUMNS = [
   { key: 'priority', label: 'Pri', sortable: true, width: '42px' },
   { key: 'id', label: 'Req#', sortable: true, width: '55px' },
   { key: 'dateAdded', label: 'Date', sortable: true, width: '80px' },
-  { key: 'ownerInitials', label: 'AM', sortable: true, width: '40px' },
+  { key: 'ownerInitials', label: 'AM', sortable: true, width: '50px', editType: 'select', bullhornField: 'owner' },
   { key: 'recruiter', label: 'TR', sortable: true, width: '60px', editable: true },
   { key: 'title', label: 'Job Title', sortable: true },
   { key: 'client', label: 'Client', sortable: true, width: '150px' },
-  { key: 'status', label: 'Status', sortable: true, width: '155px' },
+  { key: 'status', label: 'Status', sortable: true, width: '155px', editType: 'select', bullhornField: 'status' },
   { key: 'notes', label: 'Notes', sortable: true, width: '140px', editable: true },
   { key: 'deadline', label: 'Deadline', sortable: true, width: '110px', editable: true },
   { key: 'followUp', label: 'Follow Up', sortable: true, width: '120px', editable: true },
@@ -78,12 +94,12 @@ const COLUMNS = [
   { key: 'ceSpread', label: 'CE $', sortable: true, width: '70px' },
   { key: 'permFee', label: 'Perm $', sortable: true, width: '75px' },
   { key: 'clientContact', label: 'Manager', sortable: true, width: '120px' },
-  { key: 'employmentType', label: 'Type', sortable: true, width: '90px' },
-  { key: 'remote', label: 'Remote', sortable: true, width: '65px' },
+  { key: 'employmentType', label: 'Type', sortable: true, width: '115px', editType: 'select', bullhornField: 'employmentType' },
+  { key: 'remote', label: 'Remote', sortable: true, width: '75px', editType: 'select', bullhornField: 'customText1' },
   { key: 'numOpenings', label: '# Op', sortable: true, width: '45px' },
   { key: 'filled', label: '# Fl', sortable: true, width: '45px' },
-  { key: 'startDate', label: 'Start', sortable: true, width: '80px' },
-  { key: 'estimatedEndDate', label: 'End', sortable: true, width: '80px' },
+  { key: 'startDate', label: 'Start', sortable: true, width: '95px', editType: 'date', bullhornField: 'startDate' },
+  { key: 'estimatedEndDate', label: 'End', sortable: true, width: '95px', editType: 'date', bullhornField: 'estimatedEndDate' },
 ];
 
 // Maps column keys to the API field names for overrides
@@ -96,6 +112,11 @@ const OVERRIDE_FIELD_MAP = {
 
 export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, onJobUpdated }) {
   const [sort, setSort] = useState({ key: 'dateAdded', dir: 'desc' });
+  const [users, setUsers] = useState([]);
+
+  useEffect(() => {
+    getUsers().then(res => setUsers(res.data || [])).catch(() => {});
+  }, []);
 
   const handleSort = (key) => {
     setSort(prev =>
@@ -113,6 +134,45 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
       if (onJobUpdated) onJobUpdated(jobId, field, value);
     } catch (err) {
       console.error('Failed to save override:', err);
+    }
+  };
+
+  const handleBullhornSave = async (job, col, rawValue) => {
+    const bhField = col.bullhornField;
+    if (!bhField) return;
+
+    let bullhornValue = rawValue;
+    let displayUpdates = {};
+
+    if (bhField === 'owner') {
+      // rawValue is the user ID string from the select
+      const userId = parseInt(rawValue, 10);
+      const user = users.find(u => u.id === userId);
+      bullhornValue = { id: userId };
+      displayUpdates = {
+        ownerInitials: user?.initials || '',
+        owner: user?.name || '',
+        ownerId: userId,
+      };
+    } else if (bhField === 'startDate' || bhField === 'estimatedEndDate') {
+      // rawValue is a Unix ms timestamp or null
+      bullhornValue = rawValue;
+      displayUpdates = {
+        [col.key]: rawValue ? new Date(rawValue).toISOString() : null,
+      };
+    } else {
+      // Simple string fields: status, employmentType, customText1
+      displayUpdates = { [col.key]: rawValue };
+    }
+
+    try {
+      await updateJobInBullhorn(job.id, { [bhField]: bullhornValue });
+      // Update all affected display fields
+      for (const [field, value] of Object.entries(displayUpdates)) {
+        if (onJobUpdated) onJobUpdated(job.id, field, value);
+      }
+    } catch (err) {
+      console.error(`Failed to update Bullhorn field ${bhField}:`, err);
     }
   };
 
@@ -172,6 +232,50 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
       );
     }
 
+    // Bullhorn-editable select fields
+    if (col.editType === 'select') {
+      let options, currentValue, displayValue;
+      if (col.bullhornField === 'owner') {
+        options = users.map(u => ({ value: String(u.id), label: u.initials }));
+        currentValue = String(job.ownerId || '');
+        displayValue = job.ownerInitials || '—';
+      } else if (col.bullhornField === 'status') {
+        options = STATUS_OPTIONS;
+        currentValue = job.status || '';
+        displayValue = job.status ? <StatusBadge status={job.status} /> : '—';
+      } else if (col.bullhornField === 'employmentType') {
+        options = TYPE_OPTIONS;
+        currentValue = job.employmentType || '';
+        displayValue = job.employmentType || '—';
+      } else if (col.bullhornField === 'customText1') {
+        options = REMOTE_OPTIONS;
+        currentValue = job.remote || '';
+        displayValue = job.remote || '—';
+      }
+      return (
+        <EditableSelect
+          key={col.key}
+          value={currentValue}
+          displayValue={displayValue}
+          options={options}
+          onSave={(val) => handleBullhornSave(job, col, val)}
+          className="cell-editable"
+        />
+      );
+    }
+
+    // Bullhorn-editable date fields
+    if (col.editType === 'date') {
+      return (
+        <EditableDate
+          key={col.key}
+          value={job[col.key]}
+          onSave={(val) => handleBullhornSave(job, col, val)}
+          className="cell-editable cell-date"
+        />
+      );
+    }
+
     // Static cells
     switch (col.key) {
       case 'priority':
@@ -202,14 +306,10 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
         );
       case 'dateAdded':
         return <td key={col.key} className="cell-date">{formatDate(job.dateAdded)}</td>;
-      case 'ownerInitials':
-        return <td key={col.key} className="cell-initials">{job.ownerInitials || '—'}</td>;
       case 'title':
         return <td key={col.key} className="cell-title">{job.title}</td>;
       case 'client':
         return <td key={col.key}>{job.client || '—'}</td>;
-      case 'status':
-        return <td key={col.key}><StatusBadge status={job.status} /></td>;
       case 'brSalary':
         return <td key={col.key} className="cell-money">{job.brSalary || '—'}</td>;
       case 'ceSpread':
@@ -221,9 +321,6 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
       case 'numOpenings':
       case 'filled':
         return <td key={col.key} className="cell-num">{job[col.key] ?? '—'}</td>;
-      case 'startDate':
-      case 'estimatedEndDate':
-        return <td key={col.key} className="cell-date">{formatDate(job[col.key])}</td>;
       default:
         return <td key={col.key}>{job[col.key] || '—'}</td>;
     }
