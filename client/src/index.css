@@ -714,6 +714,11 @@ body { margin: 0; }
   font-size: 10px;
 }
 
+.editable-default-text {
+  font-weight: 600;
+  font-size: 10px;
+}
+
 .editable-header {
   border-bottom: 2px solid var(--gold) !important;
 }

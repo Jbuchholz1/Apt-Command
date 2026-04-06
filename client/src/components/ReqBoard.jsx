@@ -156,6 +156,8 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
       const placeholder = placeholders[col.key] || '';
       // Compute deadline urgency coloring
       const cellStyle = col.key === 'deadline' ? DEADLINE_STYLES[getDeadlineUrgency(job.deadline)] : undefined;
+      // Follow Up: default text "No Follow Up" with red background when empty
+      const isFollowUp = col.key === 'followUp';
       return (
         <EditableCell
           key={col.key}
@@ -164,6 +166,8 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
           onSave={(val) => handleOverrideSave(job.id, col.key, val)}
           className="cell-editable"
           cellStyle={cellStyle}
+          defaultText={isFollowUp ? 'No Follow Up' : undefined}
+          noValueStyle={isFollowUp ? { backgroundColor: '#dc2626', color: '#fff' } : undefined}
         />
       );
     }
