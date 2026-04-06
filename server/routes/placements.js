@@ -15,6 +15,7 @@ router.get('/', async (req, res, next) => {
       candidateId: p.candidate?.id || null,
       jobTitle: p.jobOrder?.title || null,
       jobOrderId: p.jobOrder?.id || null,
+      employmentType: p.employmentType || p.jobOrder?.employmentType || null,
       dateBegin: p.dateBegin ? new Date(p.dateBegin).toISOString() : null,
       dateEnd: p.dateEnd ? new Date(p.dateEnd).toISOString() : null,
       payRate: p.payRate || null,
