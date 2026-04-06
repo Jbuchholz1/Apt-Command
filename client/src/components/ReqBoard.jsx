@@ -113,7 +113,8 @@ const COLUMNS = [
   { key: 'id', label: 'Req#', sortable: true, width: '55px' },
   { key: 'dateAdded', label: 'Date', sortable: true, width: '80px' },
   { key: 'ownerInitials', label: 'AM', sortable: true, width: '50px', editType: 'select', bullhornField: 'owner' },
-  { key: 'recruiter', label: 'TR', sortable: true, width: '60px', editable: true },
+  { key: 'recruiter', label: 'TR', sortable: true, width: '60px' },
+  { key: 'coverageNeeded', label: 'Cov', sortable: true, width: '45px', editable: true, editType: 'localSelect' },
   { key: 'title', label: 'Job Title', sortable: true },
   { key: 'client', label: 'Client', sortable: true, width: '150px' },
   { key: 'status', label: 'Status', sortable: true, width: '155px', editType: 'select', bullhornField: 'status' },
@@ -134,11 +135,16 @@ const COLUMNS = [
 
 // Maps column keys to the API field names for overrides
 const OVERRIDE_FIELD_MAP = {
-  recruiter: 'recruiter',
   notes: 'notes',
   followUp: 'follow_up',
   deadline: 'deadline',
+  coverageNeeded: 'coverage_needed',
 };
+
+const COVERAGE_OPTIONS = [
+  { value: 'Y', label: 'Y' },
+  { value: 'N', label: 'N' },
+];
 
 export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, onJobUpdated }) {
   const [sort, setSort] = useState({ key: 'dateAdded', dir: 'desc' });
@@ -240,9 +246,23 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
   }
 
   const renderCell = (job, col) => {
-    // Editable cells
+    // Local select dropdowns (saved to local DB only)
+    if (col.editType === 'localSelect') {
+      return (
+        <EditableSelect
+          key={col.key}
+          value={job[col.key] || ''}
+          displayValue={job[col.key] || '—'}
+          options={COVERAGE_OPTIONS}
+          onSave={(val) => handleOverrideSave(job.id, col.key, val)}
+          className="cell-editable"
+        />
+      );
+    }
+
+    // Editable free-text cells
     if (col.editable) {
-      const placeholders = { recruiter: 'TR', notes: 'Notes', deadline: 'Deadline', followUp: 'Follow Up' };
+      const placeholders = { notes: 'Notes', deadline: 'Deadline', followUp: 'Follow Up' };
       const placeholder = placeholders[col.key] || '';
       // Compute urgency coloring for deadline and follow-up
       let cellStyle;
@@ -339,6 +359,8 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
         );
       case 'dateAdded':
         return <td key={col.key} className="cell-date">{formatDate(job.dateAdded)}</td>;
+      case 'recruiter':
+        return <td key={col.key} className="cell-initials">{job.recruiter || '—'}</td>;
       case 'title':
         return <td key={col.key} className="cell-title">{job.title}</td>;
       case 'client':

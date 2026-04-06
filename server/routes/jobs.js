@@ -242,7 +242,7 @@ router.patch('/:id/overrides', async (req, res, next) => {
       return res.status(400).json({ error: 'Invalid job ID' });
     }
 
-    const { recruiter, notes, follow_up, deadline } = req.body;
+    const { recruiter, notes, follow_up, deadline, coverage_needed } = req.body;
     const updatedBy = req.user?.email || req.user?.name || 'unknown';
 
     const result = upsertOverrides(jobId, {
@@ -250,6 +250,7 @@ router.patch('/:id/overrides', async (req, res, next) => {
       notes,
       follow_up,
       deadline,
+      coverage_needed,
       updated_by: updatedBy,
     });
 
@@ -295,15 +296,18 @@ router.post('/:id/notes', async (req, res, next) => {
 function mergeOverrides(job, overridesMap) {
   const ov = overridesMap[job.id];
   if (ov) {
-    job.recruiter = ov.recruiter || '';
+    // TR comes from Bullhorn assignedUsers; only use local override as fallback
+    if (!job.recruiter && ov.recruiter) job.recruiter = ov.recruiter;
     job.followUp = ov.follow_up || '';
     job.deadline = ov.deadline || '';
     job.notes = ov.notes || '';
+    job.coverageNeeded = ov.coverage_needed || '';
   } else {
     job.recruiter = job.recruiter || '';
     job.followUp = job.followUp || '';
     job.deadline = job.deadline || '';
     job.notes = job.notes || '';
+    job.coverageNeeded = job.coverageNeeded || '';
   }
   return job;
 }
@@ -376,11 +380,17 @@ function formatJob(job) {
     priority: job.type === 1 ? 'A' : job.type === 2 ? 'B' : job.type === 3 ? 'C' : null,
     dateLastModified: job.dateLastModified ? new Date(job.dateLastModified).toISOString() : null,
     fallingOff: false, // set by route handler for recently-closed jobs
+    // assignedUsers → TR initials (Bullhorn source of truth)
+    assignedUserIds: (job.assignedUsers?.data || []).map(u => u.id),
+    recruiter: (job.assignedUsers?.data || [])
+      .map(u => `${(u.firstName || '')[0] || ''}${(u.lastName || '')[0] || ''}`.toUpperCase())
+      .filter(Boolean)
+      .join(', ') || '',
     // Editable fields (populated from overrides)
-    recruiter: '',
     notes: '',
     followUp: '',
     deadline: '',
+    coverageNeeded: '',
   };
 }
 
