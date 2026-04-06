@@ -4,6 +4,8 @@ import { getFollowUpUrgency } from './ReqBoard';
 
 export default function StatsStrip({ stats, jobs, loading }) {
   const [showContractors, setShowContractors] = useState(false);
+  const [showCE, setShowCE] = useState(false);
+  const [showPerm, setShowPerm] = useState(false);
   const [placements, setPlacements] = useState([]);
   const [placementsLoading, setPlacementsLoading] = useState(false);
 
@@ -23,9 +25,14 @@ export default function StatsStrip({ stats, jobs, loading }) {
   // B + C reqs
   const bcReqCount = (jobs || []).filter(j => j.priority === 'B' || j.priority === 'C').length;
 
-  // Total CE$ and Perm$
-  const totalCE = (jobs || []).reduce((sum, j) => sum + (j.ceSpread || 0), 0);
-  const totalPerm = (jobs || []).reduce((sum, j) => sum + (j.permFee || 0), 0);
+  // CE jobs: those with a ceSpread value
+  const ceJobs = (jobs || []).filter(j => j.ceSpread);
+  const totalCE = ceJobs.reduce((sum, j) => sum + j.ceSpread, 0);
+
+  // Perm jobs: those with a permFee value
+  const permJobs = (jobs || []).filter(j => j.permFee);
+  const totalPerm = permJobs.reduce((sum, j) => sum + j.permFee, 0);
+
   const fmtCurrency = (val) => `$${Math.round(val).toLocaleString('en-US')}`;
 
   const handleContractorsClick = async () => {
@@ -54,9 +61,9 @@ export default function StatsStrip({ stats, jobs, loading }) {
     { label: 'Missed Follow Ups', value: missedFollowUps, color: '#dc2626' },
     { label: 'A Reqs', value: `${aReqCount} / ${aReqsNoTR} no TR`, color: '#c9a227' },
     { label: 'B + C Reqs', value: bcReqCount, color: '#475569' },
-    { label: 'Active Contractors', value: activeContractors, color: '#0d9488', clickable: true },
-    { label: 'Total CE Input', value: fmtCurrency(totalCE), color: '#2563eb' },
-    { label: 'Total Perm Input', value: fmtCurrency(totalPerm), color: '#9333ea' },
+    { label: 'Active Contractors', value: activeContractors, color: '#0d9488', onClick: handleContractorsClick },
+    { label: 'Total CE Input', value: fmtCurrency(totalCE), color: '#2563eb', onClick: () => setShowCE(true) },
+    { label: 'Total Perm Input', value: fmtCurrency(totalPerm), color: '#9333ea', onClick: () => setShowPerm(true) },
   ];
 
   return (
@@ -65,20 +72,21 @@ export default function StatsStrip({ stats, jobs, loading }) {
         {items.map(item => (
           <div
             key={item.label}
-            className={`stat-card ${item.clickable ? 'stat-clickable' : ''}`}
-            onClick={item.clickable ? handleContractorsClick : undefined}
+            className={`stat-card ${item.onClick ? 'stat-clickable' : ''}`}
+            onClick={item.onClick || undefined}
           >
             <div className="stat-value" style={{ color: item.color }}>
               {loading ? '—' : (item.value ?? 0)}
             </div>
             <div className="stat-label">
               {item.label}
-              {item.clickable && <span className="stat-link-icon"> ↗</span>}
+              {item.onClick && <span className="stat-link-icon"> ↗</span>}
             </div>
           </div>
         ))}
       </div>
 
+      {/* Active Contractors Modal */}
       {showContractors && (
         <div className="modal-overlay" onClick={() => setShowContractors(false)}>
           <div className="modal-content contractors-modal" onClick={e => e.stopPropagation()}>
@@ -132,6 +140,108 @@ export default function StatsStrip({ stats, jobs, loading }) {
                 </tbody>
               </table>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* CE Input Breakdown Modal */}
+      {showCE && (
+        <div className="modal-overlay" onClick={() => setShowCE(false)}>
+          <div className="modal-content contractors-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>CE Input Breakdown ({ceJobs.length} jobs — {fmtCurrency(totalCE)})</h2>
+              <button className="modal-close" onClick={() => setShowCE(false)}>✕</button>
+            </div>
+            <table className="contractors-table">
+              <thead>
+                <tr>
+                  <th>Req#</th>
+                  <th>Job Title</th>
+                  <th>Client</th>
+                  <th>Owner</th>
+                  <th>Pay Rate</th>
+                  <th>Bill Rate</th>
+                  <th>CE $</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ceJobs.map(j => (
+                  <tr key={j.id}>
+                    <td>
+                      <a
+                        href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=JobOrder&id=${j.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bh-link"
+                      >
+                        {j.id}
+                      </a>
+                    </td>
+                    <td>{j.title || '—'}</td>
+                    <td>{j.client || '—'}</td>
+                    <td>{j.owner || '—'}</td>
+                    <td>{j.payRate ? `$${j.payRate}` : '—'}</td>
+                    <td>{j.billRate ? `$${j.billRate}` : '—'}</td>
+                    <td className="cell-money">{fmtCurrency(j.ceSpread)}</td>
+                  </tr>
+                ))}
+                <tr className="total-row">
+                  <td colSpan="6" style={{ textAlign: 'right', fontWeight: 700 }}>Total</td>
+                  <td className="cell-money" style={{ fontWeight: 700 }}>{fmtCurrency(totalCE)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Perm Input Breakdown Modal */}
+      {showPerm && (
+        <div className="modal-overlay" onClick={() => setShowPerm(false)}>
+          <div className="modal-content contractors-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Perm Input Breakdown ({permJobs.length} jobs — {fmtCurrency(totalPerm)})</h2>
+              <button className="modal-close" onClick={() => setShowPerm(false)}>✕</button>
+            </div>
+            <table className="contractors-table">
+              <thead>
+                <tr>
+                  <th>Req#</th>
+                  <th>Job Title</th>
+                  <th>Client</th>
+                  <th>Owner</th>
+                  <th>Salary</th>
+                  <th>Fee %</th>
+                  <th>Perm $</th>
+                </tr>
+              </thead>
+              <tbody>
+                {permJobs.map(j => (
+                  <tr key={j.id}>
+                    <td>
+                      <a
+                        href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=JobOrder&id=${j.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bh-link"
+                      >
+                        {j.id}
+                      </a>
+                    </td>
+                    <td>{j.title || '—'}</td>
+                    <td>{j.client || '—'}</td>
+                    <td>{j.owner || '—'}</td>
+                    <td>{j.salary ? `$${Number(j.salary).toLocaleString('en-US')}` : '—'}</td>
+                    <td>{j.feePercent ? `${(j.feePercent * 100).toFixed(0)}%` : '—'}</td>
+                    <td className="cell-money">{fmtCurrency(j.permFee)}</td>
+                  </tr>
+                ))}
+                <tr className="total-row">
+                  <td colSpan="6" style={{ textAlign: 'right', fontWeight: 700 }}>Total</td>
+                  <td className="cell-money" style={{ fontWeight: 700 }}>{fmtCurrency(totalPerm)}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       )}

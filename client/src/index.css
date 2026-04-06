@@ -242,6 +242,14 @@ body { margin: 0; }
   background: #f8fafc;
 }
 
+.contractors-table .total-row {
+  background: #f1f5f9;
+  border-top: 2px solid var(--navy);
+}
+.contractors-table .total-row:hover {
+  background: #f1f5f9;
+}
+
 /* ---- Filter Bar ---- */
 .filter-bar {
   background: var(--surface);
