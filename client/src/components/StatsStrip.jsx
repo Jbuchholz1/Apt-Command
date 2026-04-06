@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { getPlacements } from '../lib/api';
+import { getFollowUpUrgency } from './ReqBoard';
 
 export default function StatsStrip({ stats, jobs, loading }) {
   const [showContractors, setShowContractors] = useState(false);
@@ -11,11 +12,8 @@ export default function StatsStrip({ stats, jobs, loading }) {
   const acceptingCandidates = stats?.acceptingCandidates ?? 0;
   const activeContractors = stats?.activeContractors ?? 0;
 
-  // Missed follow-ups: jobs with no followUp or followUp === "No Follow Up"
-  const missedFollowUps = (jobs || []).filter(j => {
-    const fu = (j.followUp || '').trim();
-    return !fu || fu.toLowerCase() === 'no follow up';
-  }).length;
+  // Missed follow-ups: no follow-up + past-due follow-ups (red urgency)
+  const missedFollowUps = (jobs || []).filter(j => getFollowUpUrgency(j.followUp) === 'red').length;
 
   // A reqs
   const aReqs = (jobs || []).filter(j => j.priority === 'A');

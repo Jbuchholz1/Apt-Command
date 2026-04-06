@@ -29,18 +29,14 @@ function formatCurrency(val) {
 }
 
 /**
- * Parse a deadline string and return urgency level.
- * Supports formats like "4/5", "4/5 Closes", "4/5 @ 2pm", "Apr 5, 26"
- * Returns: 'red' (at/past deadline), 'yellow' (within 2 days), or null
+ * Try to extract a date from a free-text string.
+ * Supports formats like "4/5", "4/5/26", "4/5 Closes", "4/5 @ 2pm"
+ * Returns a Date object or null if no date found.
  */
-function getDeadlineUrgency(deadlineStr) {
-  if (!deadlineStr) return null;
-  // Try to extract a date from the string
+function parseDateFromText(str) {
+  if (!str) return null;
   const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-  // Try parsing "M/D" or "M/D/YYYY" at the start of the string
-  const match = deadlineStr.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
+  const match = str.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
   if (!match) return null;
 
   const month = parseInt(match[1], 10) - 1;
@@ -48,20 +44,54 @@ function getDeadlineUrgency(deadlineStr) {
   let year = match[3] ? parseInt(match[3], 10) : now.getFullYear();
   if (year < 100) year += 2000;
 
-  const deadline = new Date(year, month, day);
-  if (isNaN(deadline.getTime())) return null;
+  const date = new Date(year, month, day);
+  return isNaN(date.getTime()) ? null : date;
+}
 
-  const diffMs = deadline.getTime() - today.getTime();
-  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+function getDaysFromToday(dateStr) {
+  const date = parseDateFromText(dateStr);
+  if (!date) return null;
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return (date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
+}
 
-  if (diffDays <= 0) return 'red';      // At or past deadline
-  if (diffDays <= 2) return 'yellow';    // Within 2 days
-  return null;
+/**
+ * Deadline urgency: red (no date or past), yellow (within 2 days), green (>2 days)
+ */
+function getDeadlineUrgency(deadlineStr) {
+  const dl = (deadlineStr || '').trim();
+  if (!dl || dl.toLowerCase() === 'no deadline') return 'red';
+  const diff = getDaysFromToday(dl);
+  if (diff === null) return 'red';
+  if (diff <= 0) return 'red';
+  if (diff <= 2) return 'yellow';
+  return 'green';
+}
+
+/**
+ * Follow Up urgency: red (no date or past), yellow (within 2 days), green (>2 days)
+ */
+export function getFollowUpUrgency(followUpStr) {
+  const fu = (followUpStr || '').trim();
+  if (!fu || fu.toLowerCase() === 'no follow up') return 'red';
+  const diff = getDaysFromToday(fu);
+  if (diff === null) return 'red';   // Has text but no parseable date — treat as missed
+  if (diff <= 0) return 'red';       // Past due
+  if (diff <= 2) return 'yellow';    // Within 2 days
+  return 'green';                    // More than 2 days out
 }
 
 const DEADLINE_STYLES = {
-  red: { backgroundColor: '#fecaca', color: '#991b1b' },
+  red: { backgroundColor: '#dc2626', color: '#fff' },
   yellow: { backgroundColor: '#fef08a', color: '#854d0e' },
+  green: { backgroundColor: '#dcfce7', color: '#166534' },
+};
+
+const FOLLOWUP_STYLES = {
+  red: { backgroundColor: '#dc2626', color: '#fff' },
+  yellow: { backgroundColor: '#fef08a', color: '#854d0e' },
+  green: { backgroundColor: '#dcfce7', color: '#166534' },
 };
 
 const STATUS_OPTIONS = [
@@ -214,10 +244,14 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
     if (col.editable) {
       const placeholders = { recruiter: 'TR', notes: 'Notes', deadline: 'Deadline', followUp: 'Follow Up' };
       const placeholder = placeholders[col.key] || '';
-      // Compute deadline urgency coloring
-      const cellStyle = col.key === 'deadline' ? DEADLINE_STYLES[getDeadlineUrgency(job.deadline)] : undefined;
-      // Follow Up: default text "No Follow Up" with red background when empty
-      const isFollowUp = col.key === 'followUp';
+      // Compute urgency coloring for deadline and follow-up
+      let cellStyle;
+      if (col.key === 'deadline') {
+        cellStyle = DEADLINE_STYLES[getDeadlineUrgency(job.deadline)];
+      } else if (col.key === 'followUp') {
+        cellStyle = FOLLOWUP_STYLES[getFollowUpUrgency(job.followUp)];
+      }
+      const defaultTexts = { followUp: 'No Follow Up', deadline: 'No Deadline' };
       return (
         <EditableCell
           key={col.key}
@@ -226,8 +260,7 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
           onSave={(val) => handleOverrideSave(job.id, col.key, val)}
           className="cell-editable"
           cellStyle={cellStyle}
-          defaultText={isFollowUp ? 'No Follow Up' : undefined}
-          noValueStyle={isFollowUp ? { backgroundColor: '#dc2626', color: '#fff' } : undefined}
+          defaultText={defaultTexts[col.key]}
         />
       );
     }
