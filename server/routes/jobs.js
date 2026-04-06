@@ -327,7 +327,7 @@ function formatJob(job) {
 
   let permFee = null;
   if (salary && feePercent) {
-    permFee = Math.round(salary * feePercent * 100) / 100;
+    permFee = Math.round((salary * feePercent / 26) * 100) / 100;
   }
 
   let brSalary = null;

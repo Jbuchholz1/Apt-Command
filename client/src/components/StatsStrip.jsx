@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { getPlacements } from '../lib/api';
+import { getPlacements, updateJobInBullhorn } from '../lib/api';
 import { getFollowUpUrgency } from './ReqBoard';
+import EditableDate from './EditableDate';
 
 export default function StatsStrip({ stats, jobs, loading }) {
   const [showContractors, setShowContractors] = useState(false);
@@ -13,17 +14,20 @@ export default function StatsStrip({ stats, jobs, loading }) {
   const openReqs = stats?.openReqs ?? 0;
   const acceptingCandidates = stats?.acceptingCandidates ?? 0;
   const activeContractors = stats?.activeContractors ?? 0;
+  const filledCount = stats?.filled ?? 0;
+  const totalOpportunities = stats?.totalOpportunities ?? 0;
 
   // Missed follow-ups: no follow-up + past-due follow-ups (red urgency)
   const missedFollowUps = (jobs || []).filter(j => getFollowUpUrgency(j.followUp) === 'red').length;
 
-  // A reqs
-  const aReqs = (jobs || []).filter(j => j.priority === 'A');
-  const aReqCount = aReqs.length;
-  const aReqsNoTR = aReqs.filter(j => !(j.recruiter || '').trim()).length;
+  // A + B reqs combined: covered vs not covered
+  const abReqs = (jobs || []).filter(j => j.priority === 'A' || j.priority === 'B');
+  const abTotal = abReqs.length;
+  const abCovered = abReqs.filter(j => j.coverageNeeded === 'Y' || (j.recruiter || '').trim()).length;
+  const abNotCovered = abTotal - abCovered;
 
-  // B + C reqs
-  const bcReqCount = (jobs || []).filter(j => j.priority === 'B' || j.priority === 'C').length;
+  // C reqs only
+  const cReqCount = (jobs || []).filter(j => j.priority === 'C').length;
 
   // CE jobs: those with a ceSpread value
   const ceJobs = (jobs || []).filter(j => j.ceSpread);
@@ -48,6 +52,21 @@ export default function StatsStrip({ stats, jobs, loading }) {
     }
   };
 
+  const handlePlacementDateSave = async (placementIndex, field, tsValue) => {
+    const p = placements[placementIndex];
+    if (!p || !p.jobOrderId) return;
+    const bhField = field === 'dateBegin' ? 'startDate' : 'estimatedEndDate';
+    try {
+      await updateJobInBullhorn(p.jobOrderId, { [bhField]: tsValue });
+      // Update local state
+      setPlacements(prev => prev.map((pl, i) =>
+        i === placementIndex ? { ...pl, [field]: tsValue ? new Date(tsValue).toISOString() : null } : pl
+      ));
+    } catch (err) {
+      console.error('Failed to update placement date:', err);
+    }
+  };
+
   const formatDate = (iso) => {
     if (!iso) return '—';
     return new Date(iso).toLocaleDateString('en-US', {
@@ -59,8 +78,10 @@ export default function StatsStrip({ stats, jobs, loading }) {
     { label: 'Open Reqs', value: openReqs, color: '#c9a227' },
     { label: 'Accepting', value: acceptingCandidates, color: '#16a34a' },
     { label: 'Missed Follow Ups', value: missedFollowUps, color: '#dc2626' },
-    { label: 'A Reqs', value: `${aReqCount} / ${aReqsNoTR} no TR`, color: '#c9a227' },
-    { label: 'B + C Reqs', value: bcReqCount, color: '#475569' },
+    { label: 'A + B Reqs', value: `${abTotal} / ${abNotCovered} uncov`, color: '#c9a227' },
+    { label: 'C Reqs', value: cReqCount, color: '#94a3b8' },
+    { label: 'On The Board', value: filledCount, color: '#7c3aed' },
+    { label: 'Total Opportunities', value: totalOpportunities, color: '#0369a1' },
     { label: 'Active Contractors', value: activeContractors, color: '#0d9488', onClick: handleContractorsClick },
     { label: 'Total CE Input', value: fmtCurrency(totalCE), color: '#2563eb', onClick: () => setShowCE(true) },
     { label: 'Total Perm Input', value: fmtCurrency(totalPerm), color: '#9333ea', onClick: () => setShowPerm(true) },
@@ -111,7 +132,7 @@ export default function StatsStrip({ stats, jobs, loading }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {placements.map(p => (
+                  {placements.map((p, idx) => (
                     <tr key={p.id}>
                       <td>
                         {p.candidateId ? (
@@ -127,8 +148,16 @@ export default function StatsStrip({ stats, jobs, loading }) {
                       </td>
                       <td>{p.jobTitle || '—'}</td>
                       <td>{p.employmentType || '—'}</td>
-                      <td>{formatDate(p.dateBegin)}</td>
-                      <td>{formatDate(p.dateEnd)}</td>
+                      <EditableDate
+                        value={p.dateBegin}
+                        onSave={(val) => handlePlacementDateSave(idx, 'dateBegin', val)}
+                        className="cell-editable cell-date"
+                      />
+                      <EditableDate
+                        value={p.dateEnd}
+                        onSave={(val) => handlePlacementDateSave(idx, 'dateEnd', val)}
+                        className="cell-editable cell-date"
+                      />
                       <td>{p.payRate ? `$${p.payRate}` : '—'}</td>
                       <td>{p.billRate ? `$${p.billRate}` : '—'}</td>
                       <td>{p.status || '—'}</td>

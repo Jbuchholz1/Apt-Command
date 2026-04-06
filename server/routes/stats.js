@@ -1,18 +1,20 @@
 const express = require('express');
-const { getOpenJobs, getActivePlacements } = require('../lib/bullhorn');
+const { getOpenJobs, getActivePlacements, getOpenOpportunities } = require('../lib/bullhorn');
 
 const router = express.Router();
 
 // GET /api/stats — Summary counts for the stats strip
 router.get('/', async (req, res, next) => {
   try {
-    const [jobsResult, placementsResult] = await Promise.all([
+    const [jobsResult, placementsResult, opportunitiesResult] = await Promise.all([
       getOpenJobs(),
       getActivePlacements(),
+      getOpenOpportunities(),
     ]);
 
     const jobs = jobsResult?.data || [];
     const placements = placementsResult?.data || [];
+    const opportunities = opportunitiesResult?.data || [];
 
     const statusCount = (status) =>
       jobs.filter(j => {
@@ -23,6 +25,7 @@ router.get('/', async (req, res, next) => {
     res.json({
       openReqs: jobs.length,
       activeContractors: placements.length,
+      totalOpportunities: opportunities.length,
       offersOut: statusCount('Offer Out'),
       covered: statusCount('Covered'),
       acceptingCandidates: statusCount('Accepting Candidates'),

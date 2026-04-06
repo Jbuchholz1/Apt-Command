@@ -63,8 +63,6 @@ function Dashboard() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, REFRESH_INTERVAL);
-    return () => clearInterval(interval);
   }, [fetchData]);
 
   const filteredJobs = useMemo(() => {

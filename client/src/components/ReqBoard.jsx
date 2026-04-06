@@ -6,8 +6,8 @@ import EditableDate from './EditableDate';
 import { updateJobOverrides, updateJobInBullhorn, getUsers } from '../lib/api';
 
 const PRIORITY_COLORS = {
-  A: { bg: '#c9a227', text: '#fff' },
-  B: { bg: '#475569', text: '#fff' },
+  A: { bg: '#16a34a', text: '#fff' },
+  B: { bg: '#eab308', text: '#1e293b' },
   C: { bg: '#94a3b8', text: '#1e293b' },
 };
 

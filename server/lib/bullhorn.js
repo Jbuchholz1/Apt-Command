@@ -141,6 +141,15 @@ async function getActivePlacements() {
   });
 }
 
+async function getOpenOpportunities() {
+  return callTool('query_entity', {
+    entityType: 'Opportunity',
+    where: 'isOpen = true AND isDeleted = false',
+    fields: 'id',
+    count: 500,
+  });
+}
+
 async function searchJobs(query) {
   return callTool('search_jobs', {
     query,
@@ -182,6 +191,7 @@ module.exports = {
   getJobById,
   getSubmissions,
   getActivePlacements,
+  getOpenOpportunities,
   searchJobs,
   addNoteToJob,
   updateJobField,
