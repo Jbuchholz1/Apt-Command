@@ -139,7 +139,7 @@ function Dashboard() {
         </div>
       )}
 
-      <StatsStrip stats={stats} loading={loading} />
+      <StatsStrip stats={stats} jobs={jobs} loading={loading} />
 
       <FilterBar filters={filters} onChange={setFilters} jobs={jobs} />
 
