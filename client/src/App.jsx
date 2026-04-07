@@ -143,7 +143,7 @@ function Dashboard() {
         </div>
       )}
 
-      <StatsStrip stats={stats} jobs={jobs} loading={loading} />
+      <StatsStrip stats={stats} jobs={jobs} loading={loading} onJobUpdated={handleJobUpdated} />
 
       <FilterBar filters={filters} onChange={setFilters} jobs={jobs} redBoxCount={redBoxCount} />
 

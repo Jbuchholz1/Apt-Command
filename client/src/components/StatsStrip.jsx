@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { getPlacements, updateJobInBullhorn, getOpportunities } from '../lib/api';
+import { useState, useEffect } from 'react';
+import { getPlacements, updateJobInBullhorn, updateJobOverrides, getOpportunities, getRecruiters } from '../lib/api';
 import { getFollowUpUrgency } from './ReqBoard';
 import EditableDate from './EditableDate';
+import EditableSelect from './EditableSelect';
 
-export default function StatsStrip({ stats, jobs, loading }) {
+export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   const [showContractors, setShowContractors] = useState(false);
   const [showCE, setShowCE] = useState(false);
   const [showPerm, setShowPerm] = useState(false);
@@ -12,10 +13,17 @@ export default function StatsStrip({ stats, jobs, loading }) {
   const [showFilled, setShowFilled] = useState(false);
   const [showAB, setShowAB] = useState(false);
   const [showC, setShowC] = useState(false);
+  const [showOpenReqs, setShowOpenReqs] = useState(false);
+  const [showAccepting, setShowAccepting] = useState(false);
   const [placements, setPlacements] = useState([]);
   const [placementsLoading, setPlacementsLoading] = useState(false);
   const [opportunities, setOpportunities] = useState([]);
   const [opportunitiesLoading, setOpportunitiesLoading] = useState(false);
+  const [recruiters, setRecruiters] = useState([]);
+
+  useEffect(() => {
+    getRecruiters().then(res => setRecruiters(res.data || [])).catch(() => {});
+  }, []);
 
   // Compute stats from jobs array
   const openReqs = stats?.openReqs ?? 0;
@@ -23,6 +31,9 @@ export default function StatsStrip({ stats, jobs, loading }) {
   const activeContractors = stats?.activeContractors ?? 0;
   const filledCount = stats?.filled ?? 0;
   const totalOpportunities = stats?.totalOpportunities ?? 0;
+
+  // Accepting candidates jobs
+  const acceptingJobs = (jobs || []).filter(j => j.status === 'Accepting Candidates');
 
   // Missed follow-ups: no follow-up + past-due follow-ups (red urgency)
   const missedFollowUpJobs = (jobs || []).filter(j => getFollowUpUrgency(j.followUp) === 'red');
@@ -91,6 +102,60 @@ export default function StatsStrip({ stats, jobs, loading }) {
     }
   };
 
+  const trOptions = [
+    ...recruiters.map(u => ({ value: String(u.id), label: u.initials })),
+    { value: 'ZZ', label: 'ZZ' },
+    { value: '*', label: '*' },
+  ];
+
+  const handleTrSave = async (job, rawValue) => {
+    const hadPrevious = !!(job.recruiter && job.recruiter.trim() && job.recruiter !== 'ZZ' && job.recruiter !== '*');
+    const now = new Date().toISOString();
+
+    if (rawValue === 'ZZ' || rawValue === '*') {
+      try {
+        await updateJobOverrides(job.id, { recruiter: rawValue, tr_reassigned: hadPrevious ? '1' : undefined, tr_assigned_at: now });
+        if (onJobUpdated) {
+          onJobUpdated(job.id, 'recruiter', rawValue);
+          onJobUpdated(job.id, 'trAssignedAt', now);
+          if (hadPrevious) onJobUpdated(job.id, 'trReassigned', true);
+        }
+      } catch (err) { console.error('Failed to save TR:', err); }
+      return;
+    }
+
+    const userId = parseInt(rawValue, 10);
+    const user = recruiters.find(u => u.id === userId);
+    try {
+      await updateJobInBullhorn(job.id, { assignedUsers: { replaceAll: [userId] } });
+      if (onJobUpdated) {
+        onJobUpdated(job.id, 'recruiter', user?.initials || '');
+        onJobUpdated(job.id, 'assignedUserIds', [userId]);
+        onJobUpdated(job.id, 'trAssignedAt', now);
+        if (hadPrevious) onJobUpdated(job.id, 'trReassigned', true);
+      }
+      if (hadPrevious) {
+        updateJobOverrides(job.id, { recruiter: '', tr_reassigned: '1', tr_assigned_at: now }).catch(() => {});
+      } else {
+        updateJobOverrides(job.id, { recruiter: '', tr_reassigned: '', tr_assigned_at: now }).catch(() => {});
+      }
+    } catch (err) { console.error('Failed to update TR in Bullhorn:', err); }
+  };
+
+  const renderTrCell = (job) => {
+    const firstAssigned = (job.assignedUserIds || [])[0];
+    const currentValue = (job.recruiter === 'ZZ' || job.recruiter === '*') ? job.recruiter : (firstAssigned ? String(firstAssigned) : '');
+    return (
+      <EditableSelect
+        value={currentValue}
+        displayValue={job.recruiter || '—'}
+        options={trOptions}
+        onSave={(val) => handleTrSave(job, val)}
+        className="cell-editable"
+      />
+    );
+  };
+
   const formatDate = (iso) => {
     if (!iso) return '—';
     return new Date(iso).toLocaleDateString('en-US', {
@@ -99,8 +164,8 @@ export default function StatsStrip({ stats, jobs, loading }) {
   };
 
   const items = [
-    { label: 'Open Reqs', value: openReqs, color: '#c9a227' },
-    { label: 'Accepting Candidates', value: acceptingCandidates, color: '#16a34a' },
+    { label: 'Open Reqs', value: openReqs, color: '#c9a227', onClick: () => setShowOpenReqs(true) },
+    { label: 'Accepting Candidates', value: acceptingCandidates, color: '#16a34a', onClick: () => setShowAccepting(true) },
     { label: 'Missed Follow Ups', value: missedFollowUps, color: '#dc2626', onClick: () => setShowMissedFollowUps(true) },
     { label: 'A & B Reqs Covered', value: `${abCovered} / ${abTotal}`, color: '#c9a227', onClick: () => setShowAB(true) },
     { label: 'C Reqs', value: cReqCount, color: '#94a3b8', onClick: () => setShowC(true) },
@@ -493,7 +558,7 @@ export default function StatsStrip({ stats, jobs, loading }) {
                     <td>{j.client || '—'}</td>
                     <td>{j.status || '—'}</td>
                     <td>{j.owner || '—'}</td>
-                    <td style={!(j.recruiter || '').trim() ? { color: '#dc2626', fontWeight: 600 } : undefined}>{j.recruiter || 'None'}</td>
+                    {renderTrCell(j)}
                     <td>{j.employmentType || '—'}</td>
                   </tr>
                 ))}
@@ -536,12 +601,91 @@ export default function StatsStrip({ stats, jobs, loading }) {
                     <td>{j.client || '—'}</td>
                     <td>{j.status || '—'}</td>
                     <td>{j.owner || '—'}</td>
-                    <td>{j.recruiter || '—'}</td>
+                    {renderTrCell(j)}
                     <td>{j.employmentType || '—'}</td>
                   </tr>
                 ))}
                 {cReqs.length === 0 && (
                   <tr><td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>No C reqs</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Open Reqs Modal */}
+      {showOpenReqs && (
+        <div className="modal-overlay" onClick={() => setShowOpenReqs(false)}>
+          <div className="modal-content contractors-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Open Reqs ({(jobs || []).length})</h2>
+              <button className="modal-close" onClick={() => setShowOpenReqs(false)}>✕</button>
+            </div>
+            <table className="contractors-table">
+              <thead>
+                <tr>
+                  <th>Req#</th>
+                  <th>Job Title</th>
+                  <th>Client</th>
+                  <th>Status</th>
+                  <th>Owner</th>
+                  <th>TR</th>
+                  <th>Type</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(jobs || []).map(j => (
+                  <tr key={j.id}>
+                    <td><a href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=JobOrder&id=${j.id}`} target="_blank" rel="noopener noreferrer" className="bh-link">{j.id}</a></td>
+                    <td>{j.title || '—'}</td>
+                    <td>{j.client || '—'}</td>
+                    <td>{j.status || '—'}</td>
+                    <td>{j.owner || '—'}</td>
+                    <td>{j.recruiter || '—'}</td>
+                    <td>{j.employmentType || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Accepting Candidates Modal */}
+      {showAccepting && (
+        <div className="modal-overlay" onClick={() => setShowAccepting(false)}>
+          <div className="modal-content contractors-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Accepting Candidates ({acceptingJobs.length})</h2>
+              <button className="modal-close" onClick={() => setShowAccepting(false)}>✕</button>
+            </div>
+            <table className="contractors-table">
+              <thead>
+                <tr>
+                  <th>Req#</th>
+                  <th>Job Title</th>
+                  <th>Client</th>
+                  <th>Owner</th>
+                  <th>TR</th>
+                  <th>Type</th>
+                  <th>Remote</th>
+                </tr>
+              </thead>
+              <tbody>
+                {acceptingJobs.map(j => (
+                  <tr key={j.id}>
+                    <td><a href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=JobOrder&id=${j.id}`} target="_blank" rel="noopener noreferrer" className="bh-link">{j.id}</a></td>
+                    <td>{j.title || '—'}</td>
+                    <td>{j.client || '—'}</td>
+                    <td>{j.owner || '—'}</td>
+                    <td>{j.recruiter || '—'}</td>
+                    <td>{j.employmentType || '—'}</td>
+                    <td>{j.remote || '—'}</td>
+                  </tr>
+                ))}
+                {acceptingJobs.length === 0 && (
+                  <tr><td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>No jobs accepting candidates</td></tr>
                 )}
               </tbody>
             </table>
