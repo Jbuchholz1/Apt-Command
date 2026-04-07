@@ -136,43 +136,6 @@ router.get('/all', async (req, res, next) => {
   }
 });
 
-// GET /api/jobs/:id — Single job detail + submissions + overrides
-router.get('/:id', async (req, res, next) => {
-  try {
-    const [jobResult, subsResult] = await Promise.all([
-      getJobById(req.params.id),
-      getSubmissions(req.params.id),
-    ]);
-
-    const job = jobResult?.data?.[0];
-    if (!job) {
-      return res.status(404).json({ error: 'Job not found' });
-    }
-
-    const overrides = getOverrides(parseInt(req.params.id, 10));
-    const formatted = formatJob(job);
-    if (overrides) {
-      formatted.recruiter = overrides.recruiter || '';
-      formatted.followUp = overrides.follow_up || '';
-      formatted.deadline = overrides.deadline || '';
-      formatted.notes = overrides.notes || '';
-    }
-
-    const notes = getNotesForJob(parseInt(req.params.id, 10));
-
-    res.json({
-      job: formatted,
-      submissions: {
-        total: subsResult?.count || 0,
-        data: (subsResult?.data || []).map(formatSubmission),
-      },
-      notes,
-    });
-  } catch (err) {
-    next(err);
-  }
-});
-
 // GET /api/jobs/users — CorporateUser list for AM dropdown
 router.get('/users', async (req, res, next) => {
   try {
@@ -219,6 +182,43 @@ router.get('/opportunities', async (req, res, next) => {
       dateAdded: o.dateAdded ? new Date(o.dateAdded).toISOString() : null,
     }));
     res.json({ total: opportunities.length, data: opportunities });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/jobs/:id — Single job detail + submissions + overrides (must be after named routes)
+router.get('/:id', async (req, res, next) => {
+  try {
+    const [jobResult, subsResult] = await Promise.all([
+      getJobById(req.params.id),
+      getSubmissions(req.params.id),
+    ]);
+
+    const job = jobResult?.data?.[0];
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    const overrides = getOverrides(parseInt(req.params.id, 10));
+    const formatted = formatJob(job);
+    if (overrides) {
+      formatted.recruiter = overrides.recruiter || '';
+      formatted.followUp = overrides.follow_up || '';
+      formatted.deadline = overrides.deadline || '';
+      formatted.notes = overrides.notes || '';
+    }
+
+    const notes = getNotesForJob(parseInt(req.params.id, 10));
+
+    res.json({
+      job: formatted,
+      submissions: {
+        total: subsResult?.count || 0,
+        data: (subsResult?.data || []).map(formatSubmission),
+      },
+      notes,
+    });
   } catch (err) {
     next(err);
   }

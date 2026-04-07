@@ -93,7 +93,7 @@ export default function StatsStrip({ stats, jobs, loading }) {
     { label: 'Open Reqs', value: openReqs, color: '#c9a227' },
     { label: 'Accepting Candidates', value: acceptingCandidates, color: '#16a34a' },
     { label: 'Missed Follow Ups', value: missedFollowUps, color: '#dc2626' },
-    { label: 'Covered', value: `${abCovered} / ${abTotal}`, color: '#c9a227' },
+    { label: 'A & B Reqs Covered', value: `${abCovered} / ${abTotal}`, color: '#c9a227' },
     { label: 'C Reqs', value: cReqCount, color: '#94a3b8' },
     { label: 'On The Board', value: filledCount, color: '#7c3aed' },
     { label: 'Total Opportunities', value: totalOpportunities, color: '#0369a1', onClick: handleOpportunitiesClick },
