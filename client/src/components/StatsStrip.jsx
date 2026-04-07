@@ -37,8 +37,8 @@ export default function StatsStrip({ stats, jobs, loading }) {
   // C reqs only
   const cReqCount = (jobs || []).filter(j => j.priority === 'C').length;
 
-  // CE jobs: those with a ceSpread value
-  const ceJobs = (jobs || []).filter(j => j.ceSpread);
+  // Potential Spread: Accepting Candidates or Filled jobs with a ceSpread value
+  const ceJobs = (jobs || []).filter(j => j.ceSpread && (j.status === 'Accepting Candidates' || j.status === 'Filled'));
   const totalCE = ceJobs.reduce((sum, j) => sum + j.ceSpread, 0);
 
   // Perm jobs: those with a permFee value
@@ -104,7 +104,7 @@ export default function StatsStrip({ stats, jobs, loading }) {
     { label: 'On The Board', value: filledCount, color: '#7c3aed', tooltip: 'The number of Jobs with a status of Filled', onClick: () => setShowFilled(true) },
     { label: 'Total Opportunities', value: totalOpportunities, color: '#0369a1', onClick: handleOpportunitiesClick },
     { label: 'Active Contractors', value: activeContractors, color: '#0d9488', onClick: handleContractorsClick },
-    { label: 'Total CE Input', value: fmtCurrency(totalCE), color: '#2563eb', onClick: () => setShowCE(true), tooltip: 'Sum of (Bill Rate - Pay Rate) × 40 hrs for each contract job' },
+    { label: 'Total Potential Spread', value: fmtCurrency(totalCE), color: '#2563eb', onClick: () => setShowCE(true), tooltip: '(Bill Rate - Pay Rate) × 40 for Accepting Candidates & Filled jobs' },
     { label: 'Total Perm Spread', value: fmtCurrency(totalPerm), color: '#9333ea', onClick: () => setShowPerm(true), tooltip: 'Sum of (Salary Low × Fee %) ÷ 26 for each perm job' },
   ];
 
@@ -200,12 +200,12 @@ export default function StatsStrip({ stats, jobs, loading }) {
         </div>
       )}
 
-      {/* CE Input Breakdown Modal */}
+      {/* Potential Spread Breakdown Modal */}
       {showCE && (
         <div className="modal-overlay" onClick={() => setShowCE(false)}>
           <div className="modal-content contractors-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>CE Input Breakdown ({ceJobs.length} jobs — {fmtCurrency(totalCE)})</h2>
+              <h2>Potential Spread Breakdown ({ceJobs.length} jobs — {fmtCurrency(totalCE)})</h2>
               <button className="modal-close" onClick={() => setShowCE(false)}>✕</button>
             </div>
             <table className="contractors-table">
