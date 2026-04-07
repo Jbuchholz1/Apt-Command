@@ -41,9 +41,9 @@ function Dashboard() {
   const [selectedJobId, setSelectedJobId] = useState(null);
   const [exporting, setExporting] = useState(false);
   const [filters, setFilters] = useState({
-    status: '',
-    employmentType: '',
-    owner: '',
+    status: [],
+    employmentType: [],
+    owner: [],
     remote: '',
     redBoxes: '',
   });
@@ -71,9 +71,9 @@ function Dashboard() {
 
   const filteredJobs = useMemo(() => {
     return jobs.filter(job => {
-      if (filters.status && job.status !== filters.status) return false;
-      if (filters.employmentType && job.employmentType !== filters.employmentType) return false;
-      if (filters.owner && job.owner !== filters.owner) return false;
+      if (filters.status?.length && !filters.status.includes(job.status)) return false;
+      if (filters.employmentType?.length && !filters.employmentType.includes(job.employmentType)) return false;
+      if (filters.owner?.length && !filters.owner.includes(job.owner)) return false;
       if (filters.remote) {
         const r = (job.remote || '').toLowerCase();
         if (r !== filters.remote.toLowerCase()) return false;
