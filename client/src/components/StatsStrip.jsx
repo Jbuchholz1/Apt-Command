@@ -53,7 +53,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   const cReqCount = cReqs.length;
 
   // Potential Spread: Accepting Candidates or Filled jobs with a ceSpread value
-  const ceJobs = (jobs || []).filter(j => j.ceSpread && (j.status === 'Accepting Candidates' || j.status === 'Filled'));
+  const ceJobs = (jobs || []).filter(j => j.ceSpread && (j.status === 'Accepting Candidates' || j.status === 'Filled') && (j.priority === 'A' || j.priority === 'B'));
   const totalCE = ceJobs.reduce((sum, j) => sum + j.ceSpread, 0);
 
   // Perm jobs: Accepting Candidates or Filled with a permFee value
