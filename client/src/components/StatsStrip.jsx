@@ -156,8 +156,7 @@ export default function StatsStrip({ stats, jobs, loading }) {
                     <th>Type</th>
                     <th>Start</th>
                     <th>End</th>
-                    <th>Pay Rate</th>
-                    <th>Bill Rate</th>
+                    <th>Spread</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -188,13 +187,18 @@ export default function StatsStrip({ stats, jobs, loading }) {
                         onSave={(val) => handlePlacementDateSave(idx, 'dateEnd', val)}
                         className="cell-editable cell-date"
                       />
-                      <td>{p.payRate ? `$${p.payRate}` : '—'}</td>
-                      <td>{p.billRate ? `$${p.billRate}` : '—'}</td>
+                      <td className="cell-money">
+                        {p.employmentType === 'Direct Hire'
+                          ? (p.payRate ? `Perm` : '—')
+                          : (p.billRate && p.payRate && p.billRate > p.payRate
+                            ? `$${Math.round((p.billRate - p.payRate) * 40).toLocaleString('en-US')} CE`
+                            : '—')}
+                      </td>
                       <td>{p.status || '—'}</td>
                     </tr>
                   ))}
                   {placements.length === 0 && (
-                    <tr><td colSpan="8" style={{ textAlign: 'center', padding: '20px' }}>No active contractors found</td></tr>
+                    <tr><td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>No active contractors found</td></tr>
                   )}
                 </tbody>
               </table>
