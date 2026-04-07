@@ -101,7 +101,7 @@ export default function StatsStrip({ stats, jobs, loading }) {
     { label: 'Total Opportunities', value: totalOpportunities, color: '#0369a1', onClick: handleOpportunitiesClick },
     { label: 'Active Contractors', value: activeContractors, color: '#0d9488', onClick: handleContractorsClick },
     { label: 'Total CE Input', value: fmtCurrency(totalCE), color: '#2563eb', onClick: () => setShowCE(true), tooltip: 'Sum of (Bill Rate - Pay Rate) × 40 hrs for each contract job' },
-    { label: 'Total Perm Spread', value: fmtCurrency(totalPerm), color: '#9333ea', onClick: () => setShowPerm(true), tooltip: 'Sum of (Salary × Fee %) ÷ 26 for each perm job' },
+    { label: 'Total Perm Spread', value: fmtCurrency(totalPerm), color: '#9333ea', onClick: () => setShowPerm(true), tooltip: 'Sum of (Salary Low × Fee %) ÷ 26 for each perm job' },
   ];
 
   return (

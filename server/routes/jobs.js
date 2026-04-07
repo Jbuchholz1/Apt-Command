@@ -365,6 +365,8 @@ function formatJob(job) {
   let brSalary = null;
   if (billRate && payRate) {
     brSalary = `$${payRate}/$${billRate}`;
+  } else if (salary && salaryHigh) {
+    brSalary = `$${Number(salary).toLocaleString('en-US')}/$${Number(salaryHigh).toLocaleString('en-US')}`;
   } else if (salary) {
     brSalary = `$${Number(salary).toLocaleString('en-US')}`;
   } else if (payRate) {
