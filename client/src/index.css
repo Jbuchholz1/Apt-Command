@@ -173,8 +173,7 @@ body { margin: 0; }
   display: none;
   position: absolute;
   bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
+  right: 0;
   background: var(--navy);
   color: #fff;
   padding: 6px 10px;
@@ -182,7 +181,8 @@ body { margin: 0; }
   font-size: 11px;
   text-transform: none;
   letter-spacing: 0;
-  white-space: nowrap;
+  white-space: normal;
+  width: 220px;
   z-index: 100;
   pointer-events: none;
 }
