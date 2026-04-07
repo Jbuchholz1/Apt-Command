@@ -141,6 +141,15 @@ async function getActivePlacements() {
   });
 }
 
+async function getClientSubmissions() {
+  return callTool('query_entity', {
+    entityType: 'JobSubmission',
+    where: "status = 'Client Submission' AND isDeleted = false",
+    fields: 'id,jobOrder',
+    count: 500,
+  });
+}
+
 async function getOpenOpportunities() {
   return callTool('query_entity', {
     entityType: 'Opportunity',
@@ -201,6 +210,7 @@ module.exports = {
   getJobById,
   getSubmissions,
   getActivePlacements,
+  getClientSubmissions,
   getOpenOpportunities,
   getOpenOpportunitiesFull,
   searchJobs,

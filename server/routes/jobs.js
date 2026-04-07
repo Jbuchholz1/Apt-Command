@@ -1,6 +1,6 @@
 const express = require('express');
 const ExcelJS = require('exceljs');
-const { getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getSubmissions, addNoteToJob, updateJobField, getCorporateUsers, getOpenOpportunitiesFull } = require('../lib/bullhorn');
+const { getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getSubmissions, addNoteToJob, updateJobField, getCorporateUsers, getOpenOpportunitiesFull, getClientSubmissions } = require('../lib/bullhorn');
 const { getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote } = require('../lib/db');
 
 const router = express.Router();
@@ -96,11 +96,19 @@ router.get('/export', async (req, res, next) => {
 // GET /api/jobs — All open jobs + recently closed (Archive/Placed/Lost within 48hrs)
 router.get('/', async (req, res, next) => {
   try {
-    const [openResult, closedResult] = await Promise.all([
+    const [openResult, closedResult, clientSubsResult] = await Promise.all([
       getOpenJobs(),
       getRecentlyClosedJobs(),
+      getClientSubmissions(),
     ]);
     const overrides = getAllOverrides();
+
+    // Build client submission count map by jobOrder ID
+    const clientSubCounts = {};
+    for (const sub of (clientSubsResult?.data || [])) {
+      const jobId = sub.jobOrder?.id;
+      if (jobId) clientSubCounts[jobId] = (clientSubCounts[jobId] || 0) + 1;
+    }
 
     // Merge open + recently closed, deduplicate by ID
     const seen = new Set();
@@ -109,6 +117,7 @@ router.get('/', async (req, res, next) => {
       if (!seen.has(j.id)) {
         seen.add(j.id);
         const formatted = formatJob(j);
+        formatted.clientSubs = clientSubCounts[j.id] || 0;
         // Mark recently-closed jobs so the frontend can style them
         const status = Array.isArray(j.status) ? j.status[0] : j.status;
         if (['Archive', 'Placed', 'Lost'].includes(status) && !j.isOpen) {

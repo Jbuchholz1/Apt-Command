@@ -128,6 +128,7 @@ const COLUMNS = [
   { key: 'employmentType', label: 'Type', sortable: true, width: '115px', editType: 'select', bullhornField: 'employmentType' },
   { key: 'remote', label: 'Remote', sortable: true, width: '75px', editType: 'select', bullhornField: 'customText1' },
   { key: 'numOpenings', label: '# Op', sortable: true, width: '45px' },
+  { key: 'clientSubs', label: '# CS', sortable: true, width: '45px' },
   { key: 'filled', label: '# Fl', sortable: true, width: '45px' },
   { key: 'startDate', label: 'Start', sortable: true, width: '95px', editType: 'date', bullhornField: 'startDate' },
 ];
@@ -433,6 +434,7 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
       case 'clientContact':
         return <td key={col.key} className="cell-truncate">{job.clientContact || '—'}</td>;
       case 'numOpenings':
+      case 'clientSubs':
       case 'filled':
         return <td key={col.key} className="cell-num">{job[col.key] ?? '—'}</td>;
       default:
