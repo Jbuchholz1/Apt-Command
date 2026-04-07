@@ -121,7 +121,7 @@ const COLUMNS = [
   { key: 'notes', label: 'Notes', sortable: true, width: '140px', editable: true },
   { key: 'deadline', label: 'Deadline', sortable: true, width: '110px', editable: true },
   { key: 'followUp', label: 'Follow Up', sortable: true, width: '120px', editable: true },
-  { key: 'brSalary', label: 'PrBr/Salary (low)', sortable: true, width: '130px' },
+  { key: 'brSalary', label: 'PrBr/Salary LH', sortable: true, width: '130px' },
   { key: 'ceSpread', label: 'CE $', sortable: true, width: '70px' },
   { key: 'permFee', label: 'Perm $', sortable: true, width: '75px' },
   { key: 'clientContact', label: 'Manager', sortable: true, width: '120px' },
@@ -287,6 +287,9 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
   const renderCell = (job, col) => {
     // Local select dropdowns (saved to local DB only)
     if (col.editType === 'localSelect') {
+      const covStyle = (col.key === 'coverageNeeded' && job[col.key] === 'Y')
+        ? { backgroundColor: '#fef08a', color: '#854d0e' }
+        : undefined;
       return (
         <EditableSelect
           key={col.key}
@@ -295,6 +298,7 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
           options={COVERAGE_OPTIONS}
           onSave={(val) => handleOverrideSave(job.id, col.key, val)}
           className="cell-editable"
+          cellStyle={covStyle}
         />
       );
     }
