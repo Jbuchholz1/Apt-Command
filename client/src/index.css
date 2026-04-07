@@ -563,10 +563,16 @@ body { margin: 0; }
 }
 
 .cell-truncate {
-  max-width: 100px;
+  max-width: 50px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.cell-notes-wrap {
+  white-space: normal !important;
+  word-wrap: break-word;
+  max-width: 175px;
 }
 
 /* ---- Status Badge ---- */

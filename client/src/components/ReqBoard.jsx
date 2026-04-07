@@ -156,9 +156,9 @@ const COLUMNS = [
   { key: 'ownerInitials', label: 'AM', sortable: true, width: '50px', editType: 'select', bullhornField: 'owner' },
   { key: 'recruiter', label: 'TR', sortable: true, width: '60px', editType: 'select', bullhornField: 'assignedUsers' },
   { key: 'title', label: 'Job Title', sortable: true },
-  { key: 'client', label: 'Client', sortable: true, width: '100px' },
+  { key: 'client', label: 'Client', sortable: true, width: '50px' },
   { key: 'status', label: 'Status', sortable: true, width: '55px', editType: 'select', bullhornField: 'status' },
-  { key: 'notes', label: 'Notes', sortable: true, width: '140px', editable: true },
+  { key: 'notes', label: 'Notes', sortable: true, width: '175px', editable: true },
   { key: 'deadline', label: 'Deadline', sortable: true, width: '110px', editable: true },
   { key: 'followUp', label: 'Follow Up', sortable: true, width: '120px', editable: true },
   { key: 'brSalary', label: 'PrBr/Salary LH', sortable: true, width: '130px' },
@@ -357,13 +357,14 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
         cellStyle = FOLLOWUP_STYLES[getFollowUpUrgency(job.followUp)];
       }
       const defaultTexts = { followUp: 'No Follow Up', deadline: 'No Deadline' };
+      const extraClass = col.key === 'notes' ? ' cell-notes-wrap' : '';
       return (
         <EditableCell
           key={col.key}
           value={job[col.key]}
           placeholder={placeholder}
           onSave={(val) => handleOverrideSave(job.id, col.key, val)}
-          className="cell-editable"
+          className={`cell-editable${extraClass}`}
           cellStyle={cellStyle}
           defaultText={defaultTexts[col.key]}
         />
