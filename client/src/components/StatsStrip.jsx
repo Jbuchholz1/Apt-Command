@@ -3,6 +3,7 @@ import { getPlacements, updateJobInBullhorn, updateJobOverrides, getOpportunitie
 import { getFollowUpUrgency } from './ReqBoard';
 import EditableDate from './EditableDate';
 import EditableSelect from './EditableSelect';
+import EditableCell from './EditableCell';
 
 export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   const [showContractors, setShowContractors] = useState(false);
@@ -154,6 +155,15 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
         className="cell-editable"
       />
     );
+  };
+
+  const handleFollowUpSave = async (jobId, value) => {
+    try {
+      await updateJobOverrides(jobId, { follow_up: value });
+      if (onJobUpdated) onJobUpdated(jobId, 'followUp', value);
+    } catch (err) {
+      console.error('Failed to save follow up:', err);
+    }
   };
 
   const formatDate = (iso) => {
@@ -463,8 +473,15 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
                     <td>{j.client || '—'}</td>
                     <td>{j.status || '—'}</td>
                     <td>{j.owner || '—'}</td>
-                    <td>{j.recruiter || '—'}</td>
-                    <td style={{ color: '#dc2626', fontWeight: 600 }}>{j.followUp || 'No Follow Up'}</td>
+                    {renderTrCell(j)}
+                    <EditableCell
+                      value={j.followUp}
+                      placeholder="Follow Up"
+                      onSave={(val) => handleFollowUpSave(j.id, val)}
+                      className="cell-editable"
+                      cellStyle={{ backgroundColor: '#dc2626', color: '#fff' }}
+                      defaultText="No Follow Up"
+                    />
                   </tr>
                 ))}
                 {missedFollowUpJobs.length === 0 && (
