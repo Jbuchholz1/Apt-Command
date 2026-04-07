@@ -375,8 +375,9 @@ function formatJob(job) {
   const empType = job.employmentType || null;
 
   let ceSpread = null;
-  if (billRate && payRate && billRate > payRate) {
-    ceSpread = Math.round((billRate - payRate) * 40 * 100) / 100;
+  if (billRate && payRate) {
+    ceSpread = Math.round(((payRate * 1.25 - billRate) * 40 * -1) * 100) / 100;
+    if (ceSpread <= 0) ceSpread = null;
   }
 
   let permFee = null;
