@@ -155,7 +155,7 @@ const COLUMNS = [
   { key: 'dateAdded', label: 'Date', sortable: true, width: '70px' },
   { key: 'ownerInitials', label: 'AM', sortable: true, width: '50px', editType: 'select', bullhornField: 'owner' },
   { key: 'recruiter', label: 'TR', sortable: true, width: '60px', editType: 'select', bullhornField: 'assignedUsers' },
-  { key: 'title', label: 'Job Title', sortable: true },
+  { key: 'title', label: 'Job Title', sortable: true, width: '140px' },
   { key: 'client', label: 'Client', sortable: true, width: '50px' },
   { key: 'status', label: 'Status', sortable: true, width: '55px', editType: 'select', bullhornField: 'status' },
   { key: 'notes', label: 'Notes', sortable: true, width: '175px', editable: true },
@@ -464,7 +464,7 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
       case 'dateAdded':
         return <td key={col.key} className="cell-date">{formatDate(job.dateAdded)}</td>;
       case 'title':
-        return <td key={col.key} className="cell-title">{job.title}</td>;
+        return <td key={col.key} className="cell-title cell-truncate" style={{ maxWidth: '140px' }} title={job.title || ''}>{job.title}</td>;
       case 'client':
         return <td key={col.key} className="cell-truncate" title={job.client || ''}>{job.client || '—'}</td>;
       case 'brSalary':
