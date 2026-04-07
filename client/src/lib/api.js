@@ -106,6 +106,10 @@ export function getRecruiters() {
   return fetchAPI('/api/jobs/users?role=recruiter');
 }
 
+export function getAccountManagers() {
+  return fetchAPI('/api/jobs/users?role=account manager');
+}
+
 export function getOpportunities() {
   return fetchAPI('/api/jobs/opportunities');
 }

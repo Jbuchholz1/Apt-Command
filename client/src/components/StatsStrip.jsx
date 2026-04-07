@@ -99,7 +99,7 @@ export default function StatsStrip({ stats, jobs, loading }) {
     { label: 'Total Opportunities', value: totalOpportunities, color: '#0369a1', onClick: handleOpportunitiesClick },
     { label: 'Active Contractors', value: activeContractors, color: '#0d9488', onClick: handleContractorsClick },
     { label: 'Total CE Input', value: fmtCurrency(totalCE), color: '#2563eb', onClick: () => setShowCE(true) },
-    { label: 'Total Perm Input', value: fmtCurrency(totalPerm), color: '#9333ea', onClick: () => setShowPerm(true) },
+    { label: 'Total Perm Spread', value: fmtCurrency(totalPerm), color: '#9333ea', onClick: () => setShowPerm(true) },
   ];
 
   return (
@@ -244,7 +244,7 @@ export default function StatsStrip({ stats, jobs, loading }) {
         <div className="modal-overlay" onClick={() => setShowPerm(false)}>
           <div className="modal-content contractors-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Perm Input Breakdown ({permJobs.length} jobs — {fmtCurrency(totalPerm)})</h2>
+              <h2>Perm Spread Breakdown ({permJobs.length} jobs — {fmtCurrency(totalPerm)})</h2>
               <button className="modal-close" onClick={() => setShowPerm(false)}>✕</button>
             </div>
             <table className="contractors-table">

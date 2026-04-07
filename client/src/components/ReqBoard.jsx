@@ -3,7 +3,7 @@ import StatusBadge from './StatusBadge';
 import EditableCell from './EditableCell';
 import EditableSelect from './EditableSelect';
 import EditableDate from './EditableDate';
-import { updateJobOverrides, updateJobInBullhorn, getUsers, getRecruiters } from '../lib/api';
+import { updateJobOverrides, updateJobInBullhorn, getUsers, getRecruiters, getAccountManagers } from '../lib/api';
 
 const PRIORITY_COLORS = {
   A: { bg: '#16a34a', text: '#fff' },
@@ -149,10 +149,12 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
   const [sort, setSort] = useState({ key: 'dateAdded', dir: 'desc' });
   const [users, setUsers] = useState([]);
   const [recruiters, setRecruiters] = useState([]);
+  const [accountManagers, setAccountManagers] = useState([]);
 
   useEffect(() => {
     getUsers().then(res => setUsers(res.data || [])).catch(() => {});
     getRecruiters().then(res => setRecruiters(res.data || [])).catch(() => {});
+    getAccountManagers().then(res => setAccountManagers(res.data || [])).catch(() => {});
   }, []);
 
   const handleSort = (key) => {
@@ -303,7 +305,7 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
         currentValue = firstAssigned ? String(firstAssigned) : '';
         displayValue = job.recruiter || '—';
       } else if (col.bullhornField === 'owner') {
-        options = users.map(u => ({ value: String(u.id), label: u.initials }));
+        options = accountManagers.map(u => ({ value: String(u.id), label: u.initials }));
         currentValue = String(job.ownerId || '');
         displayValue = job.ownerInitials || '—';
       } else if (col.bullhornField === 'status') {
