@@ -8,7 +8,7 @@ const STATUSES = [
 const EMPLOYMENT_TYPES = ['Contract', 'Direct Hire', 'Contract To Hire', 'Project'];
 const REMOTE_OPTIONS = ['Yes', 'No', 'Hybrid'];
 
-export default function FilterBar({ filters, onChange, jobs }) {
+export default function FilterBar({ filters, onChange, jobs, redBoxCount }) {
   // Build unique owner list from current jobs
   const owners = useMemo(() => {
     const set = new Set();
@@ -56,10 +56,18 @@ export default function FilterBar({ filters, onChange, jobs }) {
         </select>
       </div>
 
+      <div className="filter-group">
+        <label>Alerts</label>
+        <select value={filters.redBoxes || ''} onChange={e => update('redBoxes', e.target.value)}>
+          <option value="">All</option>
+          <option value="red">Red Boxes{redBoxCount != null ? ` (${redBoxCount})` : ''}</option>
+        </select>
+      </div>
+
       {activeCount > 0 && (
         <button
           className="filter-clear"
-          onClick={() => onChange({ status: '', employmentType: '', owner: '', remote: '' })}
+          onClick={() => onChange({ status: '', employmentType: '', owner: '', remote: '', redBoxes: '' })}
         >
           Clear filters ({activeCount})
         </button>

@@ -4,6 +4,7 @@ import { getJobs, getStats, exportJobs } from './lib/api';
 import StatsStrip from './components/StatsStrip';
 import FilterBar from './components/FilterBar';
 import ReqBoard from './components/ReqBoard';
+import { hasRedBox } from './lib/redBox';
 import JobDetail from './components/JobDetail';
 import LoginPage from './components/LoginPage';
 
@@ -44,6 +45,7 @@ function Dashboard() {
     employmentType: '',
     owner: '',
     remote: '',
+    redBoxes: '',
   });
 
   const fetchData = useCallback(async () => {
@@ -65,6 +67,8 @@ function Dashboard() {
     fetchData();
   }, [fetchData]);
 
+  const redBoxCount = useMemo(() => jobs.filter(hasRedBox).length, [jobs]);
+
   const filteredJobs = useMemo(() => {
     return jobs.filter(job => {
       if (filters.status && job.status !== filters.status) return false;
@@ -74,6 +78,7 @@ function Dashboard() {
         const r = (job.remote || '').toLowerCase();
         if (r !== filters.remote.toLowerCase()) return false;
       }
+      if (filters.redBoxes === 'red' && !hasRedBox(job)) return false;
       return true;
     });
   }, [jobs, filters]);
@@ -139,7 +144,7 @@ function Dashboard() {
 
       <StatsStrip stats={stats} jobs={jobs} loading={loading} />
 
-      <FilterBar filters={filters} onChange={setFilters} jobs={jobs} />
+      <FilterBar filters={filters} onChange={setFilters} jobs={jobs} redBoxCount={redBoxCount} />
 
       <div className="board-info">
         <span>{filteredJobs.length} requisitions</span>
