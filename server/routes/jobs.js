@@ -103,11 +103,18 @@ router.get('/', async (req, res, next) => {
     ]);
     const overrides = getAllOverrides();
 
-    // Build client submission count map by jobOrder ID
+    // Build client submission count and latest date maps by jobOrder ID
     const clientSubCounts = {};
+    const latestClientSubDate = {};
     for (const sub of (clientSubsResult?.data || [])) {
       const jobId = sub.jobOrder?.id;
-      if (jobId) clientSubCounts[jobId] = (clientSubCounts[jobId] || 0) + 1;
+      if (jobId) {
+        clientSubCounts[jobId] = (clientSubCounts[jobId] || 0) + 1;
+        const subDate = sub.dateAdded || 0;
+        if (!latestClientSubDate[jobId] || subDate > latestClientSubDate[jobId]) {
+          latestClientSubDate[jobId] = subDate;
+        }
+      }
     }
 
     // Merge open + recently closed, deduplicate by ID
@@ -118,6 +125,9 @@ router.get('/', async (req, res, next) => {
         seen.add(j.id);
         const formatted = formatJob(j);
         formatted.clientSubs = clientSubCounts[j.id] || 0;
+        formatted.latestClientSubDate = latestClientSubDate[j.id]
+          ? new Date(latestClientSubDate[j.id]).toISOString()
+          : null;
         // Mark recently-closed jobs so the frontend can style them
         const status = Array.isArray(j.status) ? j.status[0] : j.status;
         if (['Archive', 'Placed', 'Lost'].includes(status) && !j.isOpen) {
@@ -275,7 +285,7 @@ router.patch('/:id/overrides', async (req, res, next) => {
       return res.status(400).json({ error: 'Invalid job ID' });
     }
 
-    const { recruiter, notes, follow_up, deadline, coverage_needed, tr_reassigned } = req.body;
+    const { recruiter, notes, follow_up, deadline, coverage_needed, tr_reassigned, tr_assigned_at } = req.body;
     const updatedBy = req.user?.email || req.user?.name || 'unknown';
 
     const result = upsertOverrides(jobId, {
@@ -285,6 +295,7 @@ router.patch('/:id/overrides', async (req, res, next) => {
       deadline,
       coverage_needed,
       tr_reassigned,
+      tr_assigned_at,
       updated_by: updatedBy,
     });
 
@@ -338,6 +349,7 @@ function mergeOverrides(job, overridesMap) {
       job.recruiter = ov.recruiter;
     }
     job.trReassigned = ov.tr_reassigned === '1';
+    job.trAssignedAt = ov.tr_assigned_at || null;
     job.followUp = ov.follow_up || '';
     job.deadline = ov.deadline || '';
     job.notes = ov.notes || '';
@@ -345,6 +357,7 @@ function mergeOverrides(job, overridesMap) {
   } else {
     job.recruiter = job.recruiter || '';
     job.trReassigned = false;
+    job.trAssignedAt = null;
     job.followUp = job.followUp || '';
     job.deadline = job.deadline || '';
     job.notes = job.notes || '';

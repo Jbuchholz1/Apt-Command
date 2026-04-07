@@ -94,6 +94,38 @@ const FOLLOWUP_STYLES = {
   green: { backgroundColor: '#dcfce7', color: '#166534' },
 };
 
+/**
+ * Determine TR cell color based on 48hr clock and client submissions.
+ * Returns: 'red' (48hrs passed, no sub since assignment), 'yellow' (reassigned, within window), or null
+ */
+export function getTrUrgency(job) {
+  if (!job.recruiter || !job.recruiter.trim()) return null; // no TR assigned
+  if (!job.trAssignedAt) return null; // no tracked assignment time
+
+  const assignedAt = new Date(job.trAssignedAt).getTime();
+  const now = Date.now();
+  const hoursSinceAssignment = (now - assignedAt) / (1000 * 60 * 60);
+
+  // Check if there's a client sub after the assignment
+  const latestSub = job.latestClientSubDate ? new Date(job.latestClientSubDate).getTime() : 0;
+  const hasSubSinceAssignment = latestSub > assignedAt;
+
+  if (hasSubSinceAssignment) {
+    // They submitted after assignment — yellow if reassigned, otherwise clear
+    return job.trReassigned ? 'yellow' : null;
+  }
+
+  // No sub since assignment
+  if (hoursSinceAssignment >= 48) return 'red'; // 48hrs passed, no sub
+  if (job.trReassigned) return 'yellow'; // reassigned but still within window
+  return null; // first assignment, still within 48hrs
+}
+
+const TR_STYLES = {
+  red: { backgroundColor: '#dc2626', color: '#fff' },
+  yellow: { backgroundColor: '#fef08a', color: '#854d0e' },
+};
+
 const STATUS_OPTIONS = [
   'Accepting Candidates', 'Covered', 'Offer Out', 'Placed', 'Filled', 'Lost', 'Wash', 'Archive',
 ].map(s => ({ value: s, label: s }));
@@ -187,15 +219,19 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
     if (bhField === 'assignedUsers') {
       const hadPreviousRecruiter = !!(job.recruiter && job.recruiter.trim() && job.recruiter !== 'ZZ');
 
+      const now = new Date().toISOString();
+
       if (rawValue === 'ZZ') {
         // ZZ: save locally only, don't touch Bullhorn
         try {
           await updateJobOverrides(job.id, {
             recruiter: 'ZZ',
             tr_reassigned: hadPreviousRecruiter ? '1' : undefined,
+            tr_assigned_at: now,
           });
           if (onJobUpdated) {
             onJobUpdated(job.id, 'recruiter', 'ZZ');
+            onJobUpdated(job.id, 'trAssignedAt', now);
             if (hadPreviousRecruiter) onJobUpdated(job.id, 'trReassigned', true);
           }
         } catch (err) {
@@ -210,16 +246,15 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
       displayUpdates = {
         recruiter: user?.initials || '',
         assignedUserIds: [userId],
+        trAssignedAt: now,
       };
 
-      // Track reassignment: if there was a previous recruiter, mark as reassigned
+      // Track reassignment and assignment time
       if (hadPreviousRecruiter) {
         displayUpdates.trReassigned = true;
-        // Save reassignment flag to local DB
-        updateJobOverrides(job.id, { recruiter: '', tr_reassigned: '1' }).catch(() => {});
+        updateJobOverrides(job.id, { recruiter: '', tr_reassigned: '1', tr_assigned_at: now }).catch(() => {});
       } else {
-        // First assignment — clear any local recruiter override
-        updateJobOverrides(job.id, { recruiter: '', tr_reassigned: '' }).catch(() => {});
+        updateJobOverrides(job.id, { recruiter: '', tr_reassigned: '', tr_assigned_at: now }).catch(() => {});
       }
     } else if (bhField === 'owner') {
       const userId = parseInt(rawValue, 10);
@@ -361,10 +396,9 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
         currentValue = job.remote || '';
         displayValue = job.remote || '—';
       }
-      // Yellow background for reassigned TR
-      const selectCellStyle = (col.bullhornField === 'assignedUsers' && job.trReassigned)
-        ? { backgroundColor: '#fef08a', color: '#854d0e' }
-        : undefined;
+      // TR cell color: red (48hrs no sub), yellow (reassigned within window)
+      const trUrgency = col.bullhornField === 'assignedUsers' ? getTrUrgency(job) : null;
+      const selectCellStyle = trUrgency ? TR_STYLES[trUrgency] : undefined;
 
       return (
         <EditableSelect
@@ -434,7 +468,12 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
       case 'clientContact':
         return <td key={col.key} className="cell-truncate">{job.clientContact || '—'}</td>;
       case 'numOpenings':
-      case 'clientSubs':
+      case 'clientSubs': {
+        const csStyle = getTrUrgency(job) === 'red'
+          ? { backgroundColor: '#dc2626', color: '#fff' }
+          : undefined;
+        return <td key={col.key} className="cell-num" style={csStyle}>{job[col.key] ?? '—'}</td>;
+      }
       case 'filled':
         return <td key={col.key} className="cell-num">{job[col.key] ?? '—'}</td>;
       default:

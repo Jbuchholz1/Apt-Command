@@ -145,7 +145,7 @@ async function getClientSubmissions() {
   return callTool('query_entity', {
     entityType: 'JobSubmission',
     where: "status = 'Client Submission' AND isDeleted = false",
-    fields: 'id,jobOrder',
+    fields: 'id,jobOrder,dateAdded',
     count: 500,
   });
 }

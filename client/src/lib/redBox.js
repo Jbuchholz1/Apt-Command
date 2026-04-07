@@ -1,4 +1,4 @@
-import { getFollowUpUrgency } from '../components/ReqBoard';
+import { getFollowUpUrgency, getTrUrgency } from '../components/ReqBoard';
 
 /**
  * Parse a date from free-text string (M/D, M/D/YY, M/D/YYYY).
@@ -38,6 +38,8 @@ export function hasRedBox(job) {
   if (getFollowUpUrgency(job.followUp) === 'red') return true;
   // Missed or past-due deadline
   if (getDeadlineUrgencyLocal(job.deadline) === 'red') return true;
+  // TR: 48hrs passed with no client submission
+  if (getTrUrgency(job) === 'red') return true;
   // Add future red box conditions here
   return false;
 }
