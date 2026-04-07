@@ -343,8 +343,8 @@ function mergeOverrides(job, overridesMap) {
   if (ov) {
     // TR: if local override is "ZZ", always use it (not synced to BH)
     // Otherwise use Bullhorn assignedUsers with local as fallback
-    if (ov.recruiter === 'ZZ') {
-      job.recruiter = 'ZZ';
+    if (ov.recruiter === 'ZZ' || ov.recruiter === '*') {
+      job.recruiter = ov.recruiter;
     } else if (!job.recruiter && ov.recruiter) {
       job.recruiter = ov.recruiter;
     }

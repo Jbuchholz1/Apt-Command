@@ -146,7 +146,6 @@ const COLUMNS = [
   { key: 'dateAdded', label: 'Date', sortable: true, width: '80px' },
   { key: 'ownerInitials', label: 'AM', sortable: true, width: '50px', editType: 'select', bullhornField: 'owner' },
   { key: 'recruiter', label: 'TR', sortable: true, width: '60px', editType: 'select', bullhornField: 'assignedUsers' },
-  { key: 'coverageNeeded', label: 'Cov', sortable: true, width: '45px', editable: true, editType: 'localSelect' },
   { key: 'title', label: 'Job Title', sortable: true },
   { key: 'client', label: 'Client', sortable: true, width: '150px' },
   { key: 'status', label: 'Status', sortable: true, width: '155px', editType: 'select', bullhornField: 'status' },
@@ -221,16 +220,16 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
 
       const now = new Date().toISOString();
 
-      if (rawValue === 'ZZ') {
-        // ZZ: save locally only, don't touch Bullhorn
+      if (rawValue === 'ZZ' || rawValue === '*') {
+        // ZZ / *: save locally only, don't touch Bullhorn
         try {
           await updateJobOverrides(job.id, {
-            recruiter: 'ZZ',
+            recruiter: rawValue,
             tr_reassigned: hadPreviousRecruiter ? '1' : undefined,
             tr_assigned_at: now,
           });
           if (onJobUpdated) {
-            onJobUpdated(job.id, 'recruiter', 'ZZ');
+            onJobUpdated(job.id, 'recruiter', rawValue);
             onJobUpdated(job.id, 'trAssignedAt', now);
             if (hadPreviousRecruiter) onJobUpdated(job.id, 'trReassigned', true);
           }
@@ -371,9 +370,10 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
         options = [
           ...recruiters.map(u => ({ value: String(u.id), label: u.initials })),
           { value: 'ZZ', label: 'ZZ' },
+          { value: '*', label: '*' },
         ];
-        if (job.recruiter === 'ZZ') {
-          currentValue = 'ZZ';
+        if (job.recruiter === 'ZZ' || job.recruiter === '*') {
+          currentValue = job.recruiter;
         } else {
           const firstAssigned = (job.assignedUserIds || [])[0];
           currentValue = firstAssigned ? String(firstAssigned) : '';
