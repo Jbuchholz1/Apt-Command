@@ -9,6 +9,7 @@ export default function StatsStrip({ stats, jobs, loading }) {
   const [showPerm, setShowPerm] = useState(false);
   const [showOpportunities, setShowOpportunities] = useState(false);
   const [showMissedFollowUps, setShowMissedFollowUps] = useState(false);
+  const [showFilled, setShowFilled] = useState(false);
   const [placements, setPlacements] = useState([]);
   const [placementsLoading, setPlacementsLoading] = useState(false);
   const [opportunities, setOpportunities] = useState([]);
@@ -23,6 +24,9 @@ export default function StatsStrip({ stats, jobs, loading }) {
 
   // Missed follow-ups: no follow-up + past-due follow-ups (red urgency)
   const missedFollowUpJobs = (jobs || []).filter(j => getFollowUpUrgency(j.followUp) === 'red');
+
+  // Filled jobs (On The Board)
+  const filledJobs = (jobs || []).filter(j => j.status === 'Filled');
   const missedFollowUps = missedFollowUpJobs.length;
 
   // A + B reqs combined: covered = has an assigned TR
@@ -97,7 +101,7 @@ export default function StatsStrip({ stats, jobs, loading }) {
     { label: 'Missed Follow Ups', value: missedFollowUps, color: '#dc2626', onClick: () => setShowMissedFollowUps(true) },
     { label: 'A & B Reqs Covered', value: `${abCovered} / ${abTotal}`, color: '#c9a227' },
     { label: 'C Reqs', value: cReqCount, color: '#94a3b8' },
-    { label: 'On The Board', value: filledCount, color: '#7c3aed', tooltip: 'The number of Jobs with a status of Filled' },
+    { label: 'On The Board', value: filledCount, color: '#7c3aed', tooltip: 'The number of Jobs with a status of Filled', onClick: () => setShowFilled(true) },
     { label: 'Total Opportunities', value: totalOpportunities, color: '#0369a1', onClick: handleOpportunitiesClick },
     { label: 'Active Contractors', value: activeContractors, color: '#0d9488', onClick: handleContractorsClick },
     { label: 'Total CE Input', value: fmtCurrency(totalCE), color: '#2563eb', onClick: () => setShowCE(true), tooltip: 'Sum of (Bill Rate - Pay Rate) × 40 hrs for each contract job' },
@@ -393,6 +397,56 @@ export default function StatsStrip({ stats, jobs, loading }) {
                 ))}
                 {missedFollowUpJobs.length === 0 && (
                   <tr><td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>No missed follow ups</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* On The Board (Filled) Modal */}
+      {showFilled && (
+        <div className="modal-overlay" onClick={() => setShowFilled(false)}>
+          <div className="modal-content contractors-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>On The Board — Filled ({filledJobs.length})</h2>
+              <button className="modal-close" onClick={() => setShowFilled(false)}>✕</button>
+            </div>
+            <table className="contractors-table">
+              <thead>
+                <tr>
+                  <th>Req#</th>
+                  <th>Job Title</th>
+                  <th>Client</th>
+                  <th>Owner</th>
+                  <th>TR</th>
+                  <th>Type</th>
+                  <th>Start</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filledJobs.map(j => (
+                  <tr key={j.id}>
+                    <td>
+                      <a
+                        href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=JobOrder&id=${j.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bh-link"
+                      >
+                        {j.id}
+                      </a>
+                    </td>
+                    <td>{j.title || '—'}</td>
+                    <td>{j.client || '—'}</td>
+                    <td>{j.owner || '—'}</td>
+                    <td>{j.recruiter || '—'}</td>
+                    <td>{j.employmentType || '—'}</td>
+                    <td>{formatDate(j.startDate)}</td>
+                  </tr>
+                ))}
+                {filledJobs.length === 0 && (
+                  <tr><td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>No filled jobs</td></tr>
                 )}
               </tbody>
             </table>
