@@ -8,6 +8,7 @@ export default function StatsStrip({ stats, jobs, loading }) {
   const [showCE, setShowCE] = useState(false);
   const [showPerm, setShowPerm] = useState(false);
   const [showOpportunities, setShowOpportunities] = useState(false);
+  const [showMissedFollowUps, setShowMissedFollowUps] = useState(false);
   const [placements, setPlacements] = useState([]);
   const [placementsLoading, setPlacementsLoading] = useState(false);
   const [opportunities, setOpportunities] = useState([]);
@@ -21,7 +22,8 @@ export default function StatsStrip({ stats, jobs, loading }) {
   const totalOpportunities = stats?.totalOpportunities ?? 0;
 
   // Missed follow-ups: no follow-up + past-due follow-ups (red urgency)
-  const missedFollowUps = (jobs || []).filter(j => getFollowUpUrgency(j.followUp) === 'red').length;
+  const missedFollowUpJobs = (jobs || []).filter(j => getFollowUpUrgency(j.followUp) === 'red');
+  const missedFollowUps = missedFollowUpJobs.length;
 
   // A + B reqs combined: covered = has an assigned TR
   const abReqs = (jobs || []).filter(j => j.priority === 'A' || j.priority === 'B');
@@ -92,14 +94,14 @@ export default function StatsStrip({ stats, jobs, loading }) {
   const items = [
     { label: 'Open Reqs', value: openReqs, color: '#c9a227' },
     { label: 'Accepting Candidates', value: acceptingCandidates, color: '#16a34a' },
-    { label: 'Missed Follow Ups', value: missedFollowUps, color: '#dc2626' },
+    { label: 'Missed Follow Ups', value: missedFollowUps, color: '#dc2626', onClick: () => setShowMissedFollowUps(true) },
     { label: 'A & B Reqs Covered', value: `${abCovered} / ${abTotal}`, color: '#c9a227' },
     { label: 'C Reqs', value: cReqCount, color: '#94a3b8' },
-    { label: 'On The Board', value: filledCount, color: '#7c3aed' },
+    { label: 'On The Board', value: filledCount, color: '#7c3aed', tooltip: 'The number of Jobs with a status of Filled' },
     { label: 'Total Opportunities', value: totalOpportunities, color: '#0369a1', onClick: handleOpportunitiesClick },
     { label: 'Active Contractors', value: activeContractors, color: '#0d9488', onClick: handleContractorsClick },
-    { label: 'Total CE Input', value: fmtCurrency(totalCE), color: '#2563eb', onClick: () => setShowCE(true) },
-    { label: 'Total Perm Spread', value: fmtCurrency(totalPerm), color: '#9333ea', onClick: () => setShowPerm(true) },
+    { label: 'Total CE Input', value: fmtCurrency(totalCE), color: '#2563eb', onClick: () => setShowCE(true), tooltip: 'Sum of (Bill Rate - Pay Rate) × 40 hrs for each contract job' },
+    { label: 'Total Perm Spread', value: fmtCurrency(totalPerm), color: '#9333ea', onClick: () => setShowPerm(true), tooltip: 'Sum of (Salary × Fee %) ÷ 26 for each perm job' },
   ];
 
   return (
@@ -116,6 +118,12 @@ export default function StatsStrip({ stats, jobs, loading }) {
             </div>
             <div className="stat-label">
               {item.label}
+              {item.tooltip && (
+                <span className="stat-tooltip-wrap">
+                  <span className="stat-tooltip-icon">&#9432;</span>
+                  <span className="stat-tooltip-text">{item.tooltip}</span>
+                </span>
+              )}
               {item.onClick && <span className="stat-link-icon"> ↗</span>}
             </div>
           </div>
@@ -338,6 +346,56 @@ export default function StatsStrip({ stats, jobs, loading }) {
                 </tbody>
               </table>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Missed Follow Ups Modal */}
+      {showMissedFollowUps && (
+        <div className="modal-overlay" onClick={() => setShowMissedFollowUps(false)}>
+          <div className="modal-content contractors-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Missed Follow Ups ({missedFollowUpJobs.length})</h2>
+              <button className="modal-close" onClick={() => setShowMissedFollowUps(false)}>✕</button>
+            </div>
+            <table className="contractors-table">
+              <thead>
+                <tr>
+                  <th>Req#</th>
+                  <th>Job Title</th>
+                  <th>Client</th>
+                  <th>Status</th>
+                  <th>Owner</th>
+                  <th>TR</th>
+                  <th>Follow Up</th>
+                </tr>
+              </thead>
+              <tbody>
+                {missedFollowUpJobs.map(j => (
+                  <tr key={j.id}>
+                    <td>
+                      <a
+                        href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=JobOrder&id=${j.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bh-link"
+                      >
+                        {j.id}
+                      </a>
+                    </td>
+                    <td>{j.title || '—'}</td>
+                    <td>{j.client || '—'}</td>
+                    <td>{j.status || '—'}</td>
+                    <td>{j.owner || '—'}</td>
+                    <td>{j.recruiter || '—'}</td>
+                    <td style={{ color: '#dc2626', fontWeight: 600 }}>{j.followUp || 'No Follow Up'}</td>
+                  </tr>
+                ))}
+                {missedFollowUpJobs.length === 0 && (
+                  <tr><td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>No missed follow ups</td></tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

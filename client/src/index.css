@@ -150,6 +150,40 @@ body { margin: 0; }
   background: #f0f4f8;
 }
 
+.stat-tooltip-wrap {
+  position: relative;
+  display: inline-block;
+  margin-left: 4px;
+}
+
+.stat-tooltip-icon {
+  font-size: 12px;
+  color: var(--text-light);
+  cursor: help;
+}
+
+.stat-tooltip-text {
+  display: none;
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--navy);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: nowrap;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.stat-tooltip-wrap:hover .stat-tooltip-text {
+  display: block;
+}
+
 .stat-link-icon {
   font-size: 9px;
 }
