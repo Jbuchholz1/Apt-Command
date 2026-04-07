@@ -409,7 +409,7 @@ function formatJob(job) {
     client: job.clientCorporation?.name || null,
     clientId: job.clientCorporation?.id || null,
     clientContact: job.clientContact
-      ? `${job.clientContact.firstName || ''} ${job.clientContact.lastName || ''}`.trim()
+      ? `${(job.clientContact.firstName || '')[0] || ''}. ${job.clientContact.lastName || ''}`.trim()
       : null,
     employmentType: empType,
     numOpenings: job.numOpenings || 0,

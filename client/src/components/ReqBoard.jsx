@@ -13,9 +13,11 @@ const PRIORITY_COLORS = {
 
 function formatDate(iso) {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('en-US', {
-    month: 'short', day: 'numeric', year: '2-digit', timeZone: 'America/Chicago',
-  });
+  const d = new Date(iso);
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const y = String(d.getFullYear()).slice(-2);
+  return `${m}/${day}/${y}`;
 }
 
 function formatLocation(city, state) {
@@ -134,6 +136,13 @@ const TYPE_OPTIONS = [
   'Direct Hire', 'Contract', 'Contract To Hire', 'Project',
 ].map(s => ({ value: s, label: s }));
 
+const TYPE_ABBREV = {
+  'Contract': 'CON',
+  'Direct Hire': 'DR',
+  'Contract To Hire': 'C2H',
+  'Project': 'SOW',
+};
+
 const REMOTE_OPTIONS = [
   { value: 'Yes', label: 'Yes' },
   { value: 'No', label: 'No' },
@@ -143,25 +152,23 @@ const REMOTE_OPTIONS = [
 const COLUMNS = [
   { key: 'priority', label: 'Pri', sortable: true, width: '42px' },
   { key: 'id', label: 'Req#', sortable: true, width: '55px' },
-  { key: 'dateAdded', label: 'Date', sortable: true, width: '80px' },
+  { key: 'dateAdded', label: 'Date', sortable: true, width: '70px' },
   { key: 'ownerInitials', label: 'AM', sortable: true, width: '50px', editType: 'select', bullhornField: 'owner' },
   { key: 'recruiter', label: 'TR', sortable: true, width: '60px', editType: 'select', bullhornField: 'assignedUsers' },
   { key: 'title', label: 'Job Title', sortable: true },
   { key: 'client', label: 'Client', sortable: true, width: '150px' },
-  { key: 'status', label: 'Status', sortable: true, width: '155px', editType: 'select', bullhornField: 'status' },
+  { key: 'status', label: 'Status', sortable: true, width: '55px', editType: 'select', bullhornField: 'status' },
   { key: 'notes', label: 'Notes', sortable: true, width: '140px', editable: true },
   { key: 'deadline', label: 'Deadline', sortable: true, width: '110px', editable: true },
   { key: 'followUp', label: 'Follow Up', sortable: true, width: '120px', editable: true },
   { key: 'brSalary', label: 'PrBr/Salary LH', sortable: true, width: '130px' },
   { key: 'ceSpread', label: 'CE $', sortable: true, width: '70px' },
   { key: 'permFee', label: 'Perm $', sortable: true, width: '75px' },
-  { key: 'clientContact', label: 'Manager', sortable: true, width: '120px' },
-  { key: 'employmentType', label: 'Type', sortable: true, width: '115px', editType: 'select', bullhornField: 'employmentType' },
+  { key: 'clientContact', label: 'Manager', sortable: true, width: '100px' },
+  { key: 'employmentType', label: 'Type', sortable: true, width: '55px', editType: 'select', bullhornField: 'employmentType' },
   { key: 'remote', label: 'Remote', sortable: true, width: '75px', editType: 'select', bullhornField: 'customText1' },
   { key: 'numOpenings', label: '# Op', sortable: true, width: '45px' },
   { key: 'clientSubs', label: '# CS', sortable: true, width: '45px' },
-  { key: 'filled', label: '# Fl', sortable: true, width: '45px' },
-  { key: 'startDate', label: 'Start', sortable: true, width: '95px', editType: 'date', bullhornField: 'startDate' },
 ];
 
 // Maps column keys to the API field names for overrides
@@ -390,7 +397,7 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
       } else if (col.bullhornField === 'employmentType') {
         options = TYPE_OPTIONS;
         currentValue = job.employmentType || '';
-        displayValue = job.employmentType || '—';
+        displayValue = TYPE_ABBREV[job.employmentType] || job.employmentType || '—';
       } else if (col.bullhornField === 'customText1') {
         options = REMOTE_OPTIONS;
         currentValue = job.remote || '';
@@ -474,8 +481,6 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
           : undefined;
         return <td key={col.key} className="cell-num" style={csStyle}>{job[col.key] ?? '—'}</td>;
       }
-      case 'filled':
-        return <td key={col.key} className="cell-num">{job[col.key] ?? '—'}</td>;
       default:
         return <td key={col.key}>{job[col.key] || '—'}</td>;
     }

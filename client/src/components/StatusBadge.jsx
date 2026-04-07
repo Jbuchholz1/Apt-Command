@@ -9,14 +9,27 @@ const STATUS_COLORS = {
   'Archive':             { bg: '#374151', text: '#9ca3af' },
 };
 
+const STATUS_ABBREV = {
+  'Accepting Candidates': 'AC',
+  'Covered': 'CV',
+  'Offer Out': 'OO',
+  'Placed': 'PL',
+  'Filled': 'FL',
+  'Lost': 'LO',
+  'Wash': 'WA',
+  'Archive': 'AR',
+};
+
 export default function StatusBadge({ status }) {
   const colors = STATUS_COLORS[status] || { bg: '#6b7280', text: '#fff' };
+  const abbrev = STATUS_ABBREV[status] || status || '—';
   return (
     <span
       className="status-badge"
       style={{ backgroundColor: colors.bg, color: colors.text }}
+      title={status}
     >
-      {status || '—'}
+      {abbrev}
     </span>
   );
 }
