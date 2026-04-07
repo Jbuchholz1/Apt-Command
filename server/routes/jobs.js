@@ -8,56 +8,70 @@ const router = express.Router();
 // GET /api/jobs/export — Excel export (must be above /:id to avoid conflict)
 router.get('/export', async (req, res, next) => {
   try {
-    const result = await getOpenJobs();
+    const [result, clientSubsResult] = await Promise.all([getOpenJobs(), getClientSubmissions()]);
     const overrides = getAllOverrides();
-    const jobs = (result?.data || []).map(j => mergeOverrides(formatJob(j), overrides));
+
+    const clientSubCounts = {};
+    for (const sub of (clientSubsResult?.data || [])) {
+      const jobId = sub.jobOrder?.id;
+      if (jobId) clientSubCounts[jobId] = (clientSubCounts[jobId] || 0) + 1;
+    }
+
+    const jobs = (result?.data || []).map(j => {
+      const formatted = mergeOverrides(formatJob(j), overrides);
+      formatted.clientSubs = clientSubCounts[j.id] || 0;
+      return formatted;
+    });
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Req Board');
 
-    // Define columns
+    // Define columns — matches req board table exactly
     sheet.columns = [
       { header: 'Pri', key: 'priority', width: 5 },
       { header: 'Req#', key: 'id', width: 7 },
-      { header: 'Date', key: 'dateAdded', width: 12 },
+      { header: 'Date', key: 'dateAdded', width: 10 },
       { header: 'AM', key: 'ownerInitials', width: 5 },
-      { header: 'TR', key: 'recruiter', width: 8 },
-      { header: 'Job Title', key: 'title', width: 32 },
-      { header: 'Client', key: 'client', width: 22 },
+      { header: 'TR', key: 'recruiter', width: 5 },
+      { header: 'Job Title', key: 'title', width: 28 },
+      { header: 'Client', key: 'client', width: 18 },
       { header: 'Status', key: 'status', width: 20 },
-      { header: 'BR/Salary', key: 'brSalary', width: 14 },
+      { header: 'Notes', key: 'notes', width: 30 },
+      { header: 'Deadline', key: 'deadline', width: 14 },
+      { header: 'Follow Up', key: 'followUp', width: 14 },
+      { header: 'PrBr/Salary LH', key: 'brSalary', width: 16 },
       { header: 'CE $', key: 'ceSpread', width: 10 },
       { header: 'Perm $', key: 'permFee', width: 10 },
-      { header: 'Manager', key: 'clientContact', width: 18 },
+      { header: 'Manager', key: 'clientContact', width: 14 },
       { header: 'Type', key: 'employmentType', width: 14 },
       { header: 'Remote', key: 'remote', width: 8 },
-      { header: '# Open', key: 'numOpenings', width: 7 },
-      { header: '# Filled', key: 'filled', width: 8 },
-      { header: 'Follow Up', key: 'followUp', width: 20 },
-      { header: 'Deadline', key: 'deadline', width: 18 },
-      { header: 'Location', key: 'location', width: 16 },
-      { header: 'Start', key: 'startDate', width: 12 },
-      { header: 'End', key: 'estimatedEndDate', width: 12 },
+      { header: '# Op', key: 'numOpenings', width: 6 },
+      { header: '# CS', key: 'clientSubs', width: 6 },
     ];
 
     // Style header row
     const headerRow = sheet.getRow(1);
     headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
-    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A2744' } };
+    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF04144F' } };
     headerRow.alignment = { vertical: 'middle' };
     headerRow.height = 22;
 
     // Add data rows
     for (const job of jobs) {
+      const d = job.dateAdded ? new Date(job.dateAdded) : null;
+      const dateStr = d ? `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}/${String(d.getFullYear()).slice(-2)}` : '';
       sheet.addRow({
         priority: job.priority || '',
         id: job.id,
-        dateAdded: job.dateAdded ? new Date(job.dateAdded).toLocaleDateString('en-US', { timeZone: 'America/Chicago' }) : '',
+        dateAdded: dateStr,
         ownerInitials: job.ownerInitials || '',
         recruiter: job.recruiter || '',
         title: job.title || '',
         client: job.client || '',
         status: job.status || '',
+        notes: job.notes || '',
+        deadline: job.deadline || '',
+        followUp: job.followUp || '',
         brSalary: job.brSalary || '',
         ceSpread: job.ceSpread || '',
         permFee: job.permFee || '',
@@ -65,12 +79,7 @@ router.get('/export', async (req, res, next) => {
         employmentType: job.employmentType || '',
         remote: job.remote || '',
         numOpenings: job.numOpenings || 0,
-        filled: job.filled || '',
-        followUp: job.followUp || '',
-        deadline: job.deadline || '',
-        location: [job.city, job.state].filter(Boolean).join(', '),
-        startDate: job.startDate ? new Date(job.startDate).toLocaleDateString('en-US', { timeZone: 'America/Chicago' }) : '',
-        estimatedEndDate: job.estimatedEndDate ? new Date(job.estimatedEndDate).toLocaleDateString('en-US', { timeZone: 'America/Chicago' }) : '',
+        clientSubs: job.clientSubs || 0,
       });
     }
 
@@ -79,7 +88,7 @@ router.get('/export', async (req, res, next) => {
     sheet.getColumn('permFee').numFmt = '$#,##0';
 
     // Auto-filter
-    sheet.autoFilter = { from: 'A1', to: `U${jobs.length + 1}` };
+    sheet.autoFilter = { from: 'A1', to: `S${jobs.length + 1}` };
 
     // Freeze header row
     sheet.views = [{ state: 'frozen', ySplit: 1 }];
