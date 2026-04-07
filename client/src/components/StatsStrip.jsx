@@ -10,6 +10,8 @@ export default function StatsStrip({ stats, jobs, loading }) {
   const [showOpportunities, setShowOpportunities] = useState(false);
   const [showMissedFollowUps, setShowMissedFollowUps] = useState(false);
   const [showFilled, setShowFilled] = useState(false);
+  const [showAB, setShowAB] = useState(false);
+  const [showC, setShowC] = useState(false);
   const [placements, setPlacements] = useState([]);
   const [placementsLoading, setPlacementsLoading] = useState(false);
   const [opportunities, setOpportunities] = useState([]);
@@ -35,7 +37,8 @@ export default function StatsStrip({ stats, jobs, loading }) {
   const abCovered = abReqs.filter(j => (j.recruiter || '').trim()).length;
 
   // C reqs only
-  const cReqCount = (jobs || []).filter(j => j.priority === 'C').length;
+  const cReqs = (jobs || []).filter(j => j.priority === 'C');
+  const cReqCount = cReqs.length;
 
   // Potential Spread: Accepting Candidates or Filled jobs with a ceSpread value
   const ceJobs = (jobs || []).filter(j => j.ceSpread && (j.status === 'Accepting Candidates' || j.status === 'Filled'));
@@ -99,8 +102,8 @@ export default function StatsStrip({ stats, jobs, loading }) {
     { label: 'Open Reqs', value: openReqs, color: '#c9a227' },
     { label: 'Accepting Candidates', value: acceptingCandidates, color: '#16a34a' },
     { label: 'Missed Follow Ups', value: missedFollowUps, color: '#dc2626', onClick: () => setShowMissedFollowUps(true) },
-    { label: 'A & B Reqs Covered', value: `${abCovered} / ${abTotal}`, color: '#c9a227' },
-    { label: 'C Reqs', value: cReqCount, color: '#94a3b8' },
+    { label: 'A & B Reqs Covered', value: `${abCovered} / ${abTotal}`, color: '#c9a227', onClick: () => setShowAB(true) },
+    { label: 'C Reqs', value: cReqCount, color: '#94a3b8', onClick: () => setShowC(true) },
     { label: 'On The Board', value: filledCount, color: '#7c3aed', tooltip: 'The number of Jobs with a status of Filled', onClick: () => setShowFilled(true) },
     { label: 'Total Opportunities', value: totalOpportunities, color: '#0369a1', onClick: handleOpportunitiesClick },
     { label: 'Active Contractors', value: activeContractors, color: '#0d9488', onClick: handleContractorsClick },
@@ -447,6 +450,94 @@ export default function StatsStrip({ stats, jobs, loading }) {
                 ))}
                 {filledJobs.length === 0 && (
                   <tr><td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>No filled jobs</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* A & B Reqs Modal */}
+      {showAB && (
+        <div className="modal-overlay" onClick={() => setShowAB(false)}>
+          <div className="modal-content contractors-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>A & B Reqs ({abTotal}) — {abCovered} Covered</h2>
+              <button className="modal-close" onClick={() => setShowAB(false)}>✕</button>
+            </div>
+            <table className="contractors-table">
+              <thead>
+                <tr>
+                  <th>Pri</th>
+                  <th>Req#</th>
+                  <th>Job Title</th>
+                  <th>Client</th>
+                  <th>Status</th>
+                  <th>Owner</th>
+                  <th>TR</th>
+                  <th>Type</th>
+                </tr>
+              </thead>
+              <tbody>
+                {abReqs.map(j => (
+                  <tr key={j.id}>
+                    <td><span style={{ fontWeight: 700, color: j.priority === 'A' ? '#16a34a' : '#eab308' }}>{j.priority}</span></td>
+                    <td>
+                      <a href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=JobOrder&id=${j.id}`} target="_blank" rel="noopener noreferrer" className="bh-link">{j.id}</a>
+                    </td>
+                    <td>{j.title || '—'}</td>
+                    <td>{j.client || '—'}</td>
+                    <td>{j.status || '—'}</td>
+                    <td>{j.owner || '—'}</td>
+                    <td style={!(j.recruiter || '').trim() ? { color: '#dc2626', fontWeight: 600 } : undefined}>{j.recruiter || 'None'}</td>
+                    <td>{j.employmentType || '—'}</td>
+                  </tr>
+                ))}
+                {abReqs.length === 0 && (
+                  <tr><td colSpan="8" style={{ textAlign: 'center', padding: '20px' }}>No A or B reqs</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* C Reqs Modal */}
+      {showC && (
+        <div className="modal-overlay" onClick={() => setShowC(false)}>
+          <div className="modal-content contractors-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>C Reqs ({cReqCount})</h2>
+              <button className="modal-close" onClick={() => setShowC(false)}>✕</button>
+            </div>
+            <table className="contractors-table">
+              <thead>
+                <tr>
+                  <th>Req#</th>
+                  <th>Job Title</th>
+                  <th>Client</th>
+                  <th>Status</th>
+                  <th>Owner</th>
+                  <th>TR</th>
+                  <th>Type</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cReqs.map(j => (
+                  <tr key={j.id}>
+                    <td>
+                      <a href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=JobOrder&id=${j.id}`} target="_blank" rel="noopener noreferrer" className="bh-link">{j.id}</a>
+                    </td>
+                    <td>{j.title || '—'}</td>
+                    <td>{j.client || '—'}</td>
+                    <td>{j.status || '—'}</td>
+                    <td>{j.owner || '—'}</td>
+                    <td>{j.recruiter || '—'}</td>
+                    <td>{j.employmentType || '—'}</td>
+                  </tr>
+                ))}
+                {cReqs.length === 0 && (
+                  <tr><td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>No C reqs</td></tr>
                 )}
               </tbody>
             </table>
