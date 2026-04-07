@@ -44,6 +44,13 @@ body { margin: 0; }
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
+.header-logo {
+  height: 36px;
+  width: auto;
+  margin-right: 10px;
+  border-radius: 3px;
+}
+
 .header-title {
   font-size: 20px;
   font-weight: 700;
@@ -62,8 +69,8 @@ body { margin: 0; }
 
 .header-left {
   display: flex;
-  align-items: baseline;
-  gap: 4px;
+  align-items: center;
+  gap: 8px;
 }
 
 .header-right {

@@ -115,6 +115,7 @@ function Dashboard() {
     <div className="app">
       <header className="app-header">
         <div className="header-left">
+          <img src="/apt-logo.jpg" alt="APT" className="header-logo" />
           <h1 className="header-title">APT Req Board</h1>
           <span className="header-subtitle">Digital Requisition Dashboard</span>
         </div>
