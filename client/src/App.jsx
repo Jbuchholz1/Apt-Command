@@ -44,6 +44,7 @@ function Dashboard() {
     status: [],
     employmentType: [],
     owner: [],
+    client: [],
     remote: '',
     redBoxes: '',
   });
@@ -74,6 +75,7 @@ function Dashboard() {
       if (filters.status?.length && !filters.status.includes(job.status)) return false;
       if (filters.employmentType?.length && !filters.employmentType.includes(job.employmentType)) return false;
       if (filters.owner?.length && !filters.owner.includes(job.owner)) return false;
+      if (filters.client?.length && !filters.client.includes(job.client)) return false;
       if (filters.remote) {
         const r = (job.remote || '').toLowerCase();
         if (r !== filters.remote.toLowerCase()) return false;

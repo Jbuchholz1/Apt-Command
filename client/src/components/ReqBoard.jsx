@@ -156,7 +156,7 @@ const COLUMNS = [
   { key: 'ownerInitials', label: 'AM', sortable: true, width: '50px', editType: 'select', bullhornField: 'owner' },
   { key: 'recruiter', label: 'TR', sortable: true, width: '60px', editType: 'select', bullhornField: 'assignedUsers' },
   { key: 'title', label: 'Job Title', sortable: true },
-  { key: 'client', label: 'Client', sortable: true, width: '150px' },
+  { key: 'client', label: 'Client', sortable: true, width: '100px' },
   { key: 'status', label: 'Status', sortable: true, width: '55px', editType: 'select', bullhornField: 'status' },
   { key: 'notes', label: 'Notes', sortable: true, width: '140px', editable: true },
   { key: 'deadline', label: 'Deadline', sortable: true, width: '110px', editable: true },
@@ -465,7 +465,7 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
       case 'title':
         return <td key={col.key} className="cell-title">{job.title}</td>;
       case 'client':
-        return <td key={col.key}>{job.client || '—'}</td>;
+        return <td key={col.key} className="cell-truncate" title={job.client || ''}>{job.client || '—'}</td>;
       case 'brSalary':
         return <td key={col.key} className="cell-money">{job.brSalary || '—'}</td>;
       case 'ceSpread':
