@@ -144,8 +144,8 @@ async function getActivePlacements() {
 async function getClientSubmissions() {
   return callTool('query_entity', {
     entityType: 'JobSubmission',
-    where: "status = 'Client Submission' AND isDeleted = false",
-    fields: 'id,jobOrder,dateAdded',
+    where: "(status = 'Client Submission' OR status = 'Internally Submitted') AND isDeleted = false",
+    fields: 'id,jobOrder,dateAdded,status',
     count: 500,
   });
 }
@@ -153,7 +153,7 @@ async function getClientSubmissions() {
 async function getOpenOpportunities() {
   return callTool('query_entity', {
     entityType: 'Opportunity',
-    where: 'isOpen = true AND isDeleted = false',
+    where: "isDeleted = false AND status NOT IN ('Closed','Closed-Lost','Closed-Won','Converted')",
     fields: 'id',
     count: 500,
   });
@@ -187,8 +187,8 @@ async function getCorporateUsers() {
 async function getOpenOpportunitiesFull() {
   return callTool('query_entity', {
     entityType: 'Opportunity',
-    where: 'isOpen = true AND isDeleted = false',
-    fields: 'id,title,status,owner,clientCorporation,dateAdded',
+    where: "isDeleted = false AND status NOT IN ('Closed','Closed-Lost','Closed-Won','Converted')",
+    fields: 'id,title,status,owner,clientCorporation,dateAdded,expectedCloseDate,dealValue,weightedDealValue',
     orderBy: '-dateAdded',
     count: 500,
   });

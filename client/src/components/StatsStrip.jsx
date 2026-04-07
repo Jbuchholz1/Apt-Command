@@ -20,6 +20,8 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   const [placementsLoading, setPlacementsLoading] = useState(false);
   const [opportunities, setOpportunities] = useState([]);
   const [opportunitiesLoading, setOpportunitiesLoading] = useState(false);
+  const [oppFilter, setOppFilter] = useState({ status: '', owner: '', client: '' });
+  const [oppSort, setOppSort] = useState({ key: 'dateAdded', dir: 'desc' });
   const [recruiters, setRecruiters] = useState([]);
 
   useEffect(() => {
@@ -265,8 +267,8 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
                       <td className="cell-money">
                         {p.employmentType === 'Direct Hire'
                           ? (p.payRate ? `Perm` : '—')
-                          : (p.billRate && p.payRate && p.billRate > p.payRate
-                            ? `$${Math.round((p.billRate - p.payRate) * 40).toLocaleString('en-US')} CE`
+                          : (p.billRate && p.payRate
+                            ? `$${Math.round(((p.payRate * 1.25 - p.billRate) * 40 * -1)).toLocaleString('en-US')} CE`
                             : '—')}
                       </td>
                       <td>{p.status || '—'}</td>
@@ -385,56 +387,106 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
       )}
 
       {/* Opportunities Modal */}
-      {showOpportunities && (
-        <div className="modal-overlay" onClick={() => setShowOpportunities(false)}>
-          <div className="modal-content contractors-modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Open Opportunities ({opportunities.length})</h2>
-              <button className="modal-close" onClick={() => setShowOpportunities(false)}>✕</button>
+      {showOpportunities && (() => {
+        const oppStatuses = [...new Set(opportunities.map(o => o.status).filter(Boolean))].sort();
+        const oppOwners = [...new Set(opportunities.map(o => o.owner).filter(Boolean))].sort();
+        const oppClients = [...new Set(opportunities.map(o => o.client).filter(Boolean))].sort();
+
+        const filtered = opportunities
+          .filter(o => {
+            if (oppFilter.status && o.status !== oppFilter.status) return false;
+            if (oppFilter.owner && o.owner !== oppFilter.owner) return false;
+            if (oppFilter.client && o.client !== oppFilter.client) return false;
+            return true;
+          })
+          .sort((a, b) => {
+            const av = a[oppSort.key], bv = b[oppSort.key];
+            if (av == null) return 1;
+            if (bv == null) return -1;
+            const cmp = typeof av === 'number' ? av - bv : String(av).localeCompare(String(bv));
+            return oppSort.dir === 'asc' ? cmp : -cmp;
+          });
+
+        const toggleSort = (key) => setOppSort(prev =>
+          prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }
+        );
+        const sortIcon = (key) => oppSort.key !== key ? ' ↕' : oppSort.dir === 'asc' ? ' ↑' : ' ↓';
+
+        const totalDeal = filtered.reduce((s, o) => s + (o.dealValue || 0), 0);
+        const totalWeighted = filtered.reduce((s, o) => s + (o.weightedDealValue || 0), 0);
+
+        return (
+          <div className="modal-overlay" onClick={() => setShowOpportunities(false)}>
+            <div className="modal-content contractors-modal" onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>Open Opportunities ({filtered.length})</h2>
+                <button className="modal-close" onClick={() => setShowOpportunities(false)}>✕</button>
+              </div>
+              {opportunitiesLoading ? (
+                <div className="modal-loading">Loading opportunities...</div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', gap: '8px', padding: '8px 16px', flexWrap: 'wrap' }}>
+                    <select value={oppFilter.status} onChange={e => setOppFilter(f => ({ ...f, status: e.target.value }))} style={{ fontSize: '11px', padding: '4px' }}>
+                      <option value="">All Statuses</option>
+                      {oppStatuses.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                    <select value={oppFilter.owner} onChange={e => setOppFilter(f => ({ ...f, owner: e.target.value }))} style={{ fontSize: '11px', padding: '4px' }}>
+                      <option value="">All Owners</option>
+                      {oppOwners.map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                    <select value={oppFilter.client} onChange={e => setOppFilter(f => ({ ...f, client: e.target.value }))} style={{ fontSize: '11px', padding: '4px' }}>
+                      <option value="">All Clients</option>
+                      {oppClients.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    {(oppFilter.status || oppFilter.owner || oppFilter.client) && (
+                      <button onClick={() => setOppFilter({ status: '', owner: '', client: '' })} style={{ fontSize: '11px', padding: '4px 8px', cursor: 'pointer' }}>Clear</button>
+                    )}
+                  </div>
+                  <table className="contractors-table">
+                    <thead>
+                      <tr>
+                        <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('id')}>ID{sortIcon('id')}</th>
+                        <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('title')}>Title{sortIcon('title')}</th>
+                        <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('client')}>Client{sortIcon('client')}</th>
+                        <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('owner')}>Owner{sortIcon('owner')}</th>
+                        <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('status')}>Status{sortIcon('status')}</th>
+                        <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('expectedCloseDate')}>Exp Close{sortIcon('expectedCloseDate')}</th>
+                        <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('dealValue')}>Deal Value{sortIcon('dealValue')}</th>
+                        <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('weightedDealValue')}>Weighted{sortIcon('weightedDealValue')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.map(o => (
+                        <tr key={o.id}>
+                          <td><a href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=Opportunity&id=${o.id}`} target="_blank" rel="noopener noreferrer" className="bh-link">{o.id}</a></td>
+                          <td>{o.title || '—'}</td>
+                          <td>{o.client || '—'}</td>
+                          <td>{o.owner || '—'}</td>
+                          <td>{o.status || '—'}</td>
+                          <td>{formatDate(o.expectedCloseDate)}</td>
+                          <td className="cell-money">{o.dealValue ? fmtCurrency(o.dealValue) : '—'}</td>
+                          <td className="cell-money">{o.weightedDealValue ? fmtCurrency(o.weightedDealValue) : '—'}</td>
+                        </tr>
+                      ))}
+                      {filtered.length > 0 && (
+                        <tr className="total-row">
+                          <td colSpan="6" style={{ textAlign: 'right', fontWeight: 700 }}>Totals</td>
+                          <td className="cell-money" style={{ fontWeight: 700 }}>{fmtCurrency(totalDeal)}</td>
+                          <td className="cell-money" style={{ fontWeight: 700 }}>{fmtCurrency(totalWeighted)}</td>
+                        </tr>
+                      )}
+                      {filtered.length === 0 && (
+                        <tr><td colSpan="8" style={{ textAlign: 'center', padding: '20px' }}>No open opportunities found</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </>
+              )}
             </div>
-            {opportunitiesLoading ? (
-              <div className="modal-loading">Loading opportunities...</div>
-            ) : (
-              <table className="contractors-table">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Title</th>
-                    <th>Client</th>
-                    <th>Owner</th>
-                    <th>Status</th>
-                    <th>Date Added</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {opportunities.map(o => (
-                    <tr key={o.id}>
-                      <td>
-                        <a
-                          href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=Opportunity&id=${o.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="bh-link"
-                        >
-                          {o.id}
-                        </a>
-                      </td>
-                      <td>{o.title || '—'}</td>
-                      <td>{o.client || '—'}</td>
-                      <td>{o.owner || '—'}</td>
-                      <td>{o.status || '—'}</td>
-                      <td>{formatDate(o.dateAdded)}</td>
-                    </tr>
-                  ))}
-                  {opportunities.length === 0 && (
-                    <tr><td colSpan="6" style={{ textAlign: 'center', padding: '20px' }}>No open opportunities found</td></tr>
-                  )}
-                </tbody>
-              </table>
-            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Missed Follow Ups Modal */}
       {showMissedFollowUps && (

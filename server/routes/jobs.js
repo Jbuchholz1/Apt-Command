@@ -199,6 +199,9 @@ router.get('/opportunities', async (req, res, next) => {
       owner: o.owner ? `${o.owner.firstName || ''} ${o.owner.lastName || ''}`.trim() : null,
       client: o.clientCorporation?.name || null,
       dateAdded: o.dateAdded ? new Date(o.dateAdded).toISOString() : null,
+      expectedCloseDate: o.expectedCloseDate ? new Date(o.expectedCloseDate).toISOString() : null,
+      dealValue: o.dealValue || null,
+      weightedDealValue: o.weightedDealValue || null,
     }));
     res.json({ total: opportunities.length, data: opportunities });
   } catch (err) {
@@ -230,11 +233,16 @@ router.get('/:id', async (req, res, next) => {
 
     const notes = getNotesForJob(parseInt(req.params.id, 10));
 
+    const validStatuses = new Set(['Client Submission', 'Internally Submitted']);
+    const filteredSubs = (subsResult?.data || [])
+      .filter(s => validStatuses.has(s.status))
+      .map(formatSubmission);
+
     res.json({
       job: formatted,
       submissions: {
-        total: subsResult?.count || 0,
-        data: (subsResult?.data || []).map(formatSubmission),
+        total: filteredSubs.length,
+        data: filteredSubs,
       },
       notes,
     });
