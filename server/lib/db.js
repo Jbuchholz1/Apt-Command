@@ -34,6 +34,10 @@ try {
   db.exec(`ALTER TABLE job_overrides ADD COLUMN coverage_needed TEXT DEFAULT ''`);
 } catch (e) { /* already exists */ }
 
+try {
+  db.exec(`ALTER TABLE job_overrides ADD COLUMN tr_reassigned TEXT DEFAULT ''`);
+} catch (e) { /* already exists */ }
+
 /**
  * Get all overrides as a map keyed by job_id.
  */
@@ -56,7 +60,7 @@ function getOverrides(jobId) {
 /**
  * Upsert overrides for a job. Only updates fields that are provided.
  */
-function upsertOverrides(jobId, { recruiter, follow_up, deadline, notes, coverage_needed, updated_by }) {
+function upsertOverrides(jobId, { recruiter, follow_up, deadline, notes, coverage_needed, tr_reassigned, updated_by }) {
   const existing = getOverrides(jobId);
 
   if (existing) {
@@ -67,6 +71,7 @@ function upsertOverrides(jobId, { recruiter, follow_up, deadline, notes, coverag
     if (deadline !== undefined) { updates.push('deadline = ?'); params.push(deadline); }
     if (notes !== undefined) { updates.push('notes = ?'); params.push(notes); }
     if (coverage_needed !== undefined) { updates.push('coverage_needed = ?'); params.push(coverage_needed); }
+    if (tr_reassigned !== undefined) { updates.push('tr_reassigned = ?'); params.push(tr_reassigned); }
     updates.push("updated_at = datetime('now')");
     if (updated_by) { updates.push('updated_by = ?'); params.push(updated_by); }
     params.push(jobId);
@@ -74,8 +79,8 @@ function upsertOverrides(jobId, { recruiter, follow_up, deadline, notes, coverag
     db.prepare(`UPDATE job_overrides SET ${updates.join(', ')} WHERE job_id = ?`).run(...params);
   } else {
     db.prepare(`
-      INSERT INTO job_overrides (job_id, recruiter, follow_up, deadline, notes, coverage_needed, updated_by)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO job_overrides (job_id, recruiter, follow_up, deadline, notes, coverage_needed, tr_reassigned, updated_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       jobId,
       recruiter || '',
@@ -83,6 +88,7 @@ function upsertOverrides(jobId, { recruiter, follow_up, deadline, notes, coverag
       deadline || '',
       notes || '',
       coverage_needed || '',
+      tr_reassigned || '',
       updated_by || ''
     );
   }

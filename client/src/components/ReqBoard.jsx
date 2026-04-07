@@ -184,7 +184,25 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
     let displayUpdates = {};
 
     if (bhField === 'assignedUsers') {
-      // rawValue is the user ID string from the select
+      const hadPreviousRecruiter = !!(job.recruiter && job.recruiter.trim() && job.recruiter !== 'ZZ');
+
+      if (rawValue === 'ZZ') {
+        // ZZ: save locally only, don't touch Bullhorn
+        try {
+          await updateJobOverrides(job.id, {
+            recruiter: 'ZZ',
+            tr_reassigned: hadPreviousRecruiter ? '1' : undefined,
+          });
+          if (onJobUpdated) {
+            onJobUpdated(job.id, 'recruiter', 'ZZ');
+            if (hadPreviousRecruiter) onJobUpdated(job.id, 'trReassigned', true);
+          }
+        } catch (err) {
+          console.error('Failed to save ZZ override:', err);
+        }
+        return;
+      }
+
       const userId = parseInt(rawValue, 10);
       const user = recruiters.find(u => u.id === userId);
       bullhornValue = { replaceAll: [userId] };
@@ -192,6 +210,16 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
         recruiter: user?.initials || '',
         assignedUserIds: [userId],
       };
+
+      // Track reassignment: if there was a previous recruiter, mark as reassigned
+      if (hadPreviousRecruiter) {
+        displayUpdates.trReassigned = true;
+        // Save reassignment flag to local DB
+        updateJobOverrides(job.id, { recruiter: '', tr_reassigned: '1' }).catch(() => {});
+      } else {
+        // First assignment — clear any local recruiter override
+        updateJobOverrides(job.id, { recruiter: '', tr_reassigned: '' }).catch(() => {});
+      }
     } else if (bhField === 'owner') {
       const userId = parseInt(rawValue, 10);
       const user = users.find(u => u.id === userId);
@@ -300,9 +328,16 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
     if (col.editType === 'select') {
       let options, currentValue, displayValue;
       if (col.bullhornField === 'assignedUsers') {
-        options = recruiters.map(u => ({ value: String(u.id), label: u.initials }));
-        const firstAssigned = (job.assignedUserIds || [])[0];
-        currentValue = firstAssigned ? String(firstAssigned) : '';
+        options = [
+          ...recruiters.map(u => ({ value: String(u.id), label: u.initials })),
+          { value: 'ZZ', label: 'ZZ' },
+        ];
+        if (job.recruiter === 'ZZ') {
+          currentValue = 'ZZ';
+        } else {
+          const firstAssigned = (job.assignedUserIds || [])[0];
+          currentValue = firstAssigned ? String(firstAssigned) : '';
+        }
         displayValue = job.recruiter || '—';
       } else if (col.bullhornField === 'owner') {
         options = accountManagers.map(u => ({ value: String(u.id), label: u.initials }));
@@ -321,6 +356,11 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
         currentValue = job.remote || '';
         displayValue = job.remote || '—';
       }
+      // Yellow background for reassigned TR
+      const selectCellStyle = (col.bullhornField === 'assignedUsers' && job.trReassigned)
+        ? { backgroundColor: '#fef08a', color: '#854d0e' }
+        : undefined;
+
       return (
         <EditableSelect
           key={col.key}
@@ -329,6 +369,7 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
           options={options}
           onSave={(val) => handleBullhornSave(job, col, val)}
           className="cell-editable"
+          cellStyle={selectCellStyle}
         />
       );
     }

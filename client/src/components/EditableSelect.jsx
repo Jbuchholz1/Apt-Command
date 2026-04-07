@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
  * Inline-editable table cell with a dropdown select.
  * Click to open dropdown, select to save, blur/Escape to cancel.
  */
-export default function EditableSelect({ value, displayValue, options, onSave, className }) {
+export default function EditableSelect({ value, displayValue, options, onSave, className, cellStyle }) {
   const [editing, setEditing] = useState(false);
   const selectRef = useRef(null);
 
@@ -29,7 +29,7 @@ export default function EditableSelect({ value, displayValue, options, onSave, c
 
   if (editing) {
     return (
-      <td className={`editable-cell editing ${className || ''}`} onClick={e => e.stopPropagation()}>
+      <td className={`editable-cell editing ${className || ''}`} style={cellStyle} onClick={e => e.stopPropagation()}>
         <select
           ref={selectRef}
           className="editable-select"
@@ -50,6 +50,7 @@ export default function EditableSelect({ value, displayValue, options, onSave, c
   return (
     <td
       className={`editable-cell ${className || ''}`}
+      style={cellStyle}
       onClick={(e) => { e.stopPropagation(); setEditing(true); }}
       title="Click to edit"
     >

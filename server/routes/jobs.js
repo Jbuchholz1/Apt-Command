@@ -266,7 +266,7 @@ router.patch('/:id/overrides', async (req, res, next) => {
       return res.status(400).json({ error: 'Invalid job ID' });
     }
 
-    const { recruiter, notes, follow_up, deadline, coverage_needed } = req.body;
+    const { recruiter, notes, follow_up, deadline, coverage_needed, tr_reassigned } = req.body;
     const updatedBy = req.user?.email || req.user?.name || 'unknown';
 
     const result = upsertOverrides(jobId, {
@@ -275,6 +275,7 @@ router.patch('/:id/overrides', async (req, res, next) => {
       follow_up,
       deadline,
       coverage_needed,
+      tr_reassigned,
       updated_by: updatedBy,
     });
 
@@ -320,14 +321,21 @@ router.post('/:id/notes', async (req, res, next) => {
 function mergeOverrides(job, overridesMap) {
   const ov = overridesMap[job.id];
   if (ov) {
-    // TR comes from Bullhorn assignedUsers; only use local override as fallback
-    if (!job.recruiter && ov.recruiter) job.recruiter = ov.recruiter;
+    // TR: if local override is "ZZ", always use it (not synced to BH)
+    // Otherwise use Bullhorn assignedUsers with local as fallback
+    if (ov.recruiter === 'ZZ') {
+      job.recruiter = 'ZZ';
+    } else if (!job.recruiter && ov.recruiter) {
+      job.recruiter = ov.recruiter;
+    }
+    job.trReassigned = ov.tr_reassigned === '1';
     job.followUp = ov.follow_up || '';
     job.deadline = ov.deadline || '';
     job.notes = ov.notes || '';
     job.coverageNeeded = ov.coverage_needed || '';
   } else {
     job.recruiter = job.recruiter || '';
+    job.trReassigned = false;
     job.followUp = job.followUp || '';
     job.deadline = job.deadline || '';
     job.notes = job.notes || '';
