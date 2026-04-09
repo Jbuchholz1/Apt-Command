@@ -238,7 +238,7 @@ router.get('/kpis', async (req, res, next) => {
       gauges: [
         { label: 'MAR Total', value: totalMAR, target: 1885, format: 'number' },
         { label: 'Input', value: totalNewInput, target: 40000, format: 'currency' },
-        { label: 'A/B Fill Ratio - Staffing', value: abFillRatio, target: 60, format: 'number' },
+        { label: 'A/B Fill Ratio - Staffing', value: abFillRatio, target: 60, format: 'percent' },
         { label: 'Backout %', value: backoutPct, target: 10, format: 'percent', invert: true },
         { label: 'Fill Ratio - Project', value: null, target: 60, format: 'number', placeholder: true },
       ],

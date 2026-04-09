@@ -9,7 +9,7 @@ function getColor(pct, invert) {
 function formatValue(value, format) {
   if (value === null || value === undefined) return '—';
   if (format === 'currency') return `$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  if (format === 'percent') return `${value}`;
+  if (format === 'percent') return `${value}%`;
   return Number(value).toLocaleString('en-US');
 }
 
@@ -40,7 +40,7 @@ export default function GaugeCard({ label, value, target, format, invert, placeh
     <div className="gauge-card">
       <div className="gauge-header">
         <span className="gauge-label">{label}</span>
-        <span className="gauge-target">Target: {format === 'currency' ? `$${target.toLocaleString()}` : target.toLocaleString()}</span>
+        <span className="gauge-target">Target: {format === 'currency' ? `$${target.toLocaleString()}` : format === 'percent' ? `${target}%` : target.toLocaleString()}</span>
       </div>
       <div className="gauge-value" style={{ color: placeholder ? '#94a3b8' : color }}>
         {formatValue(value, format)}
