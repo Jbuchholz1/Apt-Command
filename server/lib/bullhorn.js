@@ -343,10 +343,14 @@ async function getClientCorporations(clientIds) {
   });
 }
 
-async function getABJobs() {
+async function getABJobs(startMs, endMs) {
+  let where = "isDeleted = false AND type IN (1,2)";
+  if (startMs && endMs) {
+    where += ` AND dateAdded > ${startMs} AND dateAdded < ${endMs}`;
+  }
   return callTool('query_entity', {
     entityType: 'JobOrder',
-    where: "isDeleted = false AND type IN (1,2)",
+    where,
     fields: 'id,title,type,status,numOpenings,owner,clientCorporation',
     count: 500,
   });

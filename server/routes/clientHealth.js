@@ -127,7 +127,7 @@ router.get('/kpis', async (req, res, next) => {
       getClientSubsInRange(startMs, endMs),
       getPlacementsInRange(startMs, endMs),
       getAppointmentsInRange(startMs, endMs, amIds),
-      getABJobs(),
+      getABJobs(startMs, endMs),
     ]);
 
     let interviews = interviewsRes?.data || [];
