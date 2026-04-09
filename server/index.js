@@ -6,6 +6,7 @@ const jobsRouter = require('./routes/jobs');
 const placementsRouter = require('./routes/placements');
 const statsRouter = require('./routes/stats');
 const reportingRouter = require('./routes/reporting');
+const clientHealthRouter = require('./routes/clientHealth');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -53,6 +54,8 @@ app.use('/api/req-board/placements', placementsRouter);
 app.use('/api/req-board/stats', statsRouter);
 // Reporting module
 app.use('/api/reporting', reportingRouter);
+// Client Health module
+app.use('/api/client-health', clientHealthRouter);
 // Legacy routes (backward compat — remove after deploy confirmed)
 app.use('/api/jobs', jobsRouter);
 app.use('/api/placements', placementsRouter);

@@ -8,6 +8,7 @@ import ReportingModule from './modules/reporting/ReportingModule';
 import ReportingHome from './modules/reporting/ReportingHome';
 import RecruiterDashboard from './modules/reporting/RecruiterDashboard';
 import SalesDashboard from './modules/reporting/SalesDashboard';
+import ClientHealthModule from './modules/client-health/ClientHealthModule';
 import ComingSoon from './components/ComingSoon';
 
 export default function App() {
@@ -24,7 +25,7 @@ export default function App() {
             <Route index element={<HomePage />} />
             <Route path="req-board" element={<ReqBoardModule />} />
             <Route path="pipeline" element={<ComingSoon title="Candidate Pipeline" />} />
-            <Route path="clients" element={<ComingSoon title="Client Management" />} />
+            <Route path="clients" element={<ClientHealthModule />} />
             <Route path="reporting" element={<ReportingModule />}>
               <Route index element={<ReportingHome />} />
               <Route path="recruiting" element={<RecruiterDashboard />} />

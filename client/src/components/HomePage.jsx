@@ -29,11 +29,12 @@ const modules = [
   },
   {
     id: 'clients',
-    title: 'Client Management',
-    description: 'Client company profiles, contacts, account health, and engagement activity.',
+    title: 'Client Health',
+    description: 'Monitor client account health based on active placements and recent engagement.',
     icon: '\u{1F3E2}',
     path: '/clients',
-    status: 'coming-soon',
+    status: 'active',
+    underConstruction: true,
   },
   {
     id: 'reporting',

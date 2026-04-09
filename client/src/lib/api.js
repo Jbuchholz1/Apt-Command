@@ -124,6 +124,12 @@ export function getSalesDashboard(startDate, endDate) {
   return fetchAPI(`/api/reporting/sales-dashboard?start=${startDate}&end=${endDate}`);
 }
 
+// --- Client Health ---
+
+export function getClientHealth() {
+  return fetchAPI('/api/client-health');
+}
+
 // --- Export ---
 
 export async function exportJobs() {

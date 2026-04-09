@@ -311,6 +311,38 @@ async function getSalesCommissions(placementIds) {
   });
 }
 
+// --- Client Health queries ---
+
+async function getActivePlacementsWithClient() {
+  return callTool('query_entity', {
+    entityType: 'Placement',
+    where: "status IN ('Approved','Active') AND jobOrder.clientCorporation.id > 0",
+    fields: 'id,status,jobOrder,candidate',
+    count: 500,
+  });
+}
+
+async function getRecentAppointments(sinceDateMs) {
+  return callTool('query_entity', {
+    entityType: 'Appointment',
+    where: `dateBegin > ${sinceDateMs} AND isDeleted = false`,
+    fields: 'id,type,dateBegin,owner,clientContactReference,jobOrder',
+    orderBy: '-dateBegin',
+    count: 500,
+  });
+}
+
+async function getClientCorporations(clientIds) {
+  if (!clientIds.length) return { data: [] };
+  const idList = clientIds.join(',');
+  return callTool('query_entity', {
+    entityType: 'ClientCorporation',
+    where: `id IN (${idList})`,
+    fields: 'id,name,status,owners',
+    count: 500,
+  });
+}
+
 module.exports = {
   getOpenJobs,
   getRecentlyClosedJobs,
@@ -335,4 +367,7 @@ module.exports = {
   getNewJobsInRange,
   getClosedJobsInRange,
   getSalesCommissions,
+  getActivePlacementsWithClient,
+  getRecentAppointments,
+  getClientCorporations,
 };
