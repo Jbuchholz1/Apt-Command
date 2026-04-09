@@ -218,6 +218,45 @@ body { margin: 0; }
   color: var(--text-muted);
 }
 
+/* ---- Resources Card ---- */
+.resources-card {
+  grid-column: -2 / -1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px 24px;
+  align-self: end;
+}
+
+.resources-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin: 0 0 12px;
+}
+
+.resources-links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.resource-link {
+  color: var(--navy);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 10px;
+  border-radius: 4px;
+  transition: all 0.15s;
+}
+.resource-link:hover {
+  background: rgba(4, 20, 79, 0.06);
+  color: var(--gold);
+}
+
 /* ---- Coming Soon Page ---- */
 .coming-soon-page {
   display: flex;

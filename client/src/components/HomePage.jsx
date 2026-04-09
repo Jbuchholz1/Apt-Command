@@ -79,6 +79,15 @@ export default function HomePage() {
           );
         })}
       </div>
+      <div className="resources-card">
+        <h3 className="resources-title">Quick Links</h3>
+        <div className="resources-links">
+          <a href="https://universal.bullhornstaffing.com/universal-login/login" target="_blank" rel="noopener noreferrer" className="resource-link">Bullhorn</a>
+          <a href="https://auth.cloudcall.com/" target="_blank" rel="noopener noreferrer" className="resource-link">CloudCall</a>
+          <a href="https://application.aligntoday.com/" target="_blank" rel="noopener noreferrer" className="resource-link">Align</a>
+          <a href="http://app.alex.com/" target="_blank" rel="noopener noreferrer" className="resource-link">Alex</a>
+        </div>
+      </div>
     </div>
   );
 }
