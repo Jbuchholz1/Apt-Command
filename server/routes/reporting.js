@@ -183,7 +183,7 @@ router.get('/recruiter-dashboard', async (req, res, next) => {
       }
 
       if (spread > 0 && recruiterId && metricsMap[recruiterId]) {
-        metricsMap[recruiterId].metrics.newInput += spread;
+        metricsMap[recruiterId].metrics.newInput += Math.round(spread * commPct * 100) / 100;
       }
 
       const client = p.jobOrder?.clientCorporation?.name || '';
