@@ -5,7 +5,7 @@ const {
   getClientSubsInRange,
   getInterviewsInRange,
   getPlacementsInRange,
-  getPlacedSubmissions,
+  getRecruitingCommissions,
 } = require('../lib/bullhorn');
 const { POINTS, getRecruiterTier, getSpreadGoal, bhLink } = require('../lib/recruiterConfig');
 
@@ -59,26 +59,25 @@ router.get('/recruiter-dashboard', async (req, res, next) => {
     const interviews = interviewsRes?.data || [];
     const placements = placementsRes?.data || [];
 
-    // For placements, look up the submitting recruiter via JobSubmission
-    let placementRecruiterMap = {}; // placementId → recruiter name & id
+    // Look up recruiting commissions for placements
+    let commissionMap = {}; // placementId → { recruiterId, recruiterName, percentage }
     if (placements.length > 0) {
-      const candIds = placements.map(p => p.candidate?.id).filter(Boolean);
-      const jobIds = placements.map(p => p.jobOrder?.id).filter(Boolean);
+      const placementIds = placements.map(p => p.id);
       try {
-        const subRes = await getPlacedSubmissions(candIds, jobIds);
-        const submissions = subRes?.data || [];
-        // Map candidate+job → sendingUser
-        for (const s of submissions) {
-          const key = `${s.candidate?.id}-${s.jobOrder?.id}`;
-          if (s.sendingUser) {
-            placementRecruiterMap[key] = {
-              id: s.sendingUser.id,
-              name: `${s.sendingUser.firstName || ''} ${s.sendingUser.lastName || ''}`.trim(),
+        const commRes = await getRecruitingCommissions(placementIds);
+        const commissions = commRes?.data || [];
+        for (const c of commissions) {
+          const pId = c.placement?.id;
+          if (pId && c.user) {
+            commissionMap[pId] = {
+              id: c.user.id,
+              name: `${c.user.firstName || ''} ${c.user.lastName || ''}`.trim(),
+              percentage: c.commissionPercentage || 1,
             };
           }
         }
       } catch (err) {
-        console.warn('Failed to look up placement submissions:', err.message);
+        console.warn('Failed to look up placement commissions:', err.message);
       }
     }
 
@@ -149,14 +148,14 @@ router.get('/recruiter-dashboard', async (req, res, next) => {
     const startsDetail = [];
     const newInputDetail = [];
     for (const p of placements) {
-      // Look up recruiter from the submission that led to this placement
-      const subKey = `${p.candidate?.id}-${p.jobOrder?.id}`;
-      const recruiter = placementRecruiterMap[subKey];
-      const recruiterId = recruiter?.id;
-      const recruiterName = recruiter?.name || '';
+      // Look up recruiter and commission split from PlacementCommission
+      const commission = commissionMap[p.id];
+      const recruiterId = commission?.id;
+      const recruiterName = commission?.name || '';
+      const commPct = commission?.percentage || 0;
 
-      if (recruiterId && metricsMap[recruiterId]) {
-        metricsMap[recruiterId].metrics.starts++;
+      if (recruiterId && metricsMap[recruiterId] && commPct > 0) {
+        metricsMap[recruiterId].metrics.starts += commPct;
       }
 
       const bill = Number(p.clientBillRate) || 0;
@@ -217,12 +216,13 @@ router.get('/recruiter-dashboard', async (req, res, next) => {
     const totals = { clientSubs: 0, interviews: 0, starts: 0, mar: 0, newInput: 0 };
     const recruiterList = Object.values(metricsMap).map(r => {
       const m = r.metrics;
-      m.mar = (m.clientSubs * POINTS.CLIENT_SUB) + (m.interviews * POINTS.INTERVIEW) + (m.starts * POINTS.START);
+      m.starts = Math.round(m.starts * 100) / 100;
+      m.mar = Math.round(((m.clientSubs * POINTS.CLIENT_SUB) + (m.interviews * POINTS.INTERVIEW) + (m.starts * POINTS.START)) * 100) / 100;
       m.newInput = Math.round(m.newInput * 100) / 100;
 
       r.points.subsPoints = m.clientSubs * POINTS.CLIENT_SUB;
       r.points.interviewPoints = m.interviews * POINTS.INTERVIEW;
-      r.points.startsPoints = m.starts * POINTS.START;
+      r.points.startsPoints = Math.round(m.starts * POINTS.START * 100) / 100;
       r.points.total = m.mar;
 
       totals.clientSubs += m.clientSubs;

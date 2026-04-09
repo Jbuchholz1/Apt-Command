@@ -244,14 +244,13 @@ async function getPlacementsInRange(startMs, endMs) {
   });
 }
 
-async function getPlacedSubmissions(candidateIds, jobOrderIds) {
-  if (!candidateIds.length) return { data: [] };
-  const pairs = candidateIds.map((cId, i) => `(candidate.id = ${cId} AND jobOrder.id = ${jobOrderIds[i]})`);
-  const where = `(${pairs.join(' OR ')}) AND isDeleted = false`;
+async function getRecruitingCommissions(placementIds) {
+  if (!placementIds.length) return { data: [] };
+  const idList = placementIds.join(',');
   return callTool('query_entity', {
-    entityType: 'JobSubmission',
-    where,
-    fields: 'id,sendingUser,candidate,jobOrder,status,dateAdded',
+    entityType: 'PlacementCommission',
+    where: `placement.id IN (${idList}) AND role = 'Recruiting'`,
+    fields: 'id,user,role,commissionPercentage,placement',
     count: 500,
   });
 }
@@ -274,5 +273,5 @@ module.exports = {
   getClientSubsInRange,
   getInterviewsInRange,
   getPlacementsInRange,
-  getPlacedSubmissions,
+  getRecruitingCommissions,
 };
