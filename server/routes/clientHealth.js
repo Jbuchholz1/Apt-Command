@@ -251,6 +251,9 @@ router.get('/kpis', async (req, res, next) => {
     const totalMAR = Math.round(marDetails.reduce((s, p) => s + p.mar, 0) * 100) / 100;
     totalNewInput = Math.round(totalNewInput * 100) / 100;
 
+    // Dynamic MAR target: (recruiters × 26/wk + AMs × 30/wk) × 13 weeks
+    const marTarget = (recruiters.length * 26 + ams.length * 30) * 13;
+
     // --- Backout % ---
     const terminatedList = placements.filter(p => (Array.isArray(p.status) ? p.status[0] : p.status || '').toLowerCase() === 'terminated');
     const totalPlacements = placements.length;
@@ -292,7 +295,7 @@ router.get('/kpis', async (req, res, next) => {
     res.json({
       rangeLabel,
       gauges: [
-        { label: 'MAR Total', value: totalMAR, target: 1885, format: 'number', details: marDetails },
+        { label: 'MAR Total', value: totalMAR, target: marTarget, format: 'number', details: marDetails },
         { label: 'Input', value: totalNewInput, target: 40000, format: 'currency', details: inputDetails },
         { label: 'A/B Fill Ratio - Staffing', value: abFillRatio, target: 60, format: 'percent', details: fillDetails },
         { label: 'Backout %', value: backoutPct, target: 10, format: 'percent', invert: true, details: backoutDetails },
