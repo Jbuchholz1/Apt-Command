@@ -351,7 +351,8 @@ router.get('/sales-dashboard', async (req, res, next) => {
     for (const job of closedJobs) {
       const ownerId = job.owner?.id;
       if (ownerId && metricsMap[ownerId]) {
-        const status = (job.status || '').toLowerCase();
+        const rawStatus = Array.isArray(job.status) ? job.status[0] : job.status;
+        const status = (rawStatus || '').toLowerCase();
         if (status === 'filled') metricsMap[ownerId].jobMetrics.fills++;
         else if (status === 'lost') metricsMap[ownerId].jobMetrics.losses++;
         else if (status === 'wash') metricsMap[ownerId].jobMetrics.washed++;
