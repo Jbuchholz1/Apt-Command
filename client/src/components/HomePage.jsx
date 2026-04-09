@@ -11,6 +11,15 @@ const modules = [
     status: 'active',
   },
   {
+    id: 'org-flow',
+    title: 'Org Flow',
+    description: 'Organizational workflow management and process automation.',
+    icon: '\u{1F504}',
+    path: 'https://aptorgflow.com/',
+    status: 'active',
+    external: true,
+  },
+  {
     id: 'pipeline',
     title: 'Candidate Pipeline',
     description: 'Follow candidates through sourcing, submission, interview, and placement stages.',
@@ -46,21 +55,29 @@ export default function HomePage() {
       <p className="home-subtitle">Select a module to get started.</p>
 
       <div className="module-grid">
-        {modules.map(mod => (
-          <Link
-            key={mod.id}
-            to={mod.path}
-            className={`module-card ${mod.status === 'coming-soon' ? 'disabled' : ''}`}
-            onClick={mod.status === 'coming-soon' ? undefined : undefined}
-          >
-            <span className="module-card-icon">{mod.icon}</span>
-            <h2 className="module-card-title">{mod.title}</h2>
-            <p className="module-card-desc">{mod.description}</p>
-            <span className={`module-card-badge ${mod.status}`}>
-              {mod.status === 'active' ? 'Active' : 'Coming Soon'}
-            </span>
-          </Link>
-        ))}
+        {modules.map(mod => {
+          const className = `module-card ${mod.status === 'coming-soon' ? 'disabled' : ''}`;
+          const children = (
+            <>
+              <span className="module-card-icon">{mod.icon}</span>
+              <h2 className="module-card-title">{mod.title}</h2>
+              <p className="module-card-desc">{mod.description}</p>
+              <span className={`module-card-badge ${mod.status}`}>
+                {mod.status === 'active' ? 'Active' : 'Coming Soon'}
+              </span>
+            </>
+          );
+
+          return mod.external ? (
+            <a key={mod.id} href={mod.path} target="_blank" rel="noopener noreferrer" className={className}>
+              {children}
+            </a>
+          ) : (
+            <Link key={mod.id} to={mod.path} className={className}>
+              {children}
+            </Link>
+          );
+        })}
       </div>
     </div>
   );
