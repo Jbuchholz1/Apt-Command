@@ -20,6 +20,9 @@ const RECRUITER_TIERS = {
   'Ked Bailey': 3,
 };
 
+// Recruiting leaders — excluded from the recruiter dashboard
+const EXCLUDED_RECRUITERS = new Set(['Ben Mahaffey']);
+
 function getRecruiterTier(fullName) {
   return RECRUITER_TIERS[fullName] || 1;
 }
@@ -34,4 +37,4 @@ function bhLink(entity, id) {
   return `${BH_BASE}?Entity=${entity}&id=${id}`;
 }
 
-module.exports = { POINTS, TIERS, RECRUITER_TIERS, getRecruiterTier, getSpreadGoal, bhLink };
+module.exports = { POINTS, TIERS, RECRUITER_TIERS, EXCLUDED_RECRUITERS, getRecruiterTier, getSpreadGoal, bhLink };

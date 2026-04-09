@@ -12,7 +12,7 @@ const {
   getClosedJobsInRange,
   getSalesCommissions,
 } = require('../lib/bullhorn');
-const { POINTS, getRecruiterTier, getSpreadGoal, bhLink } = require('../lib/recruiterConfig');
+const { POINTS, EXCLUDED_RECRUITERS, getRecruiterTier, getSpreadGoal, bhLink } = require('../lib/recruiterConfig');
 const { SALES_POINTS, ACTIVITY_LABELS, ACTIVITY_ORDER, EXCLUDED_AMS, getAMTier, getAMSpreadGoal } = require('../lib/salesConfig');
 
 function formatDate(ms) {
@@ -60,7 +60,7 @@ router.get('/recruiter-dashboard', async (req, res, next) => {
       getPlacementsInRange(startMs, endMs),
     ]);
 
-    const recruiters = recruitersRes?.data || [];
+    const recruiters = (recruitersRes?.data || []).filter(r => !EXCLUDED_RECRUITERS.has(`${r.firstName} ${r.lastName}`));
     const subs = subsRes?.data || [];
     const interviews = interviewsRes?.data || [];
     const placements = placementsRes?.data || [];
