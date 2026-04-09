@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import './reporting.css';
 import { getSalesDashboard } from '../../lib/api';
 import DateRangePicker from './components/DateRangePicker';
+import DashboardFilters from './components/DashboardFilters';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const JOB_METRIC_ROWS = [
@@ -31,6 +32,7 @@ export default function SalesDashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [filters, setFilters] = useState({ recruiters: [], clients: [] });
 
   const fetchData = useCallback(async () => {
     try {
@@ -54,7 +56,23 @@ export default function SalesDashboard() {
     return `${s.toLocaleDateString('en-US', opts)} - ${e.toLocaleDateString('en-US', opts)}`;
   };
 
-  // Get activity type keys from first AM (they all have the same keys)
+  // Filter options
+  const amOptions = useMemo(() => {
+    if (!data?.ams) return [];
+    return data.ams.map(am => am.name).sort();
+  }, [data]);
+
+  // Client options aren't directly available in current data, use empty for now
+  const clientOptions = useMemo(() => [], []);
+
+  // Apply AM filter
+  const filteredAms = useMemo(() => {
+    if (!data?.ams) return [];
+    if (filters.recruiters.length === 0) return data.ams;
+    return data.ams.filter(am => filters.recruiters.includes(am.name));
+  }, [data, filters]);
+
+  // Get activity type keys from first AM
   const activityKeys = useMemo(() => {
     if (!data?.ams?.length) return [];
     return Object.keys(data.ams[0].activityPoints || {});
@@ -62,17 +80,15 @@ export default function SalesDashboard() {
 
   // Bonus tracker chart data
   const bonusData = useMemo(() => {
-    if (!data?.ams) return [];
-    return data.ams
-      .filter(am => am.newInput > 0 || am.spreadGoal > 0)
-      .map(am => ({
-        name: am.name,
-        'Goal': am.spreadGoal,
-        'New Input': am.newInput,
-      }));
-  }, [data]);
+    return filteredAms.map(am => ({
+      name: am.name.split(' ')[0],
+      fullName: am.name,
+      'Goal': am.spreadGoal,
+      'New Input': am.newInput,
+    }));
+  }, [filteredAms]);
 
-  const ams = data?.ams || [];
+  const ams = filteredAms;
 
   return (
     <div className="reporting-module">
@@ -91,6 +107,15 @@ export default function SalesDashboard() {
         </div>
       </div>
 
+      {data && (
+        <DashboardFilters
+          filters={filters}
+          onChange={setFilters}
+          recruiterOptions={amOptions}
+          clientOptions={clientOptions}
+        />
+      )}
+
       {error && (
         <div className="error-banner">
           Failed to load data: {error}
@@ -104,11 +129,10 @@ export default function SalesDashboard() {
 
       {data && (
         <>
-          {/* Metrics Summary + Bonus Tracker side by side */}
           <div className="sales-layout">
             <div className="metrics-table-wrap">
               <h3 className="section-title">Metrics Summary</h3>
-              <table className="metrics-table">
+              <table className="metrics-table sales-metrics">
                 <thead>
                   <tr>
                     <th>Activity</th>
@@ -117,7 +141,7 @@ export default function SalesDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {/* Job metrics (teal background) */}
+                  {/* Job metrics */}
                   {JOB_METRIC_ROWS.map(row => (
                     <tr key={row.key} className="job-metric-row">
                       <td className="row-label">{row.label}</td>
@@ -130,7 +154,7 @@ export default function SalesDashboard() {
                     </tr>
                   ))}
                   {/* Note Activity */}
-                  <tr className="activity-row">
+                  <tr className="activity-row-odd">
                     <td className="row-label">Note Activity</td>
                     {ams.map(am => (
                       <td key={am.id} className="metric-val">{am.noteActivity}</td>
@@ -139,9 +163,9 @@ export default function SalesDashboard() {
                       {ams.reduce((sum, am) => sum + am.noteActivity, 0)}
                     </td>
                   </tr>
-                  {/* Activity types (point values) */}
-                  {activityKeys.map(key => (
-                    <tr key={key} className="activity-row">
+                  {/* Activity types (alternating colors) */}
+                  {activityKeys.map((key, i) => (
+                    <tr key={key} className={i % 2 === 0 ? 'activity-row-even' : 'activity-row-odd'}>
                       <td className="row-label">{key}</td>
                       {ams.map(am => (
                         <td key={am.id} className="metric-val">
@@ -153,6 +177,16 @@ export default function SalesDashboard() {
                       </td>
                     </tr>
                   ))}
+                  {/* All Activity (above MAR) */}
+                  <tr className="activity-row-odd">
+                    <td className="row-label">All Activity</td>
+                    {ams.map(am => (
+                      <td key={am.id} className="metric-val">{am.activityCount}</td>
+                    ))}
+                    <td className="metric-val total-col">
+                      {ams.reduce((sum, am) => sum + am.activityCount, 0)}
+                    </td>
+                  </tr>
                   {/* MAR Total */}
                   <tr className="bold-row">
                     <td className="row-label">MAR Total</td>
@@ -161,16 +195,6 @@ export default function SalesDashboard() {
                     ))}
                     <td className="metric-val total-col">
                       {Math.round(ams.reduce((sum, am) => sum + am.mar, 0) * 100) / 100}
-                    </td>
-                  </tr>
-                  {/* All Activity */}
-                  <tr>
-                    <td className="row-label">All Activity</td>
-                    {ams.map(am => (
-                      <td key={am.id} className="metric-val">{am.activityCount}</td>
-                    ))}
-                    <td className="metric-val total-col">
-                      {ams.reduce((sum, am) => sum + am.activityCount, 0)}
                     </td>
                   </tr>
                   {/* New Input */}
@@ -190,22 +214,23 @@ export default function SalesDashboard() {
             </div>
 
             {/* Bonus Tracker Chart */}
-            {bonusData.length > 0 && (
-              <div className="chart-section bonus-chart">
-                <h3 className="section-title">Bonus Tracker</h3>
-                <ResponsiveContainer width="100%" height={320}>
-                  <BarChart data={bonusData} barGap={4} margin={{ top: 10, right: 20, bottom: 30, left: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} />
-                    <YAxis tickFormatter={(v) => `$${v.toLocaleString()}`} tick={{ fontSize: 11 }} />
-                    <Tooltip formatter={(v) => `$${Number(v).toLocaleString()}`} />
-                    <Legend />
-                    <Bar dataKey="Goal" fill="#f59e0b" radius={[3, 3, 0, 0]} />
-                    <Bar dataKey="New Input" fill="#04144F" radius={[3, 3, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
+            <div className="chart-section bonus-chart">
+              <h3 className="section-title">Bonus Tracker</h3>
+              <ResponsiveContainer width="100%" height={350}>
+                <BarChart data={bonusData} barGap={4} margin={{ top: 10, right: 20, bottom: 50, left: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-30} textAnchor="end" />
+                  <YAxis tickFormatter={(v) => `$${v.toLocaleString()}`} tick={{ fontSize: 11 }} />
+                  <Tooltip
+                    formatter={(v) => `$${Number(v).toLocaleString()}`}
+                    labelFormatter={(label, payload) => payload?.[0]?.payload?.fullName || label}
+                  />
+                  <Legend />
+                  <Bar dataKey="Goal" fill="#f59e0b" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="New Input" fill="#04144F" radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </>
       )}

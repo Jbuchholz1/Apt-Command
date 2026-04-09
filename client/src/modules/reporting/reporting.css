@@ -317,8 +317,12 @@
   background: rgba(0, 200, 200, 0.08);
 }
 
-.activity-row td {
-  background: rgba(100, 100, 200, 0.05);
+.activity-row-odd td {
+  background: #f0f4f8;
+}
+
+.activity-row-even td {
+  background: #e8f0fe;
 }
 
 .input-row td {
