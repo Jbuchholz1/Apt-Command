@@ -97,11 +97,13 @@ router.get('/recruiter-dashboard', async (req, res, next) => {
     const metricsMap = {};
     for (const r of recruiters) {
       const name = recruiterNames[r.id];
+      const tier = r.customDate3 ? 3 : 1;
+      const spreadGoal = r.customDate3 ? 9000 : 7000;
       metricsMap[r.id] = {
         id: r.id,
         name,
-        tier: getRecruiterTier(name),
-        spreadGoal: getSpreadGoal(name),
+        tier,
+        spreadGoal,
         metrics: { clientSubs: 0, interviews: 0, starts: 0, mar: 0, newInput: 0 },
         points: { subsPoints: 0, interviewPoints: 0, startsPoints: 0, total: 0 },
       };
@@ -321,11 +323,13 @@ router.get('/sales-dashboard', async (req, res, next) => {
       const name = `${am.firstName} ${am.lastName}`;
       amNames[am.id] = name;
       amIds.add(am.id);
+      const tier = am.customDate3 ? 3 : 1;
+      const spreadGoal = am.customDate3 ? 9000 : 7000;
       metricsMap[am.id] = {
         id: am.id,
         name,
-        tier: getAMTier(name),
-        spreadGoal: getAMSpreadGoal(name),
+        tier,
+        spreadGoal,
         jobMetrics: { newReqs: 0, openings: 0, closedReqs: 0, fills: 0, losses: 0, washed: 0, newPlacements: 0 },
         activities: {},
         activityCount: 0,

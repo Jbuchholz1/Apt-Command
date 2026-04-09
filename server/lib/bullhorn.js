@@ -209,7 +209,7 @@ async function getRecruiterUsers() {
   return callTool('query_entity', {
     entityType: 'CorporateUser',
     where: "isDeleted = false AND enabled = true AND customText1 = 'Recruiter'",
-    fields: 'id,firstName,lastName,customText1',
+    fields: 'id,firstName,lastName,customText1,customDate1,customDate3',
     count: 50,
   });
 }
@@ -261,7 +261,7 @@ async function getAMUsers() {
   return callTool('query_entity', {
     entityType: 'CorporateUser',
     where: "isDeleted = false AND enabled = true AND customText1 = 'Account Manager'",
-    fields: 'id,firstName,lastName,customText1',
+    fields: 'id,firstName,lastName,customText1,customDate1,customDate3',
     count: 50,
   });
 }
