@@ -12,7 +12,7 @@ const {
   getRecruitingCommissions,
   getAppointmentsInRange,
   getSalesCommissions,
-  getABJobsInRange,
+  getABJobs,
   getPlacementsForJobs,
 } = require('../lib/bullhorn');
 const { POINTS, EXCLUDED_RECRUITERS } = require('../lib/recruiterConfig');
@@ -123,7 +123,7 @@ router.get('/kpis', async (req, res, next) => {
       getClientSubsInRange(startMs, endMs),
       getPlacementsInRange(startMs, endMs),
       getAppointmentsInRange(startMs, endMs, amIds),
-      getABJobsInRange(startMs, endMs),
+      getABJobs(),
     ]);
 
     const interviews = interviewsRes?.data || [];
@@ -195,21 +195,14 @@ router.get('/kpis', async (req, res, next) => {
     const totalPlacements = placements.length;
     const backoutPct = totalPlacements > 0 ? Math.round((terminated / totalPlacements) * 100) : 0;
 
-    // --- A/B Fill Ratio ---
+    // --- A/B Fill Ratio: fills in date range / total A/B openings ---
     let abFillRatio = null;
     if (abJobs.length > 0) {
       const totalOpenings = abJobs.reduce((sum, j) => sum + (j.numOpenings || 0), 0);
-      const abJobIds = abJobs.map(j => j.id);
-      let abPlacements = 0;
-      if (abJobIds.length > 0) {
-        try {
-          const abPlRes = await getPlacementsForJobs(abJobIds);
-          abPlacements = (abPlRes?.data || []).length;
-        } catch (err) {
-          console.warn('Failed to get A/B placements:', err.message);
-        }
-      }
-      abFillRatio = totalOpenings > 0 ? Math.round((abPlacements / totalOpenings) * 100) : 0;
+      const abJobIdSet = new Set(abJobs.map(j => j.id));
+      // Count placements already in the date range that are on A/B jobs
+      const abFills = placements.filter(p => p.jobOrder?.id && abJobIdSet.has(p.jobOrder.id)).length;
+      abFillRatio = totalOpenings > 0 ? Math.round((abFills / totalOpenings) * 100) : 0;
     }
 
     res.json({

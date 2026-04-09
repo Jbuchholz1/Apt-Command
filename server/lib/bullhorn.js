@@ -343,10 +343,10 @@ async function getClientCorporations(clientIds) {
   });
 }
 
-async function getABJobsInRange(startMs, endMs) {
+async function getABJobs() {
   return callTool('query_entity', {
     entityType: 'JobOrder',
-    where: `dateAdded > ${startMs} AND dateAdded < ${endMs} AND isDeleted = false AND type IN (1,2)`,
+    where: "isDeleted = false AND type IN (1,2)",
     fields: 'id,title,type,status,numOpenings,owner',
     count: 500,
   });
@@ -390,6 +390,6 @@ module.exports = {
   getActivePlacementsWithClient,
   getRecentAppointments,
   getClientCorporations,
-  getABJobsInRange,
+  getABJobs,
   getPlacementsForJobs,
 };
