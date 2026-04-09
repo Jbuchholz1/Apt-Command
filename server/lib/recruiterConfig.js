@@ -29,4 +29,9 @@ function getSpreadGoal(fullName) {
   return TIERS[tier]?.spreadGoal || TIERS[1].spreadGoal;
 }
 
-module.exports = { POINTS, TIERS, RECRUITER_TIERS, getRecruiterTier, getSpreadGoal };
+const BH_BASE = 'https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm';
+function bhLink(entity, id) {
+  return `${BH_BASE}?Entity=${entity}&id=${id}`;
+}
+
+module.exports = { POINTS, TIERS, RECRUITER_TIERS, getRecruiterTier, getSpreadGoal, bhLink };

@@ -218,7 +218,7 @@ async function getClientSubsInRange(startMs, endMs) {
   return callTool('query_entity', {
     entityType: 'JobSubmission',
     where: `dateAdded > ${startMs} AND dateAdded < ${endMs} AND isDeleted = false AND status != 'Internally Submitted'`,
-    fields: 'id,status,sendingUser,dateAdded',
+    fields: 'id,status,sendingUser,dateAdded,jobOrder,candidate',
     orderBy: '-dateAdded',
     count: 500,
   });
@@ -228,7 +228,7 @@ async function getInterviewsInRange(startMs, endMs) {
   return callTool('query_entity', {
     entityType: 'JobSubmission',
     where: `dateAdded > ${startMs} AND dateAdded < ${endMs} AND isDeleted = false AND status = 'Interview Feedback'`,
-    fields: 'id,status,sendingUser,dateAdded',
+    fields: 'id,status,sendingUser,dateAdded,jobOrder,candidate',
     orderBy: '-dateAdded',
     count: 500,
   });
@@ -238,7 +238,7 @@ async function getPlacementsInRange(startMs, endMs) {
   return callTool('query_entity', {
     entityType: 'Placement',
     where: `dateBegin > ${startMs} AND dateBegin < ${endMs} AND status != 'Terminated'`,
-    fields: 'id,candidate,jobOrder,dateBegin,payRate,clientBillRate,owner,status',
+    fields: 'id,candidate,jobOrder,dateBegin,dateEnd,payRate,clientBillRate,owner,status,employeeType',
     orderBy: '-dateBegin',
     count: 200,
   });

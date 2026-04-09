@@ -1,7 +1,7 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ReferenceLine, ResponsiveContainer } from 'recharts';
 import { CHART_COLORS, POINTS } from '../lib/constants';
 
-export default function GoalPointsChart({ recruiters }) {
+export default function GoalPointsChart({ recruiters, goalForRange }) {
   if (!recruiters || recruiters.length === 0) return null;
 
   const data = recruiters.map(r => ({
@@ -27,11 +27,11 @@ export default function GoalPointsChart({ recruiters }) {
           <Tooltip />
           <Legend />
           <ReferenceLine
-            y={POINTS.WEEKLY_TARGET}
+            y={goalForRange || POINTS.WEEKLY_TARGET}
             stroke={CHART_COLORS.goalLine}
             strokeDasharray="6 3"
             strokeWidth={2}
-            label={{ value: `${POINTS.WEEKLY_TARGET} pt target`, position: 'right', fontSize: 11, fill: CHART_COLORS.goalLine }}
+            label={{ value: `${goalForRange || POINTS.WEEKLY_TARGET} pt target`, position: 'right', fontSize: 11, fill: CHART_COLORS.goalLine }}
           />
           <Bar dataKey="Subs Points" stackId="a" fill={CHART_COLORS.subsPoints} radius={[0, 0, 0, 0]} />
           <Bar dataKey="Interview Points" stackId="a" fill={CHART_COLORS.interviewPoints} radius={[0, 0, 0, 0]} />
