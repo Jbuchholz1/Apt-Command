@@ -10,12 +10,10 @@ import DetailTable from './components/DetailTable';
 
 function getDefaultDates() {
   const today = new Date();
-  const day = today.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  const monday = new Date(today);
-  monday.setDate(today.getDate() + diff);
+  const sunday = new Date(today);
+  sunday.setDate(today.getDate() - today.getDay());
   return {
-    start: monday.toISOString().slice(0, 10),
+    start: sunday.toISOString().slice(0, 10),
     end: today.toISOString().slice(0, 10),
   };
 }

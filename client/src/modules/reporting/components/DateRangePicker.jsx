@@ -1,31 +1,30 @@
 export default function DateRangePicker({ startDate, endDate, onStartChange, onEndChange }) {
   const today = new Date();
 
-  const getMonday = (d) => {
+  const getSunday = (d) => {
     const date = new Date(d);
     const day = date.getDay();
-    const diff = day === 0 ? -6 : 1 - day;
-    date.setDate(date.getDate() + diff);
+    date.setDate(date.getDate() - day);
     return date;
   };
 
   const toISO = (d) => d.toISOString().slice(0, 10);
 
   const setThisWeek = () => {
-    const mon = getMonday(today);
-    const sun = new Date(mon);
-    sun.setDate(sun.getDate() + 6);
-    onStartChange(toISO(mon));
-    onEndChange(toISO(sun));
+    const sun = getSunday(today);
+    const sat = new Date(sun);
+    sat.setDate(sun.getDate() + 6);
+    onStartChange(toISO(sun));
+    onEndChange(toISO(sat));
   };
 
   const setLastWeek = () => {
-    const mon = getMonday(today);
-    mon.setDate(mon.getDate() - 7);
-    const sun = new Date(mon);
-    sun.setDate(sun.getDate() + 6);
-    onStartChange(toISO(mon));
-    onEndChange(toISO(sun));
+    const sun = getSunday(today);
+    sun.setDate(sun.getDate() - 7);
+    const sat = new Date(sun);
+    sat.setDate(sun.getDate() + 6);
+    onStartChange(toISO(sun));
+    onEndChange(toISO(sat));
   };
 
   const setThisMonth = () => {
