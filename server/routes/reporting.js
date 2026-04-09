@@ -104,20 +104,20 @@ router.get('/recruiter-dashboard', async (req, res, next) => {
 
     // --- Build detail arrays ---
 
-    // Client subs detail (from JobSubmission, sendingUser = recruiter)
+    // Client subs detail (from Sendout entity, user = recruiter)
     const subsDetail = [];
     for (const sub of subs) {
-      const userId = sub.sendingUser?.id;
+      const userId = sub.user?.id;
       if (userId && metricsMap[userId]) {
         metricsMap[userId].metrics.clientSubs++;
       }
       subsDetail.push({
-        submittedBy: recruiterNames[userId] || `User ${userId}`,
+        submittedBy: recruiterNames[userId] || (sub.user ? `${sub.user.firstName || ''} ${sub.user.lastName || ''}`.trim() : ''),
         jobId: sub.jobOrder?.id || '',
         jobTitle: sub.jobOrder?.title || '',
         jobLink: sub.jobOrder?.id ? bhLink('JobOrder', sub.jobOrder.id) : '',
         dateAdded: formatDate(sub.dateAdded),
-        companyName: sub.jobOrder?.clientCorporation?.name || '',
+        companyName: sub.clientCorporation?.name || '',
         candidateId: sub.candidate?.id || '',
         candidateName: candidateName(sub.candidate),
         candidateLink: sub.candidate?.id ? bhLink('Candidate', sub.candidate.id) : '',

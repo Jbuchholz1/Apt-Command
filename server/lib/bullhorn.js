@@ -216,9 +216,9 @@ async function getRecruiterUsers() {
 
 async function getClientSubsInRange(startMs, endMs) {
   return callTool('query_entity', {
-    entityType: 'JobSubmission',
-    where: `dateAdded > ${startMs} AND dateAdded < ${endMs} AND isDeleted = false AND status != 'Internally Submitted'`,
-    fields: 'id,status,sendingUser,dateAdded,jobOrder,candidate',
+    entityType: 'Sendout',
+    where: `dateAdded > ${startMs} AND dateAdded < ${endMs}`,
+    fields: 'id,user,candidate,jobOrder,dateAdded,clientCorporation',
     orderBy: '-dateAdded',
     count: 500,
   });
