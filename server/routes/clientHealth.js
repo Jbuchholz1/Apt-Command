@@ -160,21 +160,38 @@ router.get('/kpis', async (req, res, next) => {
       });
     }
 
-    // --- Recruiter MAR ---
-    let recruiterMAR = 0;
-    const recruiterInterviews = {};
+    // --- Build name lookups ---
+    const allNames = {};
+    for (const r of recruiters) allNames[r.id] = `${r.firstName} ${r.lastName}`;
+    for (const a of ams) allNames[a.id] = `${a.firstName} ${a.lastName}`;
+
+    // --- Per-person MAR tracking ---
+    const personMAR = {}; // { userId: { name, role, mar } }
+    const initPerson = (id, role) => {
+      if (!personMAR[id]) personMAR[id] = { name: allNames[id] || `User ${id}`, role, mar: 0 };
+    };
+
+    // Recruiter interviews
     for (const iv of interviews) {
       const uid = iv.owner?.id;
-      if (uid && recruiterSet.has(uid)) recruiterInterviews[uid] = (recruiterInterviews[uid] || 0) + 1;
+      if (uid && recruiterSet.has(uid)) {
+        initPerson(uid, 'Recruiter');
+        personMAR[uid].mar += POINTS.INTERVIEW;
+      }
     }
-    const recruiterSubs = {};
+    // Recruiter subs
     for (const s of subs) {
       const uid = s.user?.id;
-      if (uid && recruiterSet.has(uid)) recruiterSubs[uid] = (recruiterSubs[uid] || 0) + 1;
+      if (uid && recruiterSet.has(uid)) {
+        initPerson(uid, 'Recruiter');
+        personMAR[uid].mar += POINTS.CLIENT_SUB;
+      }
     }
 
-    let recruiterStarts = 0;
+    // --- Input detail tracking ---
+    const inputDetails = []; // { placementId, jobTitle, client, empType, input }
     let totalNewInput = 0;
+
     if (placements.length > 0) {
       const pIds = placements.map(p => p.id);
       const [recCommRes, salesCommRes] = await Promise.all([
@@ -183,7 +200,10 @@ router.get('/kpis', async (req, res, next) => {
       ]);
 
       for (const c of (recCommRes?.data || [])) {
-        if (c.user && recruiterSet.has(c.user.id)) recruiterStarts += (c.commissionPercentage || 0);
+        if (c.user && recruiterSet.has(c.user.id)) {
+          initPerson(c.user.id, 'Recruiter');
+          personMAR[c.user.id].mar += (c.commissionPercentage || 0) * POINTS.START;
+        }
       }
 
       for (const c of (salesCommRes?.data || [])) {
@@ -198,48 +218,84 @@ router.get('/kpis', async (req, res, next) => {
           if (empType === 'perm' && sal > 0 && feeRate > 0) spread = sal * feeRate / 26;
           else if (empType === 'corp-to-corp' && bill > 0 && pay > 0) spread = (bill - pay * 1.05) * 40;
           else if (bill > 0 && pay > 0) spread = (bill - pay * 1.25) * 40;
-          totalNewInput += spread * (c.commissionPercentage || 1);
+          const input = Math.round(spread * (c.commissionPercentage || 1) * 100) / 100;
+          totalNewInput += input;
+          inputDetails.push({
+            placementId: p.id,
+            jobTitle: p.jobOrder?.title || '',
+            client: p.jobOrder?.clientCorporation?.name || '',
+            empType: p.employeeType || '',
+            am: allNames[c.user?.id] || '',
+            input,
+          });
         }
       }
     }
 
-    for (const uid of recruiterIds) {
-      recruiterMAR += ((recruiterSubs[uid] || 0) * POINTS.CLIENT_SUB) + ((recruiterInterviews[uid] || 0) * POINTS.INTERVIEW);
-    }
-    recruiterMAR += recruiterStarts * POINTS.START;
-
     // --- AM MAR ---
-    let amMAR = 0;
+    const amMARbyPerson = {};
     for (const appt of appointments) {
+      const uid = appt.owner?.id;
       const type = appt.type || '';
-      if (SALES_POINTS[type] !== undefined) amMAR += SALES_POINTS[type];
+      if (uid && SALES_POINTS[type] !== undefined) {
+        initPerson(uid, 'Account Manager');
+        personMAR[uid].mar += SALES_POINTS[type];
+      }
     }
 
-    const totalMAR = Math.round((recruiterMAR + amMAR) * 100) / 100;
+    // Round all MAR values
+    const marDetails = Object.values(personMAR).map(p => ({
+      ...p, mar: Math.round(p.mar * 100) / 100,
+    })).sort((a, b) => b.mar - a.mar);
+
+    const totalMAR = Math.round(marDetails.reduce((s, p) => s + p.mar, 0) * 100) / 100;
     totalNewInput = Math.round(totalNewInput * 100) / 100;
 
     // --- Backout % ---
-    const terminated = placements.filter(p => (Array.isArray(p.status) ? p.status[0] : p.status || '').toLowerCase() === 'terminated').length;
+    const terminatedList = placements.filter(p => (Array.isArray(p.status) ? p.status[0] : p.status || '').toLowerCase() === 'terminated');
     const totalPlacements = placements.length;
-    const backoutPct = totalPlacements > 0 ? Math.round((terminated / totalPlacements) * 100) : 0;
+    const backoutPct = totalPlacements > 0 ? Math.round((terminatedList.length / totalPlacements) * 100) : 0;
+    const backoutDetails = terminatedList.map(p => ({
+      placementId: p.id,
+      jobTitle: p.jobOrder?.title || '',
+      client: p.jobOrder?.clientCorporation?.name || '',
+      candidate: p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '',
+    }));
 
-    // --- A/B Fill Ratio: fills in date range / total A/B openings ---
+    // --- A/B Fill Ratio ---
     let abFillRatio = null;
+    const fillDetails = [];
     if (abJobs.length > 0) {
       const totalOpenings = abJobs.reduce((sum, j) => sum + (j.numOpenings || 0), 0);
       const abJobIdSet = new Set(abJobs.map(j => j.id));
-      // Count placements already in the date range that are on A/B jobs
       const abFills = placements.filter(p => p.jobOrder?.id && abJobIdSet.has(p.jobOrder.id)).length;
       abFillRatio = totalOpenings > 0 ? Math.round((abFills / totalOpenings) * 100) : 0;
+
+      // Per-job detail
+      const fillsByJob = {};
+      for (const p of placements) {
+        const jId = p.jobOrder?.id;
+        if (jId && abJobIdSet.has(jId)) fillsByJob[jId] = (fillsByJob[jId] || 0) + 1;
+      }
+      for (const j of abJobs) {
+        fillDetails.push({
+          jobId: j.id,
+          title: j.title || '',
+          priority: j.type === 1 ? 'A' : 'B',
+          openings: j.numOpenings || 0,
+          fills: fillsByJob[j.id] || 0,
+        });
+      }
+      fillDetails.sort((a, b) => (b.fills / (b.openings || 1)) - (a.fills / (a.openings || 1)));
     }
 
     res.json({
       rangeLabel,
       gauges: [
-        { label: 'MAR Total', value: totalMAR, target: 1885, format: 'number' },
-        { label: 'Input', value: totalNewInput, target: 40000, format: 'currency' },
-        { label: 'A/B Fill Ratio - Staffing', value: abFillRatio, target: 60, format: 'percent' },
-        { label: 'Backout %', value: backoutPct, target: 10, format: 'percent', invert: true },
+        { label: 'MAR Total', value: totalMAR, target: 1885, format: 'number', details: marDetails },
+        { label: 'Input', value: totalNewInput, target: 40000, format: 'currency', details: inputDetails },
+        { label: 'A/B Fill Ratio - Staffing', value: abFillRatio, target: 60, format: 'percent', details: fillDetails },
+        { label: 'Backout %', value: backoutPct, target: 10, format: 'percent', invert: true, details: backoutDetails },
         { label: 'Fill Ratio - Project', value: null, target: 60, format: 'number', placeholder: true },
       ],
     });

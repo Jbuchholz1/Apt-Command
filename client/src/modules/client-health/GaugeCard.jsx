@@ -13,7 +13,7 @@ function formatValue(value, format) {
   return Number(value).toLocaleString('en-US');
 }
 
-export default function GaugeCard({ label, value, target, format, invert, placeholder }) {
+export default function GaugeCard({ label, value, target, format, invert, placeholder, details, onClick }) {
   const pct = (value !== null && target > 0) ? Math.min((value / target) * 100, 100) : 0;
   const color = placeholder ? '#e2e8f0' : getColor(pct, invert);
 
@@ -37,7 +37,7 @@ export default function GaugeCard({ label, value, target, format, invert, placeh
   const ny = cy + needleLen * Math.sin(needleAngle);
 
   return (
-    <div className="gauge-card">
+    <div className={`gauge-card ${details?.length ? 'gauge-clickable' : ''}`} onClick={() => details?.length && onClick?.(label, details)}>
       <div className="gauge-header">
         <span className="gauge-label">{label}</span>
         <span className="gauge-target">Target: {format === 'currency' ? `$${target.toLocaleString()}` : format === 'percent' ? `${target}%` : target.toLocaleString()}</span>

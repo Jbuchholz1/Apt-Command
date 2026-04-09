@@ -56,6 +56,7 @@ export default function ClientHealthModule() {
   const [endDate, setEndDate] = useState(defaults.end);
   const [data, setData] = useState(null);
   const [kpis, setKpis] = useState(null);
+  const [gaugeModal, setGaugeModal] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({ clients: [], owners: [] });
@@ -185,7 +186,7 @@ export default function ClientHealthModule() {
       {kpis && (
         <div className="kpi-gauges">
           {kpis.gauges.map((g, i) => (
-            <GaugeCard key={i} {...g} />
+            <GaugeCard key={i} {...g} onClick={(label, details) => setGaugeModal({ label, details })} />
           ))}
           <div className="kpi-quarter">{kpis.quarter}</div>
         </div>
@@ -252,6 +253,41 @@ export default function ClientHealthModule() {
               )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Gauge Detail Modal */}
+      {gaugeModal && (
+        <div className="gauge-modal-overlay" onClick={() => setGaugeModal(null)}>
+          <div className="gauge-modal" onClick={e => e.stopPropagation()}>
+            <div className="gauge-modal-header">
+              <h3>{gaugeModal.label}</h3>
+              <button className="modal-close" onClick={() => setGaugeModal(null)}>&times;</button>
+            </div>
+            <div className="gauge-modal-body">
+              <table className="gauge-modal-table">
+                <thead>
+                  <tr>
+                    {gaugeModal.label === 'MAR Total' && <><th>Person</th><th>Role</th><th>MAR</th></>}
+                    {gaugeModal.label === 'Input' && <><th>Job</th><th>Client</th><th>Type</th><th>AM</th><th>Input</th></>}
+                    {gaugeModal.label.includes('Fill Ratio') && <><th>Job</th><th>Priority</th><th>Openings</th><th>Fills</th></>}
+                    {gaugeModal.label === 'Backout %' && <><th>Placement</th><th>Job</th><th>Client</th><th>Candidate</th></>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {gaugeModal.details.map((r, i) => (
+                    <tr key={i}>
+                      {gaugeModal.label === 'MAR Total' && <><td>{r.name}</td><td>{r.role}</td><td className="ch-num">{r.mar}</td></>}
+                      {gaugeModal.label === 'Input' && <><td>{r.jobTitle}</td><td>{r.client}</td><td>{r.empType}</td><td>{r.am}</td><td className="ch-num">${Number(r.input).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td></>}
+                      {gaugeModal.label.includes('Fill Ratio') && <><td>{r.title}</td><td>{r.priority}</td><td className="ch-num">{r.openings}</td><td className="ch-num">{r.fills}</td></>}
+                      {gaugeModal.label === 'Backout %' && <><td>{r.placementId}</td><td>{r.jobTitle}</td><td>{r.client}</td><td>{r.candidate}</td></>}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="gauge-modal-count">{gaugeModal.details.length} record{gaugeModal.details.length !== 1 ? 's' : ''}</p>
+            </div>
+          </div>
         </div>
       )}
     </div>

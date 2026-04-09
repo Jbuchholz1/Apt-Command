@@ -81,6 +81,40 @@
   margin-top: 2px;
 }
 
+.gauge-clickable { cursor: pointer; transition: all 0.15s; }
+.gauge-clickable:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); transform: translateY(-2px); }
+
+/* ---- Gauge Detail Modal ---- */
+.gauge-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+}
+.gauge-modal {
+  background: #fff; border-radius: 8px; max-height: 80vh; width: 90%; max-width: 800px;
+  overflow: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.gauge-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; background: #fff; z-index: 1;
+}
+.gauge-modal-header h3 { margin: 0; font-size: 15px; color: var(--navy); }
+.gauge-modal-body { padding: 0; }
+.gauge-modal-table {
+  width: 100%; border-collapse: collapse; font-size: 12px;
+}
+.gauge-modal-table th {
+  background: var(--navy); color: #fff; padding: 8px 12px; text-align: left;
+  font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+  position: sticky; top: 53px;
+}
+.gauge-modal-table td { padding: 7px 12px; border-bottom: 1px solid var(--border); }
+.gauge-modal-table tbody tr:hover { background: #f8fafc; }
+.gauge-modal-count {
+  padding: 10px 20px; font-size: 11px; color: var(--text-muted);
+  margin: 0; border-top: 1px solid var(--border);
+}
+
 .ch-toolbar-right {
   display: flex;
   align-items: center;
