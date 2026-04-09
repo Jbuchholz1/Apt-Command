@@ -5,13 +5,13 @@ const {
   getClientSubsInRange,
   getInterviewsInRange,
   getPlacementsInRange,
+  getPlacedSubmissions,
 } = require('../lib/bullhorn');
 const { POINTS, getRecruiterTier, getSpreadGoal, bhLink } = require('../lib/recruiterConfig');
 
 function formatDate(ms) {
   if (!ms) return '';
-  const d = new Date(ms);
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
+  return new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
 }
 
 function formatISO(ms) {
@@ -46,7 +46,7 @@ router.get('/recruiter-dashboard', async (req, res, next) => {
     const weeks = Math.max(1, Math.ceil(diffMs / (7 * 24 * 60 * 60 * 1000)));
     const goalForRange = weeks * POINTS.WEEKLY_TARGET;
 
-    // Fire all 4 Bullhorn queries in parallel
+    // Fire 4 parallel Bullhorn queries
     const [recruitersRes, subsRes, interviewsRes, placementsRes] = await Promise.all([
       getRecruiterUsers(),
       getClientSubsInRange(startMs, endMs),
@@ -58,6 +58,29 @@ router.get('/recruiter-dashboard', async (req, res, next) => {
     const subs = subsRes?.data || [];
     const interviews = interviewsRes?.data || [];
     const placements = placementsRes?.data || [];
+
+    // For placements, look up the submitting recruiter via JobSubmission
+    let placementRecruiterMap = {}; // placementId → recruiter name & id
+    if (placements.length > 0) {
+      const candIds = placements.map(p => p.candidate?.id).filter(Boolean);
+      const jobIds = placements.map(p => p.jobOrder?.id).filter(Boolean);
+      try {
+        const subRes = await getPlacedSubmissions(candIds, jobIds);
+        const submissions = subRes?.data || [];
+        // Map candidate+job → sendingUser
+        for (const s of submissions) {
+          const key = `${s.candidate?.id}-${s.jobOrder?.id}`;
+          if (s.sendingUser) {
+            placementRecruiterMap[key] = {
+              id: s.sendingUser.id,
+              name: `${s.sendingUser.firstName || ''} ${s.sendingUser.lastName || ''}`.trim(),
+            };
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to look up placement submissions:', err.message);
+      }
+    }
 
     // Build recruiter name lookup
     const recruiterNames = {};
@@ -81,7 +104,7 @@ router.get('/recruiter-dashboard', async (req, res, next) => {
 
     // --- Build detail arrays ---
 
-    // Client subs detail
+    // Client subs detail (from JobSubmission, sendingUser = recruiter)
     const subsDetail = [];
     for (const sub of subs) {
       const userId = sub.sendingUser?.id;
@@ -102,33 +125,38 @@ router.get('/recruiter-dashboard', async (req, res, next) => {
       });
     }
 
-    // Interviews detail
+    // Interviews detail (from Appointment where type=Interview, owner = recruiter)
     const interviewsDetail = [];
     for (const iv of interviews) {
-      const userId = iv.sendingUser?.id;
+      const userId = iv.owner?.id;
       if (userId && metricsMap[userId]) {
         metricsMap[userId].metrics.interviews++;
       }
       interviewsDetail.push({
-        recruiter: recruiterNames[userId] || `User ${userId}`,
-        dateAdded: formatDate(iv.dateAdded),
+        recruiter: recruiterNames[userId] || (iv.owner ? `${iv.owner.firstName || ''} ${iv.owner.lastName || ''}`.trim() : ''),
+        dateAdded: formatDate(iv.dateBegin),
         jobId: iv.jobOrder?.id || '',
         jobTitle: iv.jobOrder?.title || '',
         jobLink: iv.jobOrder?.id ? bhLink('JobOrder', iv.jobOrder.id) : '',
-        candidateId: iv.candidate?.id || '',
-        candidateName: candidateName(iv.candidate),
-        candidateLink: iv.candidate?.id ? bhLink('Candidate', iv.candidate.id) : '',
+        candidateId: iv.candidateReference?.id || '',
+        candidateName: candidateName(iv.candidateReference),
+        candidateLink: iv.candidateReference?.id ? bhLink('Candidate', iv.candidateReference.id) : '',
         recruiterId: userId,
       });
     }
 
-    // Starts + New Input detail
+    // Starts + New Input detail (from Placement, recruiter = submission sendingUser)
     const startsDetail = [];
     const newInputDetail = [];
     for (const p of placements) {
-      const userId = p.owner?.id;
-      if (userId && metricsMap[userId]) {
-        metricsMap[userId].metrics.starts++;
+      // Look up recruiter from the submission that led to this placement
+      const subKey = `${p.candidate?.id}-${p.jobOrder?.id}`;
+      const recruiter = placementRecruiterMap[subKey];
+      const recruiterId = recruiter?.id;
+      const recruiterName = recruiter?.name || '';
+
+      if (recruiterId && metricsMap[recruiterId]) {
+        metricsMap[recruiterId].metrics.starts++;
       }
 
       const bill = Number(p.clientBillRate) || 0;
@@ -136,8 +164,8 @@ router.get('/recruiter-dashboard', async (req, res, next) => {
       let spread = 0;
       if (bill > 0 && pay > 0) {
         spread = Math.round(((bill - pay) * 1.25) * 40 * 100) / 100;
-        if (userId && metricsMap[userId]) {
-          metricsMap[userId].metrics.newInput += spread;
+        if (recruiterId && metricsMap[recruiterId]) {
+          metricsMap[recruiterId].metrics.newInput += spread;
         }
       }
 
@@ -147,7 +175,7 @@ router.get('/recruiter-dashboard', async (req, res, next) => {
       const daysBetween = (beginMs && endMs2) ? Math.round((endMs2 - beginMs) / (1000 * 60 * 60 * 24) / 7) : '';
 
       startsDetail.push({
-        recruiter: recruiterNames[userId] || `User ${userId}`,
+        recruiter: recruiterName,
         placementId: p.id,
         placementLink: bhLink('Placement', p.id),
         client,
@@ -156,11 +184,11 @@ router.get('/recruiter-dashboard', async (req, res, next) => {
         candidateLink: p.candidate?.id ? bhLink('Candidate', p.candidate.id) : '',
         guarantee: endMs2 ? formatISO(endMs2) : 'Yes',
         date: formatDate(beginMs),
-        recruiterId: userId,
+        recruiterId,
       });
 
       newInputDetail.push({
-        recruiter: recruiterNames[userId] || `User ${userId}`,
+        recruiter: recruiterName,
         placementId: p.id,
         placementLink: bhLink('Placement', p.id),
         employeeType: p.employeeType || '',
@@ -170,7 +198,7 @@ router.get('/recruiter-dashboard', async (req, res, next) => {
         daysBetween,
         guarantee: endMs2 ? formatISO(endMs2) : 'Yes',
         newInput: spread,
-        recruiterId: userId,
+        recruiterId,
         client,
       });
     }

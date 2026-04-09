@@ -226,10 +226,10 @@ async function getClientSubsInRange(startMs, endMs) {
 
 async function getInterviewsInRange(startMs, endMs) {
   return callTool('query_entity', {
-    entityType: 'JobSubmission',
-    where: `dateAdded > ${startMs} AND dateAdded < ${endMs} AND isDeleted = false AND status = 'Interview Feedback'`,
-    fields: 'id,status,sendingUser,dateAdded,jobOrder,candidate',
-    orderBy: '-dateAdded',
+    entityType: 'Appointment',
+    where: `dateBegin > ${startMs} AND dateBegin < ${endMs} AND isDeleted = false AND type = 'Interview'`,
+    fields: 'id,type,dateBegin,owner,candidateReference,jobOrder,subject',
+    orderBy: '-dateBegin',
     count: 500,
   });
 }
@@ -237,10 +237,22 @@ async function getInterviewsInRange(startMs, endMs) {
 async function getPlacementsInRange(startMs, endMs) {
   return callTool('query_entity', {
     entityType: 'Placement',
-    where: `dateBegin > ${startMs} AND dateBegin < ${endMs} AND status != 'Terminated'`,
+    where: `dateBegin > ${startMs} AND dateBegin < ${endMs}`,
     fields: 'id,candidate,jobOrder,dateBegin,dateEnd,payRate,clientBillRate,owner,status,employeeType',
     orderBy: '-dateBegin',
     count: 200,
+  });
+}
+
+async function getPlacedSubmissions(candidateIds, jobOrderIds) {
+  if (!candidateIds.length) return { data: [] };
+  const pairs = candidateIds.map((cId, i) => `(candidate.id = ${cId} AND jobOrder.id = ${jobOrderIds[i]})`);
+  const where = `(${pairs.join(' OR ')}) AND isDeleted = false`;
+  return callTool('query_entity', {
+    entityType: 'JobSubmission',
+    where,
+    fields: 'id,sendingUser,candidate,jobOrder,status,dateAdded',
+    count: 500,
   });
 }
 
@@ -262,4 +274,5 @@ module.exports = {
   getClientSubsInRange,
   getInterviewsInRange,
   getPlacementsInRange,
+  getPlacedSubmissions,
 };

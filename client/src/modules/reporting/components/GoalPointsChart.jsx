@@ -1,22 +1,22 @@
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ReferenceLine, ResponsiveContainer } from 'recharts';
-import { CHART_COLORS, POINTS } from '../lib/constants';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { CHART_COLORS } from '../lib/constants';
 
 export default function GoalPointsChart({ recruiters, goalForRange }) {
   if (!recruiters || recruiters.length === 0) return null;
 
+  const goal = goalForRange || 26;
+
   const data = recruiters.map(r => ({
     name: r.name,
-    'Subs Points': r.points.subsPoints,
-    'Interview Points': r.points.interviewPoints,
-    'Starts Points': r.points.startsPoints,
-    total: r.points.total,
+    'MAR Points': r.points.total,
+    'Goal': goal,
   }));
 
   return (
     <div className="chart-section">
-      <h3 className="section-title">Goal Points Tracking</h3>
+      <h3 className="section-title">MAR Tracking</h3>
       <ResponsiveContainer width="100%" height={320}>
-        <BarChart data={data} margin={{ top: 10, right: 20, bottom: 30, left: 20 }}>
+        <BarChart data={data} barGap={4} margin={{ top: 10, right: 20, bottom: 30, left: 20 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
           <XAxis
             dataKey="name"
@@ -26,16 +26,8 @@ export default function GoalPointsChart({ recruiters, goalForRange }) {
           <YAxis tick={{ fontSize: 11 }} />
           <Tooltip />
           <Legend />
-          <ReferenceLine
-            y={goalForRange || POINTS.WEEKLY_TARGET}
-            stroke={CHART_COLORS.goalLine}
-            strokeDasharray="6 3"
-            strokeWidth={2}
-            label={{ value: `${goalForRange || POINTS.WEEKLY_TARGET} pt target`, position: 'right', fontSize: 11, fill: CHART_COLORS.goalLine }}
-          />
-          <Bar dataKey="Subs Points" stackId="a" fill={CHART_COLORS.subsPoints} radius={[0, 0, 0, 0]} />
-          <Bar dataKey="Interview Points" stackId="a" fill={CHART_COLORS.interviewPoints} radius={[0, 0, 0, 0]} />
-          <Bar dataKey="Starts Points" stackId="a" fill={CHART_COLORS.startsPoints} radius={[3, 3, 0, 0]} />
+          <Bar dataKey="Goal" fill={CHART_COLORS.navy} radius={[3, 3, 0, 0]} />
+          <Bar dataKey="MAR Points" fill={CHART_COLORS.gold} radius={[3, 3, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>
