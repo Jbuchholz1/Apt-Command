@@ -21,8 +21,8 @@ const modules = [
   },
   {
     id: 'pipeline',
-    title: 'Candidate Pipeline',
-    description: 'Follow candidates through sourcing, submission, interview, and placement stages.',
+    title: 'Opportunity Pipeline',
+    description: 'Track opportunities through sourcing, submission, interview, and placement stages.',
     icon: '\u{1F465}',
     path: '/pipeline',
     status: 'coming-soon',
@@ -44,6 +44,14 @@ const modules = [
     path: '/reporting',
     status: 'active',
     underConstruction: true,
+  },
+  {
+    id: 'performance',
+    title: 'Individual Performance',
+    description: 'Personal dashboards, goal tracking, and performance metrics for each team member.',
+    icon: '\u{1F3AF}',
+    path: '/performance',
+    status: 'coming-soon',
   },
 ];
 
