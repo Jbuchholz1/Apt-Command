@@ -346,7 +346,7 @@ async function getClientCorporations(clientIds) {
 async function getABJobs(startMs, endMs) {
   let where = "isDeleted = false AND type IN (1,2)";
   if (startMs && endMs) {
-    where += ` AND dateClosed > ${startMs} AND dateClosed < ${endMs}`;
+    where += ` AND customDate1 > ${startMs} AND customDate1 < ${endMs}`;
   }
   return callTool('query_entity', {
     entityType: 'JobOrder',
