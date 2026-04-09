@@ -131,8 +131,11 @@ export function getClientHealth(startDate, endDate) {
   return fetchAPI(`/api/client-health${params}`);
 }
 
-export function getCompanyKPIs(startDate, endDate) {
-  const params = startDate && endDate ? `?start=${startDate}&end=${endDate}` : '';
+export function getCompanyKPIs(startDate, endDate, clientIds) {
+  let params = startDate && endDate ? `?start=${startDate}&end=${endDate}` : '';
+  if (clientIds && clientIds.length > 0) {
+    params += `${params ? '&' : '?'}clientIds=${clientIds.join(',')}`;
+  }
   return fetchAPI(`/api/client-health/kpis${params}`);
 }
 

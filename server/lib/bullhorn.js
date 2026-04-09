@@ -228,7 +228,7 @@ async function getInterviewsInRange(startMs, endMs) {
   return callTool('query_entity', {
     entityType: 'Appointment',
     where: `dateBegin > ${startMs} AND dateBegin < ${endMs} AND isDeleted = false AND type = 'Interview'`,
-    fields: 'id,type,dateBegin,owner,candidateReference,jobOrder,subject',
+    fields: 'id,type,dateBegin,owner,candidateReference,jobOrder(id,title,clientCorporation),subject',
     orderBy: '-dateBegin',
     count: 500,
   });
@@ -238,7 +238,7 @@ async function getPlacementsInRange(startMs, endMs) {
   return callTool('query_entity', {
     entityType: 'Placement',
     where: `dateBegin > ${startMs} AND dateBegin < ${endMs} AND status = 'Approved'`,
-    fields: 'id,candidate,jobOrder,dateBegin,dateEnd,payRate,clientBillRate,salary,fee,owner,status,employeeType',
+    fields: 'id,candidate,jobOrder(id,title,clientCorporation),dateBegin,dateEnd,payRate,clientBillRate,salary,fee,owner,status,employeeType',
     orderBy: '-dateBegin',
     count: 200,
   });
@@ -347,7 +347,7 @@ async function getABJobs() {
   return callTool('query_entity', {
     entityType: 'JobOrder',
     where: "isDeleted = false AND type IN (1,2)",
-    fields: 'id,title,type,status,numOpenings,owner',
+    fields: 'id,title,type,status,numOpenings,owner,clientCorporation',
     count: 500,
   });
 }

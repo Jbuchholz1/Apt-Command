@@ -82,6 +82,25 @@ export default function ClientHealthModule() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  // Refetch KPIs when health filter changes to scope to those clients
+  useEffect(() => {
+    if (!data?.clients) return;
+    const filteredClients = healthFilter
+      ? data.clients.filter(c => c.health === healthFilter)
+      : data.clients;
+    // Apply client/owner filters too
+    const scopedClients = filteredClients.filter(c => {
+      if (filters.clients.length && !filters.clients.includes(c.name)) return false;
+      if (filters.owners.length && !c.owners.some(o => filters.owners.includes(o))) return false;
+      return true;
+    });
+    const ids = scopedClients.map(c => c.id);
+    const needsFilter = healthFilter || filters.clients.length > 0 || filters.owners.length > 0;
+    getCompanyKPIs(startDate, endDate, needsFilter ? ids : null)
+      .then(setKpis)
+      .catch(() => {});
+  }, [healthFilter, filters, data, startDate, endDate]);
+
   const clientOptions = useMemo(() => {
     if (!data?.clients) return [];
     return [...new Set(data.clients.map(c => c.name))].sort();

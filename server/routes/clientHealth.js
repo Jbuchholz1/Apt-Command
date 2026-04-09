@@ -111,6 +111,10 @@ router.get('/kpis', async (req, res, next) => {
       rangeLabel = `Q${Math.floor(qMonth / 3) + 1} ${now.getFullYear()}`;
     }
 
+    // Optional client filter
+    const clientIdParam = req.query.clientIds;
+    const clientIdFilter = clientIdParam ? new Set(clientIdParam.split(',').map(Number)) : null;
+
     const [recruiterRes, amRes] = await Promise.all([getRecruiterUsers(), getAMUsers()]);
     const recruiters = (recruiterRes?.data || []).filter(r => !EXCLUDED_RECRUITERS.has(`${r.firstName} ${r.lastName}`));
     const ams = (amRes?.data || []).filter(a => !EXCLUDED_AMS.has(`${a.firstName} ${a.lastName}`));
@@ -126,11 +130,35 @@ router.get('/kpis', async (req, res, next) => {
       getABJobs(),
     ]);
 
-    const interviews = interviewsRes?.data || [];
-    const subs = subsRes?.data || [];
-    const placements = placementsRes?.data || [];
-    const appointments = appointmentsRes?.data || [];
-    const abJobs = abJobsRes?.data || [];
+    let interviews = interviewsRes?.data || [];
+    let subs = subsRes?.data || [];
+    let placements = placementsRes?.data || [];
+    let appointments = appointmentsRes?.data || [];
+    let abJobs = abJobsRes?.data || [];
+
+    // Filter by client if specified
+    if (clientIdFilter) {
+      interviews = interviews.filter(iv => {
+        const cId = iv.jobOrder?.clientCorporation?.id;
+        return cId && clientIdFilter.has(cId);
+      });
+      subs = subs.filter(s => {
+        const cId = s.clientCorporation?.id || s.jobOrder?.clientCorporation?.id;
+        return cId && clientIdFilter.has(cId);
+      });
+      placements = placements.filter(p => {
+        const cId = p.jobOrder?.clientCorporation?.id;
+        return cId && clientIdFilter.has(cId);
+      });
+      appointments = appointments.filter(a => {
+        const cId = a.clientContactReference?.clientCorporation?.id || a.jobOrder?.clientCorporation?.id;
+        return cId && clientIdFilter.has(cId);
+      });
+      abJobs = abJobs.filter(j => {
+        const cId = j.clientCorporation?.id;
+        return cId && clientIdFilter.has(cId);
+      });
+    }
 
     // --- Recruiter MAR ---
     let recruiterMAR = 0;
