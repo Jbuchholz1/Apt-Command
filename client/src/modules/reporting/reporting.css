@@ -294,6 +294,48 @@
   font-size: 12px;
 }
 
+/* ---- Sales Layout ---- */
+.sales-layout {
+  padding: 20px 24px;
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.sales-layout .metrics-table-wrap {
+  flex: 1;
+  padding: 0;
+  overflow-x: auto;
+}
+
+.sales-layout .bonus-chart {
+  min-width: 350px;
+  max-width: 450px;
+}
+
+.job-metric-row td {
+  background: rgba(0, 200, 200, 0.08);
+}
+
+.activity-row td {
+  background: rgba(100, 100, 200, 0.05);
+}
+
+.input-row td {
+  background: rgba(0, 180, 80, 0.08);
+  font-weight: 600;
+}
+
+@media (max-width: 1200px) {
+  .sales-layout {
+    flex-direction: column;
+  }
+  .sales-layout .bonus-chart {
+    max-width: 100%;
+    min-width: auto;
+  }
+}
+
 /* ---- Dashboard Filters ---- */
 .dashboard-filters {
   background: var(--surface);

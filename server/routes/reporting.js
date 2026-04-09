@@ -6,8 +6,14 @@ const {
   getInterviewsInRange,
   getPlacementsInRange,
   getRecruitingCommissions,
+  getAMUsers,
+  getAppointmentsInRange,
+  getNewJobsInRange,
+  getClosedJobsInRange,
+  getSalesCommissions,
 } = require('../lib/bullhorn');
 const { POINTS, getRecruiterTier, getSpreadGoal, bhLink } = require('../lib/recruiterConfig');
+const { SALES_POINTS, ACTIVITY_LABELS, ACTIVITY_ORDER, getAMTier, getAMSpreadGoal } = require('../lib/salesConfig');
 
 function formatDate(ms) {
   if (!ms) return '';
@@ -249,6 +255,167 @@ router.get('/recruiter-dashboard', async (req, res, next) => {
         starts: startsDetail,
         newInput: newInputDetail,
       },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/reporting/sales-dashboard?start=2026-04-01&end=2026-04-09
+router.get('/sales-dashboard', async (req, res, next) => {
+  try {
+    const { start, end } = req.query;
+    if (!start || !end) {
+      return res.status(400).json({ error: 'start and end query params required (ISO date)' });
+    }
+
+    const startMs = new Date(start).getTime();
+    const endDate = new Date(end);
+    endDate.setHours(23, 59, 59, 999);
+    const endMs = endDate.getTime();
+
+    if (isNaN(startMs) || isNaN(endMs)) {
+      return res.status(400).json({ error: 'Invalid date format' });
+    }
+
+    // Fire parallel queries
+    const [amRes, apptRes, newJobsRes, closedJobsRes, placementsRes] = await Promise.all([
+      getAMUsers(),
+      getAppointmentsInRange(startMs, endMs),
+      getNewJobsInRange(startMs, endMs),
+      getClosedJobsInRange(startMs, endMs),
+      getPlacementsInRange(startMs, endMs),
+    ]);
+
+    const ams = amRes?.data || [];
+    const appointments = apptRes?.data || [];
+    const newJobs = newJobsRes?.data || [];
+    const closedJobs = closedJobsRes?.data || [];
+    const placements = placementsRes?.data || [];
+
+    // Sales commissions for placements
+    let salesCommMap = {};
+    if (placements.length > 0) {
+      try {
+        const commRes = await getSalesCommissions(placements.map(p => p.id));
+        for (const c of (commRes?.data || [])) {
+          const pId = c.placement?.id;
+          if (pId && c.user) {
+            salesCommMap[pId] = {
+              id: c.user.id,
+              name: `${c.user.firstName || ''} ${c.user.lastName || ''}`.trim(),
+              percentage: c.commissionPercentage || 1,
+            };
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to look up sales commissions:', err.message);
+      }
+    }
+
+    // AM name lookup and metrics map
+    const amNames = {};
+    const amIds = new Set();
+    const metricsMap = {};
+    for (const am of ams) {
+      const name = `${am.firstName} ${am.lastName}`;
+      amNames[am.id] = name;
+      amIds.add(am.id);
+      metricsMap[am.id] = {
+        id: am.id,
+        name,
+        tier: getAMTier(name),
+        spreadGoal: getAMSpreadGoal(name),
+        jobMetrics: { newReqs: 0, openings: 0, closedReqs: 0, fills: 0, losses: 0, washed: 0, newPlacements: 0 },
+        activities: {},
+        activityCount: 0,
+        noteActivity: 0,
+        mar: 0,
+        newInput: 0,
+      };
+      // Initialize all activity types to 0
+      for (const type of ACTIVITY_ORDER) {
+        metricsMap[am.id].activities[type] = { raw: 0, points: 0 };
+      }
+    }
+
+    // --- Job metrics ---
+    for (const job of newJobs) {
+      const ownerId = job.owner?.id;
+      if (ownerId && metricsMap[ownerId]) {
+        metricsMap[ownerId].jobMetrics.newReqs++;
+        metricsMap[ownerId].jobMetrics.openings += (job.numOpenings || 0);
+      }
+    }
+
+    for (const job of closedJobs) {
+      const ownerId = job.owner?.id;
+      if (ownerId && metricsMap[ownerId]) {
+        const status = (job.status || '').toLowerCase();
+        if (status === 'filled') metricsMap[ownerId].jobMetrics.fills++;
+        else if (status === 'lost') metricsMap[ownerId].jobMetrics.losses++;
+        else if (status === 'wash') metricsMap[ownerId].jobMetrics.washed++;
+        metricsMap[ownerId].jobMetrics.closedReqs++;
+      }
+    }
+
+    // --- Placements (New Placements + New Input) ---
+    for (const p of placements) {
+      const comm = salesCommMap[p.id];
+      const amId = comm?.id;
+      if (amId && metricsMap[amId]) {
+        metricsMap[amId].jobMetrics.newPlacements++;
+
+        const bill = Number(p.clientBillRate) || 0;
+        const pay = Number(p.payRate) || 0;
+        const sal = Number(p.salary) || 0;
+        const feeRate = Number(p.fee) || 0;
+        const empType = (p.employeeType || '').toLowerCase();
+        let spread = 0;
+
+        if (empType === 'perm' && sal > 0 && feeRate > 0) {
+          spread = Math.round((sal * feeRate / 26) * 100) / 100;
+        } else if (empType === 'corp-to-corp' && bill > 0 && pay > 0) {
+          spread = Math.round((bill - pay * 1.05) * 10 * 100) / 100;
+        } else if (bill > 0 && pay > 0) {
+          spread = Math.round((bill - pay * 1.25) * 40 * 100) / 100;
+        }
+
+        if (spread > 0) {
+          metricsMap[amId].newInput += spread;
+        }
+      }
+    }
+
+    // --- Appointments (activity points) ---
+    for (const appt of appointments) {
+      const ownerId = appt.owner?.id;
+      const type = appt.type || '';
+      if (ownerId && metricsMap[ownerId] && SALES_POINTS[type] !== undefined) {
+        metricsMap[ownerId].activities[type].raw++;
+        metricsMap[ownerId].activities[type].points += SALES_POINTS[type];
+        metricsMap[ownerId].activityCount++;
+      }
+    }
+
+    // --- Calculate MAR and build response ---
+    const amList = Object.values(metricsMap).map(am => {
+      let mar = 0;
+      const activityPoints = {};
+      for (const type of ACTIVITY_ORDER) {
+        const pts = Math.round(am.activities[type].points * 100) / 100;
+        activityPoints[ACTIVITY_LABELS[type] || type] = pts;
+        mar += pts;
+      }
+      am.mar = Math.round(mar * 100) / 100;
+      am.newInput = Math.round(am.newInput * 100) / 100;
+      am.activityPoints = activityPoints;
+      return am;
+    });
+
+    res.json({
+      dateRange: { start, end },
+      ams: amList,
     });
   } catch (err) {
     next(err);

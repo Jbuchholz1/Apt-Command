@@ -255,6 +255,58 @@ async function getRecruitingCommissions(placementIds) {
   });
 }
 
+// --- Sales reporting queries ---
+
+async function getAMUsers() {
+  return callTool('query_entity', {
+    entityType: 'CorporateUser',
+    where: "isDeleted = false AND enabled = true AND customText1 = 'Account Manager'",
+    fields: 'id,firstName,lastName,customText1',
+    count: 50,
+  });
+}
+
+async function getAppointmentsInRange(startMs, endMs) {
+  return callTool('query_entity', {
+    entityType: 'Appointment',
+    where: `dateBegin > ${startMs} AND dateBegin < ${endMs} AND isDeleted = false`,
+    fields: 'id,type,dateBegin,owner,candidateReference,jobOrder,subject',
+    orderBy: '-dateBegin',
+    count: 500,
+  });
+}
+
+async function getNewJobsInRange(startMs, endMs) {
+  return callTool('query_entity', {
+    entityType: 'JobOrder',
+    where: `dateAdded > ${startMs} AND dateAdded < ${endMs} AND isDeleted = false`,
+    fields: 'id,title,status,owner,numOpenings,dateAdded,clientCorporation',
+    orderBy: '-dateAdded',
+    count: 500,
+  });
+}
+
+async function getClosedJobsInRange(startMs, endMs) {
+  return callTool('query_entity', {
+    entityType: 'JobOrder',
+    where: `dateLastModified > ${startMs} AND dateLastModified < ${endMs} AND isDeleted = false AND isOpen = false`,
+    fields: 'id,title,status,owner,numOpenings,dateAdded,dateClosed,clientCorporation',
+    orderBy: '-dateLastModified',
+    count: 500,
+  });
+}
+
+async function getSalesCommissions(placementIds) {
+  if (!placementIds.length) return { data: [] };
+  const idList = placementIds.join(',');
+  return callTool('query_entity', {
+    entityType: 'PlacementCommission',
+    where: `placement.id IN (${idList}) AND role = 'Sales'`,
+    fields: 'id,user,role,commissionPercentage,placement',
+    count: 500,
+  });
+}
+
 module.exports = {
   getOpenJobs,
   getRecentlyClosedJobs,
@@ -274,4 +326,9 @@ module.exports = {
   getInterviewsInRange,
   getPlacementsInRange,
   getRecruitingCommissions,
+  getAMUsers,
+  getAppointmentsInRange,
+  getNewJobsInRange,
+  getClosedJobsInRange,
+  getSalesCommissions,
 };

@@ -15,7 +15,7 @@ const dashboards = [
     description: 'Sales pipeline metrics, revenue tracking, and account manager performance.',
     icon: '\u{1F4B0}',
     path: '/reporting/sales',
-    active: false,
+    active: true,
   },
 ];
 

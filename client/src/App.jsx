@@ -7,6 +7,7 @@ import ReqBoardModule from './modules/req-board/ReqBoardModule';
 import ReportingModule from './modules/reporting/ReportingModule';
 import ReportingHome from './modules/reporting/ReportingHome';
 import RecruiterDashboard from './modules/reporting/RecruiterDashboard';
+import SalesDashboard from './modules/reporting/SalesDashboard';
 import ComingSoon from './components/ComingSoon';
 
 export default function App() {
@@ -27,7 +28,7 @@ export default function App() {
             <Route path="reporting" element={<ReportingModule />}>
               <Route index element={<ReportingHome />} />
               <Route path="recruiting" element={<RecruiterDashboard />} />
-              <Route path="sales" element={<ComingSoon title="Sales Dashboard" />} />
+              <Route path="sales" element={<SalesDashboard />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
