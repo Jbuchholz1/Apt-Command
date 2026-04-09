@@ -211,19 +211,20 @@ body { margin: 0; }
 
 .construction-banner {
   position: absolute;
-  top: 14px;
-  right: -50px;
+  top: 18px;
+  right: -60px;
   background: #f59e0b;
   color: #fff;
   font-size: 9px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 1px;
-  padding: 5px 60px;
+  letter-spacing: 0.5px;
+  padding: 5px 80px;
   transform: rotate(40deg);
   box-shadow: 0 2px 4px rgba(0,0,0,0.15);
   z-index: 1;
   pointer-events: none;
+  white-space: nowrap;
 }
 
 .module-card-badge.active {
