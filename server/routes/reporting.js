@@ -13,7 +13,7 @@ const {
   getSalesCommissions,
 } = require('../lib/bullhorn');
 const { POINTS, getRecruiterTier, getSpreadGoal, bhLink } = require('../lib/recruiterConfig');
-const { SALES_POINTS, ACTIVITY_LABELS, ACTIVITY_ORDER, getAMTier, getAMSpreadGoal } = require('../lib/salesConfig');
+const { SALES_POINTS, ACTIVITY_LABELS, ACTIVITY_ORDER, EXCLUDED_AMS, getAMTier, getAMSpreadGoal } = require('../lib/salesConfig');
 
 function formatDate(ms) {
   if (!ms) return '';
@@ -287,7 +287,7 @@ router.get('/sales-dashboard', async (req, res, next) => {
       getPlacementsInRange(startMs, endMs),
     ]);
 
-    const ams = amRes?.data || [];
+    const ams = (amRes?.data || []).filter(am => !EXCLUDED_AMS.has(`${am.firstName} ${am.lastName}`));
     const appointments = apptRes?.data || [];
     const newJobs = newJobsRes?.data || [];
     const closedJobs = closedJobsRes?.data || [];

@@ -50,6 +50,9 @@ const TIERS = {
   3: { spreadGoal: 9000 },
 };
 
+// Sales leaders — excluded from the AM dashboard
+const EXCLUDED_AMS = new Set(['Jeff Clements', 'Chris Schwab']);
+
 // Default all AMs to Tier 1 for now. Update when tier assignments are known.
 const AM_TIERS = {};
 
@@ -62,4 +65,4 @@ function getAMSpreadGoal(fullName) {
   return TIERS[tier]?.spreadGoal || TIERS[1].spreadGoal;
 }
 
-module.exports = { SALES_POINTS, ACTIVITY_LABELS, ACTIVITY_ORDER, TIERS, AM_TIERS, getAMTier, getAMSpreadGoal };
+module.exports = { SALES_POINTS, ACTIVITY_LABELS, ACTIVITY_ORDER, TIERS, AM_TIERS, EXCLUDED_AMS, getAMTier, getAMSpreadGoal };
