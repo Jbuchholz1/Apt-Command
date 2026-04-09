@@ -391,9 +391,14 @@ function formatJob(job) {
   const feePercent = job.feeArrangement || null;
   const empType = job.employmentType || null;
 
+  const empTypeLower = (empType || '').toLowerCase();
   let ceSpread = null;
-  if (billRate && payRate) {
-    ceSpread = Math.round(((payRate * 1.25 - billRate) * 40 * -1) * 100) / 100;
+  if (empTypeLower === 'corp-to-corp' && billRate && payRate) {
+    ceSpread = Math.round((billRate - payRate * 1.05) * 10 * 100) / 100;
+    if (ceSpread <= 0) ceSpread = null;
+  } else if (billRate && payRate) {
+    // W2 and all other contract types
+    ceSpread = Math.round((billRate - payRate * 1.25) * 40 * 100) / 100;
     if (ceSpread <= 0) ceSpread = null;
   }
 
