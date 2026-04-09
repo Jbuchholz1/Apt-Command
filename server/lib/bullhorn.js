@@ -237,7 +237,7 @@ async function getInterviewsInRange(startMs, endMs) {
 async function getPlacementsInRange(startMs, endMs) {
   return callTool('query_entity', {
     entityType: 'Placement',
-    where: `dateBegin > ${startMs} AND dateBegin < ${endMs}`,
+    where: `dateBegin > ${startMs} AND dateBegin < ${endMs} AND status = 'Approved'`,
     fields: 'id,candidate,jobOrder,dateBegin,dateEnd,payRate,clientBillRate,owner,status,employeeType',
     orderBy: '-dateBegin',
     count: 200,

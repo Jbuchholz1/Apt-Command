@@ -2,10 +2,10 @@ export default function MetricsTable({ recruiters, totals }) {
   if (!recruiters || recruiters.length === 0) return null;
 
   const rows = [
-    { label: 'Interviews (3 pts)', key: 'interviewPoints', source: 'points' },
-    { label: 'Client Subs (1 pt)', key: 'subsPoints', source: 'points' },
-    { label: 'Starts (10 pts)', key: 'startsPoints', source: 'points' },
-    { label: 'MAR Total', key: 'total', source: 'points', bold: true },
+    { label: 'Interviews', key: 'interviews', source: 'metrics' },
+    { label: 'Client Subs', key: 'clientSubs', source: 'metrics' },
+    { label: 'Starts', key: 'starts', source: 'metrics' },
+    { label: 'MAR', key: 'mar', source: 'metrics', bold: true },
     { label: 'New Input', key: 'newInput', source: 'metrics', format: 'currency' },
   ];
 
@@ -14,18 +14,9 @@ export default function MetricsTable({ recruiters, totals }) {
     return val;
   };
 
-  const getTotal = (row) => {
-    if (row.key === 'total') return totals.mar;
-    if (row.key === 'newInput') return totals.newInput;
-    if (row.key === 'interviewPoints') return totals.interviews * 3;
-    if (row.key === 'subsPoints') return totals.clientSubs * 1;
-    if (row.key === 'startsPoints') return totals.starts * 10;
-    return 0;
-  };
-
   return (
     <div className="metrics-table-wrap">
-      <h3 className="section-title">Metrics Summary (Points)</h3>
+      <h3 className="section-title">Metrics Summary</h3>
       <table className="metrics-table">
         <thead>
           <tr>
@@ -44,7 +35,7 @@ export default function MetricsTable({ recruiters, totals }) {
                 </td>
               ))}
               <td className="metric-val total-col">
-                {fmt(getTotal(row), row.format)}
+                {fmt(totals[row.key], row.format)}
               </td>
             </tr>
           ))}
