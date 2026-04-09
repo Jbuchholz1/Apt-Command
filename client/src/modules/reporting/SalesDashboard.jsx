@@ -6,13 +6,13 @@ import DashboardFilters from './components/DashboardFilters';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const JOB_METRIC_ROWS = [
-  { key: 'newReqs', label: 'New Reqs' },
-  { key: 'openings', label: '# of Openings' },
-  { key: 'closedReqs', label: 'Closed Reqs' },
-  { key: 'fills', label: 'Fills' },
-  { key: 'losses', label: 'Losses' },
-  { key: 'washed', label: 'Washed' },
-  { key: 'newPlacements', label: 'New Placements' },
+  { key: 'newReqs', label: 'New Reqs', detailKey: 'newReqs' },
+  { key: 'openings', label: '# of Openings', detailKey: 'newReqs' },
+  { key: 'closedReqs', label: 'Closed Reqs', detailKey: 'closedReqs' },
+  { key: 'fills', label: 'Fills', detailKey: 'fills' },
+  { key: 'losses', label: 'Losses', detailKey: 'losses' },
+  { key: 'washed', label: 'Washed', detailKey: 'washed' },
+  { key: 'newPlacements', label: 'New Placements', detailKey: 'newPlacements' },
 ];
 
 function getDefaultDates() {
@@ -146,9 +146,18 @@ export default function SalesDashboard() {
                   {JOB_METRIC_ROWS.map(row => (
                     <tr key={row.key} className="job-metric-row">
                       <td className="row-label">{row.label}</td>
-                      {ams.map(am => (
-                        <td key={am.id} className="metric-val">{am.jobMetrics[row.key]}</td>
-                      ))}
+                      {ams.map(am => {
+                        const details = am.jobDetails?.[row.detailKey] || [];
+                        const val = am.jobMetrics[row.key];
+                        return (
+                          <td key={am.id}
+                            className={`metric-val ${details.length > 0 ? 'clickable-cell' : ''}`}
+                            onClick={() => details.length > 0 && setModal({ amName: am.name, activityType: row.label, records: details, isJob: true })}
+                          >
+                            {val}
+                          </td>
+                        );
+                      })}
                       <td className="metric-val total-col">
                         {ams.reduce((sum, am) => sum + (am.jobMetrics[row.key] || 0), 0)}
                       </td>
@@ -255,19 +264,45 @@ export default function SalesDashboard() {
               <table className="activity-modal-table">
                 <thead>
                   <tr>
-                    <th>Date</th>
-                    <th>Type</th>
-                    <th>Client</th>
-                    <th>Subject</th>
+                    {modal.isJob ? (
+                      modal.records[0]?.placementId !== undefined ? (
+                        <><th>ID</th><th>Job</th><th>Client</th><th>Candidate</th></>
+                      ) : (
+                        <><th>ID</th><th>Job Title</th><th>Client</th><th>Status</th><th>Openings</th></>
+                      )
+                    ) : (
+                      <><th>Date</th><th>Type</th><th>Client</th><th>Subject</th></>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
                   {modal.records.map((r, i) => (
                     <tr key={i}>
-                      <td>{r.date}</td>
-                      <td>{r.type}</td>
-                      <td>{r.client || '—'}</td>
-                      <td className="activity-modal-subject">{r.subject || '—'}</td>
+                      {modal.isJob ? (
+                        r.placementId !== undefined ? (
+                          <>
+                            <td><a href={r.link} target="_blank" rel="noopener noreferrer" className="bh-detail-link">{r.placementId}</a></td>
+                            <td>{r.jobTitle}</td>
+                            <td>{r.client || '—'}</td>
+                            <td>{r.candidate || '—'}</td>
+                          </>
+                        ) : (
+                          <>
+                            <td><a href={r.link} target="_blank" rel="noopener noreferrer" className="bh-detail-link">{r.jobId}</a></td>
+                            <td>{r.title}</td>
+                            <td>{r.client || '—'}</td>
+                            <td>{r.status}</td>
+                            <td className="ch-num">{r.openings}</td>
+                          </>
+                        )
+                      ) : (
+                        <>
+                          <td>{r.date}</td>
+                          <td>{r.type}</td>
+                          <td>{r.client || '—'}</td>
+                          <td className="activity-modal-subject">{r.subject || '—'}</td>
+                        </>
+                      )}
                     </tr>
                   ))}
                 </tbody>

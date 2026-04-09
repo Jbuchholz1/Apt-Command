@@ -332,6 +332,7 @@ router.get('/sales-dashboard', async (req, res, next) => {
         tier,
         spreadGoal,
         jobMetrics: { newReqs: 0, openings: 0, closedReqs: 0, fills: 0, losses: 0, washed: 0, newPlacements: 0 },
+        jobDetails: { newReqs: [], closedReqs: [], fills: [], losses: [], washed: [], newPlacements: [] },
         activities: {},
         activityCount: 0,
         noteActivity: 0,
@@ -345,11 +346,21 @@ router.get('/sales-dashboard', async (req, res, next) => {
     }
 
     // --- Job metrics ---
+    const fmtJob = (job) => ({
+      jobId: job.id,
+      title: job.title || '',
+      status: Array.isArray(job.status) ? job.status[0] : (job.status || ''),
+      openings: job.numOpenings || 0,
+      client: job.clientCorporation?.name || '',
+      link: bhLink('JobOrder', job.id),
+    });
+
     for (const job of newJobs) {
       const ownerId = job.owner?.id;
       if (ownerId && metricsMap[ownerId]) {
         metricsMap[ownerId].jobMetrics.newReqs++;
         metricsMap[ownerId].jobMetrics.openings += (job.numOpenings || 0);
+        metricsMap[ownerId].jobDetails.newReqs.push(fmtJob(job));
       }
     }
 
@@ -358,10 +369,19 @@ router.get('/sales-dashboard', async (req, res, next) => {
       if (ownerId && metricsMap[ownerId]) {
         const rawStatus = Array.isArray(job.status) ? job.status[0] : job.status;
         const status = (rawStatus || '').toLowerCase();
-        if (status === 'filled') metricsMap[ownerId].jobMetrics.fills++;
-        else if (status === 'lost') metricsMap[ownerId].jobMetrics.losses++;
-        else if (status === 'wash') metricsMap[ownerId].jobMetrics.washed++;
+        const detail = fmtJob(job);
+        if (status === 'filled' || status === 'placed') {
+          metricsMap[ownerId].jobMetrics.fills++;
+          metricsMap[ownerId].jobDetails.fills.push(detail);
+        } else if (status === 'lost') {
+          metricsMap[ownerId].jobMetrics.losses++;
+          metricsMap[ownerId].jobDetails.losses.push(detail);
+        } else if (status === 'wash') {
+          metricsMap[ownerId].jobMetrics.washed++;
+          metricsMap[ownerId].jobDetails.washed.push(detail);
+        }
         metricsMap[ownerId].jobMetrics.closedReqs++;
+        metricsMap[ownerId].jobDetails.closedReqs.push(detail);
       }
     }
 
@@ -371,6 +391,13 @@ router.get('/sales-dashboard', async (req, res, next) => {
       const amId = comm?.id;
       if (amId && metricsMap[amId]) {
         metricsMap[amId].jobMetrics.newPlacements++;
+        metricsMap[amId].jobDetails.newPlacements.push({
+          placementId: p.id,
+          jobTitle: p.jobOrder?.title || '',
+          client: p.jobOrder?.clientCorporation?.name || '',
+          candidate: p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '',
+          link: bhLink('Placement', p.id),
+        });
 
         const bill = Number(p.clientBillRate) || 0;
         const pay = Number(p.payRate) || 0;
