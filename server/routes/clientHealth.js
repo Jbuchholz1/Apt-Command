@@ -13,6 +13,7 @@ const {
   getAppointmentsInRange,
   getSalesCommissions,
   getABJobs,
+  getProjectJobs,
   getPlacementsForJobs,
 } = require('../lib/bullhorn');
 const { POINTS, EXCLUDED_RECRUITERS } = require('../lib/recruiterConfig');
@@ -122,12 +123,13 @@ router.get('/kpis', async (req, res, next) => {
     const recruiterIds = recruiters.map(r => r.id);
     const recruiterSet = new Set(recruiterIds);
 
-    const [interviewsRes, subsRes, placementsRes, appointmentsRes, abJobsRes] = await Promise.all([
+    const [interviewsRes, subsRes, placementsRes, appointmentsRes, abJobsRes, projJobsRes] = await Promise.all([
       getInterviewsInRange(startMs, endMs),
       getClientSubsInRange(startMs, endMs),
       getPlacementsInRange(startMs, endMs),
       getAppointmentsInRange(startMs, endMs, amIds),
       getABJobs(startMs, endMs),
+      getProjectJobs(startMs, endMs),
     ]);
 
     let interviews = interviewsRes?.data || [];
@@ -135,6 +137,7 @@ router.get('/kpis', async (req, res, next) => {
     let placements = placementsRes?.data || [];
     let appointments = appointmentsRes?.data || [];
     let abJobs = abJobsRes?.data || [];
+    let projJobs = projJobsRes?.data || [];
 
     // Filter by client if specified
     if (clientIdFilter) {
@@ -155,6 +158,10 @@ router.get('/kpis', async (req, res, next) => {
         return cId && clientIdFilter.has(cId);
       });
       abJobs = abJobs.filter(j => {
+        const cId = j.clientCorporation?.id;
+        return cId && clientIdFilter.has(cId);
+      });
+      projJobs = projJobs.filter(j => {
         const cId = j.clientCorporation?.id;
         return cId && clientIdFilter.has(cId);
       });
@@ -292,6 +299,32 @@ router.get('/kpis', async (req, res, next) => {
       fillDetails.sort((a, b) => (b.fills / (b.openings || 1)) - (a.fills / (a.openings || 1)));
     }
 
+    // --- Project Fill Ratio ---
+    let projFillRatio = null;
+    const projFillDetails = [];
+    if (projJobs.length > 0) {
+      const projOpenings = projJobs.reduce((sum, j) => sum + (j.numOpenings || 0), 0);
+      const projJobIdSet = new Set(projJobs.map(j => j.id));
+      const projFillsByJob = {};
+      for (const p of placements) {
+        const jId = p.jobOrder?.id;
+        if (jId && projJobIdSet.has(jId)) projFillsByJob[jId] = (projFillsByJob[jId] || 0) + 1;
+      }
+      const projFills = Object.values(projFillsByJob).reduce((s, v) => s + v, 0);
+      projFillRatio = projOpenings > 0 ? Math.round((projFills / projOpenings) * 100) : 0;
+
+      for (const j of projJobs) {
+        projFillDetails.push({
+          jobId: j.id,
+          title: j.title || '',
+          priority: j.type === 1 ? 'A' : j.type === 2 ? 'B' : 'C',
+          openings: j.numOpenings || 0,
+          fills: projFillsByJob[j.id] || 0,
+        });
+      }
+      projFillDetails.sort((a, b) => (b.fills / (b.openings || 1)) - (a.fills / (a.openings || 1)));
+    }
+
     res.json({
       rangeLabel,
       gauges: [
@@ -299,7 +332,7 @@ router.get('/kpis', async (req, res, next) => {
         { label: 'Input', value: totalNewInput, target: 40000, format: 'currency', details: inputDetails },
         { label: 'A/B Fill Ratio - Staffing', value: abFillRatio, target: 60, format: 'percent', details: fillDetails },
         { label: 'Backout %', value: backoutPct, target: 10, format: 'percent', invert: true, details: backoutDetails },
-        { label: 'Fill Ratio - Project', value: null, target: 60, format: 'number', placeholder: true },
+        { label: 'Fill Ratio - Project', value: projFillRatio, target: 60, format: 'percent', details: projFillDetails },
       ],
     });
   } catch (err) {

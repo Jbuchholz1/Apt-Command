@@ -356,6 +356,19 @@ async function getABJobs(startMs, endMs) {
   });
 }
 
+async function getProjectJobs(startMs, endMs) {
+  let where = "isDeleted = false AND employmentType = 'Project'";
+  if (startMs && endMs) {
+    where += ` AND customDate1 > ${startMs} AND customDate1 < ${endMs}`;
+  }
+  return callTool('query_entity', {
+    entityType: 'JobOrder',
+    where,
+    fields: 'id,title,type,status,numOpenings,owner,clientCorporation,employmentType',
+    count: 500,
+  });
+}
+
 async function getPlacementsForJobs(jobIds) {
   if (!jobIds.length) return { data: [] };
   const idList = jobIds.join(',');
@@ -395,5 +408,6 @@ module.exports = {
   getRecentAppointments,
   getClientCorporations,
   getABJobs,
+  getProjectJobs,
   getPlacementsForJobs,
 };
