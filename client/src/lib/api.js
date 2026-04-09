@@ -56,62 +56,62 @@ async function fetchAPI(path, options = {}) {
 // --- Read operations ---
 
 export function getJobs() {
-  return fetchAPI('/api/jobs');
+  return fetchAPI('/api/req-board/jobs');
 }
 
 export function getAllJobs() {
-  return fetchAPI('/api/jobs/all');
+  return fetchAPI('/api/req-board/jobs/all');
 }
 
 export function getJobDetail(id) {
-  return fetchAPI(`/api/jobs/${id}`);
+  return fetchAPI(`/api/req-board/jobs/${id}`);
 }
 
 export function getPlacements() {
-  return fetchAPI('/api/placements');
+  return fetchAPI('/api/req-board/placements');
 }
 
 export function getStats() {
-  return fetchAPI('/api/stats');
+  return fetchAPI('/api/req-board/stats');
 }
 
 // --- Write operations ---
 
 export function updateJobOverrides(id, data) {
-  return fetchAPI(`/api/jobs/${id}/overrides`, {
+  return fetchAPI(`/api/req-board/jobs/${id}/overrides`, {
     method: 'PATCH',
     body: data,
   });
 }
 
 export function addJobNote(id, comment) {
-  return fetchAPI(`/api/jobs/${id}/notes`, {
+  return fetchAPI(`/api/req-board/jobs/${id}/notes`, {
     method: 'POST',
     body: { comment },
   });
 }
 
 export function updateJobInBullhorn(id, fields) {
-  return fetchAPI(`/api/jobs/${id}/bullhorn-update`, {
+  return fetchAPI(`/api/req-board/jobs/${id}/bullhorn-update`, {
     method: 'POST',
     body: { fields },
   });
 }
 
 export function getUsers() {
-  return fetchAPI('/api/jobs/users');
+  return fetchAPI('/api/req-board/jobs/users');
 }
 
 export function getRecruiters() {
-  return fetchAPI('/api/jobs/users?role=recruiter');
+  return fetchAPI('/api/req-board/jobs/users?role=recruiter');
 }
 
 export function getAccountManagers() {
-  return fetchAPI('/api/jobs/users?role=account manager');
+  return fetchAPI('/api/req-board/jobs/users?role=account manager');
 }
 
 export function getOpportunities() {
-  return fetchAPI('/api/jobs/opportunities');
+  return fetchAPI('/api/req-board/jobs/opportunities');
 }
 
 // --- Export ---
@@ -121,7 +121,7 @@ export async function exportJobs() {
   const headers = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`${BASE_URL}/api/jobs/export`, { headers });
+  const res = await fetch(`${BASE_URL}/api/req-board/jobs/export`, { headers });
   if (!res.ok) throw new Error('Export failed');
 
   const blob = await res.blob();

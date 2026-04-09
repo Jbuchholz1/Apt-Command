@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getJobDetail, addJobNote } from '../lib/api';
+import { getJobDetail, addJobNote } from '../../lib/api';
 import StatusBadge from './StatusBadge';
 
 function formatDate(iso) {

@@ -1,4 +1,4 @@
-import { getFollowUpUrgency, getTrUrgency } from '../components/ReqBoard';
+import { getFollowUpUrgency, getTrUrgency } from './urgency';
 
 /**
  * Parse a date from free-text string (M/D, M/D/YY, M/D/YYYY).

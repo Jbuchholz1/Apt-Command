@@ -1,0 +1,150 @@
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import './req-board.css';
+import { getJobs, getStats, exportJobs } from '../../lib/api';
+import StatsStrip from './StatsStrip';
+import FilterBar from './FilterBar';
+import ReqBoard from './ReqBoard';
+import { hasRedBox } from './lib/redBox';
+import JobDetail from './JobDetail';
+import SplashScreen from './SplashScreen';
+
+const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
+export default function ReqBoardModule() {
+  const [showSplash, setShowSplash] = useState(true);
+
+  const [jobs, setJobs] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [lastRefresh, setLastRefresh] = useState(null);
+  const [selectedJobId, setSelectedJobId] = useState(null);
+  const [exporting, setExporting] = useState(false);
+  const [filters, setFilters] = useState({
+    status: [],
+    employmentType: [],
+    owner: [],
+    client: [],
+    remote: '',
+    redBoxes: '',
+  });
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [jobsRes, statsRes] = await Promise.all([getJobs(), getStats()]);
+      setJobs(jobsRes.data || []);
+      setStats(statsRes);
+      setLastRefresh(new Date());
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  useEffect(() => {
+    const interval = setInterval(fetchData, REFRESH_INTERVAL);
+    return () => clearInterval(interval);
+  }, [fetchData]);
+
+  const redBoxCount = useMemo(() => jobs.filter(hasRedBox).length, [jobs]);
+
+  const filteredJobs = useMemo(() => {
+    return jobs.filter(job => {
+      if (filters.status?.length && !filters.status.includes(job.status)) return false;
+      if (filters.employmentType?.length && !filters.employmentType.includes(job.employmentType)) return false;
+      if (filters.owner?.length && !filters.owner.includes(job.owner)) return false;
+      if (filters.client?.length && !filters.client.includes(job.client)) return false;
+      if (filters.remote) {
+        const r = (job.remote || '').toLowerCase();
+        if (r !== filters.remote.toLowerCase()) return false;
+      }
+      if (filters.redBoxes === 'red' && !hasRedBox(job)) return false;
+      return true;
+    });
+  }, [jobs, filters]);
+
+  const handleJobUpdated = (jobId, field, value) => {
+    setJobs(prev => prev.map(j =>
+      j.id === jobId ? { ...j, [field]: value } : j
+    ));
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      await exportJobs();
+    } catch (err) {
+      setError(`Export failed: ${err.message}`);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  if (showSplash) {
+    return <SplashScreen onComplete={() => setShowSplash(false)} />;
+  }
+
+  return (
+    <div className="req-board-module">
+      <div className="req-board-toolbar">
+        <div className="toolbar-left">
+          <img src="/apt-logo.jpg" alt="APT" className="toolbar-logo" />
+          <h2 className="toolbar-title">Req Board</h2>
+        </div>
+        <div className="toolbar-right">
+          {lastRefresh && (
+            <span className="last-refresh">
+              Updated {lastRefresh.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+            </span>
+          )}
+          <button className="export-btn" onClick={handleExport} disabled={exporting}>
+            {exporting ? 'Exporting...' : 'Export Excel'}
+          </button>
+          <button className="refresh-btn" onClick={fetchData} disabled={loading}>
+            {loading ? 'Refreshing...' : 'Refresh'}
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="error-banner">
+          Failed to load data: {error}
+          <button onClick={fetchData}>Retry</button>
+        </div>
+      )}
+
+      <StatsStrip stats={stats} jobs={jobs} loading={loading} onJobUpdated={handleJobUpdated} />
+
+      <FilterBar filters={filters} onChange={setFilters} jobs={jobs} redBoxCount={redBoxCount} />
+
+      <div className="board-info">
+        <span>{filteredJobs.length} requisitions</span>
+        {filteredJobs.length !== jobs.length && (
+          <span className="filtered-note"> (filtered from {jobs.length})</span>
+        )}
+      </div>
+
+      <ReqBoard
+        jobs={filteredJobs}
+        loading={loading}
+        onSelectJob={setSelectedJobId}
+        selectedJobId={selectedJobId}
+        onJobUpdated={handleJobUpdated}
+      />
+
+      {selectedJobId && (
+        <JobDetail
+          jobId={selectedJobId}
+          onClose={() => setSelectedJobId(null)}
+        />
+      )}
+    </div>
+  );
+}

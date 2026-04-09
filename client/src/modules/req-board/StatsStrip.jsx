@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getPlacements, updateJobInBullhorn, updateJobOverrides, getOpportunities, getRecruiters } from '../lib/api';
-import { getFollowUpUrgency } from './ReqBoard';
+import { getPlacements, updateJobInBullhorn, updateJobOverrides, getOpportunities, getRecruiters } from '../../lib/api';
+import { getFollowUpUrgency } from './lib/urgency';
 import EditableDate from './EditableDate';
 import EditableSelect from './EditableSelect';
 import EditableCell from './EditableCell';

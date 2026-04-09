@@ -46,6 +46,11 @@ app.get('/api/health', (req, res) => {
 app.use('/api', requireAuth);
 
 // --- Routes (all authenticated) ---
+// Namespaced routes (new — used by APT Command shell)
+app.use('/api/req-board/jobs', jobsRouter);
+app.use('/api/req-board/placements', placementsRouter);
+app.use('/api/req-board/stats', statsRouter);
+// Legacy routes (backward compat — remove after deploy confirmed)
 app.use('/api/jobs', jobsRouter);
 app.use('/api/placements', placementsRouter);
 app.use('/api/stats', statsRouter);
