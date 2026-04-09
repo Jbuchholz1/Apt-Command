@@ -39,8 +39,8 @@ function parseDates(req) {
 // GET /api/client-health?start=2026-01-01&end=2026-04-09
 router.get('/', async (req, res, next) => {
   try {
-    const dates = parseDates(req);
-    const activitySinceMs = dates ? dates.startMs : Date.now() - (14 * 24 * 60 * 60 * 1000);
+    // Always use current active placements and last 14 days of activity, regardless of date filter
+    const activitySinceMs = Date.now() - (14 * 24 * 60 * 60 * 1000);
 
     const [placementsRes, appointmentsRes] = await Promise.all([
       getActivePlacementsWithClient(),
