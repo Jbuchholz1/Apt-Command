@@ -14,11 +14,9 @@ function getDefaultDates() {
   const diff = day === 0 ? -6 : 1 - day;
   const monday = new Date(today);
   monday.setDate(today.getDate() + diff);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
   return {
     start: monday.toISOString().slice(0, 10),
-    end: sunday.toISOString().slice(0, 10),
+    end: today.toISOString().slice(0, 10),
   };
 }
 
