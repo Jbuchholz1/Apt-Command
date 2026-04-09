@@ -394,7 +394,7 @@ function formatJob(job) {
   const empTypeLower = (empType || '').toLowerCase();
   let ceSpread = null;
   if (empTypeLower === 'corp-to-corp' && billRate && payRate) {
-    ceSpread = Math.round((billRate - payRate * 1.05) * 10 * 100) / 100;
+    ceSpread = Math.round((billRate - payRate * 1.05) * 40 * 100) / 100;
     if (ceSpread <= 0) ceSpread = null;
   } else if (billRate && payRate) {
     // W2 and all other contract types

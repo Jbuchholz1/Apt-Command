@@ -176,7 +176,7 @@ router.get('/recruiter-dashboard', async (req, res, next) => {
       if (empType === 'perm' && sal > 0 && feeRate > 0) {
         spread = Math.round((sal * feeRate / 26) * 100) / 100;
       } else if (empType === 'corp-to-corp' && bill > 0 && pay > 0) {
-        spread = Math.round((bill - pay * 1.05) * 10 * 100) / 100;
+        spread = Math.round((bill - pay * 1.05) * 40 * 100) / 100;
       } else if (bill > 0 && pay > 0) {
         // W2 and all other types: burden on pay
         spread = Math.round((bill - pay * 1.25) * 40 * 100) / 100;
@@ -382,7 +382,7 @@ router.get('/sales-dashboard', async (req, res, next) => {
         if (empType === 'perm' && sal > 0 && feeRate > 0) {
           spread = Math.round((sal * feeRate / 26) * 100) / 100;
         } else if (empType === 'corp-to-corp' && bill > 0 && pay > 0) {
-          spread = Math.round((bill - pay * 1.05) * 10 * 100) / 100;
+          spread = Math.round((bill - pay * 1.05) * 40 * 100) / 100;
         } else if (bill > 0 && pay > 0) {
           spread = Math.round((bill - pay * 1.25) * 40 * 100) / 100;
         }
