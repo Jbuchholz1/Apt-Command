@@ -41,7 +41,8 @@ const modules = [
     description: 'Dashboards, KPIs, and metrics across requisitions, placements, and revenue.',
     icon: '\u{1F4CA}',
     path: '/reporting',
-    status: 'coming-soon',
+    status: 'active',
+    underConstruction: true,
   },
 ];
 
@@ -59,6 +60,7 @@ export default function HomePage() {
           const className = `module-card ${mod.status === 'coming-soon' ? 'disabled' : ''}`;
           const children = (
             <>
+              {mod.underConstruction && <div className="construction-banner">Under Construction</div>}
               <span className="module-card-icon">{mod.icon}</span>
               <h2 className="module-card-title">{mod.title}</h2>
               <p className="module-card-desc">{mod.description}</p>

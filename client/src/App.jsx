@@ -4,6 +4,7 @@ import AppShell from './components/AppShell';
 import LoginPage from './components/LoginPage';
 import HomePage from './components/HomePage';
 import ReqBoardModule from './modules/req-board/ReqBoardModule';
+import ReportingModule from './modules/reporting/ReportingModule';
 import ComingSoon from './components/ComingSoon';
 
 export default function App() {
@@ -21,7 +22,7 @@ export default function App() {
             <Route path="req-board" element={<ReqBoardModule />} />
             <Route path="pipeline" element={<ComingSoon title="Candidate Pipeline" />} />
             <Route path="clients" element={<ComingSoon title="Client Management" />} />
-            <Route path="reporting" element={<ComingSoon title="Reporting & Analytics" />} />
+            <Route path="reporting" element={<ReportingModule />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

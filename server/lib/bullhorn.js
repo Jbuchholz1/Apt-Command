@@ -203,6 +203,47 @@ async function addNoteToJob(jobOrderId, comments) {
   });
 }
 
+// --- Reporting: date-range queries ---
+
+async function getRecruiterUsers() {
+  return callTool('query_entity', {
+    entityType: 'CorporateUser',
+    where: "isDeleted = false AND enabled = true AND customText1 = 'Recruiter'",
+    fields: 'id,firstName,lastName,customText1',
+    count: 50,
+  });
+}
+
+async function getClientSubsInRange(startMs, endMs) {
+  return callTool('query_entity', {
+    entityType: 'JobSubmission',
+    where: `dateAdded > ${startMs} AND dateAdded < ${endMs} AND isDeleted = false AND status != 'Internally Submitted'`,
+    fields: 'id,status,sendingUser,dateAdded',
+    orderBy: '-dateAdded',
+    count: 500,
+  });
+}
+
+async function getInterviewsInRange(startMs, endMs) {
+  return callTool('query_entity', {
+    entityType: 'JobSubmission',
+    where: `dateAdded > ${startMs} AND dateAdded < ${endMs} AND isDeleted = false AND status = 'Interview Feedback'`,
+    fields: 'id,status,sendingUser,dateAdded',
+    orderBy: '-dateAdded',
+    count: 500,
+  });
+}
+
+async function getPlacementsInRange(startMs, endMs) {
+  return callTool('query_entity', {
+    entityType: 'Placement',
+    where: `dateBegin > ${startMs} AND dateBegin < ${endMs} AND status != 'Terminated'`,
+    fields: 'id,candidate,jobOrder,dateBegin,payRate,clientBillRate,owner,status',
+    orderBy: '-dateBegin',
+    count: 200,
+  });
+}
+
 module.exports = {
   getOpenJobs,
   getRecentlyClosedJobs,
@@ -217,4 +258,8 @@ module.exports = {
   addNoteToJob,
   updateJobField,
   getCorporateUsers,
+  getRecruiterUsers,
+  getClientSubsInRange,
+  getInterviewsInRange,
+  getPlacementsInRange,
 };

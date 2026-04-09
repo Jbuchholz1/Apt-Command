@@ -1,0 +1,225 @@
+/* ================================================
+   Reporting Module Styles
+   ================================================ */
+
+/* ---- Module Toolbar ---- */
+.reporting-toolbar {
+  background: var(--navy);
+  color: #fff;
+  padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
+.reporting-toolbar .toolbar-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--gold);
+}
+
+.toolbar-date-range {
+  font-size: 12px;
+  color: var(--text-light);
+  margin-left: 12px;
+}
+
+.reporting-loading {
+  text-align: center;
+  padding: 60px 24px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* ---- Date Range Picker ---- */
+.date-range-picker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.date-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.date-inputs label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.date-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-light);
+}
+
+.date-inputs input[type="date"] {
+  padding: 4px 8px;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 4px;
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  font-size: 12px;
+  font-family: var(--mono);
+}
+.date-inputs input[type="date"]:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+.date-inputs input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
+.date-presets {
+  display: flex;
+  gap: 4px;
+}
+
+.date-presets button {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: var(--text-light);
+  padding: 4px 10px;
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.date-presets button:hover {
+  background: var(--gold);
+  color: var(--navy-dark);
+  border-color: var(--gold);
+}
+
+/* ---- Section Titles ---- */
+.section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--navy);
+  margin: 0 0 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ---- Metrics Table ---- */
+.metrics-table-wrap {
+  padding: 20px 24px;
+}
+
+.metrics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  background: var(--surface);
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.metrics-table thead {
+  background: var(--navy);
+  color: #fff;
+}
+
+.metrics-table th {
+  padding: 8px 14px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.metrics-table th:first-child {
+  text-align: left;
+}
+
+.metrics-table td {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.row-label {
+  text-align: left !important;
+  font-family: var(--sans) !important;
+  font-weight: 600;
+  color: var(--navy);
+  background: #f0f4f8;
+}
+
+.bold-row td {
+  font-weight: 700;
+  background: rgba(211, 191, 48, 0.08);
+}
+
+.total-col {
+  background: rgba(4, 20, 79, 0.04);
+  font-weight: 700;
+}
+
+.metrics-table thead .total-col {
+  background: var(--navy-light);
+}
+
+/* ---- Charts Row ---- */
+.charts-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  padding: 0 24px 24px;
+}
+
+.chart-section {
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+/* ---- Error Banner (reuse from req-board) ---- */
+.reporting-module .error-banner {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+.reporting-module .error-banner button {
+  background: #dc2626;
+  color: #fff;
+  border: none;
+  padding: 4px 12px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 900px) {
+  .charts-row {
+    grid-template-columns: 1fr;
+  }
+  .date-range-picker {
+    flex-wrap: wrap;
+  }
+  .reporting-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

@@ -114,6 +114,12 @@ export function getOpportunities() {
   return fetchAPI('/api/req-board/jobs/opportunities');
 }
 
+// --- Reporting ---
+
+export function getRecruiterDashboard(startDate, endDate) {
+  return fetchAPI(`/api/reporting/recruiter-dashboard?start=${startDate}&end=${endDate}`);
+}
+
 // --- Export ---
 
 export async function exportJobs() {

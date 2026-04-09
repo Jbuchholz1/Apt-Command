@@ -1,0 +1,57 @@
+export default function DateRangePicker({ startDate, endDate, onStartChange, onEndChange }) {
+  const today = new Date();
+
+  const getMonday = (d) => {
+    const date = new Date(d);
+    const day = date.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    date.setDate(date.getDate() + diff);
+    return date;
+  };
+
+  const toISO = (d) => d.toISOString().slice(0, 10);
+
+  const setThisWeek = () => {
+    const mon = getMonday(today);
+    const sun = new Date(mon);
+    sun.setDate(sun.getDate() + 6);
+    onStartChange(toISO(mon));
+    onEndChange(toISO(sun));
+  };
+
+  const setLastWeek = () => {
+    const mon = getMonday(today);
+    mon.setDate(mon.getDate() - 7);
+    const sun = new Date(mon);
+    sun.setDate(sun.getDate() + 6);
+    onStartChange(toISO(mon));
+    onEndChange(toISO(sun));
+  };
+
+  const setThisMonth = () => {
+    const first = new Date(today.getFullYear(), today.getMonth(), 1);
+    const last = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    onStartChange(toISO(first));
+    onEndChange(toISO(last));
+  };
+
+  return (
+    <div className="date-range-picker">
+      <div className="date-inputs">
+        <label>
+          <span className="date-label">From</span>
+          <input type="date" value={startDate} onChange={e => onStartChange(e.target.value)} />
+        </label>
+        <label>
+          <span className="date-label">To</span>
+          <input type="date" value={endDate} onChange={e => onEndChange(e.target.value)} />
+        </label>
+      </div>
+      <div className="date-presets">
+        <button onClick={setThisWeek}>This Week</button>
+        <button onClick={setLastWeek}>Last Week</button>
+        <button onClick={setThisMonth}>This Month</button>
+      </div>
+    </div>
+  );
+}
