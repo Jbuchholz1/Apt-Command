@@ -33,7 +33,6 @@ const modules = [
     icon: '\u{1F3E2}',
     path: '/clients',
     status: 'active',
-    underConstruction: true,
   },
   {
     id: 'reporting',
@@ -42,7 +41,6 @@ const modules = [
     icon: '\u{1F4CA}',
     path: '/reporting',
     status: 'active',
-    underConstruction: true,
   },
   {
     id: 'performance',
