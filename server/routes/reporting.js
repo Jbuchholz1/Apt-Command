@@ -161,12 +161,22 @@ router.get('/recruiter-dashboard', async (req, res, next) => {
 
       const bill = Number(p.clientBillRate) || 0;
       const pay = Number(p.payRate) || 0;
+      const sal = Number(p.salary) || 0;
+      const feeRate = Number(p.fee) || 0;
+      const empType = (p.employeeType || '').toLowerCase();
       let spread = 0;
-      if (bill > 0 && pay > 0) {
-        spread = Math.round(((bill - pay) * 1.25) * 40 * 100) / 100;
-        if (recruiterId && metricsMap[recruiterId]) {
-          metricsMap[recruiterId].metrics.newInput += spread;
-        }
+
+      if (empType === 'perm' && sal > 0 && feeRate > 0) {
+        spread = Math.round((sal * feeRate / 26) * 100) / 100;
+      } else if (empType === 'corp-to-corp' && bill > 0 && pay > 0) {
+        spread = Math.round((bill - pay * 1.05) * 10 * 100) / 100;
+      } else if (bill > 0 && pay > 0) {
+        // W2 and all other types: burden on pay
+        spread = Math.round((bill - pay * 1.25) * 40 * 100) / 100;
+      }
+
+      if (spread > 0 && recruiterId && metricsMap[recruiterId]) {
+        metricsMap[recruiterId].metrics.newInput += spread;
       }
 
       const client = p.jobOrder?.clientCorporation?.name || '';
