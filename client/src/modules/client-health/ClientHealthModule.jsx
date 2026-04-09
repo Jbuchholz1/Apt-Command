@@ -3,6 +3,7 @@ import './client-health.css';
 import { getClientHealth, getCompanyKPIs } from '../../lib/api';
 import GaugeCard from './GaugeCard';
 import DateRangePicker from '../reporting/components/DateRangePicker';
+import ModuleSplash from '../../components/ModuleSplash';
 
 function MultiSelect({ label, options, selected, onChange }) {
   const [open, setOpen] = useState(false);
@@ -51,6 +52,7 @@ function getDefaultDates() {
 }
 
 export default function ClientHealthModule() {
+  const [showSplash, setShowSplash] = useState(true);
   const defaults = getDefaultDates();
   const [startDate, setStartDate] = useState(defaults.start);
   const [endDate, setEndDate] = useState(defaults.end);
@@ -165,6 +167,14 @@ export default function ClientHealthModule() {
   };
 
   const sortIcon = (key) => sortKey === key ? (sortDir === 'asc' ? ' \u2191' : ' \u2193') : '';
+
+  if (showSplash) {
+    return <ModuleSplash
+      text="Am I doing everything I need to do to keep my business moving forward and the people around me happy?"
+      hashtag="#HereToPartnerHereToServe"
+      onComplete={() => setShowSplash(false)}
+    />;
+  }
 
   return (
     <div className="client-health-module">

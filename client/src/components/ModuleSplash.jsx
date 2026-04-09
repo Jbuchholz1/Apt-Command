@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 
-const SPLASH_DURATION = 5000; // 5 seconds
+const SPLASH_DURATION = 5000;
 
-export default function SplashScreen({ onComplete }) {
+export default function ModuleSplash({ text, hashtag, onComplete }) {
   const [fadeOut, setFadeOut] = useState(false);
 
   useEffect(() => {
@@ -13,8 +13,8 @@ export default function SplashScreen({ onComplete }) {
 
   return (
     <div className={`splash-screen ${fadeOut ? 'fade-out' : ''}`}>
-      <p className="splash-text">This is to close business and move forward together as quickly as possible</p>
-      <p className="splash-hashtag">#BringHomeTheLion</p>
+      <p className="splash-text">{text}</p>
+      <p className="splash-hashtag">{hashtag}</p>
     </div>
   );
 }

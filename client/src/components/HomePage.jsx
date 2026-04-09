@@ -13,11 +13,10 @@ const modules = [
   {
     id: 'org-flow',
     title: 'Org Flow',
-    description: 'Organizational workflow management and process automation.',
+    description: 'Digital Org Chart tool.',
     icon: '\u{1F504}',
-    path: 'https://aptorgflow.com/',
+    path: '/org-flow',
     status: 'active',
-    external: true,
   },
   {
     id: 'pipeline',
