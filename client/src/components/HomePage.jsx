@@ -29,8 +29,8 @@ const modules = [
   },
   {
     id: 'clients',
-    title: 'Client Health',
-    description: 'Monitor client account health based on active placements and recent engagement.',
+    title: 'APT Health',
+    description: 'Company KPIs and client account health monitoring.',
     icon: '\u{1F3E2}',
     path: '/clients',
     status: 'active',

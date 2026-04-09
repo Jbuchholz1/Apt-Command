@@ -130,6 +130,10 @@ export function getClientHealth() {
   return fetchAPI('/api/client-health');
 }
 
+export function getCompanyKPIs() {
+  return fetchAPI('/api/client-health/kpis');
+}
+
 // --- Export ---
 
 export async function exportJobs() {

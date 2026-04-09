@@ -12,6 +12,75 @@
   box-shadow: 0 1px 4px rgba(0,0,0,0.1);
 }
 
+/* ---- KPI Gauges ---- */
+.kpi-gauges {
+  display: flex;
+  gap: 16px;
+  padding: 20px 24px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  position: relative;
+}
+
+.kpi-quarter {
+  position: absolute;
+  top: 8px;
+  right: 24px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.gauge-card {
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 16px 20px;
+  min-width: 180px;
+  flex: 1;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  text-align: center;
+}
+
+.gauge-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 4px;
+}
+
+.gauge-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  text-align: left;
+}
+
+.gauge-target {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.gauge-value {
+  font-size: 28px;
+  font-weight: 700;
+  font-family: var(--mono);
+  margin-bottom: 4px;
+}
+
+.gauge-svg {
+  width: 100%;
+  max-width: 120px;
+  height: auto;
+}
+
+.gauge-delta {
+  font-size: 11px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
 .ch-toolbar-title {
   font-size: 16px;
   font-weight: 700;

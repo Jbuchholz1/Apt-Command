@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import './client-health.css';
-import { getClientHealth } from '../../lib/api';
+import { getClientHealth, getCompanyKPIs } from '../../lib/api';
+import GaugeCard from './GaugeCard';
 
 function MultiSelect({ label, options, selected, onChange }) {
   const [open, setOpen] = useState(false);
@@ -40,6 +41,7 @@ const HEALTH_LABELS = { green: 'Healthy', yellow: 'At Risk', red: 'Needs Attenti
 
 export default function ClientHealthModule() {
   const [data, setData] = useState(null);
+  const [kpis, setKpis] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({ clients: [], owners: [] });
@@ -51,8 +53,9 @@ export default function ClientHealthModule() {
     try {
       setLoading(true);
       setError(null);
-      const res = await getClientHealth();
+      const [res, kpiRes] = await Promise.all([getClientHealth(), getCompanyKPIs()]);
       setData(res);
+      setKpis(kpiRes);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -128,11 +131,21 @@ export default function ClientHealthModule() {
   return (
     <div className="client-health-module">
       <div className="ch-toolbar">
-        <h2 className="ch-toolbar-title">Client Health</h2>
+        <h2 className="ch-toolbar-title">APT Health</h2>
         <button className="refresh-btn" onClick={fetchData} disabled={loading}>
           {loading ? 'Refreshing...' : 'Refresh'}
         </button>
       </div>
+
+      {/* KPI Gauges */}
+      {kpis && (
+        <div className="kpi-gauges">
+          {kpis.gauges.map((g, i) => (
+            <GaugeCard key={i} {...g} />
+          ))}
+          <div className="kpi-quarter">{kpis.quarter}</div>
+        </div>
+      )}
 
       <div className="ch-filters">
         <MultiSelect label="Clients" options={clientOptions} selected={filters.clients}
