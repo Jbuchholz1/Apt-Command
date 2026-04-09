@@ -266,13 +266,17 @@ async function getAMUsers() {
   });
 }
 
-async function getAppointmentsInRange(startMs, endMs) {
+async function getAppointmentsInRange(startMs, endMs, ownerIds) {
+  let where = `dateBegin > ${startMs} AND dateBegin < ${endMs} AND isDeleted = false`;
+  if (ownerIds && ownerIds.length > 0) {
+    where += ` AND owner.id IN (${ownerIds.join(',')})`;
+  }
   return callTool('query_entity', {
     entityType: 'Appointment',
-    where: `dateBegin > ${startMs} AND dateBegin < ${endMs} AND isDeleted = false`,
+    where,
     fields: 'id,type,dateBegin,owner,candidateReference,jobOrder,subject',
     orderBy: '-dateBegin',
-    count: 500,
+    count: 2000,
   });
 }
 

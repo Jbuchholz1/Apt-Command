@@ -280,16 +280,17 @@ router.get('/sales-dashboard', async (req, res, next) => {
       return res.status(400).json({ error: 'Invalid date format' });
     }
 
-    // Fire parallel queries
-    const [amRes, apptRes, newJobsRes, closedJobsRes, placementsRes] = await Promise.all([
-      getAMUsers(),
-      getAppointmentsInRange(startMs, endMs),
+    // Get AMs first, then query appointments filtered to their IDs
+    const amRes = await getAMUsers();
+    const ams = (amRes?.data || []).filter(am => !EXCLUDED_AMS.has(`${am.firstName} ${am.lastName}`));
+    const amIdList = ams.map(am => am.id);
+
+    const [apptRes, newJobsRes, closedJobsRes, placementsRes] = await Promise.all([
+      getAppointmentsInRange(startMs, endMs, amIdList),
       getNewJobsInRange(startMs, endMs),
       getClosedJobsInRange(startMs, endMs),
       getPlacementsInRange(startMs, endMs),
     ]);
-
-    const ams = (amRes?.data || []).filter(am => !EXCLUDED_AMS.has(`${am.firstName} ${am.lastName}`));
     const appointments = apptRes?.data || [];
     const newJobs = newJobsRes?.data || [];
     const closedJobs = closedJobsRes?.data || [];
@@ -399,7 +400,9 @@ router.get('/sales-dashboard', async (req, res, next) => {
       if (ownerId && metricsMap[ownerId] && SALES_POINTS[type] !== undefined) {
         metricsMap[ownerId].activities[type].raw++;
         metricsMap[ownerId].activities[type].points += SALES_POINTS[type];
-        metricsMap[ownerId].activityCount++;
+        if (type === 'New Meeting') {
+          metricsMap[ownerId].activityCount++;
+        }
       }
     }
 
