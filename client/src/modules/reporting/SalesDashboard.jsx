@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import './reporting.css';
-import { getSalesDashboard } from '../../lib/api';
+import { getSalesDashboard, exportSalesDashboard } from '../../lib/api';
 import DateRangePicker from './components/DateRangePicker';
 import DashboardFilters from './components/DashboardFilters';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -105,6 +105,7 @@ export default function SalesDashboard() {
             onStartChange={setStartDate}
             onEndChange={setEndDate}
           />
+          <button className="export-btn" onClick={() => exportSalesDashboard(startDate, endDate)}>Export Excel</button>
         </div>
       </div>
 

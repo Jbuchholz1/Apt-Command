@@ -139,7 +139,36 @@ export function getCompanyKPIs(startDate, endDate, clientIds) {
   return fetchAPI(`/api/client-health/kpis${params}`);
 }
 
-// --- Export ---
+// --- Exports ---
+
+async function downloadExcel(path, filename) {
+  const token = await getToken();
+  const headers = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${BASE_URL}${path}`, { headers });
+  if (!res.ok) throw new Error('Export failed');
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+export function exportHealthDashboard() {
+  return downloadExcel('/api/client-health/export', `APT_Health_${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
+export function exportRecruiterDashboard(startDate, endDate) {
+  return downloadExcel(`/api/reporting/recruiter-export?start=${startDate}&end=${endDate}`, `Recruiter_Dashboard_${startDate}_${endDate}.xlsx`);
+}
+
+export function exportSalesDashboard(startDate, endDate) {
+  return downloadExcel(`/api/reporting/sales-export?start=${startDate}&end=${endDate}`, `Sales_Dashboard_${startDate}_${endDate}.xlsx`);
+}
 
 export async function exportJobs() {
   const token = await getToken();

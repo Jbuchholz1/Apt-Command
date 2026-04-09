@@ -1,4 +1,5 @@
 const express = require('express');
+const ExcelJS = require('exceljs');
 const router = express.Router();
 const {
   getActivePlacementsWithClient,
@@ -113,6 +114,117 @@ router.get('/', async (req, res, next) => {
     clients.forEach(c => summary[c.health]++);
 
     res.json({ clients, summary });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/client-health/export
+router.get('/export', async (req, res, next) => {
+  try {
+    const activitySinceMs = Date.now() - (14 * 24 * 60 * 60 * 1000);
+    const [placementsRes, appointmentsRes] = await Promise.all([
+      getActivePlacementsWithClient(),
+      getRecentAppointments(activitySinceMs),
+    ]);
+
+    const placements = placementsRes?.data || [];
+    const appointments = appointmentsRes?.data || [];
+
+    const clientPlacements = {};
+    const clientPlacementDetails = {};
+    for (const p of placements) {
+      const clientId = p.jobOrder?.clientCorporation?.id;
+      if (clientId) {
+        clientPlacements[clientId] = (clientPlacements[clientId] || 0) + 1;
+        if (!clientPlacementDetails[clientId]) clientPlacementDetails[clientId] = [];
+        const bill = Number(p.clientBillRate) || 0;
+        const pay = Number(p.payRate) || 0;
+        const sal = Number(p.salary) || 0;
+        const feeRate = Number(p.fee) || 0;
+        const empType = (p.employeeType || '').toLowerCase();
+        let spread = 0;
+        if (empType === 'perm' && sal > 0 && feeRate > 0) spread = Math.round((sal * feeRate / 26) * 100) / 100;
+        else if (empType === 'corp-to-corp' && bill > 0 && pay > 0) spread = Math.round((bill - pay * 1.05) * 40 * 100) / 100;
+        else if (bill > 0 && pay > 0) spread = Math.round((bill - pay * 1.25) * 40 * 100) / 100;
+        const fmtDate = (ms) => ms ? new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }) : '';
+        clientPlacementDetails[clientId].push({
+          candidate: p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '',
+          manager: p.owner ? `${p.owner.firstName || ''} ${p.owner.lastName || ''}`.trim() : '',
+          startDate: fmtDate(p.dateBegin),
+          endDate: fmtDate(p.dateEnd),
+          spread,
+        });
+      }
+    }
+
+    const clientActivities = {};
+    for (const a of appointments) {
+      const clientId = a.clientContactReference?.clientCorporation?.id || a.jobOrder?.clientCorporation?.id;
+      if (clientId) clientActivities[clientId] = (clientActivities[clientId] || 0) + 1;
+    }
+
+    const allClientIds = new Set([...Object.keys(clientPlacements).map(Number), ...Object.keys(clientActivities).map(Number)]);
+    const clientsRes = allClientIds.size > 0 ? await getClientCorporations([...allClientIds]) : { data: [] };
+
+    const clients = (clientsRes?.data || []).map(c => {
+      const ap = clientPlacements[c.id] || 0;
+      const ra = clientActivities[c.id] || 0;
+      const owners = (c.owners?.data || []).map(o => `${o.firstName || ''} ${o.lastName || ''}`.trim()).filter(Boolean);
+      return { name: c.name, health: calcHealth(ap, ra).toUpperCase(), activePlacements: ap, recentActivities: ra, score: ap + Math.floor(ra / 5), owners: owners.join(', '), details: clientPlacementDetails[c.id] || [] };
+    });
+
+    const wb = new ExcelJS.Workbook();
+
+    // Client Health sheet
+    const ws = wb.addWorksheet('Client Health');
+    ws.columns = [
+      { header: 'Health', key: 'health', width: 10 },
+      { header: 'Client', key: 'name', width: 30 },
+      { header: 'Active Placements', key: 'activePlacements', width: 18 },
+      { header: 'Activities (14d)', key: 'recentActivities', width: 16 },
+      { header: 'Score', key: 'score', width: 8 },
+      { header: 'Owners', key: 'owners', width: 35 },
+    ];
+    const headerRow = ws.getRow(1);
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF04144F' } };
+    ws.autoFilter = { from: 'A1', to: 'F1' };
+    ws.views = [{ state: 'frozen', ySplit: 1 }];
+
+    for (const c of clients) {
+      const row = ws.addRow(c);
+      const healthColors = { GREEN: 'FF16A34A', YELLOW: 'FFEAB308', RED: 'FFDC2626' };
+      row.getCell('health').font = { bold: true, color: { argb: healthColors[c.health] || 'FF000000' } };
+    }
+
+    // Placement Details sheet
+    const ps = wb.addWorksheet('Placement Details');
+    ps.columns = [
+      { header: 'Client', key: 'client', width: 30 },
+      { header: 'Candidate', key: 'candidate', width: 25 },
+      { header: 'Manager', key: 'manager', width: 20 },
+      { header: 'Start Date', key: 'startDate', width: 14 },
+      { header: 'End Date', key: 'endDate', width: 14 },
+      { header: 'Spread', key: 'spread', width: 12 },
+    ];
+    const pHeader = ps.getRow(1);
+    pHeader.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    pHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF04144F' } };
+    ps.autoFilter = { from: 'A1', to: 'F1' };
+    ps.views = [{ state: 'frozen', ySplit: 1 }];
+    ps.getColumn('spread').numFmt = '$#,##0.00';
+
+    for (const c of clients) {
+      for (const d of c.details) {
+        ps.addRow({ client: c.name, ...d });
+      }
+    }
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=APT_Health_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    await wb.xlsx.write(res);
+    res.end();
   } catch (err) {
     next(err);
   }

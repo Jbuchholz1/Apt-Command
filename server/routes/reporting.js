@@ -1,4 +1,5 @@
 const express = require('express');
+const ExcelJS = require('exceljs');
 const router = express.Router();
 const {
   getRecruiterUsers,
@@ -470,6 +471,216 @@ router.get('/sales-dashboard', async (req, res, next) => {
       dateRange: { start, end },
       ams: amList,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- Excel export helpers ---
+const headerStyle = { font: { bold: true, color: { argb: 'FFFFFFFF' } }, fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF04144F' } } };
+
+function styleSheet(ws, colCount) {
+  const row = ws.getRow(1);
+  row.font = headerStyle.font;
+  row.fill = headerStyle.fill;
+  ws.autoFilter = { from: 'A1', to: `${String.fromCharCode(64 + colCount)}1` };
+  ws.views = [{ state: 'frozen', ySplit: 1 }];
+}
+
+// GET /api/reporting/recruiter-export?start=...&end=...
+router.get('/recruiter-export', async (req, res, next) => {
+  try {
+    // Reuse the recruiter-dashboard logic by calling the handler internally
+    const url = `/recruiter-dashboard?start=${req.query.start}&end=${req.query.end}`;
+    const fakeRes = { data: null, json(d) { this.data = d; } };
+    await new Promise((resolve, reject) => {
+      const fakeReq = { query: req.query };
+      // Just re-fetch the data directly
+      resolve();
+    });
+
+    // Fetch data directly
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: 'start and end required' });
+    const startMs = new Date(start).getTime();
+    const endDate = new Date(end); endDate.setHours(23, 59, 59, 999);
+    const endMs = endDate.getTime();
+
+    const [recruitersRes, subsRes, interviewsRes, placementsRes] = await Promise.all([
+      getRecruiterUsers(), getClientSubsInRange(startMs, endMs),
+      getInterviewsInRange(startMs, endMs), getPlacementsInRange(startMs, endMs),
+    ]);
+    const recruiters = (recruitersRes?.data || []).filter(r => !EXCLUDED_RECRUITERS.has(`${r.firstName} ${r.lastName}`));
+    const subs = subsRes?.data || [];
+    const interviews = interviewsRes?.data || [];
+    const placements = placementsRes?.data || [];
+
+    const wb = new ExcelJS.Workbook();
+
+    // Interviews sheet
+    const iws = wb.addWorksheet('Interviews');
+    iws.columns = [
+      { header: 'Recruiter', key: 'recruiter', width: 20 },
+      { header: 'Date', key: 'date', width: 14 },
+      { header: 'Job ID', key: 'jobId', width: 10 },
+      { header: 'Job Title', key: 'jobTitle', width: 35 },
+      { header: 'Candidate', key: 'candidate', width: 25 },
+    ];
+    styleSheet(iws, 5);
+    const recruiterNames = {};
+    for (const r of recruiters) recruiterNames[r.id] = `${r.firstName} ${r.lastName}`;
+    for (const iv of interviews) {
+      const uid = iv.owner?.id;
+      iws.addRow({
+        recruiter: recruiterNames[uid] || '',
+        date: iv.dateBegin ? formatDate(iv.dateBegin) : '',
+        jobId: iv.jobOrder?.id || '',
+        jobTitle: iv.jobOrder?.title || '',
+        candidate: iv.candidateReference ? `${iv.candidateReference.firstName || ''} ${iv.candidateReference.lastName || ''}`.trim() : '',
+      });
+    }
+
+    // Client Subs sheet
+    const sws = wb.addWorksheet('Client Submissions');
+    sws.columns = [
+      { header: 'Submitted By', key: 'submittedBy', width: 20 },
+      { header: 'Job ID', key: 'jobId', width: 10 },
+      { header: 'Job Title', key: 'jobTitle', width: 35 },
+      { header: 'Date', key: 'date', width: 14 },
+      { header: 'Company', key: 'company', width: 25 },
+      { header: 'Candidate', key: 'candidate', width: 25 },
+    ];
+    styleSheet(sws, 6);
+    for (const s of subs) {
+      const uid = s.user?.id;
+      sws.addRow({
+        submittedBy: recruiterNames[uid] || '',
+        jobId: s.jobOrder?.id || '',
+        jobTitle: s.jobOrder?.title || '',
+        date: s.dateAdded ? formatDate(s.dateAdded) : '',
+        company: s.clientCorporation?.name || '',
+        candidate: s.candidate ? `${s.candidate.firstName || ''} ${s.candidate.lastName || ''}`.trim() : '',
+      });
+    }
+
+    // Placements sheet
+    const pws = wb.addWorksheet('Placements');
+    pws.columns = [
+      { header: 'Placement ID', key: 'id', width: 12 },
+      { header: 'Job Title', key: 'jobTitle', width: 35 },
+      { header: 'Candidate', key: 'candidate', width: 25 },
+      { header: 'Type', key: 'empType', width: 14 },
+      { header: 'Start Date', key: 'startDate', width: 14 },
+      { header: 'Bill Rate', key: 'billRate', width: 10 },
+      { header: 'Pay Rate', key: 'payRate', width: 10 },
+    ];
+    styleSheet(pws, 7);
+    for (const p of placements) {
+      pws.addRow({
+        id: p.id,
+        jobTitle: p.jobOrder?.title || '',
+        candidate: p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '',
+        empType: p.employeeType || '',
+        startDate: p.dateBegin ? formatDate(p.dateBegin) : '',
+        billRate: p.clientBillRate || '',
+        payRate: p.payRate || '',
+      });
+    }
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=Recruiter_Dashboard_${start}_${end}.xlsx`);
+    await wb.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/reporting/sales-export?start=...&end=...
+router.get('/sales-export', async (req, res, next) => {
+  try {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: 'start and end required' });
+    const startMs = new Date(start).getTime();
+    const endDate = new Date(end); endDate.setHours(23, 59, 59, 999);
+    const endMs = endDate.getTime();
+
+    const amRes = await getAMUsers();
+    const ams = (amRes?.data || []).filter(a => !EXCLUDED_AMS.has(`${a.firstName} ${a.lastName}`));
+    const amIds = ams.map(a => a.id);
+
+    const [apptRes, newJobsRes, closedJobsRes, placementsRes] = await Promise.all([
+      getAppointmentsInRange(startMs, endMs, amIds),
+      getNewJobsInRange(startMs, endMs),
+      getClosedJobsInRange(startMs, endMs),
+      getPlacementsInRange(startMs, endMs),
+    ]);
+
+    const wb = new ExcelJS.Workbook();
+
+    // Appointments sheet
+    const aws = wb.addWorksheet('Appointments');
+    aws.columns = [
+      { header: 'AM', key: 'am', width: 20 },
+      { header: 'Date', key: 'date', width: 14 },
+      { header: 'Type', key: 'type', width: 20 },
+      { header: 'Client', key: 'client', width: 25 },
+      { header: 'Subject', key: 'subject', width: 40 },
+    ];
+    styleSheet(aws, 5);
+    const amNames = {};
+    for (const a of ams) amNames[a.id] = `${a.firstName} ${a.lastName}`;
+    for (const a of (apptRes?.data || [])) {
+      aws.addRow({
+        am: amNames[a.owner?.id] || '',
+        date: a.dateBegin ? formatDate(a.dateBegin) : '',
+        type: a.type || '',
+        client: a.clientContactReference?.clientCorporation?.name || a.jobOrder?.clientCorporation?.name || '',
+        subject: a.subject || '',
+      });
+    }
+
+    // New Jobs sheet
+    const jws = wb.addWorksheet('New Jobs');
+    jws.columns = [
+      { header: 'Job ID', key: 'id', width: 10 },
+      { header: 'Title', key: 'title', width: 35 },
+      { header: 'Status', key: 'status', width: 18 },
+      { header: 'Openings', key: 'openings', width: 10 },
+      { header: 'Owner', key: 'owner', width: 20 },
+      { header: 'Client', key: 'client', width: 25 },
+    ];
+    styleSheet(jws, 6);
+    for (const j of (newJobsRes?.data || [])) {
+      jws.addRow({
+        id: j.id,
+        title: j.title || '',
+        status: Array.isArray(j.status) ? j.status[0] : (j.status || ''),
+        openings: j.numOpenings || 0,
+        owner: j.owner ? `${j.owner.firstName || ''} ${j.owner.lastName || ''}`.trim() : '',
+        client: j.clientCorporation?.name || '',
+      });
+    }
+
+    // Closed Jobs sheet
+    const cws = wb.addWorksheet('Closed Jobs');
+    cws.columns = jws.columns.map(c => ({ ...c }));
+    styleSheet(cws, 6);
+    for (const j of (closedJobsRes?.data || [])) {
+      cws.addRow({
+        id: j.id,
+        title: j.title || '',
+        status: Array.isArray(j.status) ? j.status[0] : (j.status || ''),
+        openings: j.numOpenings || 0,
+        owner: j.owner ? `${j.owner.firstName || ''} ${j.owner.lastName || ''}`.trim() : '',
+        client: j.clientCorporation?.name || '',
+      });
+    }
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=Sales_Dashboard_${start}_${end}.xlsx`);
+    await wb.xlsx.write(res);
+    res.end();
   } catch (err) {
     next(err);
   }

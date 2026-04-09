@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import './client-health.css';
-import { getClientHealth, getCompanyKPIs } from '../../lib/api';
+import { getClientHealth, getCompanyKPIs, exportHealthDashboard } from '../../lib/api';
 import GaugeCard from './GaugeCard';
 import DateRangePicker from '../reporting/components/DateRangePicker';
 import ModuleSplash from '../../components/ModuleSplash';
@@ -187,6 +187,7 @@ export default function ClientHealthModule() {
             onStartChange={setStartDate}
             onEndChange={setEndDate}
           />
+          <button className="export-btn" onClick={exportHealthDashboard}>Export Excel</button>
           <button className="refresh-btn" onClick={fetchData} disabled={loading}>
             {loading ? 'Refreshing...' : 'Refresh'}
           </button>

@@ -135,6 +135,22 @@
   margin: 0; border-top: 1px solid var(--border);
 }
 
+.client-health-module .export-btn {
+  background: none;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  padding: 5px 14px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.client-health-module .export-btn:hover {
+  background: var(--gold);
+  color: var(--navy-dark);
+}
+
 .ch-toolbar-right {
   display: flex;
   align-items: center;

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import './reporting.css';
-import { getRecruiterDashboard } from '../../lib/api';
+import { getRecruiterDashboard, exportRecruiterDashboard } from '../../lib/api';
 import DateRangePicker from './components/DateRangePicker';
 import DashboardFilters from './components/DashboardFilters';
 import MetricsTable from './components/MetricsTable';
@@ -166,6 +166,7 @@ export default function RecruiterDashboard() {
             onStartChange={setStartDate}
             onEndChange={setEndDate}
           />
+          <button className="export-btn" onClick={() => exportRecruiterDashboard(startDate, endDate)}>Export Excel</button>
         </div>
       </div>
 
