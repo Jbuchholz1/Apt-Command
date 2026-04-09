@@ -388,7 +388,8 @@ router.get('/sales-dashboard', async (req, res, next) => {
         }
 
         if (spread > 0) {
-          metricsMap[amId].newInput += spread;
+          const commPct = comm?.percentage || 1;
+          metricsMap[amId].newInput += Math.round(spread * commPct * 100) / 100;
         }
       }
     }
