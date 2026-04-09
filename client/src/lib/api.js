@@ -126,12 +126,14 @@ export function getSalesDashboard(startDate, endDate) {
 
 // --- Client Health ---
 
-export function getClientHealth() {
-  return fetchAPI('/api/client-health');
+export function getClientHealth(startDate, endDate) {
+  const params = startDate && endDate ? `?start=${startDate}&end=${endDate}` : '';
+  return fetchAPI(`/api/client-health${params}`);
 }
 
-export function getCompanyKPIs() {
-  return fetchAPI('/api/client-health/kpis');
+export function getCompanyKPIs(startDate, endDate) {
+  const params = startDate && endDate ? `?start=${startDate}&end=${endDate}` : '';
+  return fetchAPI(`/api/client-health/kpis${params}`);
 }
 
 // --- Export ---

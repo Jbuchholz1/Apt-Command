@@ -81,6 +81,12 @@
   margin-top: 2px;
 }
 
+.ch-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .ch-toolbar-title {
   font-size: 16px;
   font-weight: 700;

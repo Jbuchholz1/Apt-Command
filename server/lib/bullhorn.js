@@ -343,6 +343,26 @@ async function getClientCorporations(clientIds) {
   });
 }
 
+async function getABJobsInRange(startMs, endMs) {
+  return callTool('query_entity', {
+    entityType: 'JobOrder',
+    where: `dateAdded > ${startMs} AND dateAdded < ${endMs} AND isDeleted = false AND type IN (1,2)`,
+    fields: 'id,title,type,status,numOpenings,owner',
+    count: 500,
+  });
+}
+
+async function getPlacementsForJobs(jobIds) {
+  if (!jobIds.length) return { data: [] };
+  const idList = jobIds.join(',');
+  return callTool('query_entity', {
+    entityType: 'Placement',
+    where: `jobOrder.id IN (${idList})`,
+    fields: 'id,jobOrder,status',
+    count: 500,
+  });
+}
+
 module.exports = {
   getOpenJobs,
   getRecentlyClosedJobs,
@@ -370,4 +390,6 @@ module.exports = {
   getActivePlacementsWithClient,
   getRecentAppointments,
   getClientCorporations,
+  getABJobsInRange,
+  getPlacementsForJobs,
 };

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import './client-health.css';
 import { getClientHealth, getCompanyKPIs } from '../../lib/api';
 import GaugeCard from './GaugeCard';
+import DateRangePicker from '../reporting/components/DateRangePicker';
 
 function MultiSelect({ label, options, selected, onChange }) {
   const [open, setOpen] = useState(false);
@@ -39,7 +40,20 @@ function MultiSelect({ label, options, selected, onChange }) {
 const HEALTH_ORDER = { red: 0, yellow: 1, green: 2 };
 const HEALTH_LABELS = { green: 'Healthy', yellow: 'At Risk', red: 'Needs Attention' };
 
+function getDefaultDates() {
+  const now = new Date();
+  const qMonth = Math.floor(now.getMonth() / 3) * 3;
+  const qStart = new Date(now.getFullYear(), qMonth, 1);
+  return {
+    start: qStart.toISOString().slice(0, 10),
+    end: now.toISOString().slice(0, 10),
+  };
+}
+
 export default function ClientHealthModule() {
+  const defaults = getDefaultDates();
+  const [startDate, setStartDate] = useState(defaults.start);
+  const [endDate, setEndDate] = useState(defaults.end);
   const [data, setData] = useState(null);
   const [kpis, setKpis] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -53,7 +67,10 @@ export default function ClientHealthModule() {
     try {
       setLoading(true);
       setError(null);
-      const [res, kpiRes] = await Promise.all([getClientHealth(), getCompanyKPIs()]);
+      const [res, kpiRes] = await Promise.all([
+        getClientHealth(startDate, endDate),
+        getCompanyKPIs(startDate, endDate),
+      ]);
       setData(res);
       setKpis(kpiRes);
     } catch (err) {
@@ -61,7 +78,7 @@ export default function ClientHealthModule() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [startDate, endDate]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -132,9 +149,17 @@ export default function ClientHealthModule() {
     <div className="client-health-module">
       <div className="ch-toolbar">
         <h2 className="ch-toolbar-title">APT Health</h2>
-        <button className="refresh-btn" onClick={fetchData} disabled={loading}>
-          {loading ? 'Refreshing...' : 'Refresh'}
-        </button>
+        <div className="ch-toolbar-right">
+          <DateRangePicker
+            startDate={startDate}
+            endDate={endDate}
+            onStartChange={setStartDate}
+            onEndChange={setEndDate}
+          />
+          <button className="refresh-btn" onClick={fetchData} disabled={loading}>
+            {loading ? 'Refreshing...' : 'Refresh'}
+          </button>
+        </div>
       </div>
 
       {/* KPI Gauges */}
