@@ -274,7 +274,7 @@ async function getAppointmentsInRange(startMs, endMs, ownerIds) {
   return callTool('query_entity', {
     entityType: 'Appointment',
     where,
-    fields: 'id,type,dateBegin,owner,candidateReference,jobOrder,subject',
+    fields: 'id,type,dateBegin,owner,candidateReference,jobOrder(id,title,clientCorporation),subject,clientContactReference(id,clientCorporation)',
     orderBy: '-dateBegin',
     count: 2000,
   });

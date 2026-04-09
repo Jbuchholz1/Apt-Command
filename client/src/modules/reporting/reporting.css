@@ -340,6 +340,103 @@
   }
 }
 
+/* ---- Clickable Activity Cells ---- */
+.clickable-cell {
+  cursor: pointer;
+  position: relative;
+}
+.clickable-cell:hover {
+  background: rgba(211, 191, 48, 0.15) !important;
+  text-decoration: underline;
+}
+
+/* ---- Activity Detail Modal ---- */
+.activity-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.activity-modal {
+  background: #fff;
+  border-radius: 8px;
+  max-height: 80vh;
+  width: 90%;
+  max-width: 700px;
+  overflow: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.activity-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 1;
+}
+
+.activity-modal-header h3 {
+  margin: 0;
+  font-size: 15px;
+  color: var(--navy);
+}
+
+.activity-modal-body {
+  padding: 0;
+}
+
+.activity-modal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.activity-modal-table th {
+  background: var(--navy);
+  color: #fff;
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: sticky;
+  top: 53px;
+}
+
+.activity-modal-table td {
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.activity-modal-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.activity-modal-subject {
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-modal-count {
+  padding: 10px 20px;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 0;
+  border-top: 1px solid var(--border);
+}
+
 /* ---- Dashboard Filters ---- */
 .dashboard-filters {
   background: var(--surface);

@@ -394,7 +394,8 @@ router.get('/sales-dashboard', async (req, res, next) => {
       }
     }
 
-    // --- Appointments (activity points) ---
+    // --- Appointments (activity points + details) ---
+    const appointmentDetails = {}; // { `${amId}-${type}`: [records] }
     for (const appt of appointments) {
       const ownerId = appt.owner?.id;
       const type = appt.type || '';
@@ -404,6 +405,15 @@ router.get('/sales-dashboard', async (req, res, next) => {
         if (type === 'New Meeting') {
           metricsMap[ownerId].activityCount++;
         }
+        const key = `${ownerId}-${ACTIVITY_LABELS[type] || type}`;
+        if (!appointmentDetails[key]) appointmentDetails[key] = [];
+        appointmentDetails[key].push({
+          id: appt.id,
+          date: formatDate(appt.dateBegin),
+          type: ACTIVITY_LABELS[type] || type,
+          subject: appt.subject || '',
+          client: appt.clientContactReference?.clientCorporation?.name || appt.jobOrder?.clientCorporation?.name || '',
+        });
       }
     }
 
@@ -419,6 +429,13 @@ router.get('/sales-dashboard', async (req, res, next) => {
       am.mar = Math.round(mar * 100) / 100;
       am.newInput = Math.round(am.newInput * 100) / 100;
       am.activityPoints = activityPoints;
+      // Attach detail records keyed by display label
+      am.activityDetails = {};
+      for (const type of ACTIVITY_ORDER) {
+        const label = ACTIVITY_LABELS[type] || type;
+        const key = `${am.id}-${label}`;
+        am.activityDetails[label] = appointmentDetails[key] || [];
+      }
       return am;
     });
 

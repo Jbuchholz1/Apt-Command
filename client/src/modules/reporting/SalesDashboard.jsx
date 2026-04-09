@@ -33,6 +33,7 @@ export default function SalesDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({ recruiters: [], clients: [] });
+  const [modal, setModal] = useState(null); // { amName, activityType, records }
 
   const fetchData = useCallback(async () => {
     try {
@@ -163,15 +164,22 @@ export default function SalesDashboard() {
                       {ams.reduce((sum, am) => sum + am.noteActivity, 0)}
                     </td>
                   </tr>
-                  {/* Activity types (alternating colors) */}
+                  {/* Activity types (alternating colors, clickable) */}
                   {activityKeys.map((key, i) => (
                     <tr key={key} className={i % 2 === 0 ? 'activity-row-even' : 'activity-row-odd'}>
                       <td className="row-label">{key}</td>
-                      {ams.map(am => (
-                        <td key={am.id} className="metric-val">
-                          {am.activityPoints[key] || 0}
-                        </td>
-                      ))}
+                      {ams.map(am => {
+                        const pts = am.activityPoints[key] || 0;
+                        const details = am.activityDetails?.[key] || [];
+                        return (
+                          <td key={am.id}
+                            className={`metric-val ${details.length > 0 ? 'clickable-cell' : ''}`}
+                            onClick={() => details.length > 0 && setModal({ amName: am.name, activityType: key, records: details })}
+                          >
+                            {pts}
+                          </td>
+                        );
+                      })}
                       <td className="metric-val total-col">
                         {ams.reduce((sum, am) => sum + (am.activityPoints[key] || 0), 0)}
                       </td>
@@ -233,6 +241,41 @@ export default function SalesDashboard() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Activity Detail Modal */}
+      {modal && (
+        <div className="activity-modal-overlay" onClick={() => setModal(null)}>
+          <div className="activity-modal" onClick={e => e.stopPropagation()}>
+            <div className="activity-modal-header">
+              <h3>{modal.amName} — {modal.activityType}</h3>
+              <button className="modal-close" onClick={() => setModal(null)}>&times;</button>
+            </div>
+            <div className="activity-modal-body">
+              <table className="activity-modal-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Client</th>
+                    <th>Subject</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {modal.records.map((r, i) => (
+                    <tr key={i}>
+                      <td>{r.date}</td>
+                      <td>{r.type}</td>
+                      <td>{r.client || '—'}</td>
+                      <td className="activity-modal-subject">{r.subject || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="activity-modal-count">{modal.records.length} record{modal.records.length !== 1 ? 's' : ''}</p>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
