@@ -43,8 +43,9 @@ export default function ClientHealthModule() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({ clients: [], owners: [] });
+  const [healthFilter, setHealthFilter] = useState(null);
   const [sortKey, setSortKey] = useState('health');
-  const [sortDir, setSortDir] = useState('asc');
+  const [sortDir, setSortDir] = useState('desc');
 
   const fetchData = useCallback(async () => {
     try {
@@ -78,9 +79,10 @@ export default function ClientHealthModule() {
     return data.clients.filter(c => {
       if (filters.clients.length && !filters.clients.includes(c.name)) return false;
       if (filters.owners.length && !c.owners.some(o => filters.owners.includes(o))) return false;
+      if (healthFilter && c.health !== healthFilter) return false;
       return true;
     });
-  }, [data, filters]);
+  }, [data, filters, healthFilter]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -101,11 +103,25 @@ export default function ClientHealthModule() {
     else { setSortKey(key); setSortDir('asc'); }
   };
 
+  // Summary counts from client+owner filtered (but NOT health filtered)
+  const baseFiltered = useMemo(() => {
+    if (!data?.clients) return [];
+    return data.clients.filter(c => {
+      if (filters.clients.length && !filters.clients.includes(c.name)) return false;
+      if (filters.owners.length && !c.owners.some(o => filters.owners.includes(o))) return false;
+      return true;
+    });
+  }, [data, filters]);
+
   const summary = useMemo(() => {
     const s = { green: 0, yellow: 0, red: 0, total: 0 };
-    filtered.forEach(c => { s[c.health]++; s.total++; });
+    baseFiltered.forEach(c => { s[c.health]++; s.total++; });
     return s;
-  }, [filtered]);
+  }, [baseFiltered]);
+
+  const toggleHealthFilter = (health) => {
+    setHealthFilter(prev => prev === health ? null : health);
+  };
 
   const sortIcon = (key) => sortKey === key ? (sortDir === 'asc' ? ' \u2191' : ' \u2193') : '';
 
@@ -132,10 +148,11 @@ export default function ClientHealthModule() {
 
       {/* Summary strip */}
       <div className="ch-summary">
-        <span className="ch-summary-item ch-green">{summary.green} Healthy</span>
-        <span className="ch-summary-item ch-yellow">{summary.yellow} At Risk</span>
-        <span className="ch-summary-item ch-red">{summary.red} Needs Attention</span>
-        <span className="ch-summary-total">{summary.total} clients</span>
+        <button className={`ch-summary-item ch-green ${healthFilter === 'green' ? 'active' : ''}`} onClick={() => toggleHealthFilter('green')}>{summary.green} Healthy</button>
+        <button className={`ch-summary-item ch-yellow ${healthFilter === 'yellow' ? 'active' : ''}`} onClick={() => toggleHealthFilter('yellow')}>{summary.yellow} At Risk</button>
+        <button className={`ch-summary-item ch-red ${healthFilter === 'red' ? 'active' : ''}`} onClick={() => toggleHealthFilter('red')}>{summary.red} Needs Attention</button>
+        {healthFilter && <button className="ch-clear-health" onClick={() => setHealthFilter(null)}>Show All</button>}
+        <span className="ch-summary-total">{filtered.length}{healthFilter ? ` of ${summary.total}` : ''} clients</span>
       </div>
 
       {error && (
