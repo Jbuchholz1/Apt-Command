@@ -316,8 +316,8 @@ async function getSalesCommissions(placementIds) {
 async function getActivePlacementsWithClient() {
   return callTool('query_entity', {
     entityType: 'Placement',
-    where: "status IN ('Approved','Active') AND jobOrder.clientCorporation.id > 0",
-    fields: 'id,status,jobOrder,candidate',
+    where: "status IN ('Approved','Active')",
+    fields: 'id,status,jobOrder(id,title,clientCorporation)',
     count: 500,
   });
 }
@@ -326,7 +326,7 @@ async function getRecentAppointments(sinceDateMs) {
   return callTool('query_entity', {
     entityType: 'Appointment',
     where: `dateBegin > ${sinceDateMs} AND isDeleted = false`,
-    fields: 'id,type,dateBegin,owner,clientContactReference,jobOrder',
+    fields: 'id,type,dateBegin,owner,clientContactReference(id,clientCorporation),jobOrder(id,clientCorporation)',
     orderBy: '-dateBegin',
     count: 500,
   });
