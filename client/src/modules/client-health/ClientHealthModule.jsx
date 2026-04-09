@@ -57,6 +57,7 @@ export default function ClientHealthModule() {
   const [data, setData] = useState(null);
   const [kpis, setKpis] = useState(null);
   const [gaugeModal, setGaugeModal] = useState(null);
+  const [placementModal, setPlacementModal] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({ clients: [], owners: [] });
@@ -242,7 +243,9 @@ export default function ClientHealthModule() {
                 <tr key={c.id} className={`ch-row ch-row-${c.health}`}>
                   <td><span className={`ch-dot ch-dot-${c.health}`} title={HEALTH_LABELS[c.health]}></span></td>
                   <td className="ch-client-name">{c.name}</td>
-                  <td className="ch-num">{c.activePlacements}</td>
+                  <td className={`ch-num ${c.placementDetails?.length > 0 ? 'clickable-cell' : ''}`}
+                    onClick={() => c.placementDetails?.length > 0 && setPlacementModal({ clientName: c.name, details: c.placementDetails })}
+                  >{c.activePlacements}</td>
                   <td className="ch-num">{c.recentActivities}</td>
                   <td className="ch-num">{c.effectiveScore}</td>
                   <td className="ch-owners">{c.owners.join(', ')}</td>
@@ -286,6 +289,45 @@ export default function ClientHealthModule() {
                 </tbody>
               </table>
               <p className="gauge-modal-count">{gaugeModal.details.length} record{gaugeModal.details.length !== 1 ? 's' : ''}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Placement Detail Modal */}
+      {placementModal && (
+        <div className="gauge-modal-overlay" onClick={() => setPlacementModal(null)}>
+          <div className="gauge-modal" onClick={e => e.stopPropagation()}>
+            <div className="gauge-modal-header">
+              <h3>{placementModal.clientName} — Active Placements</h3>
+              <button className="modal-close" onClick={() => setPlacementModal(null)}>&times;</button>
+            </div>
+            <div className="gauge-modal-body">
+              <table className="gauge-modal-table">
+                <thead>
+                  <tr>
+                    <th>Placement</th>
+                    <th>Candidate</th>
+                    <th>Manager</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Spread</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {placementModal.details.map((r, i) => (
+                    <tr key={i}>
+                      <td><a href={r.link} target="_blank" rel="noopener noreferrer" className="bh-detail-link">{r.placementId}</a></td>
+                      <td>{r.candidate}</td>
+                      <td>{r.manager}</td>
+                      <td>{r.startDate}</td>
+                      <td>{r.endDate || '—'}</td>
+                      <td className="ch-num">${Number(r.spread).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="gauge-modal-count">{placementModal.details.length} placement{placementModal.details.length !== 1 ? 's' : ''}</p>
             </div>
           </div>
         </div>

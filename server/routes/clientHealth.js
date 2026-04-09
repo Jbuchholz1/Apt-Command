@@ -16,7 +16,7 @@ const {
   getProjectJobs,
   getPlacementsForJobs,
 } = require('../lib/bullhorn');
-const { POINTS, EXCLUDED_RECRUITERS } = require('../lib/recruiterConfig');
+const { POINTS, EXCLUDED_RECRUITERS, bhLink } = require('../lib/recruiterConfig');
 const { SALES_POINTS, EXCLUDED_AMS } = require('../lib/salesConfig');
 
 function calcHealth(placements, activities) {
@@ -52,9 +52,35 @@ router.get('/', async (req, res, next) => {
     const appointments = appointmentsRes?.data || [];
 
     const clientPlacements = {};
+    const clientPlacementDetails = {};
     for (const p of placements) {
       const clientId = p.jobOrder?.clientCorporation?.id;
-      if (clientId) clientPlacements[clientId] = (clientPlacements[clientId] || 0) + 1;
+      if (clientId) {
+        clientPlacements[clientId] = (clientPlacements[clientId] || 0) + 1;
+        if (!clientPlacementDetails[clientId]) clientPlacementDetails[clientId] = [];
+
+        const bill = Number(p.clientBillRate) || 0;
+        const pay = Number(p.payRate) || 0;
+        const sal = Number(p.salary) || 0;
+        const feeRate = Number(p.fee) || 0;
+        const empType = (p.employeeType || '').toLowerCase();
+        let spread = 0;
+        if (empType === 'perm' && sal > 0 && feeRate > 0) spread = Math.round((sal * feeRate / 26) * 100) / 100;
+        else if (empType === 'corp-to-corp' && bill > 0 && pay > 0) spread = Math.round((bill - pay * 1.05) * 40 * 100) / 100;
+        else if (bill > 0 && pay > 0) spread = Math.round((bill - pay * 1.25) * 40 * 100) / 100;
+
+        const fmtDate = (ms) => ms ? new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }) : '';
+
+        clientPlacementDetails[clientId].push({
+          placementId: p.id,
+          link: bhLink('Placement', p.id),
+          candidate: p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '',
+          manager: p.owner ? `${p.owner.firstName || ''} ${p.owner.lastName || ''}`.trim() : '',
+          startDate: fmtDate(p.dateBegin),
+          endDate: fmtDate(p.dateEnd),
+          spread,
+        });
+      }
     }
 
     const clientActivities = {};
@@ -77,7 +103,7 @@ router.get('/', async (req, res, next) => {
       const effectiveScore = activePlacements + Math.floor(recentActivities / 5);
       const health = calcHealth(activePlacements, recentActivities);
       const owners = (c.owners?.data || []).map(o => `${o.firstName || ''} ${o.lastName || ''}`.trim()).filter(Boolean);
-      return { id: c.id, name: c.name || '', status: c.status || '', owners, activePlacements, recentActivities, effectiveScore, health };
+      return { id: c.id, name: c.name || '', status: c.status || '', owners, activePlacements, recentActivities, effectiveScore, health, placementDetails: clientPlacementDetails[c.id] || [] };
     });
 
     const healthOrder = { red: 0, yellow: 1, green: 2 };

@@ -317,7 +317,7 @@ async function getActivePlacementsWithClient() {
   return callTool('query_entity', {
     entityType: 'Placement',
     where: "status IN ('Approved','Active')",
-    fields: 'id,status,jobOrder(id,title,clientCorporation)',
+    fields: 'id,status,candidate,owner,jobOrder(id,title,clientCorporation),dateBegin,dateEnd,payRate,clientBillRate,salary,fee,employeeType',
     count: 500,
   });
 }
