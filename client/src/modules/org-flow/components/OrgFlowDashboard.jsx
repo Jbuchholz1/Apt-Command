@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Building2, LogOut, FolderOpen, Trash2, Users, User as UserIcon, Settings, CreditCard as Edit2, FileDown, Upload, Search, Image } from 'lucide-react';
+import { Plus, Building2, FolderOpen, Trash2, Users, User as UserIcon, Settings, CreditCard as Edit2, FileDown, Upload, Search, Image } from 'lucide-react';
 import { useMsal } from '@azure/msal-react';
 import { supabase } from '../lib/supabase';
 import ClientAssignment from './ClientAssignment';
 import * as XLSX from 'xlsx';
 
 export default function OrgFlowDashboard({ onSelectClient }) {
-  const { instance, accounts } = useMsal();
+  const { accounts } = useMsal();
   const currentUserEmail = accounts[0]?.username || '';
 
   const [clients, setClients] = useState([]);
@@ -409,10 +409,6 @@ export default function OrgFlowDashboard({ onSelectClient }) {
       }
     });
 
-  const handleSignOut = () => {
-    instance.logoutRedirect({ postLogoutRedirectUri: window.location.origin });
-  };
-
   return (
     <div className="of-dashboard">
       <header className="of-header">
@@ -425,19 +421,11 @@ export default function OrgFlowDashboard({ onSelectClient }) {
                 className="of-header-logo"
               />
               <div>
-                <h1 className="of-header-title">Apt OrgFlow</h1>
+                <h1 className="of-header-title">Org Flow</h1>
                 <p className="of-header-subtitle">Client Management</p>
               </div>
             </div>
             <div className="of-header-actions">
-              <span className="of-header-email">{currentUserEmail}</span>
-              <button
-                onClick={handleSignOut}
-                className="of-btn of-btn-danger"
-              >
-                <LogOut className="of-icon-sm" />
-                <span>Sign Out</span>
-              </button>
             </div>
           </div>
         </div>

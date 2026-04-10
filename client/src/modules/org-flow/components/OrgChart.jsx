@@ -77,19 +77,6 @@ function OrgChartContent({ clientId, onBack }) {
     try {
       const updates = { [field]: value };
 
-      // If updating apt_contractors and health status is not manually overridden, update health status
-      if (field === 'num_apt_contractors') {
-        const employee = employees.find(emp => emp.id === id);
-        if (employee && !employee.health_status_override) {
-          const getAutoHealthStatus = (aptContractors) => {
-            if (aptContractors >= 3) return 'healthy';
-            if (aptContractors >= 1) return 'needs_attention';
-            return 'unhealthy';
-          };
-          updates.health_status = getAutoHealthStatus(value);
-        }
-      }
-
       await supabase
         .from('employees')
         .update(updates)
@@ -102,24 +89,6 @@ function OrgChartContent({ clientId, onBack }) {
       );
     } catch (error) {
       console.error('Error updating headcount:', error);
-    }
-  };
-
-  const handleUpdateHealthStatus = async (id, status) => {
-    try {
-      // Mark as manually overridden
-      await supabase
-        .from('employees')
-        .update({ health_status: status, health_status_override: true })
-        .eq('id', id);
-
-      setEmployees(prev =>
-        prev.map(emp =>
-          emp.id === id ? { ...emp, health_status: status, health_status_override: true } : emp
-        )
-      );
-    } catch (error) {
-      console.error('Error updating health status:', error);
     }
   };
 
@@ -159,22 +128,11 @@ function OrgChartContent({ clientId, onBack }) {
       }
     });
 
-    const getAutoHealthStatus = (aptContractors) => {
-      if (aptContractors >= 3) return 'healthy';
-      if (aptContractors >= 1) return 'needs_attention';
-      return 'unhealthy';
-    };
-
     const newNodes = employees.map((emp) => {
       const directReportsCount = directReportsMap.get(emp.id) || 0;
       const fteValue = emp.num_ftes !== null && emp.num_ftes !== undefined
         ? emp.num_ftes
         : directReportsCount;
-
-      // Calculate health status: use manual override if set, otherwise auto-calculate
-      const healthStatus = emp.health_status_override
-        ? emp.health_status
-        : getAutoHealthStatus(emp.num_apt_contractors || 0);
 
       return {
         id: emp.id,
@@ -190,11 +148,8 @@ function OrgChartContent({ clientId, onBack }) {
           numFtes: fteValue,
           numContractors: emp.num_contractors || 0,
           numAptContractors: emp.num_apt_contractors || 0,
-          healthStatus: healthStatus,
-          healthStatusOverride: emp.health_status_override || false,
           onEdit: () => handleSelectEmployee(emp),
           onUpdateHeadcount: handleUpdateHeadcount,
-          onUpdateHealthStatus: handleUpdateHealthStatus,
           depth: depthMap.get(emp.id) || 0,
           directReportsCount: directReportsCount,
         },
@@ -888,14 +843,14 @@ function OrgChartContent({ clientId, onBack }) {
             <div className="of-header-actions">
               <button
                 onClick={handleAddEmployee}
-                className="of-btn-primary"
+                className="of-btn of-btn-import"
               >
                 <Plus className="of-icon-xs" />
                 <span>Add Employee</span>
               </button>
               <button
                 onClick={handleAutoLayout}
-                className="of-btn-secondary"
+                className="of-btn of-btn-dark"
               >
                 <LayoutGrid className="of-icon-xs" />
                 <span>Auto Layout</span>
@@ -903,7 +858,7 @@ function OrgChartContent({ clientId, onBack }) {
               <button
                 onClick={handleResetLayout}
                 disabled={saving}
-                className="of-btn-warning"
+                className="of-btn of-btn-orange"
               >
                 <RotateCcw className="of-icon-xs" />
                 <span>Reset Layout</span>
@@ -911,7 +866,7 @@ function OrgChartContent({ clientId, onBack }) {
               <button
                 onClick={handleSavePositions}
                 disabled={saving}
-                className="of-btn-success"
+                className="of-btn of-btn-success"
               >
                 <Save className="of-icon-xs" />
                 <span>{saving ? 'Saving...' : 'Save Layout'}</span>
@@ -919,7 +874,7 @@ function OrgChartContent({ clientId, onBack }) {
               {selectedNodes.length > 0 && (
                 <button
                   onClick={handleDeleteSelectedNodes}
-                  className="of-btn-danger"
+                  className="of-btn of-btn-danger"
                 >
                   <Trash2 className="of-icon-xs" />
                   <span>Delete Selected ({selectedNodes.length})</span>
@@ -943,7 +898,7 @@ function OrgChartContent({ clientId, onBack }) {
               </div>
               <button
                 onClick={handleSearch}
-                className="of-btn-search"
+                className="of-btn of-btn-primary"
               >
                 Search
               </button>
@@ -952,12 +907,12 @@ function OrgChartContent({ clientId, onBack }) {
             <div className="of-import-export-group">
               <button
                 onClick={handleDownloadTemplate}
-                className="of-btn-template"
+                className="of-btn of-btn-success"
               >
                 <FileDown className="of-icon-xs" />
                 <span>Download Template</span>
               </button>
-              <label htmlFor="excel-import-input" className="of-btn-import">
+              <label htmlFor="excel-import-input" className="of-btn of-btn-blue">
                 <Upload className="of-icon-xs" />
                 <span>Import</span>
               </label>
@@ -972,7 +927,7 @@ function OrgChartContent({ clientId, onBack }) {
               />
               <button
                 onClick={handleExportExcel}
-                className="of-btn-export"
+                className="of-btn of-btn-orange"
               >
                 <Download className="of-icon-xs" />
                 <span>Export</span>
