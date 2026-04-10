@@ -25,6 +25,7 @@ export default function OrgFlowDashboard({ onSelectClient }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('name-asc');
   const [logoUploadClient, setLogoUploadClient] = useState(null);
+  const [failedLogos, setFailedLogos] = useState(new Set());
   const [logoFile, setLogoFile] = useState(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const logoInputRef = useRef(null);
@@ -583,16 +584,13 @@ export default function OrgFlowDashboard({ onSelectClient }) {
                   className="of-card-body"
                 >
                   <div className="of-card-header">
-                    {client.logo_url ? (
+                    {client.logo_url && !failedLogos.has(client.id) ? (
                       <div className="of-client-logo-wrapper">
                         <img
                           src={client.logo_url}
                           alt={`${client.name} logo`}
                           className="of-client-logo-img"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                            e.currentTarget.parentElement.innerHTML = '<div class="of-client-icon-fallback"><svg class="of-client-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg></div>';
-                          }}
+                          onError={() => setFailedLogos(prev => new Set(prev).add(client.id))}
                         />
                       </div>
                     ) : (

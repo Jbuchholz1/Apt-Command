@@ -5,6 +5,12 @@ const { getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote 
 
 const router = express.Router();
 
+// Strip HTML tags from user input to prevent stored XSS
+function sanitize(str) {
+  if (!str || typeof str !== 'string') return str;
+  return str.replace(/<[^>]*>/g, '');
+}
+
 // GET /api/jobs/export — Excel export (must be above /:id to avoid conflict)
 router.get('/export', async (req, res, next) => {
   try {
@@ -306,10 +312,10 @@ router.patch('/:id/overrides', async (req, res, next) => {
     const updatedBy = req.user?.email || req.user?.name || 'unknown';
 
     const result = await upsertOverrides(jobId, {
-      recruiter,
-      notes,
-      follow_up,
-      deadline,
+      recruiter: sanitize(recruiter),
+      notes: sanitize(notes),
+      follow_up: sanitize(follow_up),
+      deadline: sanitize(deadline),
       coverage_needed,
       tr_reassigned,
       tr_assigned_at,
@@ -347,7 +353,7 @@ router.post('/:id/notes', async (req, res, next) => {
     }
 
     const createdBy = req.user?.name || req.user?.email || 'Unknown';
-    const note = await addNote(jobId, comment.trim(), createdBy);
+    const note = await addNote(jobId, sanitize(comment.trim()), createdBy);
     res.json({ success: true, data: note });
   } catch (err) {
     next(err);
