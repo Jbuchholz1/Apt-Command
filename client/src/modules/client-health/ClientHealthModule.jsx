@@ -59,6 +59,8 @@ export default function ClientHealthModule() {
   const [data, setData] = useState(null);
   const [kpis, setKpis] = useState(null);
   const [gaugeModal, setGaugeModal] = useState(null);
+  const [checkinSort, setCheckinSort] = useState({ key: 'daysSinceStart', dir: 'desc' });
+  const [checkinOwnerFilter, setCheckinOwnerFilter] = useState('');
   const [placementModal, setPlacementModal] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -280,41 +282,95 @@ export default function ClientHealthModule() {
       )}
 
       {/* Gauge Detail Modal */}
-      {gaugeModal && (
-        <div className="gauge-modal-overlay" onClick={() => setGaugeModal(null)}>
-          <div className="gauge-modal" onClick={e => e.stopPropagation()}>
-            <div className="gauge-modal-header">
-              <h3>{gaugeModal.label}</h3>
-              <button className="modal-close" onClick={() => setGaugeModal(null)}>&times;</button>
-            </div>
-            <div className="gauge-modal-body">
-              <table className="gauge-modal-table">
-                <thead>
-                  <tr>
-                    {gaugeModal.label === 'MAR Total' && <><th>Person</th><th>Role</th><th>MAR</th></>}
-                    {gaugeModal.label === 'Input' && <><th>Job</th><th>Client</th><th>Type</th><th>AM</th><th>Input</th></>}
-                    {gaugeModal.label.includes('Fill Ratio') && <><th>Job</th><th>Priority</th><th>Openings</th><th>Fills</th></>}
-                    {gaugeModal.label === 'Backout %' && <><th>Note ID</th><th>Entity</th><th>Entity ID</th></>}
-                    {gaugeModal.label.includes('Checkin') && <><th>Candidate #</th><th>Placement #</th><th>Candidate</th><th>Client</th><th>Start Date</th><th>30-Day</th><th>90-Day</th></>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {gaugeModal.details.map((r, i) => (
-                    <tr key={i}>
-                      {gaugeModal.label === 'MAR Total' && <><td>{r.name}</td><td>{r.role}</td><td className="ch-num">{r.mar}</td></>}
-                      {gaugeModal.label === 'Input' && <><td>{r.jobTitle}</td><td>{r.client}</td><td>{r.empType}</td><td>{r.am}</td><td className="ch-num">${Number(r.input).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td></>}
-                      {gaugeModal.label.includes('Fill Ratio') && <><td>{r.title}</td><td>{r.priority}</td><td className="ch-num">{r.openings}</td><td className="ch-num">{r.fills}</td></>}
-                      {gaugeModal.label === 'Backout %' && <><td>{r.noteId}</td><td>{r.entity}</td><td>{r.entityId}</td></>}
-                      {gaugeModal.label.includes('Checkin') && <><td>{r.candidateId ? <a href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=Candidate&id=${r.candidateId}`} target="_blank" rel="noopener noreferrer" className="ch-bh-link">{r.candidateId}</a> : '—'}</td><td>{r.placementId ? <a href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=Placement&id=${r.placementId}`} target="_blank" rel="noopener noreferrer" className="ch-bh-link">{r.placementId}</a> : '—'}</td><td>{r.candidate}</td><td>{r.client}</td><td>{r.startDate}</td><td className={r.thirtyDay === 'Done' ? 'ch-green' : r.thirtyDay === 'Overdue' ? 'ch-red' : 'ch-muted'}>{r.thirtyDay}</td><td className={r.ninetyDay === 'Done' ? 'ch-green' : r.ninetyDay === 'Overdue' ? 'ch-red' : 'ch-muted'}>{r.ninetyDay}</td></>}
+      {gaugeModal && (() => {
+        const isCheckin = gaugeModal.label.includes('Checkin');
+        const isTR = gaugeModal.label.includes('TR');
+        const ownerKey = isTR ? 'candidateOwner' : 'jobOwner';
+        const ownerLabel = isTR ? 'Candidate Owner' : 'Job Owner';
+
+        // Checkin sorting + filtering
+        const toggleCheckinSort = (key) => setCheckinSort(prev =>
+          prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }
+        );
+        const cSortIcon = (key) => !isCheckin ? '' : checkinSort.key !== key ? ' ↕' : checkinSort.dir === 'asc' ? ' ↑' : ' ↓';
+
+        const ownerOptions = isCheckin ? [...new Set(gaugeModal.details.map(r => r[ownerKey]).filter(Boolean))].sort() : [];
+
+        const filteredDetails = isCheckin
+          ? gaugeModal.details
+              .filter(r => !checkinOwnerFilter || r[ownerKey] === checkinOwnerFilter)
+              .sort((a, b) => {
+                const av = a[checkinSort.key], bv = b[checkinSort.key];
+                if (av == null) return 1;
+                if (bv == null) return -1;
+                const cmp = typeof av === 'number' ? av - bv : String(av).localeCompare(String(bv));
+                return checkinSort.dir === 'asc' ? cmp : -cmp;
+              })
+          : gaugeModal.details;
+
+        return (
+          <div className="gauge-modal-overlay" onClick={() => { setGaugeModal(null); setCheckinOwnerFilter(''); }}>
+            <div className="gauge-modal" onClick={e => e.stopPropagation()}>
+              <div className="gauge-modal-header">
+                <h3>{gaugeModal.label}</h3>
+                <button className="modal-close" onClick={() => { setGaugeModal(null); setCheckinOwnerFilter(''); }}>&times;</button>
+              </div>
+              <div className="gauge-modal-body">
+                {isCheckin && (
+                  <div className="checkin-filter-row">
+                    <select value={checkinOwnerFilter} onChange={e => setCheckinOwnerFilter(e.target.value)} className="checkin-filter-select">
+                      <option value="">All {ownerLabel}s</option>
+                      {ownerOptions.map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                    {checkinOwnerFilter && <button className="checkin-filter-clear" onClick={() => setCheckinOwnerFilter('')}>Clear</button>}
+                  </div>
+                )}
+                <table className="gauge-modal-table">
+                  <thead>
+                    <tr>
+                      {gaugeModal.label === 'MAR Total' && <><th>Person</th><th>Role</th><th>MAR</th></>}
+                      {gaugeModal.label === 'Input' && <><th>Job</th><th>Client</th><th>Type</th><th>AM</th><th>Input</th></>}
+                      {gaugeModal.label.includes('Fill Ratio') && <><th>Job</th><th>Priority</th><th>Openings</th><th>Fills</th></>}
+                      {gaugeModal.label === 'Backout %' && <><th>Note ID</th><th>Entity</th><th>Entity ID</th></>}
+                      {isCheckin && <>
+                        <th className="sortable" onClick={() => toggleCheckinSort(ownerKey)}>{ownerLabel}{cSortIcon(ownerKey)}</th>
+                        <th className="sortable" onClick={() => toggleCheckinSort('candidateId')}>Candidate #{cSortIcon('candidateId')}</th>
+                        <th className="sortable" onClick={() => toggleCheckinSort('placementId')}>Placement #{cSortIcon('placementId')}</th>
+                        <th className="sortable" onClick={() => toggleCheckinSort('candidate')}>Candidate{cSortIcon('candidate')}</th>
+                        <th className="sortable" onClick={() => toggleCheckinSort('client')}>Client{cSortIcon('client')}</th>
+                        <th className="sortable" onClick={() => toggleCheckinSort('daysSinceStart')}>Start Date{cSortIcon('daysSinceStart')}</th>
+                        <th className="sortable" onClick={() => toggleCheckinSort('thirtyDay')}>30-Day{cSortIcon('thirtyDay')}</th>
+                        <th className="sortable" onClick={() => toggleCheckinSort('ninetyDay')}>90-Day{cSortIcon('ninetyDay')}</th>
+                      </>}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-              <p className="gauge-modal-count">{gaugeModal.details.length} record{gaugeModal.details.length !== 1 ? 's' : ''}</p>
+                  </thead>
+                  <tbody>
+                    {(isCheckin ? filteredDetails : gaugeModal.details).map((r, i) => (
+                      <tr key={i}>
+                        {gaugeModal.label === 'MAR Total' && <><td>{r.name}</td><td>{r.role}</td><td className="ch-num">{r.mar}</td></>}
+                        {gaugeModal.label === 'Input' && <><td>{r.jobTitle}</td><td>{r.client}</td><td>{r.empType}</td><td>{r.am}</td><td className="ch-num">${Number(r.input).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td></>}
+                        {gaugeModal.label.includes('Fill Ratio') && <><td>{r.title}</td><td>{r.priority}</td><td className="ch-num">{r.openings}</td><td className="ch-num">{r.fills}</td></>}
+                        {gaugeModal.label === 'Backout %' && <><td>{r.noteId}</td><td>{r.entity}</td><td>{r.entityId}</td></>}
+                        {isCheckin && <>
+                          <td>{r[ownerKey] || '—'}</td>
+                          <td>{r.candidateId ? <a href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=Candidate&id=${r.candidateId}`} target="_blank" rel="noopener noreferrer" className="ch-bh-link">{r.candidateId}</a> : '—'}</td>
+                          <td>{r.placementId ? <a href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=Placement&id=${r.placementId}`} target="_blank" rel="noopener noreferrer" className="ch-bh-link">{r.placementId}</a> : '—'}</td>
+                          <td>{r.candidate}</td>
+                          <td>{r.client}</td>
+                          <td>{r.startDate}</td>
+                          <td className={r.thirtyDay === 'Done' ? 'ch-green' : r.thirtyDay === 'Overdue' ? 'ch-red' : 'ch-muted'}>{r.thirtyDay}</td>
+                          <td className={r.ninetyDay === 'Done' ? 'ch-green' : r.ninetyDay === 'Overdue' ? 'ch-red' : 'ch-muted'}>{r.ninetyDay}</td>
+                        </>}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="gauge-modal-count">{(isCheckin ? filteredDetails : gaugeModal.details).length} record{(isCheckin ? filteredDetails : gaugeModal.details).length !== 1 ? 's' : ''}</p>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Placement Detail Modal */}
       {placementModal && (

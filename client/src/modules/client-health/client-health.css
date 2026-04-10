@@ -363,6 +363,15 @@ td.ch-muted { color: var(--text-light); }
 .ch-bh-link { color: var(--gold); font-family: var(--mono); font-size: 11px; text-decoration: none; }
 .ch-bh-link:hover { text-decoration: underline; }
 
+/* Checkin modal filter + sort */
+.checkin-filter-row { display: flex; gap: 8px; padding: 0 0 12px; align-items: center; }
+.checkin-filter-select { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; background: var(--surface); }
+.checkin-filter-select:focus { outline: none; border-color: var(--gold); }
+.checkin-filter-clear { padding: 4px 10px; font-size: 11px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); cursor: pointer; color: var(--text-muted); }
+.checkin-filter-clear:hover { background: #f1f5f9; }
+.gauge-modal-table th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+.gauge-modal-table th.sortable:hover { background: rgba(255,255,255,0.1); }
+
 .ch-owners {
   font-size: 12px;
   color: var(--text-muted);

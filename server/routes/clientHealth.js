@@ -513,10 +513,15 @@ router.get('/kpis', async (req, res, next) => {
           if (hasCheckin) totalCompleted++;
         }
 
+        const candidateOwner = p.owner ? `${p.owner.firstName || ''} ${p.owner.lastName || ''}`.trim() : '';
+        const jobOwner = p.jobOrder?.owner ? `${p.jobOrder.owner.firstName || ''} ${p.jobOrder.owner.lastName || ''}`.trim() : '';
+
         details.push({
           candidateId: candidateId || null,
           placementId: p.id,
           candidate: candidateName,
+          candidateOwner,
+          jobOwner,
           client,
           startDate,
           daysSinceStart,
