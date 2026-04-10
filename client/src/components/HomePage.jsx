@@ -50,6 +50,14 @@ const modules = [
     path: '/performance',
     status: 'active',
   },
+  {
+    id: 'operations',
+    title: 'Operations',
+    description: 'Internal operations tools, workflows, and process management.',
+    icon: '\u{2699}\u{FE0F}',
+    path: '/operations',
+    status: 'coming-soon',
+  },
 ];
 
 export default function HomePage() {
