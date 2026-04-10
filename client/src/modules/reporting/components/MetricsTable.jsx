@@ -11,6 +11,7 @@ export default function MetricsTable({ recruiters, totals }) {
 
   const fmt = (val, format) => {
     if (format === 'currency') return `$${Number(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (typeof val === 'number' && !Number.isInteger(val)) return Math.round(val * 100) / 100;
     return val;
   };
 

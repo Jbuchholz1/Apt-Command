@@ -134,6 +134,7 @@ export default function SalesDashboard() {
           onChange={setFilters}
           recruiterOptions={amOptions}
           clientOptions={clientOptions}
+          recruiterLabel="Account Managers"
         />
       )}
 

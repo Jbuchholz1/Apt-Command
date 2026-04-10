@@ -40,11 +40,11 @@ function MultiSelect({ label, options, selected, onChange }) {
   );
 }
 
-export default function DashboardFilters({ filters, onChange, recruiterOptions, clientOptions }) {
+export default function DashboardFilters({ filters, onChange, recruiterOptions, clientOptions, recruiterLabel }) {
   return (
     <div className="dashboard-filters">
       <MultiSelect
-        label="Recruiters"
+        label={recruiterLabel || "Recruiters"}
         options={recruiterOptions}
         selected={filters.recruiters}
         onChange={(val) => onChange({ ...filters, recruiters: val })}
