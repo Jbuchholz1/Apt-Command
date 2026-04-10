@@ -140,6 +140,7 @@ export function getCompanyKPIs(startDate, endDate, clientIds) {
 }
 
 // --- Exports ---
+import { showToast } from './toast';
 
 async function downloadExcel(path, filename) {
   const token = await getToken();
@@ -156,6 +157,7 @@ async function downloadExcel(path, filename) {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+  showToast('Export downloaded!');
 }
 
 export function exportHealthDashboard() {
@@ -187,4 +189,5 @@ export async function exportJobs() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+  showToast('Export downloaded!');
 }

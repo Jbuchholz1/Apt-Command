@@ -233,7 +233,16 @@ export default function ClientHealthModule() {
       )}
 
       {loading && !data && (
-        <div className="ch-loading">Loading client health data...</div>
+        <div className="ch-loading">
+          <div style={{ display: 'flex', gap: 16, padding: '20px 24px' }}>
+            <div className="skeleton-shimmer skeleton-gauge"></div>
+            <div className="skeleton-shimmer skeleton-gauge"></div>
+            <div className="skeleton-shimmer skeleton-gauge"></div>
+            <div className="skeleton-shimmer skeleton-gauge"></div>
+            <div className="skeleton-shimmer skeleton-gauge"></div>
+          </div>
+          <div className="skeleton-shimmer skeleton-table"></div>
+        </div>
       )}
 
       {data && (

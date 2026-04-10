@@ -126,7 +126,13 @@ export default function SalesDashboard() {
       )}
 
       {loading && !data && (
-        <div className="reporting-loading">Loading sales dashboard...</div>
+        <div className="reporting-loading">
+          <div className="skeleton-shimmer skeleton-row" style={{ width: '60%' }}></div>
+          <div style={{ display: 'flex', gap: 20, padding: '16px 24px' }}>
+            <div className="skeleton-shimmer" style={{ flex: 2, height: 400, borderRadius: 8 }}></div>
+            <div className="skeleton-shimmer" style={{ flex: 1, height: 400, borderRadius: 8 }}></div>
+          </div>
+        </div>
       )}
 
       {data && (

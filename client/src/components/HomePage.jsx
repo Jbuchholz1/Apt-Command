@@ -56,9 +56,13 @@ export default function HomePage() {
   const { accounts } = useMsal();
   const firstName = (accounts[0]?.name || '').split(' ')[0] || 'there';
 
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+
   return (
     <div className="home-page">
       <h1 className="home-greeting">Welcome back, {firstName}</h1>
+      <p className="home-date">{today}</p>
+      <p className="home-tagline">Make a Difference. No, But Really.</p>
       <p className="home-subtitle">Select a module to get started.</p>
 
       <div className="module-grid">
@@ -96,6 +100,9 @@ export default function HomePage() {
           <a href="http://app.alex.com/" target="_blank" rel="noopener noreferrer" className="resource-link">Alex</a>
         </div>
       </div>
+      <footer className="home-footer">
+        <span className="home-footer-brand">APT COMMAND</span> &middot; v1.0
+      </footer>
     </div>
   );
 }

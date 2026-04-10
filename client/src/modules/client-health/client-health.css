@@ -33,12 +33,13 @@
 }
 
 .gauge-card {
-  background: var(--surface);
-  border-radius: 8px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid var(--border);
+  border-radius: 12px;
   padding: 16px 20px;
   min-width: 180px;
   flex: 1;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   text-align: center;
 }
 
@@ -371,11 +372,12 @@
   font-style: italic;
 }
 
+.client-health-module {
+  animation: pageFadeIn 0.3s ease-out;
+}
+
 .ch-loading {
-  text-align: center;
-  padding: 60px 24px;
-  color: var(--text-muted);
-  font-size: 14px;
+  padding: 0;
 }
 
 /* ---- Health Dots ---- */

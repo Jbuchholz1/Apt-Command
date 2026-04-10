@@ -112,11 +112,12 @@
   margin-left: 12px;
 }
 
+.reporting-module {
+  animation: pageFadeIn 0.3s ease-out;
+}
+
 .reporting-loading {
-  text-align: center;
-  padding: 60px 24px;
-  color: var(--text-muted);
-  font-size: 14px;
+  padding: 20px 0;
 }
 
 /* ---- Date Range Picker ---- */

@@ -187,7 +187,14 @@ export default function RecruiterDashboard() {
       )}
 
       {loading && !data && (
-        <div className="reporting-loading">Loading dashboard data...</div>
+        <div className="reporting-loading">
+          <div className="skeleton-shimmer skeleton-row" style={{ width: '60%' }}></div>
+          <div style={{ display: 'flex', gap: 20, padding: '16px 24px' }}>
+            <div className="skeleton-shimmer" style={{ flex: 1, height: 320, borderRadius: 8 }}></div>
+            <div className="skeleton-shimmer" style={{ flex: 1, height: 320, borderRadius: 8 }}></div>
+          </div>
+          <div className="skeleton-shimmer skeleton-table"></div>
+        </div>
       )}
 
       {filtered && (
