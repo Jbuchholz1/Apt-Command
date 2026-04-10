@@ -4,7 +4,11 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
-  console.warn('[db] SUPABASE_URL or SUPABASE_SERVICE_KEY not set — overrides/notes will fail');
+  console.error('[db] SUPABASE_URL or SUPABASE_SERVICE_KEY not set — overrides/notes WILL NOT PERSIST');
+  console.error('[db]   SUPABASE_URL:', supabaseUrl ? 'SET' : 'MISSING');
+  console.error('[db]   SUPABASE_SERVICE_KEY:', supabaseKey ? 'SET' : 'MISSING');
+} else {
+  console.log('[db] Supabase connected:', supabaseUrl);
 }
 
 const supabase = supabaseUrl && supabaseKey
