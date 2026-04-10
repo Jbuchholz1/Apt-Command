@@ -165,7 +165,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
     { label: 'C Reqs', value: cReqCount, color: '#94a3b8', onClick: () => setShowC(true) },
     { label: 'On The Board', value: filledCount, color: '#7c3aed', tooltip: 'The number of Jobs with a status of Filled', onClick: () => setShowFilled(true) },
     { label: 'Active Contractors', value: activeContractors, color: '#0d9488', onClick: handleContractorsClick },
-    { label: 'Total Potential CE Spread', value: fmtCurrency(totalCE), color: '#2563eb', onClick: () => setShowCE(true), tooltip: '((Pay Rate × 1.25 - Bill Rate) × 40 × -1) for Accepting Candidates & Filled jobs' },
+    { label: 'Total Potential CE Spread', value: fmtCurrency(totalCE), color: '#2563eb', onClick: () => setShowCE(true), tooltip: 'W2: (Bill Rate - Pay Rate × 1.25) × 40 | C2C: (Bill Rate - Pay Rate × 1.05) × 40 | A/B priority, Accepting Candidates & Filled jobs only' },
     { label: 'Total Potential Perm Spread', value: fmtCurrency(totalPerm), color: '#9333ea', onClick: () => setShowPerm(true), tooltip: '(Salary Low × Fee %) ÷ 26 for Accepting Candidates & Filled jobs' },
   ];
 
