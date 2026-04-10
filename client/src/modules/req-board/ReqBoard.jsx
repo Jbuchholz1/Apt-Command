@@ -71,6 +71,7 @@ const REMOTE_OPTIONS = [
 
 const COLUMNS = [
   { key: 'priority', label: 'Pri', sortable: true, width: '42px' },
+  { key: 'calledShot', label: 'CS', sortable: true, width: '36px' },
   { key: 'id', label: 'Req#', sortable: true, width: '55px' },
   { key: 'dateAdded', label: 'Date', sortable: true, width: '70px' },
   { key: 'ownerInitials', label: 'AM', sortable: true, width: '50px', editType: 'select', bullhornField: 'owner' },
@@ -97,6 +98,7 @@ const OVERRIDE_FIELD_MAP = {
   followUp: 'follow_up',
   deadline: 'deadline',
   coverageNeeded: 'coverage_needed',
+  calledShot: 'called_shot',
 };
 
 const COVERAGE_OPTIONS = [
@@ -364,6 +366,22 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
                 color: PRIORITY_COLORS[job.priority]?.text || '#fff',
               }}>{job.priority}</span>
             )}
+          </td>
+        );
+      case 'calledShot':
+        return (
+          <td key={col.key} style={{ textAlign: 'center' }}>
+            <input
+              type="checkbox"
+              checked={!!job.calledShot}
+              onChange={(e) => {
+                e.stopPropagation();
+                handleOverrideSave(job.id, 'calledShot', e.target.checked);
+              }}
+              onClick={e => e.stopPropagation()}
+              title="Called Shot"
+              style={{ cursor: 'pointer', accentColor: '#D3BF30' }}
+            />
           </td>
         );
       case 'id':

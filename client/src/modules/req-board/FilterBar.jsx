@@ -81,6 +81,7 @@ export default function FilterBar({ filters, onChange, jobs, redBoxCount }) {
     (filters.owner?.length || 0) +
     (filters.client?.length || 0) +
     (filters.remote ? 1 : 0) +
+    (filters.calledShot ? 1 : 0) +
     (filters.redBoxes ? 1 : 0);
 
   return (
@@ -134,6 +135,14 @@ export default function FilterBar({ filters, onChange, jobs, redBoxCount }) {
       </div>
 
       <div className="filter-group">
+        <label>Called Shots</label>
+        <select value={filters.calledShot || ''} onChange={e => update('calledShot', e.target.value)}>
+          <option value="">All</option>
+          <option value="yes">Called Shots Only</option>
+        </select>
+      </div>
+
+      <div className="filter-group">
         <label>Alerts</label>
         <select value={filters.redBoxes || ''} onChange={e => update('redBoxes', e.target.value)}>
           <option value="">All</option>
@@ -144,7 +153,7 @@ export default function FilterBar({ filters, onChange, jobs, redBoxCount }) {
       {activeCount > 0 && (
         <button
           className="filter-clear"
-          onClick={() => onChange({ status: [], employmentType: [], owner: [], client: [], remote: '', redBoxes: '' })}
+          onClick={() => onChange({ status: [], employmentType: [], owner: [], client: [], remote: '', calledShot: '', redBoxes: '' })}
         >
           Clear filters ({activeCount})
         </button>

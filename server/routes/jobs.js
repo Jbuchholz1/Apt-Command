@@ -302,7 +302,7 @@ router.patch('/:id/overrides', async (req, res, next) => {
       return res.status(400).json({ error: 'Invalid job ID' });
     }
 
-    const { recruiter, notes, follow_up, deadline, coverage_needed, tr_reassigned, tr_assigned_at } = req.body;
+    const { recruiter, notes, follow_up, deadline, coverage_needed, tr_reassigned, tr_assigned_at, called_shot } = req.body;
     const updatedBy = req.user?.email || req.user?.name || 'unknown';
 
     const result = await upsertOverrides(jobId, {
@@ -313,6 +313,7 @@ router.patch('/:id/overrides', async (req, res, next) => {
       coverage_needed,
       tr_reassigned,
       tr_assigned_at,
+      called_shot,
       updated_by: updatedBy,
     });
 
@@ -371,6 +372,7 @@ function mergeOverrides(job, overridesMap) {
     job.deadline = ov.deadline || '';
     job.notes = ov.notes || '';
     job.coverageNeeded = ov.coverage_needed || '';
+    job.calledShot = ov.called_shot === true || ov.called_shot === 'true';
   } else {
     job.recruiter = job.recruiter || '';
     job.trReassigned = false;
@@ -379,6 +381,7 @@ function mergeOverrides(job, overridesMap) {
     job.deadline = job.deadline || '';
     job.notes = job.notes || '';
     job.coverageNeeded = job.coverageNeeded || '';
+    job.calledShot = false;
   }
   return job;
 }

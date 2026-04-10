@@ -65,6 +65,7 @@ export default function ReqBoardModule() {
         const r = (job.remote || '').toLowerCase();
         if (r !== filters.remote.toLowerCase()) return false;
       }
+      if (filters.calledShot === 'yes' && !job.calledShot) return false;
       if (filters.redBoxes === 'red' && !hasRedBox(job)) return false;
       return true;
     });
