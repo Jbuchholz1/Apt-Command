@@ -431,7 +431,7 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
               </div>
             </div>
             <div className="of-header-actions">
-              <span className="of-header-email">{user?.email}</span>
+              <span className="of-header-email"></span>
               <button
                 onClick={onViewHealth}
                 className="of-btn of-btn-health"

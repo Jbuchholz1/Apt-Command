@@ -39,7 +39,10 @@ export default function OrgFlowModule() {
       {view === 'dashboard' && (
         <OrgFlowDashboard
           key={dashboardKey}
-          onNavigate={handleNavigate}
+          onSelectClient={(clientId) => handleNavigate('orgchart', clientId)}
+          onManageUsers={() => handleNavigate('users')}
+          onViewProfile={() => handleNavigate('profile')}
+          onViewHealth={() => handleNavigate('health')}
         />
       )}
       {view === 'orgchart' && selectedClientId && (

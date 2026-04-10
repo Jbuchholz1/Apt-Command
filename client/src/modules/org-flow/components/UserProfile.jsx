@@ -3,7 +3,6 @@ import { ArrowLeft, User, Mail, Shield, Calendar, Key } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function UserProfile({ onBack }) {
-  const user = null; // Profile managed via MSAL, not Supabase
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -20,10 +19,18 @@ export default function UserProfile({ onBack }) {
 
   const loadProfile = async () => {
     try {
+      // Get the current Supabase auth user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setError('Not authenticated');
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('user_profiles')
         .select('*')
-        .eq('id', user?.id)
+        .eq('id', user.id)
         .maybeSingle();
 
       if (error) throw error;
@@ -44,10 +51,16 @@ export default function UserProfile({ onBack }) {
     setSuccess('');
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setError('Not authenticated');
+        return;
+      }
+
       const { error } = await supabase
         .from('user_profiles')
         .update({ full_name: fullName.trim() })
-        .eq('id', user?.id);
+        .eq('id', user.id);
 
       if (error) throw error;
 
