@@ -6,7 +6,6 @@ import './EmployeeNode.css';
 function EmployeeNode({ data, selected }) {
   const [localFtes, setLocalFtes] = useState(data.numFtes);
   const [localContractors, setLocalContractors] = useState(data.numContractors);
-  const [localAptContractors, setLocalAptContractors] = useState(data.numAptContractors);
 
   const handleIncrement = async (field) => {
     if (field === 'ftes') {
@@ -17,10 +16,6 @@ function EmployeeNode({ data, selected }) {
       const newValue = localContractors + 1;
       setLocalContractors(newValue);
       await data.onUpdateHeadcount(data.id, 'num_contractors', newValue);
-    } else if (field === 'apt_contractors') {
-      const newValue = localAptContractors + 1;
-      setLocalAptContractors(newValue);
-      await data.onUpdateHeadcount(data.id, 'num_apt_contractors', newValue);
     }
   };
 
@@ -33,10 +28,6 @@ function EmployeeNode({ data, selected }) {
       const newValue = Math.max(0, localContractors - 1);
       setLocalContractors(newValue);
       await data.onUpdateHeadcount(data.id, 'num_contractors', newValue);
-    } else if (field === 'apt_contractors') {
-      const newValue = Math.max(0, localAptContractors - 1);
-      setLocalAptContractors(newValue);
-      await data.onUpdateHeadcount(data.id, 'num_apt_contractors', newValue);
     }
   };
 
@@ -118,29 +109,8 @@ function EmployeeNode({ data, selected }) {
 
             <div className="of-employee-counter-row">
               <label className="of-employee-counter-label">Apt Contractors:</label>
-              <div className="of-employee-counter-controls">
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleDecrement('apt_contractors'); }}
-                  className="of-employee-counter-btn"
-                >
-                  <Minus className="of-employee-counter-icon" />
-                </button>
-                <span className="of-employee-counter-value">{localAptContractors}</span>
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleIncrement('apt_contractors'); }}
-                  className="of-employee-counter-btn"
-                >
-                  <Plus className="of-employee-counter-icon" />
-                </button>
-              </div>
+              <span className="of-employee-counter-value">{data.liveContractors || 0}</span>
             </div>
-
-            {data.liveContractors > 0 && (
-              <div className="of-employee-counter-row" style={{ marginTop: 4, paddingTop: 4, borderTop: '1px dashed #e2e8f0' }}>
-                <label className="of-employee-counter-label" style={{ color: '#16a34a', fontWeight: 600 }}>Active (Live):</label>
-                <span className="of-employee-counter-value" style={{ color: '#16a34a', fontWeight: 700 }}>{data.liveContractors}</span>
-              </div>
-            )}
           </div>
         </div>
 
