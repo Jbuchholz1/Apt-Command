@@ -411,23 +411,10 @@ export default function OrgFlowDashboard({ onSelectClient }) {
 
   return (
     <div className="of-dashboard">
-      <header className="of-header">
-        <div className="of-header-inner">
-          <div className="of-header-row">
-            <div className="of-header-brand">
-              <img
-                src="/apt-logo.jpg"
-                alt="Apt Companies Logo"
-                className="of-header-logo"
-              />
-              <div>
-                <h1 className="of-header-title">Org Flow</h1>
-                <p className="of-header-subtitle">Client Management</p>
-              </div>
-            </div>
-            <div className="of-header-actions">
-            </div>
-          </div>
+      <header className="of-module-toolbar">
+        <div className="of-module-toolbar-left">
+          <img src="/apt-logo.jpg" alt="APT" className="of-module-toolbar-logo" />
+          <h2 className="of-module-toolbar-title">Org Flow</h2>
         </div>
       </header>
 

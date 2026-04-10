@@ -66,15 +66,10 @@
 
 /* ---- Dashboard ---- */
 .of-dashboard { min-height: calc(100vh - 48px); background: var(--bg); }
-.of-header { background: var(--navy); color: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
-.of-header-inner { max-width: 1400px; margin: 0 auto; padding: 16px 24px; }
-.of-header-row { display: flex; align-items: center; justify-content: space-between; }
-.of-header-brand { display: flex; align-items: center; gap: 12px; }
-.of-header-logo { width: 40px; height: 40px; border-radius: 8px; object-fit: contain; }
-.of-header-title { font-size: 20px; font-weight: 700; color: var(--gold); margin: 0; }
-.of-header-subtitle { font-size: 12px; color: var(--text-light); }
-.of-header-actions { display: flex; align-items: center; gap: 12px; }
-.of-header-email { font-size: 11px; color: var(--text-light); }
+.of-module-toolbar { background: var(--navy); color: #fff; padding: 8px 24px; display: flex; align-items: center; justify-content: space-between; }
+.of-module-toolbar-left { display: flex; align-items: center; gap: 8px; }
+.of-module-toolbar-logo { height: 28px; width: auto; border-radius: 3px; }
+.of-module-toolbar-title { font-size: 16px; font-weight: 700; margin: 0; color: var(--gold); letter-spacing: 0.5px; }
 .of-main { max-width: 1400px; margin: 0 auto; padding: 24px; }
 .of-page-title { font-size: 22px; font-weight: 700; color: var(--navy); margin: 0; }
 
