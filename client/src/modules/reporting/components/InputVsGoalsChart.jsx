@@ -1,23 +1,38 @@
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell, ReferenceLine, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, Line, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { CHART_COLORS } from '../lib/constants';
 
-export default function InputVsGoalsChart({ recruiters }) {
+export default function InputVsGoalsChart({ recruiters, startDate, endDate }) {
   if (!recruiters || recruiters.length === 0) return null;
+
+  // Calculate pacing fraction: how far through the date range are we?
+  let pacingFraction = 1;
+  if (startDate && endDate) {
+    const start = new Date(startDate + 'T00:00:00').getTime();
+    const end = new Date(endDate + 'T23:59:59').getTime();
+    const now = Date.now();
+    const totalMs = end - start;
+    const elapsedMs = Math.min(now - start, totalMs);
+    if (totalMs > 0) {
+      pacingFraction = Math.max(0, Math.min(1, elapsedMs / totalMs));
+    }
+  }
 
   const data = recruiters.map(r => ({
     name: r.name,
     tier: `Tier ${r.tier}`,
     goal: r.spreadGoal,
     actual: r.metrics.newInput,
+    pacing: Math.round(r.spreadGoal * pacingFraction),
   }));
 
   const formatDollar = (val) => `$${Number(val).toLocaleString()}`;
+  const pacingPct = Math.round(pacingFraction * 100);
 
   return (
     <div className="chart-section">
       <h3 className="section-title">New Input Totals vs Goals</h3>
       <ResponsiveContainer width="100%" height={320}>
-        <BarChart data={data} barGap={4} margin={{ top: 10, right: 20, bottom: 30, left: 20 }}>
+        <ComposedChart data={data} barGap={4} margin={{ top: 10, right: 20, bottom: 30, left: 20 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
           <XAxis
             dataKey="name"
@@ -30,7 +45,17 @@ export default function InputVsGoalsChart({ recruiters }) {
           <Legend />
           <Bar dataKey="goal" name="Spread Goal" fill={CHART_COLORS.navy} radius={[3, 3, 0, 0]} />
           <Bar dataKey="actual" name="New Input" fill={CHART_COLORS.gold} radius={[3, 3, 0, 0]} />
-        </BarChart>
+          <Line
+            dataKey="pacing"
+            name={`Pacing Target (${pacingPct}%)`}
+            type="linear"
+            stroke="#dc2626"
+            strokeWidth={2}
+            strokeDasharray="6 3"
+            dot={{ r: 5, fill: '#dc2626', stroke: '#dc2626' }}
+            activeDot={{ r: 7 }}
+          />
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );
