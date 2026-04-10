@@ -134,6 +134,13 @@ function EmployeeNode({ data, selected }) {
                 </button>
               </div>
             </div>
+
+            {data.liveContractors > 0 && (
+              <div className="of-employee-counter-row" style={{ marginTop: 4, paddingTop: 4, borderTop: '1px dashed #e2e8f0' }}>
+                <label className="of-employee-counter-label" style={{ color: '#16a34a', fontWeight: 600 }}>Active (Live):</label>
+                <span className="of-employee-counter-value" style={{ color: '#16a34a', fontWeight: 700 }}>{data.liveContractors}</span>
+              </div>
+            )}
           </div>
         </div>
 

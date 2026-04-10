@@ -130,6 +130,12 @@ export function getMyDashboard(startDate, endDate) {
   return fetchAPI(`/api/performance/my-dashboard?start=${startDate}&end=${endDate}`);
 }
 
+// --- Org Flow ---
+
+export function getContractorCounts() {
+  return fetchAPI('/api/org-flow/contractor-counts');
+}
+
 // --- Client Health ---
 
 export function getClientHealth(startDate, endDate) {

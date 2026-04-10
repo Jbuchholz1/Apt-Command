@@ -13,6 +13,7 @@ import { supabase } from '../lib/supabase';
 import EmployeeNode from './EmployeeNode';
 import { getLayoutedElements } from '../lib/layoutUtils';
 import * as XLSX from 'xlsx';
+import { getContractorCounts } from '../../../lib/api';
 
 const nodeTypes = {
   employee: EmployeeNode,
@@ -30,6 +31,7 @@ function OrgChartContent({ clientId, onBack }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [saving, setSaving] = useState(false);
   const [selectedNodes, setSelectedNodes] = useState([]);
+  const [liveContractorCounts, setLiveContractorCounts] = useState({});
   const fileInputRef = useRef(null);
   const { fitView, setCenter, getZoom } = useReactFlow();
 
@@ -45,13 +47,17 @@ function OrgChartContent({ clientId, onBack }) {
   useEffect(() => {
     loadClient();
     loadEmployees();
+    // Fetch live contractor counts from Bullhorn
+    getContractorCounts()
+      .then(counts => setLiveContractorCounts(counts || {}))
+      .catch(() => {}); // Silently fail — live counts are a nice-to-have
   }, [clientId]);
 
   useEffect(() => {
     if (employees.length > 0) {
       updateNodesAndEdges();
     }
-  }, [employees]);
+  }, [employees, liveContractorCounts]);
 
   const loadClient = async () => {
     const { data } = await supabase
@@ -148,6 +154,7 @@ function OrgChartContent({ clientId, onBack }) {
           numFtes: fteValue,
           numContractors: emp.num_contractors || 0,
           numAptContractors: emp.num_apt_contractors || 0,
+          liveContractors: emp.email ? (liveContractorCounts[emp.email.toLowerCase()] || 0) : 0,
           onEdit: () => handleSelectEmployee(emp),
           onUpdateHeadcount: handleUpdateHeadcount,
           depth: depthMap.get(emp.id) || 0,
