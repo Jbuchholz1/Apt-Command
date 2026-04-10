@@ -98,7 +98,14 @@
 .of-card-actions { display: flex; gap: 4px; padding: 8px 16px; background: #f8fafc; border-top: 1px solid var(--border); }
 .of-card-action-btn { flex: 1; padding: 6px; border: none; background: none; cursor: pointer; border-radius: 6px; color: var(--text-muted); font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 4px; transition: all 0.15s; }
 .of-card-action-btn:hover { background: #e2e8f0; color: var(--text); }
-.of-client-name { font-size: 18px; font-weight: 700; color: var(--navy); margin: 0 0 12px; }
+.of-client-name { font-size: 18px; font-weight: 700; color: var(--navy); margin: 0 0 8px; }
+.of-healthy-managers { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-bottom: 10px; padding: 4px 0; }
+.of-healthy-label { color: var(--text-muted); font-weight: 500; }
+.of-healthy-value { font-weight: 700; font-size: 13px; }
+.of-healthy-detail { color: var(--text-light); font-size: 11px; }
+.of-healthy-good { color: #16a34a; }
+.of-healthy-warn { color: #d97706; }
+.of-healthy-low { color: #dc2626; }
 .of-client-details { display: flex; flex-direction: column; gap: 8px; }
 .of-detail-row { display: flex; align-items: center; justify-content: space-between; font-size: 13px; }
 .of-detail-label { color: var(--text-muted); font-weight: 500; }

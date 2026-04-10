@@ -4,6 +4,7 @@ import { useMsal } from '@azure/msal-react';
 import { supabase } from '../lib/supabase';
 import ClientAssignment from './ClientAssignment';
 import * as XLSX from 'xlsx';
+import { getClientHealthStats } from '../../../lib/api';
 
 export default function OrgFlowDashboard({ onSelectClient }) {
   const { accounts } = useMsal();
@@ -28,6 +29,7 @@ export default function OrgFlowDashboard({ onSelectClient }) {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const logoInputRef = useRef(null);
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [clientHealthStats, setClientHealthStats] = useState({});
 
   // Resolve MSAL email to Supabase user_profiles ID on mount
   useEffect(() => {
@@ -45,6 +47,9 @@ export default function OrgFlowDashboard({ onSelectClient }) {
 
   useEffect(() => {
     loadClients();
+    getClientHealthStats()
+      .then(stats => setClientHealthStats(stats || {}))
+      .catch(() => {});
   }, [viewMode, currentUserId]);
 
   const loadClients = async () => {
@@ -596,6 +601,15 @@ export default function OrgFlowDashboard({ onSelectClient }) {
                     )}
                   </div>
                   <h3 className="of-client-name">{client.name}</h3>
+                  {clientHealthStats[client.id] && (
+                    <div className="of-healthy-managers">
+                      <span className="of-healthy-label">Healthy Managers:</span>
+                      <span className={`of-healthy-value ${clientHealthStats[client.id].percentage >= 80 ? 'of-healthy-good' : clientHealthStats[client.id].percentage >= 50 ? 'of-healthy-warn' : 'of-healthy-low'}`}>
+                        {clientHealthStats[client.id].percentage}%
+                      </span>
+                      <span className="of-healthy-detail">({clientHealthStats[client.id].healthyManagers}/{clientHealthStats[client.id].totalManagers})</span>
+                    </div>
+                  )}
                   <div className="of-client-details">
                     <div className="of-detail-row">
                       <span className="of-detail-label">Account Manager:</span>

@@ -136,6 +136,10 @@ export function getContractorCounts() {
   return fetchAPI('/api/org-flow/contractor-counts');
 }
 
+export function getClientHealthStats() {
+  return fetchAPI('/api/org-flow/client-health');
+}
+
 // --- Client Health ---
 
 export function getClientHealth(startDate, endDate) {
