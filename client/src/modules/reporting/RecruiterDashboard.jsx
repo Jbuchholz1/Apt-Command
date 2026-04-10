@@ -202,7 +202,7 @@ export default function RecruiterDashboard() {
           <MetricsTable recruiters={filtered.recruiters} totals={filtered.totals} />
           <div className="charts-row">
             <InputVsGoalsChart recruiters={filtered.recruiters} startDate={startDate} endDate={endDate} />
-            <GoalPointsChart recruiters={filtered.recruiters} goalForRange={data.goalForRange} />
+            <GoalPointsChart recruiters={filtered.recruiters} startDate={startDate} endDate={endDate} weeklyTarget={26} />
           </div>
           <DetailTable title="Interviews" columns={INTERVIEW_COLS} data={filtered.details.interviews} />
           <DetailTable title="Client Submissions" columns={CLIENT_SUBS_COLS} data={filtered.details.clientSubs} />

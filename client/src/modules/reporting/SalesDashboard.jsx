@@ -88,7 +88,7 @@ export default function SalesDashboard() {
     return Math.max(1, Math.ceil(diffMs / (7 * 24 * 60 * 60 * 1000)));
   }, [startDate, endDate]);
 
-  const marGoal = weeks * 30; // Sales AM weekly MAR target
+  const AM_QUARTERLY_MAR = 30 * 13; // Static quarterly goal
 
   // Pacing: spread goal is quarterly (13 weeks). Show what fraction the selected range represents.
   const QUARTER_WEEKS = 13;
@@ -111,14 +111,16 @@ export default function SalesDashboard() {
     }));
   }, [filteredAms, pacingFraction]);
 
-  // MAR chart data
+  // MAR chart data — static quarterly goal with pacing line
+  const marPacingTarget = Math.round(AM_QUARTERLY_MAR * pacingFraction);
   const marData = useMemo(() => {
     return filteredAms.map(am => ({
       name: am.name,
-      'Goal': marGoal,
+      'Goal': AM_QUARTERLY_MAR,
       'MAR Points': am.mar,
+      'pacing': marPacingTarget,
     }));
-  }, [filteredAms, marGoal]);
+  }, [filteredAms, marPacingTarget]);
 
   const ams = filteredAms;
 
@@ -198,7 +200,7 @@ export default function SalesDashboard() {
             <div className="chart-section">
               <h3 className="section-title">MAR Tracking</h3>
               <ResponsiveContainer width="100%" height={320}>
-                <BarChart data={marData} barGap={4} margin={{ top: 10, right: 20, bottom: 30, left: 20 }}>
+                <ComposedChart data={marData} barGap={4} margin={{ top: 10, right: 20, bottom: 30, left: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} />
                   <YAxis tick={{ fontSize: 11 }} />
@@ -206,7 +208,17 @@ export default function SalesDashboard() {
                   <Legend />
                   <Bar dataKey="Goal" fill={CHART_COLORS.navy} radius={[3, 3, 0, 0]} />
                   <Bar dataKey="MAR Points" fill={CHART_COLORS.gold} radius={[3, 3, 0, 0]} />
-                </BarChart>
+                  <Line
+                    dataKey="pacing"
+                    name={`Pacing Target (${pacingPct}%)`}
+                    type="linear"
+                    stroke="#dc2626"
+                    strokeWidth={2}
+                    strokeDasharray="6 3"
+                    dot={{ r: 5, fill: '#dc2626', stroke: '#dc2626' }}
+                    activeDot={{ r: 7 }}
+                  />
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           </div>
