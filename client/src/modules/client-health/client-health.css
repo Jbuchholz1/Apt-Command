@@ -360,6 +360,8 @@
 td.ch-green { color: #166534; font-weight: 600; }
 td.ch-red { color: #991b1b; font-weight: 600; }
 td.ch-muted { color: var(--text-light); }
+.ch-bh-link { color: var(--gold); font-family: var(--mono); font-size: 11px; text-decoration: none; }
+.ch-bh-link:hover { text-decoration: underline; }
 
 .ch-owners {
   font-size: 12px;

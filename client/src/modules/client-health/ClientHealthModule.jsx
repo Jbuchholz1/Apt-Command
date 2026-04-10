@@ -254,7 +254,7 @@ export default function ClientHealthModule() {
                 <th className="sortable" onClick={() => handleSort('name')}>Client{sortIcon('name')}</th>
                 <th className="sortable" onClick={() => handleSort('activePlacements')}>Active Placements{sortIcon('activePlacements')}</th>
                 <th className="sortable" onClick={() => handleSort('recentActivities')}>Activities (14d){sortIcon('recentActivities')}</th>
-                <th className="sortable" onClick={() => handleSort('effectiveScore')}>Score{sortIcon('effectiveScore')}</th>
+                <th className="sortable" onClick={() => handleSort('effectiveScore')} title="Score = Active Placements + (Activities in last 14 days ÷ 5). Green: > 3 | Yellow: 1–3 | Red: 0">Score{sortIcon('effectiveScore')}</th>
                 <th>Owners</th>
               </tr>
             </thead>
@@ -295,7 +295,7 @@ export default function ClientHealthModule() {
                     {gaugeModal.label === 'Input' && <><th>Job</th><th>Client</th><th>Type</th><th>AM</th><th>Input</th></>}
                     {gaugeModal.label.includes('Fill Ratio') && <><th>Job</th><th>Priority</th><th>Openings</th><th>Fills</th></>}
                     {gaugeModal.label === 'Backout %' && <><th>Note ID</th><th>Entity</th><th>Entity ID</th></>}
-                    {gaugeModal.label.includes('Checkin') && <><th>Candidate</th><th>Client</th><th>Start Date</th><th>30-Day</th><th>90-Day</th></>}
+                    {gaugeModal.label.includes('Checkin') && <><th>Candidate #</th><th>Placement #</th><th>Candidate</th><th>Client</th><th>Start Date</th><th>30-Day</th><th>90-Day</th></>}
                   </tr>
                 </thead>
                 <tbody>
@@ -305,7 +305,7 @@ export default function ClientHealthModule() {
                       {gaugeModal.label === 'Input' && <><td>{r.jobTitle}</td><td>{r.client}</td><td>{r.empType}</td><td>{r.am}</td><td className="ch-num">${Number(r.input).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td></>}
                       {gaugeModal.label.includes('Fill Ratio') && <><td>{r.title}</td><td>{r.priority}</td><td className="ch-num">{r.openings}</td><td className="ch-num">{r.fills}</td></>}
                       {gaugeModal.label === 'Backout %' && <><td>{r.noteId}</td><td>{r.entity}</td><td>{r.entityId}</td></>}
-                      {gaugeModal.label.includes('Checkin') && <><td>{r.candidate}</td><td>{r.client}</td><td>{r.startDate}</td><td className={r.thirtyDay === 'Done' ? 'ch-green' : r.thirtyDay === 'Overdue' ? 'ch-red' : 'ch-muted'}>{r.thirtyDay}</td><td className={r.ninetyDay === 'Done' ? 'ch-green' : r.ninetyDay === 'Overdue' ? 'ch-red' : 'ch-muted'}>{r.ninetyDay}</td></>}
+                      {gaugeModal.label.includes('Checkin') && <><td>{r.candidateId ? <a href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=Candidate&id=${r.candidateId}`} target="_blank" rel="noopener noreferrer" className="ch-bh-link">{r.candidateId}</a> : '—'}</td><td>{r.placementId ? <a href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=Placement&id=${r.placementId}`} target="_blank" rel="noopener noreferrer" className="ch-bh-link">{r.placementId}</a> : '—'}</td><td>{r.candidate}</td><td>{r.client}</td><td>{r.startDate}</td><td className={r.thirtyDay === 'Done' ? 'ch-green' : r.thirtyDay === 'Overdue' ? 'ch-red' : 'ch-muted'}>{r.thirtyDay}</td><td className={r.ninetyDay === 'Done' ? 'ch-green' : r.ninetyDay === 'Overdue' ? 'ch-red' : 'ch-muted'}>{r.ninetyDay}</td></>}
                     </tr>
                   ))}
                 </tbody>

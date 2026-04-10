@@ -514,6 +514,8 @@ router.get('/kpis', async (req, res, next) => {
         }
 
         details.push({
+          candidateId: candidateId || null,
+          placementId: p.id,
           candidate: candidateName,
           client,
           startDate,
