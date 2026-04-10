@@ -28,8 +28,8 @@ app.use(cors({
     // Allow requests with no origin (server-to-server, health checks)
     if (!origin) return callback(null, true);
     const cleaned = origin.replace(/\/+$/, '');
-    // Allow configured origins + any Railway subdomain
-    if (allowedOrigins.includes(cleaned) || cleaned.endsWith('.up.railway.app')) {
+    // Allow only explicitly configured origins
+    if (allowedOrigins.includes(cleaned)) {
       return callback(null, true);
     }
     console.warn(`CORS rejected origin: ${origin}`);

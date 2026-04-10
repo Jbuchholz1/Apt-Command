@@ -1,5 +1,9 @@
-const TENANT_ID = import.meta.env.VITE_AZURE_TENANT_ID || 'a78736a9-b975-4898-ae0e-2f783c0bcf14';
-const CLIENT_ID = import.meta.env.VITE_AZURE_CLIENT_ID || '50b0d725-7484-446b-96fc-0e4cae07486c';
+const TENANT_ID = import.meta.env.VITE_AZURE_TENANT_ID;
+const CLIENT_ID = import.meta.env.VITE_AZURE_CLIENT_ID;
+
+if (!TENANT_ID || !CLIENT_ID) {
+  console.error('VITE_AZURE_TENANT_ID and VITE_AZURE_CLIENT_ID must be set');
+}
 
 export const msalConfig = {
   auth: {

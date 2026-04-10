@@ -25,8 +25,12 @@ function getSigningKey(header, callback) {
  * Rejects requests with missing or invalid tokens with 401.
  */
 function requireAuth(req, res, next) {
-  // Skip auth if env vars are not configured (allows local dev without SSO)
+  // Skip auth if env vars are not configured (local dev only — blocked in production)
   if (!TENANT_ID || !CLIENT_ID) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[AUTH] FATAL: AZURE_TENANT_ID and AZURE_CLIENT_ID must be set in production');
+      return res.status(500).json({ error: 'Server misconfigured — authentication not available' });
+    }
     console.warn('[AUTH] Azure credentials not configured — skipping auth (dev mode)');
     return next();
   }

@@ -1,4 +1,12 @@
-const MCP_URL = process.env.BULLHORN_MCP_URL || 'https://bullhorn-mcp-production.up.railway.app/mcp';
+const MCP_URL = process.env.BULLHORN_MCP_URL;
+const MCP_API_KEY = process.env.BULLHORN_MCP_API_KEY;
+
+if (!MCP_URL) {
+  console.error('[MCP] BULLHORN_MCP_URL not set — Bullhorn API calls will fail');
+}
+if (!MCP_API_KEY) {
+  console.warn('[MCP] BULLHORN_MCP_API_KEY not set — MCP requests will be unauthenticated');
+}
 
 let requestId = 0;
 
@@ -29,12 +37,17 @@ async function callTool(toolName, args = {}) {
     id: requestId,
   };
 
+  const headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json, text/event-stream',
+  };
+  if (MCP_API_KEY) {
+    headers['Authorization'] = `Bearer ${MCP_API_KEY}`;
+  }
+
   const res = await fetch(MCP_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json, text/event-stream',
-    },
+    headers,
     body: JSON.stringify(body),
   });
 
