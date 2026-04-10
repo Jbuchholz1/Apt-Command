@@ -30,6 +30,7 @@ export default function OrgFlowDashboard({ onSelectClient }) {
   const logoInputRef = useRef(null);
   const [currentUserId, setCurrentUserId] = useState(null);
   const [clientHealthStats, setClientHealthStats] = useState({});
+  const [healthModal, setHealthModal] = useState(null);
 
   // Resolve MSAL email to Supabase user_profiles ID on mount
   useEffect(() => {
@@ -602,7 +603,14 @@ export default function OrgFlowDashboard({ onSelectClient }) {
                   </div>
                   <h3 className="of-client-name">{client.name}</h3>
                   {clientHealthStats[client.id] && (
-                    <div className="of-healthy-managers">
+                    <div
+                      className="of-healthy-managers of-healthy-clickable"
+                      title="Healthy = has 1+ active Apt placement. People Manager = has direct reports, FTEs, contractors, or active placements."
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setHealthModal({ clientName: client.name, ...clientHealthStats[client.id] });
+                      }}
+                    >
                       <span className="of-healthy-label">Healthy Managers:</span>
                       <span className={`of-healthy-value ${clientHealthStats[client.id].percentage >= 80 ? 'of-healthy-good' : clientHealthStats[client.id].percentage >= 50 ? 'of-healthy-warn' : 'of-healthy-low'}`}>
                         {clientHealthStats[client.id].percentage}%
@@ -864,6 +872,51 @@ export default function OrgFlowDashboard({ onSelectClient }) {
               >
                 {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Healthy Managers Modal */}
+      {healthModal && (
+        <div className="of-modal-overlay" onClick={() => setHealthModal(null)}>
+          <div className="of-modal of-modal-lg" onClick={e => e.stopPropagation()}>
+            <div className="of-modal-header-row">
+              <h3 className="of-modal-title">
+                {healthModal.clientName} — Healthy Managers ({healthModal.healthyManagers}/{healthModal.totalManagers})
+              </h3>
+              <button className="of-btn-close" onClick={() => setHealthModal(null)}>&times;</button>
+            </div>
+            <div className="of-health-modal-body">
+              <table className="of-health-modal-table">
+                <thead>
+                  <tr>
+                    <th>Status</th>
+                    <th>Name</th>
+                    <th>Role</th>
+                    <th>Active Contractors</th>
+                    <th>FTEs</th>
+                    <th>Contractors</th>
+                    <th>Direct Reports</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(healthModal.managers || []).map((m, i) => (
+                    <tr key={i} className={m.healthy ? 'of-health-row-good' : 'of-health-row-bad'}>
+                      <td>
+                        <span className={`of-health-dot ${m.healthy ? 'of-health-dot-green' : 'of-health-dot-red'}`} />
+                        {m.healthy ? 'Healthy' : 'Needs Placement'}
+                      </td>
+                      <td style={{ fontWeight: 600 }}>{m.name}</td>
+                      <td>{m.role || '—'}</td>
+                      <td style={{ textAlign: 'center', fontWeight: 600, color: m.activeContractors > 0 ? '#16a34a' : '#991b1b' }}>{m.activeContractors}</td>
+                      <td style={{ textAlign: 'center' }}>{m.ftes}</td>
+                      <td style={{ textAlign: 'center' }}>{m.contractors}</td>
+                      <td style={{ textAlign: 'center' }}>{m.directReports ? 'Yes' : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

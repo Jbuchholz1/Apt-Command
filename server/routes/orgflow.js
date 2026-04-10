@@ -65,9 +65,15 @@ router.get('/client-health', async (req, res, next) => {
 
     // Group employees by client and calculate per-client stats
     const clientStats = {};
+    // Build name lookup for reports-to
+    const nameMap = {};
+    for (const emp of employees) {
+      nameMap[emp.id] = emp.name || `Employee ${emp.id}`;
+    }
+
     for (const emp of employees) {
       const cid = emp.client_id;
-      if (!clientStats[cid]) clientStats[cid] = { totalManagers: 0, healthyManagers: 0 };
+      if (!clientStats[cid]) clientStats[cid] = { totalManagers: 0, healthyManagers: 0, managers: [] };
 
       const liveContractors = emp.email ? (liveCountByEmail[emp.email.toLowerCase()] || 0) : 0;
       const hasFtes = (emp.num_ftes || 0) > 0;
@@ -83,15 +89,32 @@ router.get('/client-health', async (req, res, next) => {
       if (hasLiveContractors) {
         clientStats[cid].healthyManagers++;
       }
+
+      clientStats[cid].managers.push({
+        name: emp.name || '',
+        role: emp.role || '',
+        email: emp.email || '',
+        healthy: hasLiveContractors,
+        activeContractors: liveContractors,
+        ftes: emp.num_ftes || 0,
+        contractors: emp.num_contractors || 0,
+        directReports: hasReports,
+      });
     }
 
-    // Build response: clientId → percentage
+    // Build response: clientId → percentage + manager details
     const result = {};
     for (const [cid, stats] of Object.entries(clientStats)) {
+      // Sort: unhealthy first, then by name
+      stats.managers.sort((a, b) => {
+        if (a.healthy !== b.healthy) return a.healthy ? 1 : -1;
+        return a.name.localeCompare(b.name);
+      });
       result[cid] = {
         totalManagers: stats.totalManagers,
         healthyManagers: stats.healthyManagers,
         percentage: stats.totalManagers > 0 ? Math.round((stats.healthyManagers / stats.totalManagers) * 100) : 0,
+        managers: stats.managers,
       };
     }
 
