@@ -9,7 +9,7 @@ export default function PerformanceModule() {
   if (showSplash) {
     return <ModuleSplash
       text="Am I doing everything I can to be the best version of myself?"
-      hashtag="#OwnYourNumbers"
+      hashtag='#MakeADifference...No, But Really"'
       onComplete={() => setShowSplash(false)}
     />;
   }

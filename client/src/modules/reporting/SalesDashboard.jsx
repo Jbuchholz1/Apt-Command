@@ -250,7 +250,7 @@ export default function SalesDashboard() {
                   </tr>
                 ))}
                 <tr className="activity-row-odd">
-                  <td className="row-label">All Activity</td>
+                  <td className="row-label"># of New Meetings</td>
                   {ams.map(am => (
                     <td key={am.id} className="metric-val">{am.activityCount}</td>
                   ))}
