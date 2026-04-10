@@ -210,7 +210,7 @@ function OrgChartContent({ clientId, onBack }) {
       setNodes(newNodes);
       setEdges(styledEdges);
     }
-  }, [employees]);
+  }, [employees, liveContractorCounts]);
 
   const handleSelectEmployee = (emp) => {
     setSelectedEmployee(emp);
