@@ -9,7 +9,7 @@ const router = express.Router();
 router.get('/export', async (req, res, next) => {
   try {
     const [result, clientSubsResult] = await Promise.all([getOpenJobs(), getClientSubmissions()]);
-    const overrides = getAllOverrides();
+    const overrides = await getAllOverrides();
 
     const clientSubCounts = {};
     for (const sub of (clientSubsResult?.data || [])) {
@@ -110,7 +110,7 @@ router.get('/', async (req, res, next) => {
       getRecentlyClosedJobs(),
       getClientSubmissions(),
     ]);
-    const overrides = getAllOverrides();
+    const overrides = await getAllOverrides();
 
     // Build client submission count and latest date maps by jobOrder ID
     const clientSubCounts = {};
@@ -156,7 +156,7 @@ router.get('/', async (req, res, next) => {
 router.get('/all', async (req, res, next) => {
   try {
     const result = await getAllJobs();
-    const overrides = getAllOverrides();
+    const overrides = await getAllOverrides();
     const jobs = (result?.data || []).map(j => mergeOverrides(formatJob(j), overrides));
     res.json({ total: jobs.length, data: jobs });
   } catch (err) {
@@ -231,7 +231,7 @@ router.get('/:id', async (req, res, next) => {
       return res.status(404).json({ error: 'Job not found' });
     }
 
-    const overrides = getOverrides(parseInt(req.params.id, 10));
+    const overrides = await getOverrides(parseInt(req.params.id, 10));
     const formatted = formatJob(job);
     if (overrides) {
       formatted.recruiter = overrides.recruiter || '';
@@ -240,7 +240,7 @@ router.get('/:id', async (req, res, next) => {
       formatted.notes = overrides.notes || '';
     }
 
-    const notes = getNotesForJob(parseInt(req.params.id, 10));
+    const notes = await getNotesForJob(parseInt(req.params.id, 10));
 
     const validStatuses = new Set(['Client Submission', 'Internally Submitted']);
     const filteredSubs = (subsResult?.data || [])
@@ -305,7 +305,7 @@ router.patch('/:id/overrides', async (req, res, next) => {
     const { recruiter, notes, follow_up, deadline, coverage_needed, tr_reassigned, tr_assigned_at } = req.body;
     const updatedBy = req.user?.email || req.user?.name || 'unknown';
 
-    const result = upsertOverrides(jobId, {
+    const result = await upsertOverrides(jobId, {
       recruiter,
       notes,
       follow_up,
@@ -346,7 +346,7 @@ router.post('/:id/notes', async (req, res, next) => {
     }
 
     const createdBy = req.user?.name || req.user?.email || 'Unknown';
-    const note = addNote(jobId, comment.trim(), createdBy);
+    const note = await addNote(jobId, comment.trim(), createdBy);
     res.json({ success: true, data: note });
   } catch (err) {
     next(err);

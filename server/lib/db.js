@@ -1,54 +1,32 @@
-const Database = require('better-sqlite3');
-const path = require('path');
+const { createClient } = require('@supabase/supabase-js');
 
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', 'data', 'overrides.db');
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 
-// Ensure data directory exists
-const fs = require('fs');
-fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+if (!supabaseUrl || !supabaseKey) {
+  console.warn('[db] SUPABASE_URL or SUPABASE_SERVICE_KEY not set — overrides/notes will fail');
+}
 
-const db = new Database(DB_PATH);
-
-// Enable WAL mode for better concurrent read performance
-db.pragma('journal_mode = WAL');
-
-// Create table if not exists
-db.exec(`
-  CREATE TABLE IF NOT EXISTS job_overrides (
-    job_id INTEGER PRIMARY KEY,
-    recruiter TEXT DEFAULT '',
-    follow_up TEXT DEFAULT '',
-    deadline TEXT DEFAULT '',
-    notes TEXT DEFAULT '',
-    updated_at TEXT DEFAULT (datetime('now')),
-    updated_by TEXT DEFAULT ''
-  )
-`);
-
-// Migrations: add columns if missing (for existing databases)
-try {
-  db.exec(`ALTER TABLE job_overrides ADD COLUMN notes TEXT DEFAULT ''`);
-} catch (e) { /* already exists */ }
-
-try {
-  db.exec(`ALTER TABLE job_overrides ADD COLUMN coverage_needed TEXT DEFAULT ''`);
-} catch (e) { /* already exists */ }
-
-try {
-  db.exec(`ALTER TABLE job_overrides ADD COLUMN tr_reassigned TEXT DEFAULT ''`);
-} catch (e) { /* already exists */ }
-
-try {
-  db.exec(`ALTER TABLE job_overrides ADD COLUMN tr_assigned_at TEXT DEFAULT ''`);
-} catch (e) { /* already exists */ }
+const supabase = supabaseUrl && supabaseKey
+  ? createClient(supabaseUrl, supabaseKey)
+  : null;
 
 /**
  * Get all overrides as a map keyed by job_id.
  */
-function getAllOverrides() {
-  const rows = db.prepare('SELECT * FROM job_overrides').all();
+async function getAllOverrides() {
+  if (!supabase) return {};
+  const { data, error } = await supabase
+    .from('job_overrides')
+    .select('*');
+
+  if (error) {
+    console.error('[db] getAllOverrides error:', error.message);
+    return {};
+  }
+
   const map = {};
-  for (const row of rows) {
+  for (const row of (data || [])) {
     map[row.job_id] = row;
   }
   return map;
@@ -57,74 +35,84 @@ function getAllOverrides() {
 /**
  * Get overrides for a specific job.
  */
-function getOverrides(jobId) {
-  return db.prepare('SELECT * FROM job_overrides WHERE job_id = ?').get(jobId) || null;
+async function getOverrides(jobId) {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from('job_overrides')
+    .select('*')
+    .eq('job_id', jobId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[db] getOverrides error:', error.message);
+    return null;
+  }
+  return data;
 }
 
 /**
  * Upsert overrides for a job. Only updates fields that are provided.
  */
-function upsertOverrides(jobId, { recruiter, follow_up, deadline, notes, coverage_needed, tr_reassigned, tr_assigned_at, updated_by }) {
-  const existing = getOverrides(jobId);
+async function upsertOverrides(jobId, { recruiter, follow_up, deadline, notes, coverage_needed, tr_reassigned, tr_assigned_at, updated_by }) {
+  if (!supabase) return null;
 
-  if (existing) {
-    const updates = [];
-    const params = [];
-    if (recruiter !== undefined) { updates.push('recruiter = ?'); params.push(recruiter); }
-    if (follow_up !== undefined) { updates.push('follow_up = ?'); params.push(follow_up); }
-    if (deadline !== undefined) { updates.push('deadline = ?'); params.push(deadline); }
-    if (notes !== undefined) { updates.push('notes = ?'); params.push(notes); }
-    if (coverage_needed !== undefined) { updates.push('coverage_needed = ?'); params.push(coverage_needed); }
-    if (tr_reassigned !== undefined) { updates.push('tr_reassigned = ?'); params.push(tr_reassigned); }
-    if (tr_assigned_at !== undefined) { updates.push('tr_assigned_at = ?'); params.push(tr_assigned_at); }
-    updates.push("updated_at = datetime('now')");
-    if (updated_by) { updates.push('updated_by = ?'); params.push(updated_by); }
-    params.push(jobId);
+  const updates = { updated_at: new Date().toISOString() };
+  if (recruiter !== undefined) updates.recruiter = recruiter;
+  if (follow_up !== undefined) updates.follow_up = follow_up;
+  if (deadline !== undefined) updates.deadline = deadline;
+  if (notes !== undefined) updates.notes = notes;
+  if (coverage_needed !== undefined) updates.coverage_needed = coverage_needed;
+  if (tr_reassigned !== undefined) updates.tr_reassigned = tr_reassigned;
+  if (tr_assigned_at !== undefined) updates.tr_assigned_at = tr_assigned_at;
+  if (updated_by) updates.updated_by = updated_by;
 
-    db.prepare(`UPDATE job_overrides SET ${updates.join(', ')} WHERE job_id = ?`).run(...params);
-  } else {
-    db.prepare(`
-      INSERT INTO job_overrides (job_id, recruiter, follow_up, deadline, notes, coverage_needed, tr_reassigned, tr_assigned_at, updated_by)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      jobId,
-      recruiter || '',
-      follow_up || '',
-      deadline || '',
-      notes || '',
-      coverage_needed || '',
-      tr_reassigned || '',
-      tr_assigned_at || '',
-      updated_by || ''
-    );
+  const { data, error } = await supabase
+    .from('job_overrides')
+    .upsert({
+      job_id: jobId,
+      ...updates,
+    }, { onConflict: 'job_id' })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('[db] upsertOverrides error:', error.message);
+    return null;
   }
-
-  return getOverrides(jobId);
+  return data;
 }
 
 // --- Notes ---
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS job_notes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    job_id INTEGER NOT NULL,
-    comment TEXT NOT NULL,
-    created_by TEXT DEFAULT '',
-    created_at TEXT DEFAULT (datetime('now'))
-  )
-`);
+async function getNotesForJob(jobId) {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from('job_notes')
+    .select('*')
+    .eq('job_id', jobId)
+    .order('created_at', { ascending: false })
+    .limit(50);
 
-function getNotesForJob(jobId) {
-  return db.prepare(
-    'SELECT * FROM job_notes WHERE job_id = ? ORDER BY created_at DESC LIMIT 50'
-  ).all(jobId);
+  if (error) {
+    console.error('[db] getNotesForJob error:', error.message);
+    return [];
+  }
+  return data || [];
 }
 
-function addNote(jobId, comment, createdBy) {
-  const result = db.prepare(
-    'INSERT INTO job_notes (job_id, comment, created_by) VALUES (?, ?, ?)'
-  ).run(jobId, comment, createdBy || '');
-  return db.prepare('SELECT * FROM job_notes WHERE id = ?').get(result.lastInsertRowid);
+async function addNote(jobId, comment, createdBy) {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from('job_notes')
+    .insert({ job_id: jobId, comment, created_by: createdBy || '' })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('[db] addNote error:', error.message);
+    return null;
+  }
+  return data;
 }
 
 module.exports = { getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote };
