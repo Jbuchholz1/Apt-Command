@@ -513,7 +513,7 @@ router.get('/kpis', async (req, res, next) => {
           if (hasCheckin) totalCompleted++;
         }
 
-        const candidateOwner = p.owner ? `${p.owner.firstName || ''} ${p.owner.lastName || ''}`.trim() : '';
+        const candidateOwner = p.candidate?.owner ? `${p.candidate.owner.firstName || ''} ${p.candidate.owner.lastName || ''}`.trim() : '';
         const jobOwner = p.jobOrder?.owner ? `${p.jobOrder.owner.firstName || ''} ${p.jobOrder.owner.lastName || ''}`.trim() : '';
 
         details.push({
