@@ -4,6 +4,7 @@ import { getSalesDashboard, exportSalesDashboard } from '../../lib/api';
 import DateRangePicker from './components/DateRangePicker';
 import DashboardFilters from './components/DashboardFilters';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { CHART_COLORS } from './lib/constants';
 
 const JOB_METRIC_ROWS = [
   { key: 'newReqs', label: 'New Reqs', detailKey: 'newReqs' },
@@ -79,15 +80,33 @@ export default function SalesDashboard() {
     return Object.keys(data.ams[0].activityPoints || {});
   }, [data]);
 
-  // Bonus tracker chart data
+  // Calculate weeks in range for MAR goal
+  const weeks = useMemo(() => {
+    const s = new Date(startDate + 'T00:00:00');
+    const e = new Date(endDate + 'T00:00:00');
+    const diffMs = e - s;
+    return Math.max(1, Math.ceil(diffMs / (7 * 24 * 60 * 60 * 1000)));
+  }, [startDate, endDate]);
+
+  const marGoal = weeks * 26; // POINTS.WEEKLY_TARGET
+
+  // Bonus tracker chart data (New Input vs Goal)
   const bonusData = useMemo(() => {
     return filteredAms.map(am => ({
-      name: am.name.split(' ')[0],
-      fullName: am.name,
-      'Goal': am.spreadGoal,
+      name: am.name,
+      'Spread Goal': am.spreadGoal,
       'New Input': am.newInput,
     }));
   }, [filteredAms]);
+
+  // MAR chart data
+  const marData = useMemo(() => {
+    return filteredAms.map(am => ({
+      name: am.name,
+      'Goal': marGoal,
+      'MAR Points': am.mar,
+    }));
+  }, [filteredAms, marGoal]);
 
   const ams = filteredAms;
 
@@ -137,121 +156,133 @@ export default function SalesDashboard() {
 
       {data && (
         <>
-          <div className="sales-layout">
-            <div className="metrics-table-wrap">
-              <h3 className="section-title">Metrics Summary</h3>
-              <table className="metrics-table sales-metrics">
-                <thead>
-                  <tr>
-                    <th>Activity</th>
-                    {ams.map(am => <th key={am.id}>{am.name}</th>)}
-                    <th className="total-col">Total</th>
+          {/* Full-width Metrics Summary */}
+          <div className="metrics-table-wrap" style={{ padding: '20px 24px' }}>
+            <h3 className="section-title">Metrics Summary</h3>
+            <table className="metrics-table sales-metrics">
+              <thead>
+                <tr>
+                  <th>Activity</th>
+                  {ams.map(am => <th key={am.id}>{am.name}</th>)}
+                  <th className="total-col">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {/* Job metrics */}
+                {JOB_METRIC_ROWS.map(row => (
+                  <tr key={row.key} className="job-metric-row">
+                    <td className="row-label">{row.label}</td>
+                    {ams.map(am => {
+                      const details = am.jobDetails?.[row.detailKey] || [];
+                      const val = am.jobMetrics[row.key];
+                      return (
+                        <td key={am.id}
+                          className={`metric-val ${details.length > 0 ? 'clickable-cell' : ''}`}
+                          onClick={() => details.length > 0 && setModal({ amName: am.name, activityType: row.label, records: details, isJob: true })}
+                        >
+                          {val}
+                        </td>
+                      );
+                    })}
+                    <td className="metric-val total-col">
+                      {ams.reduce((sum, am) => sum + (am.jobMetrics[row.key] || 0), 0)}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {/* Job metrics */}
-                  {JOB_METRIC_ROWS.map(row => (
-                    <tr key={row.key} className="job-metric-row">
-                      <td className="row-label">{row.label}</td>
-                      {ams.map(am => {
-                        const details = am.jobDetails?.[row.detailKey] || [];
-                        const val = am.jobMetrics[row.key];
-                        return (
-                          <td key={am.id}
-                            className={`metric-val ${details.length > 0 ? 'clickable-cell' : ''}`}
-                            onClick={() => details.length > 0 && setModal({ amName: am.name, activityType: row.label, records: details, isJob: true })}
-                          >
-                            {val}
-                          </td>
-                        );
-                      })}
-                      <td className="metric-val total-col">
-                        {ams.reduce((sum, am) => sum + (am.jobMetrics[row.key] || 0), 0)}
-                      </td>
-                    </tr>
+                ))}
+                {/* Note Activity */}
+                <tr className="activity-row-odd">
+                  <td className="row-label">Note Activity</td>
+                  {ams.map(am => (
+                    <td key={am.id} className="metric-val">{am.noteActivity}</td>
                   ))}
-                  {/* Note Activity */}
-                  <tr className="activity-row-odd">
-                    <td className="row-label">Note Activity</td>
-                    {ams.map(am => (
-                      <td key={am.id} className="metric-val">{am.noteActivity}</td>
-                    ))}
+                  <td className="metric-val total-col">
+                    {ams.reduce((sum, am) => sum + am.noteActivity, 0)}
+                  </td>
+                </tr>
+                {/* Activity types (alternating colors, clickable) */}
+                {activityKeys.map((key, i) => (
+                  <tr key={key} className={i % 2 === 0 ? 'activity-row-even' : 'activity-row-odd'}>
+                    <td className="row-label">{key}</td>
+                    {ams.map(am => {
+                      const pts = am.activityPoints[key] || 0;
+                      const details = am.activityDetails?.[key] || [];
+                      return (
+                        <td key={am.id}
+                          className={`metric-val ${details.length > 0 ? 'clickable-cell' : ''}`}
+                          onClick={() => details.length > 0 && setModal({ amName: am.name, activityType: key, records: details })}
+                        >
+                          {pts}
+                        </td>
+                      );
+                    })}
                     <td className="metric-val total-col">
-                      {ams.reduce((sum, am) => sum + am.noteActivity, 0)}
+                      {ams.reduce((sum, am) => sum + (am.activityPoints[key] || 0), 0)}
                     </td>
                   </tr>
-                  {/* Activity types (alternating colors, clickable) */}
-                  {activityKeys.map((key, i) => (
-                    <tr key={key} className={i % 2 === 0 ? 'activity-row-even' : 'activity-row-odd'}>
-                      <td className="row-label">{key}</td>
-                      {ams.map(am => {
-                        const pts = am.activityPoints[key] || 0;
-                        const details = am.activityDetails?.[key] || [];
-                        return (
-                          <td key={am.id}
-                            className={`metric-val ${details.length > 0 ? 'clickable-cell' : ''}`}
-                            onClick={() => details.length > 0 && setModal({ amName: am.name, activityType: key, records: details })}
-                          >
-                            {pts}
-                          </td>
-                        );
-                      })}
-                      <td className="metric-val total-col">
-                        {ams.reduce((sum, am) => sum + (am.activityPoints[key] || 0), 0)}
-                      </td>
-                    </tr>
+                ))}
+                {/* All Activity (above MAR) */}
+                <tr className="activity-row-odd">
+                  <td className="row-label">All Activity</td>
+                  {ams.map(am => (
+                    <td key={am.id} className="metric-val">{am.activityCount}</td>
                   ))}
-                  {/* All Activity (above MAR) */}
-                  <tr className="activity-row-odd">
-                    <td className="row-label">All Activity</td>
-                    {ams.map(am => (
-                      <td key={am.id} className="metric-val">{am.activityCount}</td>
-                    ))}
-                    <td className="metric-val total-col">
-                      {ams.reduce((sum, am) => sum + am.activityCount, 0)}
+                  <td className="metric-val total-col">
+                    {ams.reduce((sum, am) => sum + am.activityCount, 0)}
+                  </td>
+                </tr>
+                {/* MAR Total */}
+                <tr className="bold-row">
+                  <td className="row-label">MAR Total</td>
+                  {ams.map(am => (
+                    <td key={am.id} className="metric-val">{am.mar}</td>
+                  ))}
+                  <td className="metric-val total-col">
+                    {Math.round(ams.reduce((sum, am) => sum + am.mar, 0) * 100) / 100}
+                  </td>
+                </tr>
+                {/* New Input */}
+                <tr className="input-row">
+                  <td className="row-label">New Input</td>
+                  {ams.map(am => (
+                    <td key={am.id} className="metric-val">
+                      ${Number(am.newInput).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
-                  </tr>
-                  {/* MAR Total */}
-                  <tr className="bold-row">
-                    <td className="row-label">MAR Total</td>
-                    {ams.map(am => (
-                      <td key={am.id} className="metric-val">{am.mar}</td>
-                    ))}
-                    <td className="metric-val total-col">
-                      {Math.round(ams.reduce((sum, am) => sum + am.mar, 0) * 100) / 100}
-                    </td>
-                  </tr>
-                  {/* New Input */}
-                  <tr className="input-row">
-                    <td className="row-label">New Input</td>
-                    {ams.map(am => (
-                      <td key={am.id} className="metric-val">
-                        ${Number(am.newInput).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                      </td>
-                    ))}
-                    <td className="metric-val total-col">
-                      ${Math.round(ams.reduce((sum, am) => sum + am.newInput, 0)).toLocaleString('en-US')}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+                  ))}
+                  <td className="metric-val total-col">
+                    ${ams.reduce((sum, am) => sum + am.newInput, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-            {/* Bonus Tracker Chart */}
-            <div className="chart-section bonus-chart">
-              <h3 className="section-title">Bonus Tracker</h3>
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={bonusData} barGap={4} margin={{ top: 10, right: 20, bottom: 50, left: 20 }}>
+          {/* Charts row — matches Recruiter Dashboard layout */}
+          <div className="charts-row">
+            <div className="chart-section">
+              <h3 className="section-title">New Input Totals vs Goals</h3>
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart data={bonusData} barGap={4} margin={{ top: 10, right: 20, bottom: 30, left: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-30} textAnchor="end" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} />
                   <YAxis tickFormatter={(v) => `$${v.toLocaleString()}`} tick={{ fontSize: 11 }} />
-                  <Tooltip
-                    formatter={(v) => `$${Number(v).toLocaleString()}`}
-                    labelFormatter={(label, payload) => payload?.[0]?.payload?.fullName || label}
-                  />
+                  <Tooltip formatter={(v) => `$${Number(v).toLocaleString()}`} />
                   <Legend />
-                  <Bar dataKey="Goal" fill="#f59e0b" radius={[3, 3, 0, 0]} />
-                  <Bar dataKey="New Input" fill="#04144F" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="Spread Goal" fill={CHART_COLORS.navy} radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="New Input" fill={CHART_COLORS.gold} radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="chart-section">
+              <h3 className="section-title">MAR Tracking</h3>
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart data={marData} barGap={4} margin={{ top: 10, right: 20, bottom: 30, left: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="Goal" fill={CHART_COLORS.navy} radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="MAR Points" fill={CHART_COLORS.gold} radius={[3, 3, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
