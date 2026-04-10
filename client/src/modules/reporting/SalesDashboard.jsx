@@ -88,7 +88,7 @@ export default function SalesDashboard() {
     return Math.max(1, Math.ceil(diffMs / (7 * 24 * 60 * 60 * 1000)));
   }, [startDate, endDate]);
 
-  const marGoal = weeks * 26; // POINTS.WEEKLY_TARGET
+  const marGoal = weeks * 30; // Sales AM weekly MAR target
 
   // Bonus tracker chart data (New Input vs Goal)
   const bonusData = useMemo(() => {
@@ -156,107 +156,7 @@ export default function SalesDashboard() {
 
       {data && (
         <>
-          {/* Full-width Metrics Summary */}
-          <div className="metrics-table-wrap" style={{ padding: '20px 24px' }}>
-            <h3 className="section-title">Metrics Summary</h3>
-            <table className="metrics-table sales-metrics">
-              <thead>
-                <tr>
-                  <th>Activity</th>
-                  {ams.map(am => <th key={am.id}>{am.name}</th>)}
-                  <th className="total-col">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {/* Job metrics */}
-                {JOB_METRIC_ROWS.map(row => (
-                  <tr key={row.key} className="job-metric-row">
-                    <td className="row-label">{row.label}</td>
-                    {ams.map(am => {
-                      const details = am.jobDetails?.[row.detailKey] || [];
-                      const val = am.jobMetrics[row.key];
-                      return (
-                        <td key={am.id}
-                          className={`metric-val ${details.length > 0 ? 'clickable-cell' : ''}`}
-                          onClick={() => details.length > 0 && setModal({ amName: am.name, activityType: row.label, records: details, isJob: true })}
-                        >
-                          {val}
-                        </td>
-                      );
-                    })}
-                    <td className="metric-val total-col">
-                      {ams.reduce((sum, am) => sum + (am.jobMetrics[row.key] || 0), 0)}
-                    </td>
-                  </tr>
-                ))}
-                {/* Note Activity */}
-                <tr className="activity-row-odd">
-                  <td className="row-label">Note Activity</td>
-                  {ams.map(am => (
-                    <td key={am.id} className="metric-val">{am.noteActivity}</td>
-                  ))}
-                  <td className="metric-val total-col">
-                    {ams.reduce((sum, am) => sum + am.noteActivity, 0)}
-                  </td>
-                </tr>
-                {/* Activity types (alternating colors, clickable) */}
-                {activityKeys.map((key, i) => (
-                  <tr key={key} className={i % 2 === 0 ? 'activity-row-even' : 'activity-row-odd'}>
-                    <td className="row-label">{key}</td>
-                    {ams.map(am => {
-                      const pts = am.activityPoints[key] || 0;
-                      const details = am.activityDetails?.[key] || [];
-                      return (
-                        <td key={am.id}
-                          className={`metric-val ${details.length > 0 ? 'clickable-cell' : ''}`}
-                          onClick={() => details.length > 0 && setModal({ amName: am.name, activityType: key, records: details })}
-                        >
-                          {pts}
-                        </td>
-                      );
-                    })}
-                    <td className="metric-val total-col">
-                      {ams.reduce((sum, am) => sum + (am.activityPoints[key] || 0), 0)}
-                    </td>
-                  </tr>
-                ))}
-                {/* All Activity (above MAR) */}
-                <tr className="activity-row-odd">
-                  <td className="row-label">All Activity</td>
-                  {ams.map(am => (
-                    <td key={am.id} className="metric-val">{am.activityCount}</td>
-                  ))}
-                  <td className="metric-val total-col">
-                    {ams.reduce((sum, am) => sum + am.activityCount, 0)}
-                  </td>
-                </tr>
-                {/* MAR Total */}
-                <tr className="bold-row">
-                  <td className="row-label">MAR Total</td>
-                  {ams.map(am => (
-                    <td key={am.id} className="metric-val">{am.mar}</td>
-                  ))}
-                  <td className="metric-val total-col">
-                    {Math.round(ams.reduce((sum, am) => sum + am.mar, 0) * 100) / 100}
-                  </td>
-                </tr>
-                {/* New Input */}
-                <tr className="input-row">
-                  <td className="row-label">New Input</td>
-                  {ams.map(am => (
-                    <td key={am.id} className="metric-val">
-                      ${Number(am.newInput).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </td>
-                  ))}
-                  <td className="metric-val total-col">
-                    ${ams.reduce((sum, am) => sum + am.newInput, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {/* Charts row — matches Recruiter Dashboard layout */}
+          {/* Charts row first — above the table */}
           <div className="charts-row">
             <div className="chart-section">
               <h3 className="section-title">New Input Totals vs Goals</h3>
@@ -286,6 +186,100 @@ export default function SalesDashboard() {
                 </BarChart>
               </ResponsiveContainer>
             </div>
+          </div>
+
+          {/* Metrics Summary table below charts */}
+          <div className="metrics-table-wrap" style={{ padding: '0 24px 24px' }}>
+            <h3 className="section-title">Metrics Summary</h3>
+            <table className="metrics-table sales-metrics">
+              <thead>
+                <tr>
+                  <th>Activity</th>
+                  {ams.map(am => <th key={am.id}>{am.name}</th>)}
+                  <th className="total-col">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {JOB_METRIC_ROWS.map(row => (
+                  <tr key={row.key} className="job-metric-row">
+                    <td className="row-label">{row.label}</td>
+                    {ams.map(am => {
+                      const details = am.jobDetails?.[row.detailKey] || [];
+                      const val = am.jobMetrics[row.key];
+                      return (
+                        <td key={am.id}
+                          className={`metric-val ${details.length > 0 ? 'clickable-cell' : ''}`}
+                          onClick={() => details.length > 0 && setModal({ amName: am.name, activityType: row.label, records: details, isJob: true })}
+                        >
+                          {val}
+                        </td>
+                      );
+                    })}
+                    <td className="metric-val total-col">
+                      {ams.reduce((sum, am) => sum + (am.jobMetrics[row.key] || 0), 0)}
+                    </td>
+                  </tr>
+                ))}
+                <tr className="activity-row-odd">
+                  <td className="row-label">Note Activity</td>
+                  {ams.map(am => (
+                    <td key={am.id} className="metric-val">{am.noteActivity}</td>
+                  ))}
+                  <td className="metric-val total-col">
+                    {ams.reduce((sum, am) => sum + am.noteActivity, 0)}
+                  </td>
+                </tr>
+                {activityKeys.map((key, i) => (
+                  <tr key={key} className={i % 2 === 0 ? 'activity-row-even' : 'activity-row-odd'}>
+                    <td className="row-label">{key}</td>
+                    {ams.map(am => {
+                      const pts = am.activityPoints[key] || 0;
+                      const details = am.activityDetails?.[key] || [];
+                      return (
+                        <td key={am.id}
+                          className={`metric-val ${details.length > 0 ? 'clickable-cell' : ''}`}
+                          onClick={() => details.length > 0 && setModal({ amName: am.name, activityType: key, records: details })}
+                        >
+                          {pts}
+                        </td>
+                      );
+                    })}
+                    <td className="metric-val total-col">
+                      {ams.reduce((sum, am) => sum + (am.activityPoints[key] || 0), 0)}
+                    </td>
+                  </tr>
+                ))}
+                <tr className="activity-row-odd">
+                  <td className="row-label">All Activity</td>
+                  {ams.map(am => (
+                    <td key={am.id} className="metric-val">{am.activityCount}</td>
+                  ))}
+                  <td className="metric-val total-col">
+                    {ams.reduce((sum, am) => sum + am.activityCount, 0)}
+                  </td>
+                </tr>
+                <tr className="bold-row">
+                  <td className="row-label">MAR Total</td>
+                  {ams.map(am => (
+                    <td key={am.id} className="metric-val">{am.mar}</td>
+                  ))}
+                  <td className="metric-val total-col">
+                    {Math.round(ams.reduce((sum, am) => sum + am.mar, 0) * 100) / 100}
+                  </td>
+                </tr>
+                <tr className="input-row">
+                  <td className="row-label">New Input</td>
+                  {ams.map(am => (
+                    <td key={am.id} className="metric-val">
+                      ${Number(am.newInput).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                  ))}
+                  <td className="metric-val total-col">
+                    ${ams.reduce((sum, am) => sum + am.newInput, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </>
       )}
