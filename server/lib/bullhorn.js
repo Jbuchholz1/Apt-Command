@@ -203,6 +203,32 @@ async function addNoteToJob(jobOrderId, comments) {
   });
 }
 
+// --- Pagination helper (Bullhorn caps at 500 results per query) ---
+
+async function paginatedQuery({ entityType, dateField, startMs, endMs, extraWhere, fields }) {
+  const CHUNK_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+  const allData = [];
+  let chunkStart = startMs;
+
+  while (chunkStart < endMs) {
+    const chunkEnd = Math.min(chunkStart + CHUNK_MS, endMs);
+    const where = `${dateField} > ${chunkStart} AND ${dateField} < ${chunkEnd} ${extraWhere}`;
+    const result = await callTool('query_entity', {
+      entityType,
+      where,
+      fields,
+      orderBy: `-${dateField}`,
+      count: 500,
+    });
+    if (result?.data) {
+      allData.push(...result.data);
+    }
+    chunkStart = chunkEnd;
+  }
+
+  return { data: allData };
+}
+
 // --- Reporting: date-range queries ---
 
 async function getRecruiterUsers() {
@@ -215,32 +241,32 @@ async function getRecruiterUsers() {
 }
 
 async function getClientSubsInRange(startMs, endMs) {
-  return callTool('query_entity', {
+  return paginatedQuery({
     entityType: 'Sendout',
-    where: `dateAdded > ${startMs} AND dateAdded < ${endMs}`,
+    dateField: 'dateAdded',
+    startMs, endMs,
+    extraWhere: '',
     fields: 'id,user,candidate,jobOrder,dateAdded,clientCorporation',
-    orderBy: '-dateAdded',
-    count: 500,
   });
 }
 
 async function getInterviewsInRange(startMs, endMs) {
-  return callTool('query_entity', {
+  return paginatedQuery({
     entityType: 'Appointment',
-    where: `dateBegin > ${startMs} AND dateBegin < ${endMs} AND isDeleted = false AND type = 'Interview'`,
+    dateField: 'dateBegin',
+    startMs, endMs,
+    extraWhere: "AND isDeleted = false AND type = 'Interview'",
     fields: 'id,type,dateBegin,owner,candidateReference,jobOrder(id,title,clientCorporation),subject',
-    orderBy: '-dateBegin',
-    count: 500,
   });
 }
 
 async function getPlacementsInRange(startMs, endMs) {
-  return callTool('query_entity', {
+  return paginatedQuery({
     entityType: 'Placement',
-    where: `dateBegin > ${startMs} AND dateBegin < ${endMs} AND status = 'Approved'`,
+    dateField: 'dateBegin',
+    startMs, endMs,
+    extraWhere: "AND status = 'Approved'",
     fields: 'id,candidate,jobOrder(id,title,clientCorporation),dateBegin,dateEnd,payRate,clientBillRate,salary,fee,owner,status,employeeType',
-    orderBy: '-dateBegin',
-    count: 200,
   });
 }
 
@@ -267,36 +293,53 @@ async function getAMUsers() {
 }
 
 async function getAppointmentsInRange(startMs, endMs, ownerIds) {
-  let where = `dateBegin > ${startMs} AND dateBegin < ${endMs} AND isDeleted = false`;
-  if (ownerIds && ownerIds.length > 0) {
-    where += ` AND owner.id IN (${ownerIds.join(',')})`;
+  // Bullhorn caps query results at 500. For long date ranges we split into
+  // 30-day chunks and merge to avoid data truncation.
+  const CHUNK_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+  const ownerClause = (ownerIds && ownerIds.length > 0)
+    ? ` AND owner.id IN (${ownerIds.join(',')})`
+    : '';
+  const fields = 'id,type,dateBegin,owner,candidateReference,jobOrder(id,title,clientCorporation),subject,clientContactReference(id,clientCorporation)';
+
+  const allData = [];
+  let chunkStart = startMs;
+
+  while (chunkStart < endMs) {
+    const chunkEnd = Math.min(chunkStart + CHUNK_MS, endMs);
+    const where = `dateBegin > ${chunkStart} AND dateBegin < ${chunkEnd} AND isDeleted = false${ownerClause}`;
+    const result = await callTool('query_entity', {
+      entityType: 'Appointment',
+      where,
+      fields,
+      orderBy: '-dateBegin',
+      count: 500,
+    });
+    if (result?.data) {
+      allData.push(...result.data);
+    }
+    chunkStart = chunkEnd;
   }
-  return callTool('query_entity', {
-    entityType: 'Appointment',
-    where,
-    fields: 'id,type,dateBegin,owner,candidateReference,jobOrder(id,title,clientCorporation),subject,clientContactReference(id,clientCorporation)',
-    orderBy: '-dateBegin',
-    count: 2000,
-  });
+
+  return { data: allData };
 }
 
 async function getNewJobsInRange(startMs, endMs) {
-  return callTool('query_entity', {
+  return paginatedQuery({
     entityType: 'JobOrder',
-    where: `dateAdded > ${startMs} AND dateAdded < ${endMs} AND isDeleted = false`,
+    dateField: 'dateAdded',
+    startMs, endMs,
+    extraWhere: 'AND isDeleted = false',
     fields: 'id,title,status,owner,numOpenings,dateAdded,clientCorporation',
-    orderBy: '-dateAdded',
-    count: 500,
   });
 }
 
 async function getClosedJobsInRange(startMs, endMs) {
-  return callTool('query_entity', {
+  return paginatedQuery({
     entityType: 'JobOrder',
-    where: `dateLastModified > ${startMs} AND dateLastModified < ${endMs} AND isDeleted = false AND isOpen = false`,
+    dateField: 'dateLastModified',
+    startMs, endMs,
+    extraWhere: 'AND isDeleted = false AND isOpen = false',
     fields: 'id,title,status,owner,numOpenings,dateAdded,dateClosed,clientCorporation',
-    orderBy: '-dateLastModified',
-    count: 500,
   });
 }
 
