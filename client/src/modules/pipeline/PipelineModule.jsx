@@ -9,7 +9,7 @@ export default function PipelineModule() {
   if (showSplash) {
     return <ModuleSplash
       text="What are we building for tomorrow?"
-      hashtag="#FillThePipeline"
+      hashtag="#BringHomeTheLion"
       onComplete={() => setShowSplash(false)}
     />;
   }
