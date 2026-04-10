@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Building2, LogOut, FolderOpen, Trash2, Users, User as UserIcon, Settings, UserCog, CreditCard as Edit2, FileDown, Upload, Search, Image, Activity } from 'lucide-react';
+import { Plus, Building2, LogOut, FolderOpen, Trash2, Users, User as UserIcon, Settings, CreditCard as Edit2, FileDown, Upload, Search, Image } from 'lucide-react';
+import { useMsal } from '@azure/msal-react';
 import { supabase } from '../lib/supabase';
 import ClientAssignment from './ClientAssignment';
 import * as XLSX from 'xlsx';
 
-// No per-user filtering — all MSAL-authenticated users see all clients
+export default function OrgFlowDashboard({ onSelectClient }) {
+  const { instance, accounts } = useMsal();
+  const currentUserEmail = accounts[0]?.username || '';
 
-export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onViewProfile, onViewHealth }) {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -14,7 +16,6 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
   const [error, setError] = useState('');
   const [viewMode, setViewMode] = useState('all');
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [assignmentClient, setAssignmentClient] = useState(null);
   const [editManagerClient, setEditManagerClient] = useState(null);
   const [allUsers, setAllUsers] = useState([]);
@@ -26,16 +27,25 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
   const [logoFile, setLogoFile] = useState(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const logoInputRef = useRef(null);
+  const [currentUserId, setCurrentUserId] = useState(null);
+
+  // Resolve MSAL email to Supabase user_profiles ID on mount
+  useEffect(() => {
+    if (currentUserEmail) {
+      supabase
+        .from('user_profiles')
+        .select('id')
+        .ilike('email', currentUserEmail)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) setCurrentUserId(data.id);
+        });
+    }
+  }, [currentUserEmail]);
 
   useEffect(() => {
     loadClients();
-    checkAdminStatus();
-  }, [viewMode]);
-
-  const checkAdminStatus = async () => {
-    // All MSAL-authenticated users have full access
-    setIsAdmin(true);
-  };
+  }, [viewMode, currentUserId]);
 
   const loadClients = async () => {
     try {
@@ -43,18 +53,18 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
         .from('clients')
         .select('*, account_manager:user_profiles!created_by(email, full_name)');
 
-      if (viewMode === 'my') {
+      if (viewMode === 'my' && currentUserId) {
         const { data: assignments } = await supabase
           .from('client_assignments')
           .select('client_id')
-          .eq('user_id', null);
+          .eq('user_id', currentUserId);
 
         const assignedClientIds = assignments?.map(a => a.client_id) || [];
 
         if (assignedClientIds.length > 0) {
-          query = query.or(`created_by.eq.${null},id.in.(${assignedClientIds.join(',')})`);
+          query = query.or(`created_by.eq.${currentUserId},id.in.(${assignedClientIds.join(',')})`);
         } else {
-          query = query.eq('created_by', null);
+          query = query.eq('created_by', currentUserId);
         }
       }
 
@@ -102,7 +112,6 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
 
     setUploadingLogo(true);
     try {
-      // Delete old logo if exists
       if (logoUploadClient.logo_url) {
         const oldPath = logoUploadClient.logo_url.split('/').pop();
         if (oldPath) {
@@ -112,7 +121,6 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
         }
       }
 
-      // Upload new logo
       const fileExt = logoFile.name.split('.').pop();
       const fileName = `${Date.now()}.${fileExt}`;
       const filePath = `${logoUploadClient.id}/${fileName}`;
@@ -126,12 +134,10 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('client-logos')
         .getPublicUrl(filePath);
 
-      // Update client with new logo URL
       const { error: updateError } = await supabase
         .from('clients')
         .update({ logo_url: publicUrl })
@@ -154,7 +160,6 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
 
     setUploadingLogo(true);
     try {
-      // Delete logo file from storage if exists
       if (logoUploadClient.logo_url) {
         const oldPath = logoUploadClient.logo_url.split('/').pop();
         if (oldPath) {
@@ -164,7 +169,6 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
         }
       }
 
-      // Remove logo URL from client
       const { error } = await supabase
         .from('clients')
         .update({ logo_url: null })
@@ -189,7 +193,7 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
     try {
       const { error } = await supabase
         .from('clients')
-        .insert([{ name: newClientName, created_by: null }]);
+        .insert([{ name: newClientName, created_by: currentUserId }]);
 
       if (error) throw error;
 
@@ -245,7 +249,6 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
           return;
         }
 
-        // Get all user profiles to match emails to user IDs
         const { data: allUsers, error: usersError } = await supabase
           .from('user_profiles')
           .select('id, email')
@@ -255,7 +258,6 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
 
         const emailToIdMap = new Map(allUsers?.map(u => [u.email.toLowerCase(), u.id]) || []);
 
-        // Get existing clients to handle updates
         const { data: existingClients } = await supabase
           .from('clients')
           .select('id, name');
@@ -272,7 +274,6 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
         jsonData.forEach((row, index) => {
           const rowNumber = index + 2;
 
-          // Skip rows with missing ClientName
           if (!row.ClientName || !row.ClientName.trim()) {
             skippedRows.push(`Row ${rowNumber}: Missing ClientName`);
             return;
@@ -282,7 +283,6 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
           const accountManager = row.AccountManager?.trim() || '';
           let managerId;
 
-          // Handle AccountManagerEmail or reportToEmail field
           const managerEmailField = row.AccountManagerEmail || row.reportToEmail || row.ReportToEmail || '';
 
           if (managerEmailField && managerEmailField.trim()) {
@@ -291,19 +291,17 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
 
             if (!userId) {
               warnings.push(`Row ${rowNumber}: Email "${managerEmailField}" not found, using current user`);
-              managerId = null;
+              managerId = currentUserId;
             } else {
               managerId = userId;
             }
           } else {
-            // If no email provided, treat as top-level (use current user as manager)
-            managerId = null;
+            managerId = currentUserId;
           }
 
           const existingClientId = existingClientMap.get(clientName.toLowerCase());
 
           if (existingClientId) {
-            // Update existing client
             clientsToUpdate.push({
               id: existingClientId,
               name: clientName,
@@ -311,7 +309,6 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
               account_manager: accountManager,
             });
           } else {
-            // Insert new client
             clientsToInsert.push({
               name: clientName,
               created_by: managerId,
@@ -325,7 +322,6 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
           return;
         }
 
-        // Insert new clients
         if (clientsToInsert.length > 0) {
           const { error: insertError } = await supabase
             .from('clients')
@@ -334,7 +330,6 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
           if (insertError) throw insertError;
         }
 
-        // Update existing clients
         for (const client of clientsToUpdate) {
           const { error: updateError } = await supabase
             .from('clients')
@@ -378,7 +373,7 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
     }
   };
 
-  const isMyClient = (client) => client.created_by === null;
+  const isMyClient = (client) => client.created_by === currentUserId;
 
   const filteredAndSortedClients = clients
     .filter((client) => {
@@ -414,6 +409,10 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
       }
     });
 
+  const handleSignOut = () => {
+    instance.logoutRedirect({ postLogoutRedirectUri: window.location.origin });
+  };
+
   return (
     <div className="of-dashboard">
       <header className="of-header">
@@ -421,7 +420,7 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
           <div className="of-header-row">
             <div className="of-header-brand">
               <img
-                src="/Apt_Logo.jpg"
+                src="/apt-logo.jpg"
                 alt="Apt Companies Logo"
                 className="of-header-logo"
               />
@@ -431,35 +430,9 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
               </div>
             </div>
             <div className="of-header-actions">
-              <span className="of-header-email"></span>
+              <span className="of-header-email">{currentUserEmail}</span>
               <button
-                onClick={onViewHealth}
-                className="of-btn of-btn-health"
-              >
-                <Activity className="of-icon-sm" />
-                <span>Client Health</span>
-              </button>
-              <button
-                onClick={onViewProfile}
-                className="of-btn of-btn-secondary"
-              >
-                <UserIcon className="of-icon-sm" />
-                <span>My Profile</span>
-              </button>
-              {isAdmin && (
-                <button
-                  onClick={onManageUsers}
-                  className="of-btn of-btn-secondary"
-                >
-                  <UserCog className="of-icon-sm" />
-                  <span>Manage Users</span>
-                </button>
-              )}
-              <button
-                onClick={() => {
-                  // TODO: Replace with MSAL sign-out
-                  console.log('Sign out clicked');
-                }}
+                onClick={handleSignOut}
                 className="of-btn of-btn-danger"
               >
                 <LogOut className="of-icon-sm" />
@@ -494,31 +467,27 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
             </div>
           </div>
           <div className="of-toolbar-right">
-            {isAdmin && (
-              <>
-                <button
-                  onClick={handleDownloadClientTemplate}
-                  className="of-btn of-btn-success"
-                >
-                  <FileDown className="of-icon" />
-                  <span>Download Template</span>
-                </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={handleImportClients}
-                  className="of-hidden"
-                />
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="of-btn of-btn-import"
-                >
-                  <Upload className="of-icon" />
-                  <span>Import Clients</span>
-                </button>
-              </>
-            )}
+            <button
+              onClick={handleDownloadClientTemplate}
+              className="of-btn of-btn-success"
+            >
+              <FileDown className="of-icon" />
+              <span>Download Template</span>
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={handleImportClients}
+              className="of-hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="of-btn of-btn-import"
+            >
+              <Upload className="of-icon" />
+              <span>Import Clients</span>
+            </button>
             <button
               onClick={() => setShowAddModal(true)}
               className="of-btn of-btn-primary"
@@ -595,41 +564,39 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
                 key={client.id}
                 className="of-client-card"
               >
-                {isMyClient(client) && (
-                  <div className="of-card-actions">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setLogoUploadClient(client);
-                        setLogoFile(null);
-                      }}
-                      className="of-card-action-btn of-card-action-logo"
-                      title="Upload logo"
-                    >
-                      <Image className="of-icon-sm" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setAssignmentClient(client);
-                      }}
-                      className="of-card-action-btn of-card-action-settings"
-                      title="Manage user access"
-                    >
-                      <Settings className="of-icon-sm" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDeleteConfirmId(client.id);
-                      }}
-                      className="of-card-action-btn of-card-action-delete"
-                      title="Delete client"
-                    >
-                      <Trash2 className="of-icon-sm" />
-                    </button>
-                  </div>
-                )}
+                <div className="of-card-actions">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setLogoUploadClient(client);
+                      setLogoFile(null);
+                    }}
+                    className="of-card-action-btn of-card-action-logo"
+                    title="Upload logo"
+                  >
+                    <Image className="of-icon-sm" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setAssignmentClient(client);
+                    }}
+                    className="of-card-action-btn of-card-action-settings"
+                    title="Manage user access"
+                  >
+                    <Settings className="of-icon-sm" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteConfirmId(client.id);
+                    }}
+                    className="of-card-action-btn of-card-action-delete"
+                    title="Delete client"
+                  >
+                    <Trash2 className="of-icon-sm" />
+                  </button>
+                </div>
                 <button
                   onClick={() => onSelectClient(client.id)}
                   className="of-card-body"
@@ -661,20 +628,18 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
                         <span className="of-detail-value-bold">
                           {client.account_manager?.full_name || client.account_manager?.email || 'Unknown'}
                         </span>
-                        {isMyClient(client) && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditManagerClient(client);
-                              setNewManagerId(client.created_by);
-                              loadAllUsers();
-                            }}
-                            className="of-edit-manager-btn"
-                            title="Change account manager"
-                          >
-                            <Edit2 className="of-icon-xs" />
-                          </button>
-                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditManagerClient(client);
+                            setNewManagerId(client.created_by);
+                            loadAllUsers();
+                          }}
+                          className="of-edit-manager-btn"
+                          title="Change account manager"
+                        >
+                          <Edit2 className="of-icon-xs" />
+                        </button>
                       </div>
                     </div>
                     <div className="of-detail-row">
@@ -685,13 +650,6 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
                       <span className="of-detail-label-light">Last Updated:</span>
                       <span className="of-detail-value-medium">{new Date(client.updated_at).toLocaleDateString()}</span>
                     </div>
-                    {!isMyClient(client) && (
-                      <div className="of-shared-badge-wrapper">
-                        <span className="of-shared-badge">
-                          Shared
-                        </span>
-                      </div>
-                    )}
                   </div>
                 </button>
               </div>

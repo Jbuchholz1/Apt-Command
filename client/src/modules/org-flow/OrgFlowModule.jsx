@@ -3,9 +3,6 @@ import './org-flow.css';
 import ModuleSplash from '../../components/ModuleSplash';
 import OrgFlowDashboard from './components/OrgFlowDashboard';
 import OrgChart from './components/OrgChart';
-import ClientHealth from './components/ClientHealth';
-import UserManagement from './components/UserManagement';
-import UserProfile from './components/UserProfile';
 
 export default function OrgFlowModule() {
   const [showSplash, setShowSplash] = useState(true);
@@ -23,11 +20,6 @@ export default function OrgFlowModule() {
     );
   }
 
-  const handleNavigate = (newView, clientId) => {
-    setView(newView);
-    if (clientId) setSelectedClientId(clientId);
-  };
-
   const handleBackToDashboard = () => {
     setView('dashboard');
     setSelectedClientId(null);
@@ -39,10 +31,10 @@ export default function OrgFlowModule() {
       {view === 'dashboard' && (
         <OrgFlowDashboard
           key={dashboardKey}
-          onSelectClient={(clientId) => handleNavigate('orgchart', clientId)}
-          onManageUsers={() => handleNavigate('users')}
-          onViewProfile={() => handleNavigate('profile')}
-          onViewHealth={() => handleNavigate('health')}
+          onSelectClient={(clientId) => {
+            setView('orgchart');
+            setSelectedClientId(clientId);
+          }}
         />
       )}
       {view === 'orgchart' && selectedClientId && (
@@ -50,15 +42,6 @@ export default function OrgFlowModule() {
           clientId={selectedClientId}
           onBack={handleBackToDashboard}
         />
-      )}
-      {view === 'health' && (
-        <ClientHealth onBack={handleBackToDashboard} />
-      )}
-      {view === 'users' && (
-        <UserManagement onBack={handleBackToDashboard} />
-      )}
-      {view === 'profile' && (
-        <UserProfile onBack={handleBackToDashboard} />
       )}
     </div>
   );

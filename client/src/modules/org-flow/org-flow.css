@@ -70,7 +70,7 @@
 .of-header-inner { max-width: 1400px; margin: 0 auto; padding: 16px 24px; }
 .of-header-row { display: flex; align-items: center; justify-content: space-between; }
 .of-header-brand { display: flex; align-items: center; gap: 12px; }
-.of-header-logo { width: 40px; height: 40px; border-radius: 8px; background: var(--gold); display: flex; align-items: center; justify-content: center; }
+.of-header-logo { width: 40px; height: 40px; border-radius: 8px; object-fit: contain; }
 .of-header-title { font-size: 20px; font-weight: 700; color: var(--gold); margin: 0; }
 .of-header-subtitle { font-size: 12px; color: var(--text-light); }
 .of-header-actions { display: flex; align-items: center; gap: 12px; }
@@ -96,26 +96,30 @@
 
 /* ---- Dashboard: Client Cards ---- */
 .of-client-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
-.of-client-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; transition: all 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+.of-client-card { background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--gold); border-radius: 12px; overflow: hidden; transition: all 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
 .of-client-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); transform: translateY(-1px); }
-.of-card-body { padding: 16px; cursor: pointer; }
-.of-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.of-card-body { display: block; width: 100%; padding: 20px; cursor: pointer; text-align: left; background: none; border: none; font-family: var(--sans); }
+.of-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
 .of-card-actions { display: flex; gap: 4px; padding: 8px 16px; background: #f8fafc; border-top: 1px solid var(--border); }
 .of-card-action-btn { flex: 1; padding: 6px; border: none; background: none; cursor: pointer; border-radius: 6px; color: var(--text-muted); font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 4px; transition: all 0.15s; }
 .of-card-action-btn:hover { background: #e2e8f0; color: var(--text); }
-.of-client-name { font-size: 16px; font-weight: 700; color: var(--navy); margin: 0; }
-.of-client-details { display: flex; flex-direction: column; gap: 6px; }
-.of-detail-row { display: flex; align-items: center; gap: 6px; font-size: 12px; }
-.of-detail-label { color: var(--text-muted); }
-.of-detail-value { color: var(--text); }
-.of-detail-value-bold { font-weight: 600; color: var(--navy); }
-.of-shared-badge { display: inline-block; padding: 2px 6px; background: #dbeafe; color: #1e40af; border-radius: 4px; font-size: 10px; font-weight: 600; }
+.of-client-name { font-size: 18px; font-weight: 700; color: var(--navy); margin: 0 0 12px; }
+.of-client-details { display: flex; flex-direction: column; gap: 8px; }
+.of-detail-row { display: flex; align-items: center; justify-content: space-between; font-size: 13px; }
+.of-detail-label { color: var(--text-muted); font-weight: 500; }
+.of-detail-label-light { color: var(--text-light); }
+.of-detail-value { color: var(--text); font-weight: 500; }
+.of-detail-value-medium { color: var(--text); font-weight: 600; }
+.of-detail-value-bold { font-weight: 700; color: var(--navy); }
+.of-detail-value-group { display: flex; align-items: center; gap: 6px; }
+.of-edit-manager-btn { padding: 2px; border: none; background: none; cursor: pointer; color: var(--text-light); transition: color 0.15s; }
+.of-edit-manager-btn:hover { color: var(--navy); }
 
 /* ---- Dashboard: Client Logo ---- */
 .of-client-logo-wrapper { width: 48px; height: 48px; border-radius: 10px; overflow: hidden; flex-shrink: 0; background: #f1f5f9; display: flex; align-items: center; justify-content: center; }
 .of-client-logo-img { width: 100%; height: 100%; object-fit: cover; }
-.of-client-icon { color: var(--text-light); }
-.of-client-icon-building { color: var(--gold); }
+.of-client-icon { width: 48px; height: 48px; border-radius: 10px; background: var(--navy); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.of-client-icon-building { color: var(--gold); width: 24px; height: 24px; }
 
 /* ---- Dashboard: Upload ---- */
 .of-upload-dropzone { border: 2px dashed var(--border); border-radius: 8px; padding: 24px; text-align: center; cursor: pointer; transition: all 0.15s; }
