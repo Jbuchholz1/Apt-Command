@@ -9,7 +9,7 @@ import ReportingHome from './modules/reporting/ReportingHome';
 import RecruiterDashboard from './modules/reporting/RecruiterDashboard';
 import SalesDashboard from './modules/reporting/SalesDashboard';
 import ClientHealthModule from './modules/client-health/ClientHealthModule';
-import OrgFlowRedirect from './modules/org-flow/OrgFlowRedirect';
+import OrgFlowModule from './modules/org-flow/OrgFlowModule';
 import ComingSoon from './components/ComingSoon';
 
 export default function App() {
@@ -25,7 +25,7 @@ export default function App() {
           <Route element={<AppShell />}>
             <Route index element={<HomePage />} />
             <Route path="req-board" element={<ReqBoardModule />} />
-            <Route path="org-flow" element={<OrgFlowRedirect />} />
+            <Route path="org-flow" element={<OrgFlowModule />} />
             <Route path="pipeline" element={<ComingSoon title="Opportunity Pipeline" />} />
             <Route path="clients" element={<ClientHealthModule />} />
             <Route path="reporting" element={<ReportingModule />}>
