@@ -3,7 +3,7 @@ import { ArrowLeft, User, Mail, Shield, Calendar, Key } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function UserProfile({ onBack }) {
-  const user = { id: 'temp-user-id' }; // TODO: Replace with MSAL
+  const user = null; // Profile managed via MSAL, not Supabase
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);

@@ -4,8 +4,7 @@ import { supabase } from '../lib/supabase';
 import * as XLSX from 'xlsx';
 
 export default function UserManagement({ onBack }) {
-  const user = { id: 'temp-user-id' }; // TODO: Replace with MSAL
-  const currentUser = user;
+  const currentUser = null; // No per-user auth — all MSAL users have admin access
   const [users, setUsers] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);

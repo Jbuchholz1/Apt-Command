@@ -19,8 +19,7 @@ const nodeTypes = {
 };
 
 function OrgChartContent({ clientId, onBack }) {
-  // TODO: Replace with MSAL auth integration
-  const user = { id: 'temp-user-id' };
+  // No per-user auth needed — all MSAL users have full access
 
   const [client, setClient] = useState(null);
   const [employees, setEmployees] = useState([]);

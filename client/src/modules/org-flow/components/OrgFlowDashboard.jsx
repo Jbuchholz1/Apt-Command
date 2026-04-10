@@ -4,8 +4,7 @@ import { supabase } from '../lib/supabase';
 import ClientAssignment from './ClientAssignment';
 import * as XLSX from 'xlsx';
 
-// TODO: Replace with MSAL auth integration
-const user = { id: 'temp-user-id' };
+// No per-user filtering — all MSAL-authenticated users see all clients
 
 export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onViewProfile, onViewHealth }) {
   const [clients, setClients] = useState([]);
@@ -13,7 +12,7 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
   const [showAddModal, setShowAddModal] = useState(false);
   const [newClientName, setNewClientName] = useState('');
   const [error, setError] = useState('');
-  const [viewMode, setViewMode] = useState('my');
+  const [viewMode, setViewMode] = useState('all');
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [assignmentClient, setAssignmentClient] = useState(null);
@@ -34,12 +33,8 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
   }, [viewMode]);
 
   const checkAdminStatus = async () => {
-    const { data } = await supabase
-      .from('user_profiles')
-      .select('role')
-      .eq('id', user?.id)
-      .maybeSingle();
-    setIsAdmin(data?.role === 'admin');
+    // All MSAL-authenticated users have full access
+    setIsAdmin(true);
   };
 
   const loadClients = async () => {
@@ -52,14 +47,14 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
         const { data: assignments } = await supabase
           .from('client_assignments')
           .select('client_id')
-          .eq('user_id', user?.id);
+          .eq('user_id', null);
 
         const assignedClientIds = assignments?.map(a => a.client_id) || [];
 
         if (assignedClientIds.length > 0) {
-          query = query.or(`created_by.eq.${user?.id},id.in.(${assignedClientIds.join(',')})`);
+          query = query.or(`created_by.eq.${null},id.in.(${assignedClientIds.join(',')})`);
         } else {
-          query = query.eq('created_by', user?.id);
+          query = query.eq('created_by', null);
         }
       }
 
@@ -194,7 +189,7 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
     try {
       const { error } = await supabase
         .from('clients')
-        .insert([{ name: newClientName, created_by: user?.id }]);
+        .insert([{ name: newClientName, created_by: null }]);
 
       if (error) throw error;
 
@@ -296,13 +291,13 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
 
             if (!userId) {
               warnings.push(`Row ${rowNumber}: Email "${managerEmailField}" not found, using current user`);
-              managerId = user?.id;
+              managerId = null;
             } else {
               managerId = userId;
             }
           } else {
             // If no email provided, treat as top-level (use current user as manager)
-            managerId = user?.id;
+            managerId = null;
           }
 
           const existingClientId = existingClientMap.get(clientName.toLowerCase());
@@ -383,7 +378,7 @@ export default function OrgFlowDashboard({ onSelectClient, onManageUsers, onView
     }
   };
 
-  const isMyClient = (client) => client.created_by === user?.id;
+  const isMyClient = (client) => client.created_by === null;
 
   const filteredAndSortedClients = clients
     .filter((client) => {
