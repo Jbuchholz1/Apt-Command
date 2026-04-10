@@ -443,28 +443,24 @@ async function getBackoutNotesInRange(startMs, endMs) {
 
 async function getCheckinNotesForType(actionType) {
   // Query ALL checkin notes (no date range — we need full history for active placements)
-  // NoteEntity links notes to their target entities (candidates, jobs, etc.)
+  // Filter to targetEntityName = 'User' to get only candidate-linked rows
+  // (each note creates rows for User, Placement, JobOrder — we only need User)
   const result = await callTool('query_entity', {
     entityType: 'NoteEntity',
-    where: `note.action = '${actionType}' AND note.isDeleted = false`,
-    fields: 'id,note,targetEntityID,targetEntityName',
+    where: `note.action = '${actionType}' AND note.isDeleted = false AND targetEntityName = 'User'`,
+    fields: 'id,note,targetEntityID',
     count: 500,
   });
 
-  // Deduplicate by note ID and collect candidate IDs (targetEntityName = 'User' for candidates)
-  const seenNoteIds = new Set();
+  // Collect unique candidate IDs that have at least one checkin note
   const candidateIdsWithCheckin = new Set();
   for (const row of (result?.data || [])) {
-    const noteId = row.note?.id;
-    if (noteId && !seenNoteIds.has(noteId)) {
-      seenNoteIds.add(noteId);
-      if (row.targetEntityName === 'User') {
-        candidateIdsWithCheckin.add(row.targetEntityID);
-      }
+    if (row.targetEntityID) {
+      candidateIdsWithCheckin.add(row.targetEntityID);
     }
   }
 
-  return { totalNotes: seenNoteIds.size, candidateIdsWithCheckin };
+  return { totalNotes: candidateIdsWithCheckin.size, candidateIdsWithCheckin };
 }
 
 async function getPlacementsForJobs(jobIds) {
