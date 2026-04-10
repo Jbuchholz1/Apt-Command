@@ -1,38 +1,41 @@
 /* ============================================
    EmployeeNode — OrgFlow Module
-   Prefix: of-employee-
+   Matches client card styling from org-flow.css
    ============================================ */
 
 /* --- Node container --- */
 .of-employee-node {
-  background: #ffffff;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-  border-top: 4px solid var(--apt-gold, #c5a258);
+  background: var(--surface, #ffffff);
+  border-radius: 12px;
+  border: 1px solid var(--border, #e2e8f0);
+  border-top: 3px solid var(--gold, #c5a258);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   width: 280px;
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  overflow: hidden;
+  transition: all 0.2s ease;
 }
 
 .of-employee-node:hover {
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
 }
 
 .of-employee-node--selected {
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  outline: 4px solid var(--apt-gold, #c5a258);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  outline: 3px solid var(--gold, #c5a258);
   outline-offset: 0;
 }
 
 /* --- ReactFlow handle --- */
 .of-handle {
-  width: 12px !important;
-  height: 12px !important;
-  background: var(--apt-gold, #c5a258) !important;
+  width: 10px !important;
+  height: 10px !important;
+  background: var(--gold, #c5a258) !important;
 }
 
 /* --- Body padding --- */
 .of-employee-body {
-  padding: 16px;
+  padding: 20px;
 }
 
 /* --- Header row (avatar + name + edit btn) --- */
@@ -40,20 +43,24 @@
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .of-employee-avatar {
-  background: var(--apt-navy, #1e3a5f);
-  padding: 8px;
-  border-radius: 8px;
+  background: var(--navy, #1e3a5f);
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .of-employee-avatar-icon {
-  width: 20px;
-  height: 20px;
-  color: var(--apt-gold, #c5a258);
+  width: 24px;
+  height: 24px;
+  color: var(--gold, #c5a258);
 }
 
 .of-employee-info {
@@ -63,8 +70,8 @@
 
 .of-employee-name {
   font-weight: 700;
-  color: var(--apt-navy, #1e3a5f);
-  font-size: 1.125rem;
+  color: var(--navy, #1e3a5f);
+  font-size: 18px;
   line-height: 1.25;
   word-wrap: break-word;
   overflow-wrap: break-word;
@@ -72,9 +79,9 @@
 }
 
 .of-employee-role {
-  font-size: 0.875rem;
-  color: #4b5563;
-  margin-top: 4px;
+  font-size: 13px;
+  color: var(--text-muted, #64748b);
+  margin-top: 2px;
   word-wrap: break-word;
   overflow-wrap: break-word;
 }
@@ -90,13 +97,13 @@
 }
 
 .of-employee-edit-btn:hover {
-  background: #f3f4f6;
+  background: #f1f5f9;
 }
 
 .of-employee-edit-icon {
   width: 16px;
   height: 16px;
-  color: #4b5563;
+  color: var(--text-light, #94a3b8);
 }
 
 /* --- Department badge --- */
@@ -105,10 +112,10 @@
   margin-bottom: 8px;
   padding: 4px 12px;
   background: rgba(197, 162, 88, 0.1);
-  border-radius: 4px;
-  font-size: 0.875rem;
-  color: var(--apt-navy, #1e3a5f);
-  font-weight: 500;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--navy, #1e3a5f);
+  font-weight: 600;
   word-wrap: break-word;
   overflow-wrap: break-word;
   max-width: 100%;
@@ -118,7 +125,7 @@
 .of-employee-section {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--border, #e2e8f0);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -135,11 +142,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 0.75rem;
+  font-size: 13px;
 }
 
 .of-employee-counter-label {
-  color: #4b5563;
+  color: var(--text-muted, #64748b);
   font-weight: 500;
 }
 
@@ -153,7 +160,7 @@
   padding: 4px;
   border: none;
   background: transparent;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   transition: background-color 0.15s ease;
   display: flex;
@@ -162,43 +169,43 @@
 }
 
 .of-employee-counter-btn:hover {
-  background: #f3f4f6;
+  background: #f1f5f9;
 }
 
 .of-employee-counter-icon {
-  width: 12px;
-  height: 12px;
-  color: #4b5563;
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted, #64748b);
 }
 
 .of-employee-counter-value {
   width: 32px;
   text-align: center;
-  font-weight: 500;
-  color: var(--apt-navy, #1e3a5f);
+  font-weight: 600;
+  color: var(--navy, #1e3a5f);
 }
 
 /* --- Contact info section --- */
 .of-employee-contact {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--border, #e2e8f0);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .of-employee-contact-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.75rem;
-  color: #4b5563;
+  font-size: 13px;
+  color: var(--text-muted, #64748b);
 }
 
 .of-employee-contact-icon {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
 }
 
@@ -212,6 +219,6 @@
 }
 
 .of-employee-email-link:hover {
-  color: var(--apt-gold, #c5a258);
+  color: var(--gold, #c5a258);
   text-decoration: underline;
 }
