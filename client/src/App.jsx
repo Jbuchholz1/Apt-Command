@@ -10,6 +10,8 @@ import RecruiterDashboard from './modules/reporting/RecruiterDashboard';
 import SalesDashboard from './modules/reporting/SalesDashboard';
 import ClientHealthModule from './modules/client-health/ClientHealthModule';
 import OrgFlowModule from './modules/org-flow/OrgFlowModule';
+import PerformanceModule from './modules/performance/PerformanceModule';
+import MyDashboard from './modules/performance/MyDashboard';
 import ComingSoon from './components/ComingSoon';
 
 export default function App() {
@@ -32,6 +34,9 @@ export default function App() {
               <Route index element={<ReportingHome />} />
               <Route path="recruiting" element={<RecruiterDashboard />} />
               <Route path="sales" element={<SalesDashboard />} />
+            </Route>
+            <Route path="performance" element={<PerformanceModule />}>
+              <Route index element={<MyDashboard />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

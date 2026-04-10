@@ -48,7 +48,7 @@ const modules = [
     description: 'Personal dashboards, goal tracking, and performance metrics for each team member.',
     icon: '\u{1F3AF}',
     path: '/performance',
-    status: 'coming-soon',
+    status: 'active',
   },
 ];
 

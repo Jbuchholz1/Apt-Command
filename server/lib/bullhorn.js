@@ -209,7 +209,7 @@ async function getRecruiterUsers() {
   return callTool('query_entity', {
     entityType: 'CorporateUser',
     where: "isDeleted = false AND enabled = true AND customText1 = 'Recruiter'",
-    fields: 'id,firstName,lastName,customText1,customDate1,customDate3',
+    fields: 'id,firstName,lastName,email,customText1,customDate1,customDate3',
     count: 50,
   });
 }
@@ -261,7 +261,7 @@ async function getAMUsers() {
   return callTool('query_entity', {
     entityType: 'CorporateUser',
     where: "isDeleted = false AND enabled = true AND customText1 = 'Account Manager'",
-    fields: 'id,firstName,lastName,customText1,customDate1,customDate3',
+    fields: 'id,firstName,lastName,email,customText1,customDate1,customDate3',
     count: 50,
   });
 }
@@ -380,6 +380,19 @@ async function getPlacementsForJobs(jobIds) {
   });
 }
 
+async function getCorporateUserByEmail(email) {
+  // Fetch all active users and match by email (case-insensitive)
+  const result = await callTool('query_entity', {
+    entityType: 'CorporateUser',
+    where: "isDeleted = false AND enabled = true",
+    fields: 'id,firstName,lastName,email,customText1,customDate1,customDate3',
+    count: 100,
+  });
+  const normalizedEmail = email.toLowerCase();
+  const match = (result.data || []).find(u => u.email && u.email.toLowerCase() === normalizedEmail);
+  return match || null;
+}
+
 module.exports = {
   getOpenJobs,
   getRecentlyClosedJobs,
@@ -410,4 +423,5 @@ module.exports = {
   getABJobs,
   getProjectJobs,
   getPlacementsForJobs,
+  getCorporateUserByEmail,
 };

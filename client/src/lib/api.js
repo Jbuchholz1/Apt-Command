@@ -124,6 +124,12 @@ export function getSalesDashboard(startDate, endDate) {
   return fetchAPI(`/api/reporting/sales-dashboard?start=${startDate}&end=${endDate}`);
 }
 
+// --- Individual Performance ---
+
+export function getMyDashboard(startDate, endDate) {
+  return fetchAPI(`/api/performance/my-dashboard?start=${startDate}&end=${endDate}`);
+}
+
 // --- Client Health ---
 
 export function getClientHealth(startDate, endDate) {

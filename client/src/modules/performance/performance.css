@@ -1,0 +1,126 @@
+/* ================================================
+   Individual Performance Module
+   Reuses most styles from reporting.css
+   ================================================ */
+
+/* --- Role badge in toolbar --- */
+.perf-role-badge {
+  background: rgba(211,191,48,0.15);
+  color: var(--gold);
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* --- Welcome banner --- */
+.perf-banner {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px 24px;
+  margin: 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.perf-banner-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--navy);
+  margin: 0;
+}
+
+.perf-banner-sub {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 2px 0 0;
+}
+
+/* --- Stat pills --- */
+.perf-stat-pills {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.perf-pill {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 20px;
+  text-align: center;
+  min-width: 110px;
+}
+
+.perf-pill-value {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--navy);
+  font-family: var(--mono);
+}
+
+.perf-pill-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+.perf-pill-gold {
+  border-color: var(--gold);
+  background: rgba(211,191,48,0.06);
+}
+.perf-pill-gold .perf-pill-value {
+  color: var(--gold);
+}
+
+.perf-pill-green .perf-pill-value {
+  color: #16a34a;
+}
+
+/* --- Metrics section --- */
+.perf-metrics-section {
+  padding: 0 24px 20px;
+}
+
+/* --- Not found state --- */
+.perf-not-found {
+  text-align: center;
+  padding: 80px 24px;
+  color: var(--text-muted);
+}
+
+.perf-not-found h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--navy);
+  margin: 0 0 8px;
+}
+
+.perf-not-found p {
+  font-size: 14px;
+  margin: 0;
+}
+
+/* --- Responsive --- */
+@media (max-width: 900px) {
+  .perf-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .perf-stat-pills {
+    width: 100%;
+  }
+  .perf-pill {
+    flex: 1;
+    min-width: 80px;
+  }
+}
