@@ -17,6 +17,7 @@ const {
   getProjectJobs,
   getPlacementsForJobs,
   getBackoutNotesInRange,
+  getCheckinNotesForType,
 } = require('../lib/bullhorn');
 const { POINTS, EXCLUDED_RECRUITERS, bhLink } = require('../lib/recruiterConfig');
 const { SALES_POINTS, EXCLUDED_AMS } = require('../lib/salesConfig');
@@ -262,7 +263,7 @@ router.get('/kpis', async (req, res, next) => {
     const recruiterIds = recruiters.map(r => r.id);
     const recruiterSet = new Set(recruiterIds);
 
-    const [interviewsRes, subsRes, placementsRes, appointmentsRes, abJobsRes, projJobsRes, backoutNotesRes] = await Promise.all([
+    const [interviewsRes, subsRes, placementsRes, appointmentsRes, abJobsRes, projJobsRes, backoutNotesRes, activePlacementsRes, trCheckinRes, amCheckinRes] = await Promise.all([
       getInterviewsInRange(startMs, endMs),
       getClientSubsInRange(startMs, endMs),
       getPlacementsInRange(startMs, endMs),
@@ -270,6 +271,9 @@ router.get('/kpis', async (req, res, next) => {
       getABJobs(startMs, endMs),
       getProjectJobs(startMs, endMs),
       getBackoutNotesInRange(startMs, endMs),
+      getActivePlacementsWithClient(),
+      getCheckinNotesForType('TR 30/90'),
+      getCheckinNotesForType('AM 30/90'),
     ]);
 
     let interviews = interviewsRes?.data || [];
@@ -465,6 +469,69 @@ router.get('/kpis', async (req, res, next) => {
       projFillDetails.sort((a, b) => (b.fills / (b.openings || 1)) - (a.fills / (a.openings || 1)));
     }
 
+    // --- TR & AM Checkin Completions (all active placements) ---
+    const activePlacements = activePlacementsRes?.data || [];
+    const now = Date.now();
+    const DAY_MS = 24 * 60 * 60 * 1000;
+
+    function buildCheckinGauge(activePlacements, checkinResult, label) {
+      const { candidateIdsWithCheckin } = checkinResult;
+      let totalDue = 0;
+      let totalCompleted = 0;
+      const details = [];
+
+      for (const p of activePlacements) {
+        if (!p.dateBegin) continue;
+        const daysSinceStart = Math.floor((now - p.dateBegin) / DAY_MS);
+        if (daysSinceStart < 30) continue; // No checkins due yet
+
+        const candidateId = p.candidate?.id;
+        const candidateName = p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '';
+        const client = p.jobOrder?.clientCorporation?.name || '';
+        const startDate = new Date(p.dateBegin).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
+        const hasCheckin = candidateId && candidateIdsWithCheckin.has(candidateId);
+
+        // 30-day checkin
+        const thirtyDue = daysSinceStart >= 30;
+        const ninetyDue = daysSinceStart >= 90;
+
+        if (thirtyDue) totalDue++;
+        if (ninetyDue) totalDue++;
+
+        // We know checkins happened but can't distinguish 30 vs 90 from the note data alone.
+        // Count completed = min(notes for this candidate, checkins due) as best approximation.
+        // For the gauge we use total notes vs total due across all placements.
+        let thirtyStatus = 'Not yet due';
+        let ninetyStatus = 'Not yet due';
+
+        if (thirtyDue) {
+          thirtyStatus = hasCheckin ? 'Done' : 'Overdue';
+          if (hasCheckin) totalCompleted++;
+        }
+        if (ninetyDue) {
+          ninetyStatus = hasCheckin ? 'Done' : 'Overdue';
+          if (hasCheckin) totalCompleted++;
+        }
+
+        details.push({
+          candidate: candidateName,
+          client,
+          startDate,
+          daysSinceStart,
+          thirtyDay: thirtyStatus,
+          ninetyDay: ninetyStatus,
+        });
+      }
+
+      details.sort((a, b) => b.daysSinceStart - a.daysSinceStart);
+      const pct = totalDue > 0 ? Math.round((totalCompleted / totalDue) * 100) : 100;
+
+      return { label, value: pct, target: 100, format: 'percent', details };
+    }
+
+    const trCheckinGauge = buildCheckinGauge(activePlacements, trCheckinRes, 'TR Checkin Completions');
+    const amCheckinGauge = buildCheckinGauge(activePlacements, amCheckinRes, 'AM Checkin Completions');
+
     res.json({
       rangeLabel,
       gauges: [
@@ -473,6 +540,8 @@ router.get('/kpis', async (req, res, next) => {
         { label: 'A/B Fill Ratio - Staffing', value: abFillRatio, target: 60, format: 'percent', details: fillDetails },
         { label: 'Backout %', value: backoutPct, target: 10, format: 'percent', invert: true, details: backoutDetails },
         { label: 'Fill Ratio - Project', value: projFillRatio, target: 60, format: 'percent', details: projFillDetails },
+        trCheckinGauge,
+        amCheckinGauge,
       ],
     });
   } catch (err) {

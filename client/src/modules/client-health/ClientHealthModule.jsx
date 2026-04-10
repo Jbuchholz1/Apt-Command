@@ -295,6 +295,7 @@ export default function ClientHealthModule() {
                     {gaugeModal.label === 'Input' && <><th>Job</th><th>Client</th><th>Type</th><th>AM</th><th>Input</th></>}
                     {gaugeModal.label.includes('Fill Ratio') && <><th>Job</th><th>Priority</th><th>Openings</th><th>Fills</th></>}
                     {gaugeModal.label === 'Backout %' && <><th>Note ID</th><th>Entity</th><th>Entity ID</th></>}
+                    {gaugeModal.label.includes('Checkin') && <><th>Candidate</th><th>Client</th><th>Start Date</th><th>30-Day</th><th>90-Day</th></>}
                   </tr>
                 </thead>
                 <tbody>
@@ -304,6 +305,7 @@ export default function ClientHealthModule() {
                       {gaugeModal.label === 'Input' && <><td>{r.jobTitle}</td><td>{r.client}</td><td>{r.empType}</td><td>{r.am}</td><td className="ch-num">${Number(r.input).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td></>}
                       {gaugeModal.label.includes('Fill Ratio') && <><td>{r.title}</td><td>{r.priority}</td><td className="ch-num">{r.openings}</td><td className="ch-num">{r.fills}</td></>}
                       {gaugeModal.label === 'Backout %' && <><td>{r.noteId}</td><td>{r.entity}</td><td>{r.entityId}</td></>}
+                      {gaugeModal.label.includes('Checkin') && <><td>{r.candidate}</td><td>{r.client}</td><td>{r.startDate}</td><td className={r.thirtyDay === 'Done' ? 'ch-green' : r.thirtyDay === 'Overdue' ? 'ch-red' : 'ch-muted'}>{r.thirtyDay}</td><td className={r.ninetyDay === 'Done' ? 'ch-green' : r.ninetyDay === 'Overdue' ? 'ch-red' : 'ch-muted'}>{r.ninetyDay}</td></>}
                     </tr>
                   ))}
                 </tbody>

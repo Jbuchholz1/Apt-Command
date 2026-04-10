@@ -441,6 +441,32 @@ async function getBackoutNotesInRange(startMs, endMs) {
   return { data: uniqueNotes };
 }
 
+async function getCheckinNotesForType(actionType) {
+  // Query ALL checkin notes (no date range — we need full history for active placements)
+  // NoteEntity links notes to their target entities (candidates, jobs, etc.)
+  const result = await callTool('query_entity', {
+    entityType: 'NoteEntity',
+    where: `note.action = '${actionType}' AND note.isDeleted = false`,
+    fields: 'id,note,targetEntityID,targetEntityName',
+    count: 500,
+  });
+
+  // Deduplicate by note ID and collect candidate IDs (targetEntityName = 'User' for candidates)
+  const seenNoteIds = new Set();
+  const candidateIdsWithCheckin = new Set();
+  for (const row of (result?.data || [])) {
+    const noteId = row.note?.id;
+    if (noteId && !seenNoteIds.has(noteId)) {
+      seenNoteIds.add(noteId);
+      if (row.targetEntityName === 'User') {
+        candidateIdsWithCheckin.add(row.targetEntityID);
+      }
+    }
+  }
+
+  return { totalNotes: seenNoteIds.size, candidateIdsWithCheckin };
+}
+
 async function getPlacementsForJobs(jobIds) {
   if (!jobIds.length) return { data: [] };
   const idList = jobIds.join(',');
@@ -496,5 +522,6 @@ module.exports = {
   getProjectJobs,
   getPlacementsForJobs,
   getBackoutNotesInRange,
+  getCheckinNotesForType,
   getCorporateUserByEmail,
 };

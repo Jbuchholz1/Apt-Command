@@ -356,6 +356,11 @@
   text-align: center;
 }
 
+/* Checkin status colors */
+td.ch-green { color: #166534; font-weight: 600; }
+td.ch-red { color: #991b1b; font-weight: 600; }
+td.ch-muted { color: var(--text-light); }
+
 .ch-owners {
   font-size: 12px;
   color: var(--text-muted);
