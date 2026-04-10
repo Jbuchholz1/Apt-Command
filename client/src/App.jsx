@@ -12,6 +12,8 @@ import ClientHealthModule from './modules/client-health/ClientHealthModule';
 import OrgFlowModule from './modules/org-flow/OrgFlowModule';
 import PerformanceModule from './modules/performance/PerformanceModule';
 import MyDashboard from './modules/performance/MyDashboard';
+import PipelineModule from './modules/pipeline/PipelineModule';
+import OpportunityPipeline from './modules/pipeline/OpportunityPipeline';
 import ComingSoon from './components/ComingSoon';
 
 export default function App() {
@@ -28,7 +30,9 @@ export default function App() {
             <Route index element={<HomePage />} />
             <Route path="req-board" element={<ReqBoardModule />} />
             <Route path="org-flow" element={<OrgFlowModule />} />
-            <Route path="pipeline" element={<ComingSoon title="Opportunity Pipeline" />} />
+            <Route path="pipeline" element={<PipelineModule />}>
+              <Route index element={<OpportunityPipeline />} />
+            </Route>
             <Route path="clients" element={<ClientHealthModule />} />
             <Route path="reporting" element={<ReportingModule />}>
               <Route index element={<ReportingHome />} />

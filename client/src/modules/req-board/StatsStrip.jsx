@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getPlacements, updateJobInBullhorn, updateJobOverrides, getOpportunities, getRecruiters } from '../../lib/api';
+import { getPlacements, updateJobInBullhorn, updateJobOverrides, getRecruiters } from '../../lib/api';
 import { getFollowUpUrgency } from './lib/urgency';
 import EditableDate from './EditableDate';
 import EditableSelect from './EditableSelect';
@@ -9,7 +9,6 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   const [showContractors, setShowContractors] = useState(false);
   const [showCE, setShowCE] = useState(false);
   const [showPerm, setShowPerm] = useState(false);
-  const [showOpportunities, setShowOpportunities] = useState(false);
   const [showMissedFollowUps, setShowMissedFollowUps] = useState(false);
   const [showFilled, setShowFilled] = useState(false);
   const [showAB, setShowAB] = useState(false);
@@ -18,10 +17,6 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   const [showAccepting, setShowAccepting] = useState(false);
   const [placements, setPlacements] = useState([]);
   const [placementsLoading, setPlacementsLoading] = useState(false);
-  const [opportunities, setOpportunities] = useState([]);
-  const [opportunitiesLoading, setOpportunitiesLoading] = useState(false);
-  const [oppFilter, setOppFilter] = useState({ status: '', owner: '', client: '' });
-  const [oppSort, setOppSort] = useState({ key: 'dateAdded', dir: 'desc' });
   const [recruiters, setRecruiters] = useState([]);
 
   useEffect(() => {
@@ -33,7 +28,6 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   const acceptingCandidates = stats?.acceptingCandidates ?? 0;
   const activeContractors = stats?.activeContractors ?? 0;
   const filledCount = stats?.filled ?? 0;
-  const totalOpportunities = stats?.totalOpportunities ?? 0;
 
   // Accepting candidates jobs
   const acceptingJobs = (jobs || []).filter(j => j.status === 'Accepting Candidates');
@@ -77,18 +71,6 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
     }
   };
 
-  const handleOpportunitiesClick = async () => {
-    setShowOpportunities(true);
-    setOpportunitiesLoading(true);
-    try {
-      const res = await getOpportunities();
-      setOpportunities(res.data || []);
-    } catch (err) {
-      console.error('Failed to load opportunities:', err);
-    } finally {
-      setOpportunitiesLoading(false);
-    }
-  };
 
   const handlePlacementDateSave = async (placementIndex, field, tsValue) => {
     const p = placements[placementIndex];
@@ -182,7 +164,6 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
     { label: 'A & B Reqs Covered', value: `${abCovered} / ${abTotal}`, color: '#c9a227', onClick: () => setShowAB(true) },
     { label: 'C Reqs', value: cReqCount, color: '#94a3b8', onClick: () => setShowC(true) },
     { label: 'On The Board', value: filledCount, color: '#7c3aed', tooltip: 'The number of Jobs with a status of Filled', onClick: () => setShowFilled(true) },
-    { label: 'Total Opportunities', value: totalOpportunities, color: '#0369a1', onClick: handleOpportunitiesClick },
     { label: 'Active Contractors', value: activeContractors, color: '#0d9488', onClick: handleContractorsClick },
     { label: 'Total Potential CE Spread', value: fmtCurrency(totalCE), color: '#2563eb', onClick: () => setShowCE(true), tooltip: '((Pay Rate × 1.25 - Bill Rate) × 40 × -1) for Accepting Candidates & Filled jobs' },
     { label: 'Total Potential Perm Spread', value: fmtCurrency(totalPerm), color: '#9333ea', onClick: () => setShowPerm(true), tooltip: '(Salary Low × Fee %) ÷ 26 for Accepting Candidates & Filled jobs' },
@@ -385,108 +366,6 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
           </div>
         </div>
       )}
-
-      {/* Opportunities Modal */}
-      {showOpportunities && (() => {
-        const oppStatuses = [...new Set(opportunities.map(o => o.status).filter(Boolean))].sort();
-        const oppOwners = [...new Set(opportunities.map(o => o.owner).filter(Boolean))].sort();
-        const oppClients = [...new Set(opportunities.map(o => o.client).filter(Boolean))].sort();
-
-        const filtered = opportunities
-          .filter(o => {
-            if (oppFilter.status && o.status !== oppFilter.status) return false;
-            if (oppFilter.owner && o.owner !== oppFilter.owner) return false;
-            if (oppFilter.client && o.client !== oppFilter.client) return false;
-            return true;
-          })
-          .sort((a, b) => {
-            const av = a[oppSort.key], bv = b[oppSort.key];
-            if (av == null) return 1;
-            if (bv == null) return -1;
-            const cmp = typeof av === 'number' ? av - bv : String(av).localeCompare(String(bv));
-            return oppSort.dir === 'asc' ? cmp : -cmp;
-          });
-
-        const toggleSort = (key) => setOppSort(prev =>
-          prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }
-        );
-        const sortIcon = (key) => oppSort.key !== key ? ' ↕' : oppSort.dir === 'asc' ? ' ↑' : ' ↓';
-
-        const totalDeal = filtered.reduce((s, o) => s + (o.dealValue || 0), 0);
-        const totalWeighted = filtered.reduce((s, o) => s + (o.weightedDealValue || 0), 0);
-
-        return (
-          <div className="modal-overlay" onClick={() => setShowOpportunities(false)}>
-            <div className="modal-content contractors-modal" onClick={e => e.stopPropagation()}>
-              <div className="modal-header">
-                <h2>Open Opportunities ({filtered.length})</h2>
-                <button className="modal-close" onClick={() => setShowOpportunities(false)}>✕</button>
-              </div>
-              {opportunitiesLoading ? (
-                <div className="modal-loading">Loading opportunities...</div>
-              ) : (
-                <>
-                  <div style={{ display: 'flex', gap: '8px', padding: '8px 16px', flexWrap: 'wrap' }}>
-                    <select value={oppFilter.status} onChange={e => setOppFilter(f => ({ ...f, status: e.target.value }))} style={{ fontSize: '11px', padding: '4px' }}>
-                      <option value="">All Statuses</option>
-                      {oppStatuses.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                    <select value={oppFilter.owner} onChange={e => setOppFilter(f => ({ ...f, owner: e.target.value }))} style={{ fontSize: '11px', padding: '4px' }}>
-                      <option value="">All Owners</option>
-                      {oppOwners.map(o => <option key={o} value={o}>{o}</option>)}
-                    </select>
-                    <select value={oppFilter.client} onChange={e => setOppFilter(f => ({ ...f, client: e.target.value }))} style={{ fontSize: '11px', padding: '4px' }}>
-                      <option value="">All Clients</option>
-                      {oppClients.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                    {(oppFilter.status || oppFilter.owner || oppFilter.client) && (
-                      <button onClick={() => setOppFilter({ status: '', owner: '', client: '' })} style={{ fontSize: '11px', padding: '4px 8px', cursor: 'pointer' }}>Clear</button>
-                    )}
-                  </div>
-                  <table className="contractors-table">
-                    <thead>
-                      <tr>
-                        <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('id')}>ID{sortIcon('id')}</th>
-                        <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('title')}>Title{sortIcon('title')}</th>
-                        <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('client')}>Client{sortIcon('client')}</th>
-                        <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('owner')}>Owner{sortIcon('owner')}</th>
-                        <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('status')}>Status{sortIcon('status')}</th>
-                        <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('expectedCloseDate')}>Exp Close{sortIcon('expectedCloseDate')}</th>
-                        <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('dealValue')}>Deal Value{sortIcon('dealValue')}</th>
-                        <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('weightedDealValue')}>Weighted{sortIcon('weightedDealValue')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filtered.map(o => (
-                        <tr key={o.id}>
-                          <td><a href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=Opportunity&id=${o.id}`} target="_blank" rel="noopener noreferrer" className="bh-link">{o.id}</a></td>
-                          <td>{o.title || '—'}</td>
-                          <td>{o.client || '—'}</td>
-                          <td>{o.owner || '—'}</td>
-                          <td>{o.status || '—'}</td>
-                          <td>{formatDate(o.expectedCloseDate)}</td>
-                          <td className="cell-money">{o.dealValue ? fmtCurrency(o.dealValue) : '—'}</td>
-                          <td className="cell-money">{o.weightedDealValue ? fmtCurrency(o.weightedDealValue) : '—'}</td>
-                        </tr>
-                      ))}
-                      {filtered.length > 0 && (
-                        <tr className="total-row">
-                          <td colSpan="6" style={{ textAlign: 'right', fontWeight: 700 }}>Totals</td>
-                          <td className="cell-money" style={{ fontWeight: 700 }}>{fmtCurrency(totalDeal)}</td>
-                          <td className="cell-money" style={{ fontWeight: 700 }}>{fmtCurrency(totalWeighted)}</td>
-                        </tr>
-                      )}
-                      {filtered.length === 0 && (
-                        <tr><td colSpan="8" style={{ textAlign: 'center', padding: '20px' }}>No open opportunities found</td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                </>
-              )}
-            </div>
-          </div>
-        );
-      })()}
 
       {/* Missed Follow Ups Modal */}
       {showMissedFollowUps && (

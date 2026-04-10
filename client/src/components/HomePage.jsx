@@ -24,7 +24,7 @@ const modules = [
     description: 'Track opportunities through sourcing, submission, interview, and placement stages.',
     icon: '\u{1F465}',
     path: '/pipeline',
-    status: 'coming-soon',
+    status: 'active',
   },
   {
     id: 'clients',
