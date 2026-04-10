@@ -553,6 +553,7 @@ function buildFollowUps(activePlacements, checkinResult, userId, ownerPath) {
 
     const daysSinceStart = Math.floor((now - p.dateBegin) / DAY_MS);
     if (daysSinceStart < 30) continue;
+    if (daysSinceStart > 365) continue; // Only placements started within last 12 months
 
     const candidateId = p.candidate?.id;
     const candidateName = p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '';

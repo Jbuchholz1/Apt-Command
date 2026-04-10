@@ -78,7 +78,7 @@ router.get('/', async (req, res, next) => {
           placementId: p.id,
           link: bhLink('Placement', p.id),
           candidate: p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '',
-          manager: p.owner ? `${p.owner.firstName || ''} ${p.owner.lastName || ''}`.trim() : '',
+          manager: p.jobOrder?.clientContact ? `${p.jobOrder.clientContact.firstName || ''} ${p.jobOrder.clientContact.lastName || ''}`.trim() : '',
           startDate: fmtDate(p.dateBegin),
           endDate: fmtDate(p.dateEnd),
           spread,
@@ -152,7 +152,7 @@ router.get('/export', async (req, res, next) => {
         const fmtDate = (ms) => ms ? new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }) : '';
         clientPlacementDetails[clientId].push({
           candidate: p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '',
-          manager: p.owner ? `${p.owner.firstName || ''} ${p.owner.lastName || ''}`.trim() : '',
+          manager: p.jobOrder?.clientContact ? `${p.jobOrder.clientContact.firstName || ''} ${p.jobOrder.clientContact.lastName || ''}`.trim() : '',
           startDate: fmtDate(p.dateBegin),
           endDate: fmtDate(p.dateEnd),
           spread,
@@ -480,10 +480,12 @@ router.get('/kpis', async (req, res, next) => {
       let totalCompleted = 0;
       const details = [];
 
+      const TWELVE_MONTHS_DAYS = 365;
       for (const p of activePlacements) {
         if (!p.dateBegin) continue;
         const daysSinceStart = Math.floor((now - p.dateBegin) / DAY_MS);
         if (daysSinceStart < 30) continue; // No checkins due yet
+        if (daysSinceStart > TWELVE_MONTHS_DAYS) continue; // Only placements started within last 12 months
 
         const candidateId = p.candidate?.id;
         const candidateName = p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '';
