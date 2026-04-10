@@ -94,10 +94,14 @@ export default function HomePage() {
       <div className="resources-card">
         <h3 className="resources-title">Quick Links</h3>
         <div className="resources-links">
+          <a href="https://online.adp.com/signin/v1/?APPID=WFNPortal&productId=80e309c3-7085-bae1-e053-3505430b5495&returnURL=https://workforcenow.adp.com/&callingAppId=WFN&TARGET=-SM-https:%2f%2fworkforcenow.adp.com%2ftheme%2findex.html%23/home" target="_blank" rel="noopener noreferrer" className="resource-link">ADP</a>
+          <a href="http://app.alex.com/" target="_blank" rel="noopener noreferrer" className="resource-link">Alex</a>
+          <a href="https://application.aligntoday.com/" target="_blank" rel="noopener noreferrer" className="resource-link">Align</a>
           <a href="https://universal.bullhornstaffing.com/universal-login/login" target="_blank" rel="noopener noreferrer" className="resource-link">Bullhorn</a>
           <a href="https://auth.cloudcall.com/" target="_blank" rel="noopener noreferrer" className="resource-link">CloudCall</a>
-          <a href="https://application.aligntoday.com/" target="_blank" rel="noopener noreferrer" className="resource-link">Align</a>
-          <a href="http://app.alex.com/" target="_blank" rel="noopener noreferrer" className="resource-link">Alex</a>
+          <a href="https://app.fullyramped.com/login" target="_blank" rel="noopener noreferrer" className="resource-link">FullyRamped</a>
+          <a href="https://www.linkedin.com/feed/" target="_blank" rel="noopener noreferrer" className="resource-link">LinkedIn</a>
+          <a href="https://login.microsoftonline.com/a78736a9-b975-4898-ae0e-2f783c0bcf14/oauth2/authorize?client_id=00000003-0000-0ff1-ce00-000000000000&response_mode=form_post&redirect_uri=https%3A%2F%2Fbytesizeinc.sharepoint.com%2F_forms%2Fdefault.aspx" target="_blank" rel="noopener noreferrer" className="resource-link">SharePoint</a>
         </div>
       </div>
       <footer className="home-footer">

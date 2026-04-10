@@ -361,7 +361,7 @@ button:active:not(:disabled) { transform: scale(0.97); }
 
 .resources-links {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -370,8 +370,9 @@ button:active:not(:disabled) { transform: scale(0.97); }
   text-decoration: none;
   font-size: 13px;
   font-weight: 500;
-  padding: 6px 10px;
-  border-radius: 4px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
   transition: all 0.15s;
 }
 .resource-link:hover {
