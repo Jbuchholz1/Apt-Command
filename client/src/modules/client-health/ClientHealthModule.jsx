@@ -294,7 +294,7 @@ export default function ClientHealthModule() {
                     {gaugeModal.label === 'MAR Total' && <><th>Person</th><th>Role</th><th>MAR</th></>}
                     {gaugeModal.label === 'Input' && <><th>Job</th><th>Client</th><th>Type</th><th>AM</th><th>Input</th></>}
                     {gaugeModal.label.includes('Fill Ratio') && <><th>Job</th><th>Priority</th><th>Openings</th><th>Fills</th></>}
-                    {gaugeModal.label === 'Backout %' && <><th>Placement</th><th>Job</th><th>Client</th><th>Candidate</th></>}
+                    {gaugeModal.label === 'Backout %' && <><th>Date</th><th>Person</th><th>Author</th><th>Comment</th></>}
                   </tr>
                 </thead>
                 <tbody>
@@ -303,7 +303,7 @@ export default function ClientHealthModule() {
                       {gaugeModal.label === 'MAR Total' && <><td>{r.name}</td><td>{r.role}</td><td className="ch-num">{r.mar}</td></>}
                       {gaugeModal.label === 'Input' && <><td>{r.jobTitle}</td><td>{r.client}</td><td>{r.empType}</td><td>{r.am}</td><td className="ch-num">${Number(r.input).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td></>}
                       {gaugeModal.label.includes('Fill Ratio') && <><td>{r.title}</td><td>{r.priority}</td><td className="ch-num">{r.openings}</td><td className="ch-num">{r.fills}</td></>}
-                      {gaugeModal.label === 'Backout %' && <><td>{r.placementId}</td><td>{r.jobTitle}</td><td>{r.client}</td><td>{r.candidate}</td></>}
+                      {gaugeModal.label === 'Backout %' && <><td>{r.date}</td><td>{r.person}</td><td>{r.author}</td><td>{r.comment}</td></>}
                     </tr>
                   ))}
                 </tbody>

@@ -412,6 +412,16 @@ async function getProjectJobs(startMs, endMs) {
   });
 }
 
+async function getBackoutNotesInRange(startMs, endMs) {
+  return paginatedQuery({
+    entityType: 'Note',
+    dateField: 'dateAdded',
+    startMs, endMs,
+    extraWhere: "AND action = 'Backout' AND isDeleted = false",
+    fields: 'id,action,comments,dateAdded,commentingPerson,personReference',
+  });
+}
+
 async function getPlacementsForJobs(jobIds) {
   if (!jobIds.length) return { data: [] };
   const idList = jobIds.join(',');
@@ -466,5 +476,6 @@ module.exports = {
   getABJobs,
   getProjectJobs,
   getPlacementsForJobs,
+  getBackoutNotesInRange,
   getCorporateUserByEmail,
 };

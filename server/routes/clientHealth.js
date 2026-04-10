@@ -16,6 +16,7 @@ const {
   getABJobs,
   getProjectJobs,
   getPlacementsForJobs,
+  getBackoutNotesInRange,
 } = require('../lib/bullhorn');
 const { POINTS, EXCLUDED_RECRUITERS, bhLink } = require('../lib/recruiterConfig');
 const { SALES_POINTS, EXCLUDED_AMS } = require('../lib/salesConfig');
@@ -261,13 +262,14 @@ router.get('/kpis', async (req, res, next) => {
     const recruiterIds = recruiters.map(r => r.id);
     const recruiterSet = new Set(recruiterIds);
 
-    const [interviewsRes, subsRes, placementsRes, appointmentsRes, abJobsRes, projJobsRes] = await Promise.all([
+    const [interviewsRes, subsRes, placementsRes, appointmentsRes, abJobsRes, projJobsRes, backoutNotesRes] = await Promise.all([
       getInterviewsInRange(startMs, endMs),
       getClientSubsInRange(startMs, endMs),
       getPlacementsInRange(startMs, endMs),
       getAppointmentsInRange(startMs, endMs, amIds),
       getABJobs(startMs, endMs),
       getProjectJobs(startMs, endMs),
+      getBackoutNotesInRange(startMs, endMs),
     ]);
 
     let interviews = interviewsRes?.data || [];
@@ -399,15 +401,17 @@ router.get('/kpis', async (req, res, next) => {
     // Dynamic MAR target: (recruiters × 26/wk + AMs × 30/wk) × 13 weeks
     const marTarget = (recruiters.length * 26 + ams.length * 30) * 13;
 
-    // --- Backout % ---
-    const terminatedList = placements.filter(p => (Array.isArray(p.status) ? p.status[0] : p.status || '').toLowerCase() === 'terminated');
+    // --- Backout % (from Notes with action = 'Backout') ---
+    const backoutNotes = backoutNotesRes?.data || [];
     const totalPlacements = placements.length;
-    const backoutPct = totalPlacements > 0 ? Math.round((terminatedList.length / totalPlacements) * 100) : 0;
-    const backoutDetails = terminatedList.map(p => ({
-      placementId: p.id,
-      jobTitle: p.jobOrder?.title || '',
-      client: p.jobOrder?.clientCorporation?.name || '',
-      candidate: p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '',
+    const backoutCount = backoutNotes.length;
+    const backoutPct = totalPlacements > 0 ? Math.round((backoutCount / totalPlacements) * 100) : 0;
+    const backoutDetails = backoutNotes.map(n => ({
+      noteId: n.id,
+      date: n.dateAdded ? new Date(n.dateAdded).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }) : '',
+      person: n.personReference ? `${n.personReference.firstName || ''} ${n.personReference.lastName || ''}`.trim() : '',
+      author: n.commentingPerson ? `${n.commentingPerson.firstName || ''} ${n.commentingPerson.lastName || ''}`.trim() : '',
+      comment: (n.comments || '').slice(0, 200),
     }));
 
     // --- A/B Fill Ratio ---
