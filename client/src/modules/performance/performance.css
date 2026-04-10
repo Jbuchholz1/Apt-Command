@@ -91,6 +91,28 @@
   padding: 0 24px 20px;
 }
 
+/* --- Overdue Tasks Alert --- */
+.perf-overdue-wrap { margin: 0 24px 20px; }
+.perf-overdue-alert { background: #fef2f2; border: 1px solid #fecaca; border-left: 4px solid #dc2626; border-radius: 8px; padding: 14px 20px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.perf-overdue-alert:hover { background: #fee2e2; box-shadow: 0 2px 8px rgba(220,38,38,0.1); }
+.perf-overdue-wrap:has(.perf-overdue-detail) .perf-overdue-alert { border-radius: 8px 8px 0 0; }
+.perf-overdue-left { display: flex; align-items: center; gap: 12px; }
+.perf-overdue-icon { width: 36px; height: 36px; background: #dc2626; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; font-weight: 800; flex-shrink: 0; }
+.perf-overdue-title { font-size: 15px; font-weight: 700; color: #991b1b; margin: 0; }
+.perf-overdue-sub { font-size: 12px; color: #b91c1c; margin: 2px 0 0; }
+.perf-overdue-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+.perf-overdue-badge { padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #fee2e2; color: #991b1b; white-space: nowrap; }
+.perf-overdue-detail { background: #fff; border: 1px solid #fecaca; border-top: none; border-radius: 0 0 8px 8px; overflow: hidden; }
+.perf-overdue-section { padding: 12px 20px; }
+.perf-overdue-section + .perf-overdue-section { border-top: 1px solid #fecaca; }
+.perf-overdue-section-title { font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #e2e8f0; }
+.perf-overdue-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 12px; gap: 12px; }
+.perf-overdue-item:last-child { border-bottom: none; }
+.perf-overdue-item-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.perf-overdue-item-title { color: #04144F; font-weight: 500; white-space: nowrap; }
+.perf-overdue-item-client { color: #64748b; white-space: nowrap; }
+.perf-overdue-item-date { color: #991b1b; font-weight: 600; font-size: 11px; white-space: nowrap; flex-shrink: 0; }
+
 /* --- Not found state --- */
 .perf-not-found {
   text-align: center;

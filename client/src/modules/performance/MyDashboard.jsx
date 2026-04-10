@@ -254,6 +254,8 @@ function RecruiterView({ data, formatCurrency }) {
         </div>
       </div>
 
+      {data.overdueTasks?.total > 0 && <OverdueAlert overdueTasks={data.overdueTasks} />}
+
       {/* Charts */}
       <div className="charts-row">
         <div className="chart-section">
@@ -368,6 +370,8 @@ function AMView({ data, formatCurrency, modal, setModal }) {
         </div>
       </div>
 
+      {data.overdueTasks?.total > 0 && <OverdueAlert overdueTasks={data.overdueTasks} />}
+
       {/* Charts */}
       <div className="charts-row">
         <div className="chart-section">
@@ -472,6 +476,82 @@ function AMView({ data, formatCurrency, modal, setModal }) {
 }
 
 // --- Follow Ups Section (shared by TR and AM) ---
+// --- Overdue Tasks Alert ---
+function OverdueAlert({ overdueTasks }) {
+  const [expanded, setExpanded] = useState(false);
+  const { total, overdueFollowUps, missedDeadlines, overdueCheckins } = overdueTasks;
+
+  if (total === 0) return null;
+
+  return (
+    <div className="perf-overdue-wrap">
+      <div className="perf-overdue-alert" onClick={() => setExpanded(!expanded)}>
+        <div className="perf-overdue-left">
+          <div className="perf-overdue-icon">!</div>
+          <div>
+            <h4 className="perf-overdue-title">{total} Overdue Task{total !== 1 ? 's' : ''}</h4>
+            <p className="perf-overdue-sub">{expanded ? 'Click to collapse' : 'Click to review follow-ups, deadlines, and check-ins that need attention'}</p>
+          </div>
+        </div>
+        <div className="perf-overdue-badges">
+          {overdueFollowUps.length > 0 && <span className="perf-overdue-badge">{overdueFollowUps.length} Follow Up{overdueFollowUps.length !== 1 ? 's' : ''}</span>}
+          {missedDeadlines.length > 0 && <span className="perf-overdue-badge">{missedDeadlines.length} Deadline{missedDeadlines.length !== 1 ? 's' : ''}</span>}
+          {overdueCheckins.length > 0 && <span className="perf-overdue-badge">{overdueCheckins.length} Check-In{overdueCheckins.length !== 1 ? 's' : ''}</span>}
+        </div>
+      </div>
+      {expanded && (
+        <div className="perf-overdue-detail">
+          {overdueFollowUps.length > 0 && (
+            <div className="perf-overdue-section">
+              <div className="perf-overdue-section-title">Overdue Follow Ups ({overdueFollowUps.length})</div>
+              {overdueFollowUps.map((r, i) => (
+                <div key={i} className="perf-overdue-item">
+                  <div className="perf-overdue-item-left">
+                    <a href={r.jobLink} target="_blank" rel="noopener noreferrer" className="bh-detail-link">{r.jobId}</a>
+                    <span className="perf-overdue-item-title">{r.title}</span>
+                    <span className="perf-overdue-item-client">— {r.client}</span>
+                  </div>
+                  <span className="perf-overdue-item-date">{r.value}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {missedDeadlines.length > 0 && (
+            <div className="perf-overdue-section">
+              <div className="perf-overdue-section-title">Missed Deadlines ({missedDeadlines.length})</div>
+              {missedDeadlines.map((r, i) => (
+                <div key={i} className="perf-overdue-item">
+                  <div className="perf-overdue-item-left">
+                    <a href={r.jobLink} target="_blank" rel="noopener noreferrer" className="bh-detail-link">{r.jobId}</a>
+                    <span className="perf-overdue-item-title">{r.title}</span>
+                    <span className="perf-overdue-item-client">— {r.client}</span>
+                  </div>
+                  <span className="perf-overdue-item-date">{r.value}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {overdueCheckins.length > 0 && (
+            <div className="perf-overdue-section">
+              <div className="perf-overdue-section-title">Overdue Check-Ins ({overdueCheckins.length})</div>
+              {overdueCheckins.map((r, i) => (
+                <div key={i} className="perf-overdue-item">
+                  <div className="perf-overdue-item-left">
+                    {r.candidateId ? <a href={r.candidateLink} target="_blank" rel="noopener noreferrer" className="bh-detail-link">{r.candidateId}</a> : <span>—</span>}
+                    <span className="perf-overdue-item-title">{r.candidate}</span>
+                    <span className="perf-overdue-item-client">— {r.client}</span>
+                  </div>
+                  <span className="perf-overdue-item-date">{r.reason}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function FollowUpsSection({ followUps, title }) {
   const [sort, setSort] = useState({ key: 'daysSinceStart', dir: 'desc' });
   const [filter, setFilter] = useState('');

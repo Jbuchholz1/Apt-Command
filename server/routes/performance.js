@@ -12,7 +12,9 @@ const {
   getSalesCommissions,
   getActivePlacementsWithClient,
   getCheckinNotesForType,
+  getOpenJobs,
 } = require('../lib/bullhorn');
+const { getAllOverrides } = require('../lib/db');
 const { POINTS, bhLink } = require('../lib/recruiterConfig');
 const { SALES_POINTS, ACTIVITY_LABELS, ACTIVITY_ORDER } = require('../lib/salesConfig');
 
@@ -223,6 +225,9 @@ async function handleRecruiter(req, res, { userId, fullName, tier, spreadGoal, w
   // --- TR Follow Ups: checkins for candidates owned by this recruiter ---
   const followUps = buildFollowUps(activePlacementsRes?.data || [], trCheckinRes, userId, 'candidate');
 
+  // --- Overdue tasks alert ---
+  const overdueTasks = await buildOverdueTasks(userId, followUps);
+
   res.json({
     role: 'Recruiter',
     name: fullName,
@@ -244,6 +249,7 @@ async function handleRecruiter(req, res, { userId, fullName, tier, spreadGoal, w
       newInput: newInputDetail,
     },
     followUps,
+    overdueTasks,
   });
 }
 
@@ -403,6 +409,9 @@ async function handleAM(req, res, { userId, fullName, tier, spreadGoal, weeks, s
   // --- AM Follow Ups: checkins for placements on jobs owned by this AM ---
   const followUps = buildFollowUps(activePlacementsRes?.data || [], amCheckinRes, userId, 'jobOrder');
 
+  // --- Overdue tasks alert ---
+  const overdueTasks = await buildOverdueTasks(userId, followUps);
+
   res.json({
     role: 'Account Manager',
     name: fullName,
@@ -419,7 +428,111 @@ async function handleAM(req, res, { userId, fullName, tier, spreadGoal, weeks, s
     mar,
     newInput,
     followUps,
+    overdueTasks,
   });
+}
+
+// --- Urgency helpers (server-side replication of client urgency.js) ---
+
+function parseDateFromText(str) {
+  if (!str) return null;
+  const now = new Date();
+  const match = str.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
+  if (!match) return null;
+  const month = parseInt(match[1], 10) - 1;
+  const day = parseInt(match[2], 10);
+  let year = match[3] ? parseInt(match[3], 10) : now.getFullYear();
+  if (year < 100) year += 2000;
+  const date = new Date(year, month, day);
+  return isNaN(date.getTime()) ? null : date;
+}
+
+function isOverdue(dateStr, emptyLabel) {
+  const val = (dateStr || '').trim();
+  if (!val || val.toLowerCase() === emptyLabel) return true;
+  const date = parseDateFromText(val);
+  if (!date) return true;
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return date.getTime() <= today.getTime();
+}
+
+function isFollowUpOverdue(str) { return isOverdue(str, 'no follow up'); }
+function isDeadlineOverdue(str) { return isOverdue(str, 'no deadline'); }
+
+// --- Build overdue tasks for a user ---
+
+async function buildOverdueTasks(userId, followUps) {
+  // Fetch open jobs + overrides
+  const [jobsRes, overrides] = await Promise.all([getOpenJobs(), getAllOverrides()]);
+  const jobs = jobsRes?.data || [];
+
+  const BH_BASE = 'https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm';
+  const overdueFollowUps = [];
+  const missedDeadlines = [];
+
+  for (const job of jobs) {
+    const status = Array.isArray(job.status) ? job.status[0] : (job.status || '');
+    if (!['Accepting Candidates', 'Covered', 'Offer Out'].includes(status)) continue;
+
+    const ov = overrides[job.id];
+    const followUp = ov?.follow_up || '';
+    const deadline = ov?.deadline || '';
+    const ownerId = job.owner?.id;
+    const assignedIds = (job.assignedUsers?.data || []).map(u => u.id);
+
+    // Check if this user is associated (as TR via assignedUsers, or as AM via owner)
+    const isAssociated = ownerId === userId || assignedIds.includes(userId);
+    if (!isAssociated) continue;
+
+    const title = job.title || '';
+    const client = job.clientCorporation?.name || '';
+    const jobLink = `${BH_BASE}?Entity=JobOrder&id=${job.id}`;
+
+    if (isFollowUpOverdue(followUp)) {
+      overdueFollowUps.push({
+        jobId: job.id,
+        jobLink,
+        title,
+        client,
+        value: followUp || 'No follow up set',
+      });
+    }
+
+    if (isDeadlineOverdue(deadline)) {
+      missedDeadlines.push({
+        jobId: job.id,
+        jobLink,
+        title,
+        client,
+        value: deadline || 'No deadline set',
+      });
+    }
+  }
+
+  // Overdue check-ins from followUps data
+  const overdueCheckins = [];
+  for (const fu of (followUps || [])) {
+    if (fu.thirtyDay === 'Overdue' || fu.ninetyDay === 'Overdue') {
+      const reasons = [];
+      if (fu.thirtyDay === 'Overdue') reasons.push(`30-day overdue (started ${fu.daysSinceStart}d ago)`);
+      if (fu.ninetyDay === 'Overdue') reasons.push(`90-day overdue (started ${fu.daysSinceStart}d ago)`);
+      overdueCheckins.push({
+        candidateId: fu.candidateId,
+        candidateLink: fu.candidateLink,
+        candidate: fu.candidate,
+        client: fu.client,
+        reason: reasons.join(', '),
+      });
+    }
+  }
+
+  return {
+    total: overdueFollowUps.length + missedDeadlines.length + overdueCheckins.length,
+    overdueFollowUps,
+    missedDeadlines,
+    overdueCheckins,
+  };
 }
 
 // --- Shared: build follow-up checkin list for a user ---
