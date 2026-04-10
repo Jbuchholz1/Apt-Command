@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getPlacements, updateJobInBullhorn, updateJobOverrides, getRecruiters } from '../../lib/api';
+import { getPlacements, updateJobInBullhorn, updateJobOverrides, getRecruiters, getOpportunities } from '../../lib/api';
 import { getFollowUpUrgency } from './lib/urgency';
 import EditableDate from './EditableDate';
 import EditableSelect from './EditableSelect';
@@ -17,6 +17,9 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   const [showAccepting, setShowAccepting] = useState(false);
   const [placements, setPlacements] = useState([]);
   const [placementsLoading, setPlacementsLoading] = useState(false);
+  const [showOpportunities, setShowOpportunities] = useState(false);
+  const [opportunities, setOpportunities] = useState([]);
+  const [opportunitiesLoading, setOpportunitiesLoading] = useState(false);
   const [recruiters, setRecruiters] = useState([]);
 
   useEffect(() => {
@@ -28,6 +31,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   const acceptingCandidates = stats?.acceptingCandidates ?? 0;
   const activeContractors = stats?.activeContractors ?? 0;
   const filledCount = stats?.filled ?? 0;
+  const totalOpportunities = stats?.totalOpportunities ?? 0;
 
   // Accepting candidates jobs
   const acceptingJobs = (jobs || []).filter(j => j.status === 'Accepting Candidates');
@@ -71,6 +75,19 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
     }
   };
 
+
+  const handleOpportunitiesClick = async () => {
+    setShowOpportunities(true);
+    setOpportunitiesLoading(true);
+    try {
+      const res = await getOpportunities();
+      setOpportunities(res.data || []);
+    } catch (err) {
+      console.error('Failed to load opportunities:', err);
+    } finally {
+      setOpportunitiesLoading(false);
+    }
+  };
 
   const handlePlacementDateSave = async (placementIndex, field, tsValue) => {
     const p = placements[placementIndex];
@@ -164,6 +181,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
     { label: 'A & B Reqs Covered', value: `${abCovered} / ${abTotal}`, color: '#c9a227', onClick: () => setShowAB(true) },
     { label: 'C Reqs', value: cReqCount, color: '#94a3b8', onClick: () => setShowC(true) },
     { label: 'On The Board', value: filledCount, color: '#7c3aed', tooltip: 'The number of Jobs with a status of Filled', onClick: () => setShowFilled(true) },
+    { label: 'Total Opportunities', value: totalOpportunities, color: '#0369a1', onClick: handleOpportunitiesClick },
     { label: 'Active Contractors', value: activeContractors, color: '#0d9488', onClick: handleContractorsClick },
     { label: 'Total Potential CE Spread', value: fmtCurrency(totalCE), color: '#2563eb', onClick: () => setShowCE(true), tooltip: 'W2: (Bill Rate - Pay Rate × 1.25) × 40 | C2C: (Bill Rate - Pay Rate × 1.05) × 40 | A/B priority, Accepting Candidates & Filled jobs only' },
     { label: 'Total Potential Perm Spread', value: fmtCurrency(totalPerm), color: '#9333ea', onClick: () => setShowPerm(true), tooltip: '(Salary Low × Fee %) ÷ 26 for Accepting Candidates & Filled jobs' },
@@ -363,6 +381,60 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
                 </tr>
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Opportunities Modal */}
+      {showOpportunities && (
+        <div className="modal-overlay" onClick={() => setShowOpportunities(false)}>
+          <div className="modal-content contractors-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Open Opportunities ({opportunities.length})</h2>
+              <button className="modal-close" onClick={() => setShowOpportunities(false)}>✕</button>
+            </div>
+            {opportunitiesLoading ? (
+              <div className="modal-loading">Loading opportunities...</div>
+            ) : (
+              <table className="contractors-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Title</th>
+                    <th>Client</th>
+                    <th>Owner</th>
+                    <th>Status</th>
+                    <th>Exp Close</th>
+                    <th>Deal Value</th>
+                    <th>Weighted</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {opportunities.map(o => (
+                    <tr key={o.id}>
+                      <td><a href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=Opportunity&id=${o.id}`} target="_blank" rel="noopener noreferrer" className="bh-link">{o.id}</a></td>
+                      <td>{o.title || '—'}</td>
+                      <td>{o.client || '—'}</td>
+                      <td>{o.owner || '—'}</td>
+                      <td>{o.status || '—'}</td>
+                      <td>{formatDate(o.expectedCloseDate)}</td>
+                      <td className="cell-money">{o.dealValue ? fmtCurrency(o.dealValue) : '—'}</td>
+                      <td className="cell-money">{o.weightedDealValue ? fmtCurrency(o.weightedDealValue) : '—'}</td>
+                    </tr>
+                  ))}
+                  {opportunities.length > 0 && (
+                    <tr className="total-row">
+                      <td colSpan="6" style={{ textAlign: 'right', fontWeight: 700 }}>Totals</td>
+                      <td className="cell-money" style={{ fontWeight: 700 }}>{fmtCurrency(opportunities.reduce((s, o) => s + (o.dealValue || 0), 0))}</td>
+                      <td className="cell-money" style={{ fontWeight: 700 }}>{fmtCurrency(opportunities.reduce((s, o) => s + (o.weightedDealValue || 0), 0))}</td>
+                    </tr>
+                  )}
+                  {opportunities.length === 0 && (
+                    <tr><td colSpan="8" style={{ textAlign: 'center', padding: '20px' }}>No open opportunities found</td></tr>
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       )}
