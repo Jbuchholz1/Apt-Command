@@ -1,6 +1,7 @@
 import { memo, useState } from 'react';
 import { Handle, Position } from 'reactflow';
 import { User, Mail, Phone, Plus, Minus, Settings } from 'lucide-react';
+import './EmployeeNode.css';
 
 function EmployeeNode({ data, selected }) {
   const [localFtes, setLocalFtes] = useState(data.numFtes);
