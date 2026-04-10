@@ -4,17 +4,17 @@ import { CHART_COLORS } from '../lib/constants';
 export default function InputVsGoalsChart({ recruiters, startDate, endDate }) {
   if (!recruiters || recruiters.length === 0) return null;
 
-  // Calculate pacing fraction: how far through the date range are we?
+  // Pacing: spread goal is a quarterly (13-week) target.
+  // The pacing line shows what fraction of the goal the selected date range represents.
+  // E.g., 2-week range = 2/13 ≈ 15.4% of goal.
+  const QUARTER_WEEKS = 13;
   let pacingFraction = 1;
   if (startDate && endDate) {
     const start = new Date(startDate + 'T00:00:00').getTime();
     const end = new Date(endDate + 'T23:59:59').getTime();
-    const now = Date.now();
-    const totalMs = end - start;
-    const elapsedMs = Math.min(now - start, totalMs);
-    if (totalMs > 0) {
-      pacingFraction = Math.max(0, Math.min(1, elapsedMs / totalMs));
-    }
+    const rangeMs = end - start;
+    const rangeWeeks = rangeMs / (7 * 24 * 60 * 60 * 1000);
+    pacingFraction = Math.min(1, rangeWeeks / QUARTER_WEEKS);
   }
 
   const data = recruiters.map(r => ({
