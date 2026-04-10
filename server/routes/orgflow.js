@@ -38,7 +38,7 @@ router.get('/client-health', async (req, res, next) => {
 
     // Fetch all employees and contractor counts in parallel
     const [employeesRes, placementsResult] = await Promise.all([
-      supabase.from('employees').select('id,client_id,email,num_ftes,num_contractors,reports_to_id'),
+      supabase.from('employees').select('id,client_id,name,role,email,num_ftes,num_contractors,reports_to_id'),
       getActivePlacementsWithClient(),
     ]);
 
