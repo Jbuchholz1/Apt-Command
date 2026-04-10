@@ -327,6 +327,8 @@ function RecruiterView({ data, formatCurrency }) {
       <DetailTable title="Interviews" columns={INTERVIEW_COLS} data={data.details.interviews} />
       <DetailTable title="Starts" columns={STARTS_COLS} data={data.details.starts} />
       <DetailTable title="New Input" columns={NEW_INPUT_COLS} data={data.details.newInput} />
+
+      {data.followUps && <FollowUpsSection followUps={data.followUps} title="TR 30/90 Check-In Follow Ups" />}
     </>
   );
 }
@@ -463,6 +465,84 @@ function AMView({ data, formatCurrency, modal, setModal }) {
       {data.jobDetails?.newPlacements?.length > 0 && (
         <DetailTable title="New Placements" columns={PLACEMENT_COLS} data={data.jobDetails.newPlacements} />
       )}
+
+      {data.followUps && <FollowUpsSection followUps={data.followUps} title="AM 30/90 Check-In Follow Ups" />}
     </>
+  );
+}
+
+// --- Follow Ups Section (shared by TR and AM) ---
+function FollowUpsSection({ followUps, title }) {
+  const [sort, setSort] = useState({ key: 'daysSinceStart', dir: 'desc' });
+  const [filter, setFilter] = useState('');
+
+  if (!followUps || followUps.length === 0) return null;
+
+  const toggleSort = (key) => setSort(prev =>
+    prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }
+  );
+  const sortIcon = (key) => sort.key !== key ? ' ↕' : sort.dir === 'asc' ? ' ↑' : ' ↓';
+
+  const filtered = followUps
+    .filter(r => {
+      if (!filter) return true;
+      if (filter === 'overdue') return r.thirtyDay === 'Overdue' || r.ninetyDay === 'Overdue';
+      if (filter === 'done') return r.thirtyDay === 'Done' && (r.ninetyDay === 'Done' || r.ninetyDay === 'Not yet due');
+      return true;
+    })
+    .sort((a, b) => {
+      const av = a[sort.key], bv = b[sort.key];
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      const cmp = typeof av === 'number' ? av - bv : String(av).localeCompare(String(bv));
+      return sort.dir === 'asc' ? cmp : -cmp;
+    });
+
+  const overdueCount = followUps.filter(r => r.thirtyDay === 'Overdue' || r.ninetyDay === 'Overdue').length;
+
+  return (
+    <div className="perf-metrics-section">
+      <h3 className="section-title">{title} <span style={{ fontWeight: 400, color: '#64748b', fontSize: 12 }}>({followUps.length} placements{overdueCount > 0 ? `, ${overdueCount} with overdue` : ''})</span></h3>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        <select value={filter} onChange={e => setFilter(e.target.value)} style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 12 }}>
+          <option value="">All</option>
+          <option value="overdue">Overdue Only</option>
+          <option value="done">Completed Only</option>
+        </select>
+      </div>
+      <div style={{ overflowX: 'auto' }}>
+        <table className="metrics-table" style={{ fontSize: 12 }}>
+          <thead>
+            <tr>
+              <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('candidateId')}>Candidate #{sortIcon('candidateId')}</th>
+              <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('placementId')}>Placement #{sortIcon('placementId')}</th>
+              <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('candidate')}>Candidate{sortIcon('candidate')}</th>
+              <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('client')}>Client{sortIcon('client')}</th>
+              <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('jobTitle')}>Job{sortIcon('jobTitle')}</th>
+              <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('daysSinceStart')}>Start Date{sortIcon('daysSinceStart')}</th>
+              <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('thirtyDay')}>30-Day{sortIcon('thirtyDay')}</th>
+              <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('ninetyDay')}>90-Day{sortIcon('ninetyDay')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((r, i) => (
+              <tr key={i}>
+                <td>{r.candidateId ? <a href={r.candidateLink} target="_blank" rel="noopener noreferrer" className="bh-detail-link">{r.candidateId}</a> : '—'}</td>
+                <td><a href={r.placementLink} target="_blank" rel="noopener noreferrer" className="bh-detail-link">{r.placementId}</a></td>
+                <td>{r.candidate}</td>
+                <td>{r.client}</td>
+                <td>{r.jobTitle}</td>
+                <td>{r.startDate}</td>
+                <td style={{ color: r.thirtyDay === 'Done' ? '#166534' : r.thirtyDay === 'Overdue' ? '#991b1b' : '#94a3b8', fontWeight: r.thirtyDay !== 'Not yet due' ? 600 : 400 }}>{r.thirtyDay}</td>
+                <td style={{ color: r.ninetyDay === 'Done' ? '#166534' : r.ninetyDay === 'Overdue' ? '#991b1b' : '#94a3b8', fontWeight: r.ninetyDay !== 'Not yet due' ? 600 : 400 }}>{r.ninetyDay}</td>
+              </tr>
+            ))}
+            {filtered.length === 0 && (
+              <tr><td colSpan="8" style={{ textAlign: 'center', padding: 20, color: '#64748b' }}>No follow ups match this filter.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }

@@ -10,6 +10,8 @@ const {
   getNewJobsInRange,
   getClosedJobsInRange,
   getSalesCommissions,
+  getActivePlacementsWithClient,
+  getCheckinNotesForType,
 } = require('../lib/bullhorn');
 const { POINTS, bhLink } = require('../lib/recruiterConfig');
 const { SALES_POINTS, ACTIVITY_LABELS, ACTIVITY_ORDER } = require('../lib/salesConfig');
@@ -83,10 +85,12 @@ async function handleRecruiter(req, res, { userId, fullName, tier, spreadGoal, w
   const marGoal = weeks * POINTS.WEEKLY_TARGET; // 26/week
 
   // Parallel data fetch
-  const [subsRes, interviewsRes, placementsRes] = await Promise.all([
+  const [subsRes, interviewsRes, placementsRes, activePlacementsRes, trCheckinRes] = await Promise.all([
     getClientSubsInRange(startMs, endMs),
     getInterviewsInRange(startMs, endMs),
     getPlacementsInRange(startMs, endMs),
+    getActivePlacementsWithClient(),
+    getCheckinNotesForType('TR 30/90'),
   ]);
 
   const allSubs = subsRes?.data || [];
@@ -216,6 +220,9 @@ async function handleRecruiter(req, res, { userId, fullName, tier, spreadGoal, w
   // MAR = (clientSubs × 1) + (interviews × 3) + (starts × 10)
   const mar = Math.round(((clientSubs * POINTS.CLIENT_SUB) + (interviews * POINTS.INTERVIEW) + (starts * POINTS.START)) * 100) / 100;
 
+  // --- TR Follow Ups: checkins for candidates owned by this recruiter ---
+  const followUps = buildFollowUps(activePlacementsRes?.data || [], trCheckinRes, userId, 'candidate');
+
   res.json({
     role: 'Recruiter',
     name: fullName,
@@ -236,6 +243,7 @@ async function handleRecruiter(req, res, { userId, fullName, tier, spreadGoal, w
       starts: startsDetail,
       newInput: newInputDetail,
     },
+    followUps,
   });
 }
 
@@ -243,11 +251,13 @@ async function handleRecruiter(req, res, { userId, fullName, tier, spreadGoal, w
 async function handleAM(req, res, { userId, fullName, tier, spreadGoal, weeks, startMs, endMs }) {
   const marGoal = weeks * 30; // AM weekly target = 30
 
-  const [apptRes, newJobsRes, closedJobsRes, placementsRes] = await Promise.all([
+  const [apptRes, newJobsRes, closedJobsRes, placementsRes, activePlacementsRes, amCheckinRes] = await Promise.all([
     getAppointmentsInRange(startMs, endMs, [userId]),
     getNewJobsInRange(startMs, endMs),
     getClosedJobsInRange(startMs, endMs),
     getPlacementsInRange(startMs, endMs),
+    getActivePlacementsWithClient(),
+    getCheckinNotesForType('AM 30/90'),
   ]);
 
   const appointments = apptRes?.data || [];
@@ -390,6 +400,9 @@ async function handleAM(req, res, { userId, fullName, tier, spreadGoal, weeks, s
   mar = Math.round(mar * 100) / 100;
   newInput = Math.round(newInput * 100) / 100;
 
+  // --- AM Follow Ups: checkins for placements on jobs owned by this AM ---
+  const followUps = buildFollowUps(activePlacementsRes?.data || [], amCheckinRes, userId, 'jobOrder');
+
   res.json({
     role: 'Account Manager',
     name: fullName,
@@ -405,7 +418,61 @@ async function handleAM(req, res, { userId, fullName, tier, spreadGoal, weeks, s
     noteActivity: 0,
     mar,
     newInput,
+    followUps,
   });
+}
+
+// --- Shared: build follow-up checkin list for a user ---
+// ownerPath: 'candidate' = filter by candidate.owner.id (TR), 'jobOrder' = filter by jobOrder.owner.id (AM)
+function buildFollowUps(activePlacements, checkinResult, userId, ownerPath) {
+  const { candidateIdsWithCheckin } = checkinResult;
+  const now = Date.now();
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const BH_BASE = 'https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm';
+  const items = [];
+
+  for (const p of activePlacements) {
+    if (!p.dateBegin) continue;
+
+    // Filter to this user's candidates (TR) or this user's jobs (AM)
+    if (ownerPath === 'candidate' && p.candidate?.owner?.id !== userId) continue;
+    if (ownerPath === 'jobOrder' && p.jobOrder?.owner?.id !== userId) continue;
+
+    const daysSinceStart = Math.floor((now - p.dateBegin) / DAY_MS);
+    if (daysSinceStart < 30) continue;
+
+    const candidateId = p.candidate?.id;
+    const candidateName = p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '';
+    const client = p.jobOrder?.clientCorporation?.name || '';
+    const jobTitle = p.jobOrder?.title || '';
+    const startDate = formatDate(p.dateBegin);
+    const hasCheckin = candidateId && candidateIdsWithCheckin.has(candidateId);
+
+    const thirtyDue = daysSinceStart >= 30;
+    const ninetyDue = daysSinceStart >= 90;
+
+    let thirtyStatus = 'Not yet due';
+    let ninetyStatus = 'Not yet due';
+    if (thirtyDue) thirtyStatus = hasCheckin ? 'Done' : 'Overdue';
+    if (ninetyDue) ninetyStatus = hasCheckin ? 'Done' : 'Overdue';
+
+    items.push({
+      candidateId: candidateId || null,
+      candidateLink: candidateId ? `${BH_BASE}?Entity=Candidate&id=${candidateId}` : null,
+      placementId: p.id,
+      placementLink: `${BH_BASE}?Entity=Placement&id=${p.id}`,
+      candidate: candidateName,
+      client,
+      jobTitle,
+      startDate,
+      daysSinceStart,
+      thirtyDay: thirtyStatus,
+      ninetyDay: ninetyStatus,
+    });
+  }
+
+  items.sort((a, b) => b.daysSinceStart - a.daysSinceStart);
+  return items;
 }
 
 module.exports = router;
