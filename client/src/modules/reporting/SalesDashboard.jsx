@@ -3,7 +3,7 @@ import './reporting.css';
 import { getSalesDashboard, exportSalesDashboard } from '../../lib/api';
 import DateRangePicker from './components/DateRangePicker';
 import DashboardFilters from './components/DashboardFilters';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, Line, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { CHART_COLORS } from './lib/constants';
 
 const JOB_METRIC_ROWS = [
@@ -90,14 +90,26 @@ export default function SalesDashboard() {
 
   const marGoal = weeks * 30; // Sales AM weekly MAR target
 
+  // Pacing: spread goal is quarterly (13 weeks). Show what fraction the selected range represents.
+  const QUARTER_WEEKS = 13;
+  const pacingFraction = useMemo(() => {
+    const s = new Date(startDate + 'T00:00:00').getTime();
+    const e = new Date(endDate + 'T23:59:59').getTime();
+    const rangeWeeks = (e - s) / (7 * 24 * 60 * 60 * 1000);
+    return Math.min(1, rangeWeeks / QUARTER_WEEKS);
+  }, [startDate, endDate]);
+
+  const pacingPct = Math.round(pacingFraction * 100);
+
   // Bonus tracker chart data (New Input vs Goal)
   const bonusData = useMemo(() => {
     return filteredAms.map(am => ({
       name: am.name,
       'Spread Goal': am.spreadGoal,
       'New Input': am.newInput,
+      'pacing': Math.round(am.spreadGoal * pacingFraction),
     }));
-  }, [filteredAms]);
+  }, [filteredAms, pacingFraction]);
 
   // MAR chart data
   const marData = useMemo(() => {
@@ -162,7 +174,7 @@ export default function SalesDashboard() {
             <div className="chart-section">
               <h3 className="section-title">New Input Totals vs Goals</h3>
               <ResponsiveContainer width="100%" height={320}>
-                <BarChart data={bonusData} barGap={4} margin={{ top: 10, right: 20, bottom: 30, left: 20 }}>
+                <ComposedChart data={bonusData} barGap={4} margin={{ top: 10, right: 20, bottom: 30, left: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} />
                   <YAxis tickFormatter={(v) => `$${v.toLocaleString()}`} tick={{ fontSize: 11 }} />
@@ -170,7 +182,17 @@ export default function SalesDashboard() {
                   <Legend />
                   <Bar dataKey="Spread Goal" fill={CHART_COLORS.navy} radius={[3, 3, 0, 0]} />
                   <Bar dataKey="New Input" fill={CHART_COLORS.gold} radius={[3, 3, 0, 0]} />
-                </BarChart>
+                  <Line
+                    dataKey="pacing"
+                    name={`Pacing Target (${pacingPct}%)`}
+                    type="linear"
+                    stroke="#dc2626"
+                    strokeWidth={2}
+                    strokeDasharray="6 3"
+                    dot={{ r: 5, fill: '#dc2626', stroke: '#dc2626' }}
+                    activeDot={{ r: 7 }}
+                  />
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
             <div className="chart-section">
