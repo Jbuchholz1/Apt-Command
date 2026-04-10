@@ -826,113 +826,79 @@ function OrgChartContent({ clientId, onBack }) {
   return (
     <div className="of-orgchart-container">
       <header className="of-orgchart-header">
-        <div className="of-header-inner">
-          <div className="of-header-top-row">
-            <div className="of-header-left">
-              <button
-                onClick={onBack}
-                className="of-btn-back"
-              >
-                <ArrowLeft className="of-icon-sm" />
-              </button>
-              <div>
-                <h1 className="of-header-title">{client?.name}</h1>
-                <p className="of-header-subtitle">Organization Chart</p>
-              </div>
-            </div>
-            <div className="of-header-actions">
-              <button
-                onClick={handleAddEmployee}
-                className="of-btn of-btn-import"
-              >
-                <Plus className="of-icon-xs" />
-                <span>Add Employee</span>
-              </button>
-              <button
-                onClick={handleAutoLayout}
-                className="of-btn of-btn-dark"
-              >
-                <LayoutGrid className="of-icon-xs" />
-                <span>Auto Layout</span>
-              </button>
-              <button
-                onClick={handleResetLayout}
-                disabled={saving}
-                className="of-btn of-btn-orange"
-              >
-                <RotateCcw className="of-icon-xs" />
-                <span>Reset Layout</span>
-              </button>
-              <button
-                onClick={handleSavePositions}
-                disabled={saving}
-                className="of-btn of-btn-success"
-              >
-                <Save className="of-icon-xs" />
-                <span>{saving ? 'Saving...' : 'Save Layout'}</span>
-              </button>
-              {selectedNodes.length > 0 && (
-                <button
-                  onClick={handleDeleteSelectedNodes}
-                  className="of-btn of-btn-danger"
-                >
-                  <Trash2 className="of-icon-xs" />
-                  <span>Delete Selected ({selectedNodes.length})</span>
-                </button>
-              )}
-            </div>
+        <div className="of-oc-toolbar">
+          <div className="of-oc-toolbar-left">
+            <button onClick={onBack} className="of-oc-back-btn">
+              <ArrowLeft className="of-icon-sm" />
+            </button>
+            <h1 className="of-oc-toolbar-title">{client?.name}</h1>
+            <span className="of-oc-toolbar-sep">—</span>
+            <span className="of-oc-toolbar-subtitle">Organization Chart</span>
           </div>
-
-          <div className="of-header-bottom-row">
-            <div className="of-search-group">
-              <div className="of-search-input-wrapper">
-                <Search className="of-search-icon" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                  placeholder="Search employee by name..."
-                  className="of-search-input"
-                />
-              </div>
-              <button
-                onClick={handleSearch}
-                className="of-btn of-btn-primary"
-              >
-                Search
+          <div className="of-oc-toolbar-actions">
+            <button onClick={handleAddEmployee} className="of-btn of-btn-import">
+              <Plus className="of-icon-xs" />
+              <span>Add Employee</span>
+            </button>
+            <button onClick={handleAutoLayout} className="of-btn of-btn-dark">
+              <LayoutGrid className="of-icon-xs" />
+              <span>Auto Layout</span>
+            </button>
+            <button onClick={handleResetLayout} disabled={saving} className="of-btn of-btn-orange">
+              <RotateCcw className="of-icon-xs" />
+              <span>Reset Layout</span>
+            </button>
+            <button onClick={handleSavePositions} disabled={saving} className="of-btn of-btn-success">
+              <Save className="of-icon-xs" />
+              <span>{saving ? 'Saving...' : 'Save Layout'}</span>
+            </button>
+            {selectedNodes.length > 0 && (
+              <button onClick={handleDeleteSelectedNodes} className="of-btn of-btn-danger">
+                <Trash2 className="of-icon-xs" />
+                <span>Delete Selected ({selectedNodes.length})</span>
               </button>
-            </div>
-
-            <div className="of-import-export-group">
-              <button
-                onClick={handleDownloadTemplate}
-                className="of-btn of-btn-success"
-              >
-                <FileDown className="of-icon-xs" />
-                <span>Download Template</span>
-              </button>
-              <label htmlFor="excel-import-input" className="of-btn of-btn-blue">
-                <Upload className="of-icon-xs" />
-                <span>Import</span>
-              </label>
+            )}
+          </div>
+        </div>
+        <div className="of-oc-toolbar-row2">
+          <div className="of-search-group">
+            <div className="of-search-input-wrapper">
+              <Search className="of-search-icon" />
               <input
-                id="excel-import-input"
-                name="excel-import"
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                onChange={handleImportExcel}
-                className="of-hidden"
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                placeholder="Search employee by name..."
+                className="of-search-input"
               />
-              <button
-                onClick={handleExportExcel}
-                className="of-btn of-btn-orange"
-              >
-                <Download className="of-icon-xs" />
-                <span>Export</span>
-              </button>
             </div>
+            <button onClick={handleSearch} className="of-btn of-btn-primary">
+              Search
+            </button>
+          </div>
+          <div className="of-import-export-group">
+            <button onClick={handleDownloadTemplate} className="of-btn of-btn-success">
+              <FileDown className="of-icon-xs" />
+              <span>Download Template</span>
+            </button>
+            <label htmlFor="excel-import-input" className="of-btn of-btn-blue">
+              <Upload className="of-icon-xs" />
+              <span>Import</span>
+            </label>
+            <input
+              id="excel-import-input"
+              name="excel-import"
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              onChange={handleImportExcel}
+              className="of-hidden"
+            />
+            <button onClick={handleExportExcel} className="of-btn of-btn-orange">
+              <Download className="of-icon-xs" />
+              <span>Export</span>
+            </button>
           </div>
         </div>
       </header>
