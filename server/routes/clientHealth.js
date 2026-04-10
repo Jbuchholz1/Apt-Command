@@ -401,17 +401,15 @@ router.get('/kpis', async (req, res, next) => {
     // Dynamic MAR target: (recruiters × 26/wk + AMs × 30/wk) × 13 weeks
     const marTarget = (recruiters.length * 26 + ams.length * 30) * 13;
 
-    // --- Backout % (from Notes with action = 'Backout') ---
+    // --- Backout % (from NoteEntity where note.action = 'Backout', deduplicated) ---
     const backoutNotes = backoutNotesRes?.data || [];
     const totalPlacements = placements.length;
     const backoutCount = backoutNotes.length;
     const backoutPct = totalPlacements > 0 ? Math.round((backoutCount / totalPlacements) * 100) : 0;
     const backoutDetails = backoutNotes.map(n => ({
       noteId: n.id,
-      date: n.dateAdded ? new Date(n.dateAdded).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }) : '',
-      person: n.personReference ? `${n.personReference.firstName || ''} ${n.personReference.lastName || ''}`.trim() : '',
-      author: n.commentingPerson ? `${n.commentingPerson.firstName || ''} ${n.commentingPerson.lastName || ''}`.trim() : '',
-      comment: (n.comments || '').slice(0, 200),
+      entity: n.targetEntityName || '',
+      entityId: n.targetEntityID || '',
     }));
 
     // --- A/B Fill Ratio ---

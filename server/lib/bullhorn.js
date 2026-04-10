@@ -413,13 +413,32 @@ async function getProjectJobs(startMs, endMs) {
 }
 
 async function getBackoutNotesInRange(startMs, endMs) {
-  return paginatedQuery({
-    entityType: 'Note',
-    dateField: 'dateAdded',
+  // Note entity requires /search (not /query), so we query NoteEntity instead
+  // and deduplicate by note.id since each Note creates multiple NoteEntity rows
+  const result = await paginatedQuery({
+    entityType: 'NoteEntity',
+    dateField: 'note.dateAdded',
     startMs, endMs,
-    extraWhere: "AND action = 'Backout' AND isDeleted = false",
-    fields: 'id,action,comments,dateAdded,commentingPerson,personReference',
+    extraWhere: "AND note.action = 'Backout' AND note.isDeleted = false",
+    fields: 'id,note,targetEntityID,targetEntityName',
   });
+
+  // Deduplicate by note ID to get unique backout notes
+  const seenNoteIds = new Set();
+  const uniqueNotes = [];
+  for (const row of (result?.data || [])) {
+    const noteId = row.note?.id;
+    if (noteId && !seenNoteIds.has(noteId)) {
+      seenNoteIds.add(noteId);
+      uniqueNotes.push({
+        id: noteId,
+        targetEntityID: row.targetEntityID,
+        targetEntityName: row.targetEntityName,
+      });
+    }
+  }
+
+  return { data: uniqueNotes };
 }
 
 async function getPlacementsForJobs(jobIds) {
