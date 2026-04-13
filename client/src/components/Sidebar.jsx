@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -54,10 +54,10 @@ export default function Sidebar({ userName, onLogout, mobileOpen }) {
     <>
       <aside className={`sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
         {/* Brand */}
-        <div className="sidebar-brand">
+        <Link to="/" className="sidebar-brand">
           <img src="/apt-logo.jpg" alt="APT" className="sidebar-logo" />
           <span className="sidebar-brand-text">APT Command</span>
-        </div>
+        </Link>
 
         {/* Navigation */}
         <nav className="sidebar-nav">
