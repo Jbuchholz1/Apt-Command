@@ -1,6 +1,6 @@
 const express = require('express');
 const ExcelJS = require('exceljs');
-const { getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getSubmissions, addNoteToJob, updateJobField, getCorporateUsers, getOpenOpportunitiesFull, getClientSubmissions } = require('../lib/bullhorn');
+const { getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getSubmissions, addNoteToJob, updateJobField, updateOpportunityField, getCorporateUsers, getOpenOpportunitiesFull, getClientSubmissions } = require('../lib/bullhorn');
 const { getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote } = require('../lib/db');
 
 const router = express.Router();
@@ -219,6 +219,34 @@ router.get('/opportunities', async (req, res, next) => {
       weightedDealValue: o.weightedDealValue || null,
     }));
     res.json({ total: opportunities.length, data: opportunities });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/jobs/opportunities/:id/update — Update opportunity fields in Bullhorn
+router.post('/opportunities/:id/update', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { fields } = req.body || {};
+
+    if (!fields || typeof fields !== 'object') {
+      return res.status(400).json({ error: 'fields object required' });
+    }
+
+    // Whitelist: only allow safe fields
+    const ALLOWED = new Set(['expectedCloseDate']);
+    const sanitized = {};
+    for (const [key, val] of Object.entries(fields)) {
+      if (ALLOWED.has(key)) sanitized[key] = val;
+    }
+
+    if (Object.keys(sanitized).length === 0) {
+      return res.status(400).json({ error: `No valid fields. Allowed: ${[...ALLOWED].join(', ')}` });
+    }
+
+    await updateOpportunityField(id, sanitized);
+    res.json({ success: true, id, updated: sanitized });
   } catch (err) {
     next(err);
   }

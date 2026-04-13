@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getPlacements, updateJobInBullhorn, updateJobOverrides, getRecruiters, getOpportunities } from '../../lib/api';
+import { getPlacements, updateJobInBullhorn, updateJobOverrides, getRecruiters, getOpportunities, updateOpportunityInBullhorn } from '../../lib/api';
 import { getFollowUpUrgency } from './lib/urgency';
 import EditableDate from './EditableDate';
 import EditableSelect from './EditableSelect';
@@ -417,7 +417,19 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
                       <td>{o.client || '—'}</td>
                       <td>{o.owner || '—'}</td>
                       <td>{o.status || '—'}</td>
-                      <td>{formatDate(o.expectedCloseDate)}</td>
+                      <EditableDate
+                        value={o.expectedCloseDate}
+                        onSave={async (tsValue) => {
+                          try {
+                            await updateOpportunityInBullhorn(o.id, { expectedCloseDate: tsValue });
+                            setOpportunities(prev => prev.map(op =>
+                              op.id === o.id ? { ...op, expectedCloseDate: tsValue ? new Date(tsValue).toISOString() : null } : op
+                            ));
+                          } catch (err) {
+                            console.error('Failed to update expected close date:', err);
+                          }
+                        }}
+                      />
                       <td className="cell-money">{o.dealValue ? fmtCurrency(o.dealValue) : '—'}</td>
                       <td className="cell-money">{o.weightedDealValue ? fmtCurrency(o.weightedDealValue) : '—'}</td>
                     </tr>

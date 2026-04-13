@@ -188,6 +188,14 @@ async function updateJobField(jobOrderId, fields) {
   });
 }
 
+async function updateOpportunityField(opportunityId, fields) {
+  return callTool('update_entity', {
+    entityType: 'Opportunity',
+    entityId: parseInt(opportunityId, 10),
+    fields,
+  });
+}
+
 async function getCorporateUsers() {
   return callTool('query_entity', {
     entityType: 'CorporateUser',
@@ -513,6 +521,7 @@ module.exports = {
   searchJobs,
   addNoteToJob,
   updateJobField,
+  updateOpportunityField,
   getCorporateUsers,
   getRecruiterUsers,
   getClientSubsInRange,

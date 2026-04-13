@@ -135,6 +135,13 @@ export function getPerformanceUsers() {
   return fetchAPI('/api/performance/users');
 }
 
+export function updateOpportunityInBullhorn(id, fields) {
+  return fetchAPI(`/api/req-board/jobs/opportunities/${id}/update`, {
+    method: 'POST',
+    body: { fields },
+  });
+}
+
 export function getAnnouncement() {
   return fetchAPI('/api/users/announcement');
 }

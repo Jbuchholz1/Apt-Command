@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getOpportunities } from '../../lib/api';
+import { getOpportunities, updateOpportunityInBullhorn } from '../../lib/api';
+import EditableDate from '../req-board/EditableDate';
 
 const BH_BASE = 'https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm';
 
@@ -144,7 +145,19 @@ export default function OpportunityPipeline() {
                     <td>{o.client || '—'}</td>
                     <td>{o.owner || '—'}</td>
                     <td>{o.status || '—'}</td>
-                    <td>{formatDate(o.expectedCloseDate)}</td>
+                    <EditableDate
+                      value={o.expectedCloseDate}
+                      onSave={async (tsValue) => {
+                        try {
+                          await updateOpportunityInBullhorn(o.id, { expectedCloseDate: tsValue });
+                          setOpportunities(prev => prev.map(op =>
+                            op.id === o.id ? { ...op, expectedCloseDate: tsValue ? new Date(tsValue).toISOString() : null } : op
+                          ));
+                        } catch (err) {
+                          console.error('Failed to update expected close date:', err);
+                        }
+                      }}
+                    />
                     <td className="pipeline-money">{o.dealValue ? fmtCurrency(o.dealValue) : '—'}</td>
                     <td className="pipeline-money">{o.weightedDealValue ? fmtCurrency(o.weightedDealValue) : '—'}</td>
                   </tr>
