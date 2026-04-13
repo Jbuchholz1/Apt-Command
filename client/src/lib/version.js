@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.1.2';
+export const APP_VERSION = '2.1.3';
 
 export const CHANGELOG = [
+  {
+    version: '2.1.3',
+    date: '2026-04-13',
+    title: 'Reminders Section',
+    changes: [
+      { type: 'minor', text: 'Added Reminders section to home screen below Announcements — admin-editable, visible to all users' },
+    ],
+  },
   {
     version: '2.1.2',
     date: '2026-04-13',

@@ -39,4 +39,23 @@ router.get('/announcement', async (req, res, next) => {
   }
 });
 
+// GET /api/users/reminder — Returns the current reminder
+router.get('/reminder', async (req, res, next) => {
+  try {
+    if (!supabase) return res.json({ text: '' });
+
+    const { data, error } = await supabase
+      .from('announcements')
+      .select('text, updated_by, updated_at')
+      .eq('id', 2)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    res.json(data || { text: '' });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

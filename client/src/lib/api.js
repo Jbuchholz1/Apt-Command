@@ -157,6 +157,17 @@ export function updateAnnouncement(text) {
   });
 }
 
+export function getReminder() {
+  return fetchAPI('/api/users/reminder');
+}
+
+export function updateReminder(text) {
+  return fetchAPI('/api/admin/reminder', {
+    method: 'PUT',
+    body: { text },
+  });
+}
+
 // --- Org Flow ---
 
 export function getContractorCounts() {
