@@ -3,6 +3,7 @@ import './reporting.css';
 import { getRecruiterDashboard, exportRecruiterDashboard } from '../../lib/api';
 import DateRangePicker from './components/DateRangePicker';
 import DashboardFilters from './components/DashboardFilters';
+import TeamAlerts from './components/TeamAlerts';
 import MetricsTable from './components/MetricsTable';
 import InputVsGoalsChart from './components/InputVsGoalsChart';
 import GoalPointsChart from './components/GoalPointsChart';
@@ -208,6 +209,7 @@ export default function RecruiterDashboard() {
           <DetailTable title="Client Submissions" columns={CLIENT_SUBS_COLS} data={filtered.details.clientSubs} />
           <DetailTable title="Starts" columns={STARTS_COLS} data={filtered.details.starts} />
           <DetailTable title="New Input" columns={NEW_INPUT_COLS} data={filtered.details.newInput} />
+          <TeamAlerts team="recruiting" />
         </>
       )}
     </div>

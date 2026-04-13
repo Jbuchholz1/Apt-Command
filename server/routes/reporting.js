@@ -12,7 +12,11 @@ const {
   getNewJobsInRange,
   getClosedJobsInRange,
   getSalesCommissions,
+  getOpenJobs,
+  getActivePlacementsWithClient,
+  getCheckinNotesForType,
 } = require('../lib/bullhorn');
+const { getAllOverrides } = require('../lib/db');
 const { POINTS, EXCLUDED_RECRUITERS, getRecruiterTier, getSpreadGoal, bhLink } = require('../lib/recruiterConfig');
 const { SALES_POINTS, ACTIVITY_LABELS, ACTIVITY_ORDER, EXCLUDED_AMS, getAMTier, getAMSpreadGoal } = require('../lib/salesConfig');
 
@@ -681,6 +685,130 @@ router.get('/sales-export', async (req, res, next) => {
     res.setHeader('Content-Disposition', `attachment; filename=Sales_Dashboard_${start}_${end}.xlsx`);
     await wb.xlsx.write(res);
     res.end();
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- Team Alerts ---
+
+const BH_BASE_ALERTS = 'https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm';
+
+function isOverdueDate(str, emptyPhrase) {
+  if (!str || str.toLowerCase().includes(emptyPhrase)) return true;
+  const d = new Date(str);
+  if (isNaN(d.getTime())) return true;
+  return d <= new Date();
+}
+
+// GET /api/reporting/team-alerts?team=recruiting|sales
+router.get('/team-alerts', async (req, res, next) => {
+  try {
+    const team = req.query.team || 'recruiting';
+
+    // Fetch all data in parallel
+    const [usersRes, jobsRes, overrides, placementsRes, trCheckins, amCheckins] = await Promise.all([
+      team === 'recruiting' ? getRecruiterUsers() : getAMUsers(),
+      getOpenJobs(),
+      getAllOverrides(),
+      getActivePlacementsWithClient(),
+      getCheckinNotesForType('TR 30/90'),
+      getCheckinNotesForType('AM 30/90'),
+    ]);
+
+    const excludeSet = team === 'recruiting' ? EXCLUDED_RECRUITERS : EXCLUDED_AMS;
+    const users = (usersRes?.data || []).filter(u => !excludeSet.has(`${u.firstName} ${u.lastName}`));
+    const jobs = jobsRes?.data || [];
+    const activePlacements = placementsRes?.data || [];
+    const checkinNotes = team === 'recruiting' ? trCheckins : amCheckins;
+
+    // Build set of candidate IDs with check-in notes
+    const candidateIdsWithCheckin = new Set();
+    const checkinData = checkinNotes?.data || [];
+    for (const n of checkinData) {
+      const entities = n.personReference ? [n.personReference] : [];
+      for (const e of entities) {
+        if (e.id) candidateIdsWithCheckin.add(e.id);
+      }
+    }
+
+    const now = Date.now();
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const alerts = [];
+
+    for (const user of users) {
+      const userId = user.id;
+      const userName = `${user.firstName} ${user.lastName}`;
+      const userAlerts = { name: userName, overdueFollowUps: [], missedDeadlines: [], overdueCheckins: [] };
+
+      // Check jobs for overdue follow-ups and deadlines
+      for (const job of jobs) {
+        const status = Array.isArray(job.status) ? job.status[0] : (job.status || '');
+        if (!['Accepting Candidates', 'Covered', 'Offer Out'].includes(status)) continue;
+
+        const ov = overrides[job.id];
+        const followUp = ov?.follow_up || '';
+        const deadline = ov?.deadline || '';
+
+        // Check association: TR via assignedUsers, AM via owner
+        const ownerId = job.owner?.id;
+        const assignedIds = (job.assignedUsers?.data || []).map(u => u.id);
+        const isAssociated = team === 'recruiting'
+          ? assignedIds.includes(userId)
+          : ownerId === userId;
+        if (!isAssociated) continue;
+
+        const title = job.title || '';
+        const client = job.clientCorporation?.name || '';
+
+        if (isOverdueDate(followUp, 'no follow up')) {
+          userAlerts.overdueFollowUps.push({ jobId: job.id, title, client, value: followUp || 'No follow up set' });
+        }
+        if (isOverdueDate(deadline, 'no deadline')) {
+          userAlerts.missedDeadlines.push({ jobId: job.id, title, client, value: deadline || 'No deadline set' });
+        }
+      }
+
+      // Check placements for overdue check-ins
+      for (const p of activePlacements) {
+        if (!p.dateBegin) continue;
+
+        const ownerMatch = team === 'recruiting'
+          ? p.candidate?.owner?.id === userId
+          : p.jobOrder?.owner?.id === userId;
+        if (!ownerMatch) continue;
+
+        const daysSince = Math.floor((now - p.dateBegin) / DAY_MS);
+        if (daysSince < 30 || daysSince > 365) continue;
+
+        const candidateId = p.candidate?.id;
+        const hasCheckin = candidateId && candidateIdsWithCheckin.has(candidateId);
+        if (hasCheckin) continue; // Has a check-in, not overdue
+
+        const reasons = [];
+        if (daysSince >= 30) reasons.push('30-day');
+        if (daysSince >= 90) reasons.push('90-day');
+
+        const candName = p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '';
+
+        userAlerts.overdueCheckins.push({
+          candidateId,
+          candidate: candName,
+          client: p.jobOrder?.clientCorporation?.name || '',
+          reason: `${reasons.join(' & ')} overdue (${daysSince}d)`,
+        });
+      }
+
+      const total = userAlerts.overdueFollowUps.length + userAlerts.missedDeadlines.length + userAlerts.overdueCheckins.length;
+      if (total > 0) {
+        alerts.push({ ...userAlerts, total });
+      }
+    }
+
+    // Sort by total alerts descending
+    alerts.sort((a, b) => b.total - a.total);
+
+    res.json({ alerts });
   } catch (err) {
     next(err);
   }

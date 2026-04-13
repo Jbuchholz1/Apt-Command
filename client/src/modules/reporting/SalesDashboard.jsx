@@ -3,6 +3,7 @@ import './reporting.css';
 import { getSalesDashboard, exportSalesDashboard } from '../../lib/api';
 import DateRangePicker from './components/DateRangePicker';
 import DashboardFilters from './components/DashboardFilters';
+import TeamAlerts from './components/TeamAlerts';
 import { BarChart, Bar, Line, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { CHART_COLORS } from './lib/constants';
 
@@ -316,6 +317,7 @@ export default function SalesDashboard() {
               </tbody>
             </table>
           </div>
+          <TeamAlerts team="sales" />
         </>
       )}
 

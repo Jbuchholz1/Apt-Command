@@ -124,6 +124,10 @@ export function getSalesDashboard(startDate, endDate) {
   return fetchAPI(`/api/reporting/sales-dashboard?start=${startDate}&end=${endDate}`);
 }
 
+export function getTeamAlerts(team) {
+  return fetchAPI(`/api/reporting/team-alerts?team=${team}`);
+}
+
 // --- Individual Performance ---
 
 export function getMyDashboard(startDate, endDate, email) {
