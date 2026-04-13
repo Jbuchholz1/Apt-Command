@@ -36,6 +36,7 @@ router.get('/contractor-counts', async (req, res, next) => {
 
       dataByEmail[key].placements.push({
         id: p.id,
+        candidateId: p.candidate?.id || null,
         candidateName,
         type: isPerm ? 'perm' : 'contractor',
         jobTitle: p.jobOrder?.title || '',

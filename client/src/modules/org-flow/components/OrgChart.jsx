@@ -16,6 +16,11 @@ import EmployeeNode from './EmployeeNode';
 import { getLayoutedElements } from '../lib/layoutUtils';
 import * as XLSX from 'xlsx';
 import { getContractorCounts } from '../../../lib/api';
+import { useUserRole } from '../../../lib/UserRoleContext';
+
+const BH_BASE = 'https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm';
+const ALLY_NODE_WIDTH = 220;
+const ALLY_HORIZONTAL_GAP = 120;
 
 const AptAllyNode = memo(({ data }) => (
   <div className={`of-ally-node of-ally-node--${data.allyType}`}>
@@ -26,6 +31,17 @@ const AptAllyNode = memo(({ data }) => (
       <div className={`of-ally-badge of-ally-badge--${data.allyType}`}>
         {data.allyType === 'contractor' ? 'Contractor' : 'Perm Placement'}
       </div>
+      {data.candidateId && (
+        <a
+          href={`${BH_BASE}?Entity=Candidate&id=${data.candidateId}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="of-ally-bh-link"
+          onClick={(e) => e.stopPropagation()}
+        >
+          BH #{data.candidateId}
+        </a>
+      )}
     </div>
   </div>
 ));
@@ -37,7 +53,7 @@ const nodeTypes = {
 };
 
 function OrgChartContent({ clientId, onBack }) {
-  // No per-user auth needed — all MSAL users have full access
+  const { isAdmin } = useUserRole();
 
   const [client, setClient] = useState(null);
   const [employees, setEmployees] = useState([]);
@@ -199,7 +215,8 @@ function OrgChartContent({ clientId, onBack }) {
 
       empCounts.placements.forEach((placement, idx) => {
         const allyId = `ally-${placement.id}`;
-        const offsetX = (idx - (totalAllies - 1) / 2) * 200;
+        const allyStep = ALLY_NODE_WIDTH + ALLY_HORIZONTAL_GAP;
+        const offsetX = (idx - (totalAllies - 1) / 2) * allyStep;
         allyNodes.push({
           id: allyId,
           type: 'aptAlly',
@@ -210,6 +227,7 @@ function OrgChartContent({ clientId, onBack }) {
             name: placement.candidateName,
             role: placement.jobTitle,
             allyType: placement.type,
+            candidateId: placement.candidateId,
           },
         });
         allyEdges.push({
@@ -257,7 +275,7 @@ function OrgChartContent({ clientId, onBack }) {
             const empCounts = email ? liveContractorCounts[email] : null;
             const totalAllies = empCounts?.placements?.length || 1;
             const allyIdx = empCounts?.placements?.findIndex(p => `ally-${p.id}` === ally.id) ?? 0;
-            const offsetX = (allyIdx - (totalAllies - 1) / 2) * 200;
+            const offsetX = (allyIdx - (totalAllies - 1) / 2) * (ALLY_NODE_WIDTH + ALLY_HORIZONTAL_GAP);
             return {
               ...ally,
               position: {
@@ -462,7 +480,7 @@ function OrgChartContent({ clientId, onBack }) {
           const empCounts = email ? liveContractorCounts[email] : null;
           const totalAllies = empCounts?.placements?.length || 1;
           const allyIdx = empCounts?.placements?.findIndex(p => `ally-${p.id}` === ally.id) ?? 0;
-          const offsetX = (allyIdx - (totalAllies - 1) / 2) * 200;
+          const offsetX = (allyIdx - (totalAllies - 1) / 2) * (ALLY_NODE_WIDTH + ALLY_HORIZONTAL_GAP);
           return { ...ally, position: { x: parentNode.position.x + offsetX, y: parentNode.position.y + 500 } };
         }
       }
@@ -1004,29 +1022,31 @@ function OrgChartContent({ clientId, onBack }) {
               Search
             </button>
           </div>
-          <div className="of-import-export-group">
-            <button onClick={handleDownloadTemplate} className="of-btn of-btn-success">
-              <FileDown className="of-icon-xs" />
-              <span>Download Template</span>
-            </button>
-            <label htmlFor="excel-import-input" className="of-btn of-btn-blue">
-              <Upload className="of-icon-xs" />
-              <span>Import</span>
-            </label>
-            <input
-              id="excel-import-input"
-              name="excel-import"
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx,.xls,.csv"
-              onChange={handleImportExcel}
-              className="of-hidden"
-            />
-            <button onClick={handleExportExcel} className="of-btn of-btn-orange">
-              <Download className="of-icon-xs" />
-              <span>Export</span>
-            </button>
-          </div>
+          {isAdmin && (
+            <div className="of-import-export-group">
+              <button onClick={handleDownloadTemplate} className="of-btn of-btn-success">
+                <FileDown className="of-icon-xs" />
+                <span>Download Template</span>
+              </button>
+              <label htmlFor="excel-import-input" className="of-btn of-btn-blue">
+                <Upload className="of-icon-xs" />
+                <span>Import</span>
+              </label>
+              <input
+                id="excel-import-input"
+                name="excel-import"
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                onChange={handleImportExcel}
+                className="of-hidden"
+              />
+              <button onClick={handleExportExcel} className="of-btn of-btn-orange">
+                <Download className="of-icon-xs" />
+                <span>Export</span>
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
