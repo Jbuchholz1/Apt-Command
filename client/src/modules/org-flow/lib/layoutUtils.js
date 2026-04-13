@@ -4,7 +4,7 @@ const BRAND_COLORS = {
 };
 
 const NODE_WIDTH = 280;
-const NODE_HEIGHT = 320;
+const NODE_HEIGHT = 400;
 const HORIZONTAL_SPACING = 120;
 const VERTICAL_SPACING = 180;
 

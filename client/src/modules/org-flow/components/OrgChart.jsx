@@ -36,7 +36,7 @@ const AptAllyNode = memo(({ data }) => (
           href={`${BH_BASE}?Entity=Candidate&id=${data.candidateId}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="of-ally-bh-link"
+          className="of-ally-bh-link nopan nodrag"
           onClick={(e) => e.stopPropagation()}
         >
           BH #{data.candidateId}
@@ -222,7 +222,7 @@ function OrgChartContent({ clientId, onBack }) {
           type: 'aptAlly',
           draggable: false,
           selectable: false,
-          position: { x: empPos.x + offsetX, y: empPos.y + 500 },
+          position: { x: empPos.x + offsetX, y: empPos.y + 600 },
           data: {
             name: placement.candidateName,
             role: placement.jobTitle,
@@ -280,7 +280,7 @@ function OrgChartContent({ clientId, onBack }) {
               ...ally,
               position: {
                 x: parentNode.position.x + offsetX,
-                y: parentNode.position.y + 500,
+                y: parentNode.position.y + 600,
               },
             };
           }
@@ -481,7 +481,7 @@ function OrgChartContent({ clientId, onBack }) {
           const totalAllies = empCounts?.placements?.length || 1;
           const allyIdx = empCounts?.placements?.findIndex(p => `ally-${p.id}` === ally.id) ?? 0;
           const offsetX = (allyIdx - (totalAllies - 1) / 2) * (ALLY_NODE_WIDTH + ALLY_HORIZONTAL_GAP);
-          return { ...ally, position: { x: parentNode.position.x + offsetX, y: parentNode.position.y + 500 } };
+          return { ...ally, position: { x: parentNode.position.x + offsetX, y: parentNode.position.y + 600 } };
         }
       }
       return ally;
