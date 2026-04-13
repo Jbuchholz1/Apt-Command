@@ -8,7 +8,7 @@ import { Megaphone, Bell, Pencil, Check, X } from 'lucide-react';
 export default function HomePage() {
   const { accounts } = useMsal();
   const firstName = (accounts[0]?.name || '').split(' ')[0] || 'there';
-  const { isAdmin } = useUserRole();
+  const { isManager } = useUserRole();
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
@@ -89,7 +89,7 @@ export default function HomePage() {
         <div className="announcement-header">
           <Megaphone size={16} className="announcement-icon" />
           <span className="announcement-title">Announcements</span>
-          {isAdmin && !editingAnn && (
+          {isManager && !editingAnn && (
             <button className="announcement-edit-btn" onClick={handleEditAnn} title="Edit announcement">
               <Pencil size={14} />
             </button>
@@ -131,7 +131,7 @@ export default function HomePage() {
         <div className="announcement-header">
           <Bell size={16} className="announcement-icon" />
           <span className="announcement-title">Reminders</span>
-          {isAdmin && !editingRem && (
+          {isManager && !editingRem && (
             <button className="announcement-edit-btn" onClick={handleEditRem} title="Edit reminder">
               <Pencil size={14} />
             </button>

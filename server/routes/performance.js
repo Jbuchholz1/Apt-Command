@@ -48,12 +48,12 @@ router.get('/my-dashboard', async (req, res, next) => {
       return res.status(401).json({ error: 'User email not available' });
     }
 
-    // Allow admins to view another user's dashboard via ?email= param
+    // Allow managers and admins to view another user's dashboard via ?email= param
     const targetEmail = req.query.email;
     if (targetEmail && targetEmail !== email) {
       const callerRole = await resolveRole(email);
-      if (callerRole !== 'admin') {
-        return res.status(403).json({ error: 'Only admins can view other users\' dashboards' });
+      if (callerRole !== 'admin' && callerRole !== 'manager') {
+        return res.status(403).json({ error: 'Only managers and admins can view other users\' dashboards' });
       }
       email = targetEmail;
     }
@@ -610,8 +610,8 @@ function buildFollowUps(activePlacements, checkinResult, userId, ownerPath) {
 router.get('/users', async (req, res, next) => {
   try {
     const callerRole = await resolveRole(req.user?.email);
-    if (callerRole !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
+    if (callerRole !== 'admin' && callerRole !== 'manager') {
+      return res.status(403).json({ error: 'Manager or admin access required' });
     }
 
     const usersResult = await getCorporateUsers();

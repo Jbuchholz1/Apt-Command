@@ -50,8 +50,11 @@ export default function Sidebar({ userName, userRole, onLogout, mobileOpen }) {
 
   const navItems = useMemo(() => {
     const isAdmin = userRole === 'admin';
+    const isManager = userRole === 'admin' || userRole === 'manager';
+    // adminOnly items (Operations) only show for full admins
     const items = NAV_ITEMS.filter(item => !item.adminOnly || isAdmin);
-    if (isAdmin) {
+    // Admin tab shows for managers and admins
+    if (isManager) {
       items.push({ label: 'Admin', icon: Shield, path: '/admin' });
     }
     return items;

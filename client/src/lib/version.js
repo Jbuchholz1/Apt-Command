@@ -9,9 +9,19 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.1.3';
+export const APP_VERSION = '2.2.0';
 
 export const CHANGELOG = [
+  {
+    version: '2.2.0',
+    date: '2026-04-13',
+    title: 'Manager Role',
+    changes: [
+      { type: 'minor', text: 'Added new Manager role — full admin access except Operations tab and user role changes' },
+      { type: 'minor', text: 'Managers can edit announcements, reminders, view other users\' performance dashboards, and access the Admin panel (read-only for roles)' },
+      { type: 'patch', text: 'Role dropdown in Admin panel now shows Basic, Manager, and Admin options' },
+    ],
+  },
   {
     version: '2.1.3',
     date: '2026-04-13',

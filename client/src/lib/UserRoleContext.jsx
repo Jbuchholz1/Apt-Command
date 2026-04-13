@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { getCurrentUser } from './api';
 
-const UserRoleContext = createContext({ role: null, loading: true, isAdmin: false });
+const UserRoleContext = createContext({ role: null, loading: true, isAdmin: false, isManager: false });
 
 export function UserRoleProvider({ children }) {
   const [role, setRole] = useState(null);
@@ -14,7 +14,9 @@ export function UserRoleProvider({ children }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const value = { role, loading, isAdmin: role === 'admin' };
+  const isAdmin = role === 'admin';
+  const isManager = role === 'admin' || role === 'manager';
+  const value = { role, loading, isAdmin, isManager };
 
   return (
     <UserRoleContext.Provider value={value}>

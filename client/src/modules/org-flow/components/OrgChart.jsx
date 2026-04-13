@@ -60,7 +60,7 @@ const nodeTypes = {
 };
 
 function OrgChartContent({ clientId, onBack }) {
-  const { isAdmin } = useUserRole();
+  const { isManager } = useUserRole();
 
   const [client, setClient] = useState(null);
   const [employees, setEmployees] = useState([]);
@@ -1028,7 +1028,7 @@ function OrgChartContent({ clientId, onBack }) {
               Search
             </button>
           </div>
-          {isAdmin && (
+          {isManager && (
             <div className="of-import-export-group">
               <button onClick={handleDownloadTemplate} className="of-btn of-btn-success">
                 <FileDown className="of-icon-xs" />

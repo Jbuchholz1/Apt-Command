@@ -7,7 +7,7 @@ import { Shield, Search } from 'lucide-react';
 import './admin.css';
 
 export default function AdminModule() {
-  const { isAdmin } = useUserRole();
+  const { isAdmin, isManager } = useUserRole();
   const { accounts } = useMsal();
   const currentEmail = (accounts[0]?.username || '').toLowerCase();
 
@@ -18,8 +18,8 @@ export default function AdminModule() {
   const [updating, setUpdating] = useState(null); // user ID being updated
 
   useEffect(() => {
-    if (isAdmin) loadUsers();
-  }, [isAdmin]);
+    if (isManager) loadUsers();
+  }, [isManager]);
 
   const loadUsers = async () => {
     setLoading(true);
@@ -50,7 +50,7 @@ export default function AdminModule() {
     }
   };
 
-  if (!isAdmin) {
+  if (!isManager) {
     return (
       <div className="admin-access-denied">
         <Shield size={48} />
@@ -124,11 +124,12 @@ export default function AdminModule() {
                       <select
                         className="admin-role-select"
                         value={user.role || 'basic'}
-                        disabled={isSelf || updating === user.id}
-                        title={isSelf ? 'Cannot change your own role' : ''}
+                        disabled={!isAdmin || isSelf || updating === user.id}
+                        title={!isAdmin ? 'Only admins can change roles' : isSelf ? 'Cannot change your own role' : ''}
                         onChange={(e) => handleRoleChange(user.id, e.target.value)}
                       >
                         <option value="basic">Basic</option>
+                        <option value="manager">Manager</option>
                         <option value="admin">Admin</option>
                       </select>
                     </td>

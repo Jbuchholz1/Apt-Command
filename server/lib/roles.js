@@ -19,12 +19,12 @@ const BOOTSTRAP_ADMINS = new Set([
   'matt@aptcompanies.io',
 ]);
 
-const VALID_ROLES = new Set(['admin', 'basic']);
+const VALID_ROLES = new Set(['admin', 'manager', 'basic']);
 
 /**
  * Resolve a user's role by email.
  * @param {string} email
- * @returns {Promise<string>} 'admin' or 'basic'
+ * @returns {Promise<string>} 'admin', 'manager', or 'basic'
  */
 async function resolveRole(email) {
   if (!email) return 'basic';

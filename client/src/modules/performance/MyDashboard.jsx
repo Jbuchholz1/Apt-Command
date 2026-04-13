@@ -90,17 +90,17 @@ export default function MyDashboard() {
   const [modal, setModal] = useState(null);
 
   // Admin user selector
-  const { isAdmin } = useUserRole();
+  const { isManager } = useUserRole();
   const [allUsers, setAllUsers] = useState([]);
   const [selectedEmail, setSelectedEmail] = useState(''); // empty = self
 
   useEffect(() => {
-    if (isAdmin) {
+    if (isManager) {
       getPerformanceUsers()
         .then((res) => setAllUsers(res?.users || []))
         .catch(() => {});
     }
-  }, [isAdmin]);
+  }, [isManager]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -130,7 +130,7 @@ export default function MyDashboard() {
     <div className="reporting-module">
       <div className="reporting-toolbar">
         <div className="toolbar-left">
-          {isAdmin && allUsers.length > 0 ? (
+          {isManager && allUsers.length > 0 ? (
             <select
               className="perf-user-select"
               value={selectedEmail}

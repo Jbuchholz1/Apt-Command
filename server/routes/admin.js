@@ -1,15 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const { createClient } = require('@supabase/supabase-js');
-const { requireAdmin } = require('../middleware/adminAuth');
+const { requireAdmin, requireManager } = require('../middleware/adminAuth');
 const { VALID_ROLES } = require('../lib/roles');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 
-// All routes in this file require admin
-router.use(requireAdmin);
+// Most admin routes require manager or above; role changes require full admin
+router.use(requireManager);
 
 // GET /api/admin/users — List all users with roles
 router.get('/users', async (req, res, next) => {
@@ -29,8 +29,8 @@ router.get('/users', async (req, res, next) => {
   }
 });
 
-// PATCH /api/admin/users/:id/role — Update a user's role
-router.patch('/users/:id/role', async (req, res, next) => {
+// PATCH /api/admin/users/:id/role — Update a user's role (admin only — managers cannot change roles)
+router.patch('/users/:id/role', requireAdmin, async (req, res, next) => {
   try {
     if (!supabase) return res.status(503).json({ error: 'Database not configured' });
 
