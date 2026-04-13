@@ -441,7 +441,7 @@ async function getBackoutNotesInRange(startMs, endMs) {
     dateField: 'note.dateAdded',
     startMs, endMs,
     extraWhere: "AND note.action = 'Backout' AND note.isDeleted = false",
-    fields: 'id,note,targetEntityID,targetEntityName',
+    fields: 'id,note(id,personReference),targetEntityID,targetEntityName',
   });
 
   // Deduplicate by note ID to get unique backout notes
@@ -451,10 +451,16 @@ async function getBackoutNotesInRange(startMs, endMs) {
     const noteId = row.note?.id;
     if (noteId && !seenNoteIds.has(noteId)) {
       seenNoteIds.add(noteId);
+      const person = row.note?.personReference;
+      const candidateName = person
+        ? `${person.firstName || ''} ${person.lastName || ''}`.trim()
+        : '';
       uniqueNotes.push({
         id: noteId,
         targetEntityID: row.targetEntityID,
         targetEntityName: row.targetEntityName,
+        candidateName,
+        candidateId: person?.id || null,
       });
     }
   }

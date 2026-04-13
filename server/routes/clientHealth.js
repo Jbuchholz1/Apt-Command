@@ -414,6 +414,8 @@ router.get('/kpis', async (req, res, next) => {
       noteId: n.id,
       entity: n.targetEntityName || '',
       entityId: n.targetEntityID || '',
+      candidateName: n.candidateName || '',
+      candidateId: n.candidateId || null,
     }));
 
     // --- A/B Fill Ratio ---
