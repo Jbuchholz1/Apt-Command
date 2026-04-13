@@ -50,7 +50,7 @@ router.patch('/users/:id/role', async (req, res, next) => {
       .eq('id', id)
       .maybeSingle();
 
-    if (targetUser && targetUser.email.toLowerCase() === requestingEmail && role !== 'admin') {
+    if (targetUser && (targetUser.email || '').toLowerCase() === requestingEmail && role !== 'admin') {
       return res.status(400).json({ error: 'Cannot remove your own admin role' });
     }
 
