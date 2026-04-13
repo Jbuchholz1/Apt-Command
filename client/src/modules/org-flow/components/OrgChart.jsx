@@ -228,7 +228,6 @@ function OrgChartContent({ clientId, onBack }) {
           id: allyId,
           type: 'aptAlly',
           draggable: false,
-          selectable: false,
           position: { x: empPos.x + offsetX, y: empPos.y + 600 },
           data: {
             name: placement.candidateName,
