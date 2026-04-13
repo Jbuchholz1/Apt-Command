@@ -205,7 +205,7 @@ function OrgChartContent({ clientId, onBack }) {
           type: 'aptAlly',
           draggable: false,
           selectable: false,
-          position: { x: empPos.x + offsetX, y: empPos.y + 200 },
+          position: { x: empPos.x + offsetX, y: empPos.y + 500 },
           data: {
             name: placement.candidateName,
             role: placement.jobTitle,
@@ -262,7 +262,7 @@ function OrgChartContent({ clientId, onBack }) {
               ...ally,
               position: {
                 x: parentNode.position.x + offsetX,
-                y: parentNode.position.y + 200,
+                y: parentNode.position.y + 500,
               },
             };
           }
@@ -463,7 +463,7 @@ function OrgChartContent({ clientId, onBack }) {
           const totalAllies = empCounts?.placements?.length || 1;
           const allyIdx = empCounts?.placements?.findIndex(p => `ally-${p.id}` === ally.id) ?? 0;
           const offsetX = (allyIdx - (totalAllies - 1) / 2) * 200;
-          return { ...ally, position: { x: parentNode.position.x + offsetX, y: parentNode.position.y + 200 } };
+          return { ...ally, position: { x: parentNode.position.x + offsetX, y: parentNode.position.y + 500 } };
         }
       }
       return ally;
