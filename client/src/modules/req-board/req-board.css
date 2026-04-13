@@ -96,10 +96,11 @@
 }
 
 .stat-value {
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 700;
   font-family: var(--mono);
   line-height: 1.1;
+  white-space: nowrap;
 }
 
 .stat-label {
