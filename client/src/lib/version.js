@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.2.0';
+export const APP_VERSION = '2.2.1';
 
 export const CHANGELOG = [
+  {
+    version: '2.2.1',
+    date: '2026-04-13',
+    title: 'Database Fixes',
+    changes: [
+      { type: 'patch', text: 'Fix Reminders not saving — updated Supabase announcements constraint to allow reminder row (id=2)' },
+      { type: 'patch', text: 'Fix 500 error when setting Manager role — updated Supabase role check constraint to include "manager"' },
+    ],
+  },
   {
     version: '2.2.0',
     date: '2026-04-13',
