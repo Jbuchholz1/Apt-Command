@@ -228,7 +228,7 @@ async function handleRecruiter(req, res, { userId, fullName, tier, spreadGoal, w
     });
   }
 
-  starts = Math.round(starts * 100) / 100;
+  starts = Math.ceil(starts * 4) / 4; // Round up to nearest .25
   newInput = Math.round(newInput * 100) / 100;
 
   // MAR = (clientSubs × 1) + (interviews × 3) + (starts × 10)

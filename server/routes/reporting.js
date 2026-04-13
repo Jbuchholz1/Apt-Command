@@ -229,7 +229,7 @@ router.get('/recruiter-dashboard', async (req, res, next) => {
     const totals = { clientSubs: 0, interviews: 0, starts: 0, mar: 0, newInput: 0 };
     const recruiterList = Object.values(metricsMap).map(r => {
       const m = r.metrics;
-      m.starts = Math.round(m.starts * 100) / 100;
+      m.starts = Math.ceil(m.starts * 4) / 4; // Round up to nearest .25
       m.mar = Math.round(((m.clientSubs * POINTS.CLIENT_SUB) + (m.interviews * POINTS.INTERVIEW) + (m.starts * POINTS.START)) * 100) / 100;
       m.newInput = Math.round(m.newInput * 100) / 100;
 
