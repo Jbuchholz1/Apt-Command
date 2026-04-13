@@ -9,9 +9,22 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '1.1.0';
+export const APP_VERSION = '2.0.0';
 
 export const CHANGELOG = [
+  {
+    version: '2.0.0',
+    date: '2026-04-13',
+    title: 'Sidebar Navigation Redesign',
+    changes: [
+      { type: 'major', text: 'Replaced card-grid home page with persistent left sidebar navigation' },
+      { type: 'major', text: 'Dark navy sidebar with module icons, active state highlighting, and gold accent' },
+      { type: 'minor', text: 'Quick Links moved to collapsible sidebar section' },
+      { type: 'minor', text: 'User info, version, and logout relocated to sidebar footer' },
+      { type: 'minor', text: 'Mobile responsive: hamburger menu toggles sidebar on small screens' },
+      { type: 'minor', text: 'Home route simplified to a clean welcome dashboard' },
+    ],
+  },
   {
     version: '1.1.0',
     date: '2026-04-13',

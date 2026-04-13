@@ -1,36 +1,38 @@
-import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import { useMsal } from '@azure/msal-react';
+import { Menu } from 'lucide-react';
+import Sidebar from './Sidebar';
 
 export default function AppShell() {
   const { instance, accounts } = useMsal();
   const location = useLocation();
-  const navigate = useNavigate();
-  const isHome = location.pathname === '/';
   const userName = accounts[0]?.name || accounts[0]?.username || '';
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = () => {
     instance.logoutRedirect({ postLogoutRedirectUri: window.location.origin });
   };
 
+  // Close mobile sidebar on navigation
+  const handleNavClick = () => setMobileOpen(false);
+
   return (
     <div className="app-shell">
-      <header className="app-shell-header">
-        <div className="shell-header-left">
-          {!isHome && (
-            <button className="shell-back-btn" onClick={() => navigate('/')} title="Back to Home">
-              &#8592;
-            </button>
-          )}
-          <Link to="/" className="shell-brand">
-            <img src="/apt-logo.jpg" alt="APT" className="shell-logo" />
-            <h1 className="shell-title">APT Command</h1>
-          </Link>
-        </div>
-        <div className="shell-header-right">
-          <span className="shell-user-name">{userName}</span>
-          <button className="shell-logout-btn" onClick={handleLogout}>Sign out</button>
-        </div>
-      </header>
+      <button className="mobile-menu-btn" onClick={() => setMobileOpen(true)}>
+        <Menu size={20} />
+      </button>
+      <div
+        className={`mobile-overlay ${mobileOpen ? 'visible' : ''}`}
+        onClick={() => setMobileOpen(false)}
+      />
+      <div onClick={handleNavClick}>
+        <Sidebar
+          userName={userName}
+          onLogout={handleLogout}
+          mobileOpen={mobileOpen}
+        />
+      </div>
       <div className="shell-content">
         <Outlet />
       </div>
