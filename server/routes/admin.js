@@ -71,4 +71,29 @@ router.patch('/users/:id/role', async (req, res, next) => {
   }
 });
 
+// PUT /api/admin/announcement — Update the announcement text
+router.put('/announcement', async (req, res, next) => {
+  try {
+    if (!supabase) return res.status(503).json({ error: 'Database not configured' });
+
+    const { text } = req.body || {};
+    if (typeof text !== 'string') {
+      return res.status(400).json({ error: 'text field required' });
+    }
+
+    // Upsert into announcements table (single-row, id=1)
+    const { data, error } = await supabase
+      .from('announcements')
+      .upsert({ id: 1, text: text.trim(), updated_by: req.user?.email || '', updated_at: new Date().toISOString() })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

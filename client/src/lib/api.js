@@ -126,8 +126,24 @@ export function getSalesDashboard(startDate, endDate) {
 
 // --- Individual Performance ---
 
-export function getMyDashboard(startDate, endDate) {
-  return fetchAPI(`/api/performance/my-dashboard?start=${startDate}&end=${endDate}`);
+export function getMyDashboard(startDate, endDate, email) {
+  const emailParam = email ? `&email=${encodeURIComponent(email)}` : '';
+  return fetchAPI(`/api/performance/my-dashboard?start=${startDate}&end=${endDate}${emailParam}`);
+}
+
+export function getPerformanceUsers() {
+  return fetchAPI('/api/performance/users');
+}
+
+export function getAnnouncement() {
+  return fetchAPI('/api/users/announcement');
+}
+
+export function updateAnnouncement(text) {
+  return fetchAPI('/api/admin/announcement', {
+    method: 'PUT',
+    body: { text },
+  });
 }
 
 // --- Org Flow ---

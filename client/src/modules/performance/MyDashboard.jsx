@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { getMyDashboard } from '../../lib/api';
+import { getMyDashboard, getPerformanceUsers } from '../../lib/api';
+import { useUserRole } from '../../lib/UserRoleContext';
 import DateRangePicker from '../reporting/components/DateRangePicker';
 import DetailTable from '../reporting/components/DetailTable';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -88,18 +89,31 @@ export default function MyDashboard() {
   const [error, setError] = useState(null);
   const [modal, setModal] = useState(null);
 
+  // Admin user selector
+  const { isAdmin } = useUserRole();
+  const [allUsers, setAllUsers] = useState([]);
+  const [selectedEmail, setSelectedEmail] = useState(''); // empty = self
+
+  useEffect(() => {
+    if (isAdmin) {
+      getPerformanceUsers()
+        .then((res) => setAllUsers(res?.users || []))
+        .catch(() => {});
+    }
+  }, [isAdmin]);
+
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await getMyDashboard(startDate, endDate);
+      const res = await getMyDashboard(startDate, endDate, selectedEmail || undefined);
       setData(res);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [startDate, endDate]);
+  }, [startDate, endDate, selectedEmail]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -116,7 +130,22 @@ export default function MyDashboard() {
     <div className="reporting-module">
       <div className="reporting-toolbar">
         <div className="toolbar-left">
-          <h2 className="toolbar-title">My Performance</h2>
+          {isAdmin && allUsers.length > 0 ? (
+            <select
+              className="perf-user-select"
+              value={selectedEmail}
+              onChange={(e) => setSelectedEmail(e.target.value)}
+            >
+              <option value="">My Performance</option>
+              {allUsers.map((u) => (
+                <option key={u.id} value={u.email}>
+                  {u.name} {u.role ? `(${u.role})` : ''}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <h2 className="toolbar-title">My Performance</h2>
+          )}
           {data?.role && <span className="perf-role-badge">{data.role}</span>}
           <span className="toolbar-date-range">{formatRange()}</span>
         </div>

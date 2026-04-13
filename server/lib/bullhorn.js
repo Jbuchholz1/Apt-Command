@@ -192,7 +192,7 @@ async function getCorporateUsers() {
   return callTool('query_entity', {
     entityType: 'CorporateUser',
     where: 'isDeleted = false AND enabled = true',
-    fields: 'id,firstName,lastName,customText1',
+    fields: 'id,firstName,lastName,email,customText1',
     count: 100,
   });
 }

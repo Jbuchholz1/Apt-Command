@@ -15,6 +15,30 @@
   text-transform: uppercase;
 }
 
+/* --- Admin user selector dropdown --- */
+.perf-user-select {
+  padding: 4px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--gold);
+  font-size: 16px;
+  font-weight: 700;
+  font-family: var(--sans);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  max-width: 300px;
+}
+.perf-user-select:focus {
+  outline: none;
+  border-color: var(--gold);
+  background: rgba(255, 255, 255, 0.15);
+}
+.perf-user-select option {
+  background: var(--navy);
+  color: #fff;
+}
+
 /* --- Welcome banner --- */
 .perf-banner {
   background: var(--surface);

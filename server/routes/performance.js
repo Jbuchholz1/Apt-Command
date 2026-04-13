@@ -13,10 +13,12 @@ const {
   getActivePlacementsWithClient,
   getCheckinNotesForType,
   getOpenJobs,
+  getCorporateUsers,
 } = require('../lib/bullhorn');
 const { getAllOverrides } = require('../lib/db');
 const { POINTS, bhLink } = require('../lib/recruiterConfig');
 const { SALES_POINTS, ACTIVITY_LABELS, ACTIVITY_ORDER } = require('../lib/salesConfig');
+const { resolveRole } = require('../lib/roles');
 
 function formatDate(ms) {
   if (!ms) return '';
@@ -41,12 +43,22 @@ router.get('/my-dashboard', async (req, res, next) => {
       return res.status(400).json({ error: 'start and end query params required (ISO date)' });
     }
 
-    const email = req.user?.email;
+    let email = req.user?.email;
     if (!email) {
       return res.status(401).json({ error: 'User email not available' });
     }
 
-    // Find the Bullhorn CorporateUser matching this MSAL email
+    // Allow admins to view another user's dashboard via ?email= param
+    const targetEmail = req.query.email;
+    if (targetEmail && targetEmail !== email) {
+      const callerRole = await resolveRole(email);
+      if (callerRole !== 'admin') {
+        return res.status(403).json({ error: 'Only admins can view other users\' dashboards' });
+      }
+      email = targetEmail;
+    }
+
+    // Find the Bullhorn CorporateUser matching this email
     const corpUser = await getCorporateUserByEmail(email);
     if (!corpUser) {
       return res.json({ role: null, message: 'No Bullhorn user found for this email' });
@@ -588,5 +600,30 @@ function buildFollowUps(activePlacements, checkinResult, userId, ownerPath) {
   items.sort((a, b) => b.daysSinceStart - a.daysSinceStart);
   return items;
 }
+
+// GET /api/performance/users — List Bullhorn users for admin dropdown
+router.get('/users', async (req, res, next) => {
+  try {
+    const callerRole = await resolveRole(req.user?.email);
+    if (callerRole !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const usersResult = await getCorporateUsers();
+    const users = (usersResult?.data || [])
+      .map(u => ({
+        id: u.id,
+        name: `${u.firstName || ''} ${u.lastName || ''}`.trim(),
+        role: u.customText1 || '',
+        email: u.email || '',
+      }))
+      .filter(u => u.name && u.email)
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    res.json({ users });
+  } catch (err) {
+    next(err);
+  }
+});
 
 module.exports = router;

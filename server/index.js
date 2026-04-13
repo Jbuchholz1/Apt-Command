@@ -37,7 +37,7 @@ app.use(cors({
     console.warn(`CORS rejected origin: ${origin}`);
     callback(null, false);
   },
-  methods: ['GET', 'POST', 'PATCH'],
+  methods: ['GET', 'POST', 'PATCH', 'PUT'],
   credentials: true, // Allow Authorization header
 }));
 
