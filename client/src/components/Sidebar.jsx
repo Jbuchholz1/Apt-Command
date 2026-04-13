@@ -10,6 +10,7 @@ import {
   Target,
   Settings,
   Shield,
+  MessageCircle,
   ExternalLink,
   ChevronDown,
   ChevronRight,
@@ -27,6 +28,7 @@ const NAV_ITEMS = [
   { label: 'APT Health', icon: Building2, path: '/clients' },
   { label: 'Reporting', icon: BarChart3, path: '/reporting' },
   { label: 'Performance', icon: Target, path: '/performance' },
+  { label: 'Huddles', icon: MessageCircle, path: '/huddles', disabled: true },
   { label: 'Operations', icon: Settings, path: '/operations', disabled: true },
 ];
 
