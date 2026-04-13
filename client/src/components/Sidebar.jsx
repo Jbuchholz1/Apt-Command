@@ -29,7 +29,7 @@ const NAV_ITEMS = [
   { label: 'Reporting', icon: BarChart3, path: '/reporting' },
   { label: 'Performance', icon: Target, path: '/performance' },
   { label: 'Huddles', icon: MessageCircle, path: '/huddles', disabled: true },
-  { label: 'Operations', icon: Settings, path: '/operations', disabled: true },
+  { label: 'Operations', icon: Settings, path: '/operations', disabled: true, adminOnly: true },
 ];
 
 const QUICK_LINKS = [
@@ -49,8 +49,9 @@ export default function Sidebar({ userName, userRole, onLogout, mobileOpen }) {
   const [changelogOpen, setChangelogOpen] = useState(false);
 
   const navItems = useMemo(() => {
-    const items = [...NAV_ITEMS];
-    if (userRole === 'admin') {
+    const isAdmin = userRole === 'admin';
+    const items = NAV_ITEMS.filter(item => !item.adminOnly || isAdmin);
+    if (isAdmin) {
       items.push({ label: 'Admin', icon: Shield, path: '/admin' });
     }
     return items;
