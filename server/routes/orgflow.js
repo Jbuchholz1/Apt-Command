@@ -9,22 +9,40 @@ const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 
 // GET /api/org-flow/contractor-counts
-// Returns a map of clientContact email → active contractor count
+// Returns a map of clientContact email → { contractors, permPlacements, placements[] }
 router.get('/contractor-counts', async (req, res, next) => {
   try {
     const result = await getActivePlacementsWithClient();
     const placements = result?.data || [];
 
-    const countByEmail = {};
+    const dataByEmail = {};
     for (const p of placements) {
       const email = p.jobOrder?.clientContact?.email;
       if (!email) continue;
       const key = email.toLowerCase();
-      if (!countByEmail[key]) countByEmail[key] = 0;
-      countByEmail[key]++;
+      if (!dataByEmail[key]) dataByEmail[key] = { contractors: 0, permPlacements: 0, placements: [] };
+
+      const empType = (p.employeeType || '').toLowerCase();
+      const isPerm = empType === 'perm';
+      const candidateName = p.candidate
+        ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim()
+        : 'Unknown';
+
+      if (isPerm) {
+        dataByEmail[key].permPlacements++;
+      } else {
+        dataByEmail[key].contractors++;
+      }
+
+      dataByEmail[key].placements.push({
+        id: p.id,
+        candidateName,
+        type: isPerm ? 'perm' : 'contractor',
+        jobTitle: p.jobOrder?.title || '',
+      });
     }
 
-    res.json(countByEmail);
+    res.json(dataByEmail);
   } catch (err) {
     next(err);
   }
@@ -45,14 +63,21 @@ router.get('/client-health', async (req, res, next) => {
     const employees = employeesRes?.data || [];
     const placements = placementsResult?.data || [];
 
-    // Build live contractor counts by email
+    // Build live counts by email, split by type
     const liveCountByEmail = {};
     for (const p of placements) {
       const email = p.jobOrder?.clientContact?.email;
       if (!email) continue;
       const key = email.toLowerCase();
-      if (!liveCountByEmail[key]) liveCountByEmail[key] = 0;
-      liveCountByEmail[key]++;
+      if (!liveCountByEmail[key]) liveCountByEmail[key] = { contractors: 0, permPlacements: 0, total: 0 };
+
+      const empType = (p.employeeType || '').toLowerCase();
+      if (empType === 'perm') {
+        liveCountByEmail[key].permPlacements++;
+      } else {
+        liveCountByEmail[key].contractors++;
+      }
+      liveCountByEmail[key].total++;
     }
 
     // Build set of employee IDs that have direct reports
@@ -65,7 +90,6 @@ router.get('/client-health', async (req, res, next) => {
 
     // Group employees by client and calculate per-client stats
     const clientStats = {};
-    // Build name lookup for reports-to
     const nameMap = {};
     for (const emp of employees) {
       nameMap[emp.id] = emp.name || `Employee ${emp.id}`;
@@ -73,20 +97,23 @@ router.get('/client-health', async (req, res, next) => {
 
     for (const emp of employees) {
       const cid = emp.client_id;
-      if (!clientStats[cid]) clientStats[cid] = { totalManagers: 0, healthyManagers: 0, managers: [] };
+      if (!clientStats[cid]) clientStats[cid] = { totalManagers: 0, healthyManagers: 0, managers: [], totalAllies: 0 };
 
-      const liveContractors = emp.email ? (liveCountByEmail[emp.email.toLowerCase()] || 0) : 0;
+      const counts = emp.email ? (liveCountByEmail[emp.email.toLowerCase()] || { contractors: 0, permPlacements: 0, total: 0 }) : { contractors: 0, permPlacements: 0, total: 0 };
       const hasFtes = (emp.num_ftes || 0) > 0;
       const hasContractors = (emp.num_contractors || 0) > 0;
       const hasReports = hasDirectReports.has(emp.id);
-      const hasLiveContractors = liveContractors > 0;
+      const hasLivePlacements = counts.total > 0;
+
+      // Accumulate allies for this client
+      clientStats[cid].totalAllies += counts.total;
 
       // Is this a people manager?
-      const isPeopleManager = hasReports || hasFtes || hasContractors || hasLiveContractors;
+      const isPeopleManager = hasReports || hasFtes || hasContractors || hasLivePlacements;
       if (!isPeopleManager) continue;
 
       clientStats[cid].totalManagers++;
-      if (hasLiveContractors) {
+      if (hasLivePlacements) {
         clientStats[cid].healthyManagers++;
       }
 
@@ -94,8 +121,9 @@ router.get('/client-health', async (req, res, next) => {
         name: emp.name || '',
         role: emp.role || '',
         email: emp.email || '',
-        healthy: hasLiveContractors,
-        activeContractors: liveContractors,
+        healthy: hasLivePlacements,
+        activeContractors: counts.contractors,
+        activePerm: counts.permPlacements,
         ftes: emp.num_ftes || 0,
         contractors: emp.num_contractors || 0,
         directReports: hasReports,
@@ -105,7 +133,6 @@ router.get('/client-health', async (req, res, next) => {
     // Build response: clientId → percentage + manager details
     const result = {};
     for (const [cid, stats] of Object.entries(clientStats)) {
-      // Sort: unhealthy first, then by name
       stats.managers.sort((a, b) => {
         if (a.healthy !== b.healthy) return a.healthy ? 1 : -1;
         return a.name.localeCompare(b.name);
@@ -115,6 +142,7 @@ router.get('/client-health', async (req, res, next) => {
         healthyManagers: stats.healthyManagers,
         percentage: stats.totalManagers > 0 ? Math.round((stats.healthyManagers / stats.totalManagers) * 100) : 0,
         managers: stats.managers,
+        totalAllies: stats.totalAllies,
       };
     }
 

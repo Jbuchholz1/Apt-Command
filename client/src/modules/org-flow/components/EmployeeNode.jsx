@@ -111,6 +111,10 @@ function EmployeeNode({ data, selected }) {
               <label className="of-employee-counter-label">Apt Contractors:</label>
               <span className="of-employee-counter-value">{data.liveContractors || 0}</span>
             </div>
+            <div className="of-employee-counter-row">
+              <label className="of-employee-counter-label">Apt Perm Placements:</label>
+              <span className="of-employee-counter-value">{data.livePermPlacements || 0}</span>
+            </div>
           </div>
         </div>
 

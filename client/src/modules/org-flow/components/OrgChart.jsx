@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import ReactFlow, {
   Controls,
   Background,
@@ -6,6 +6,8 @@ import ReactFlow, {
   useEdgesState,
   ReactFlowProvider,
   useReactFlow,
+  Handle,
+  Position,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { ArrowLeft, Plus, Download, Upload, Save, Search, CreditCard as Edit, Trash2, X, LayoutGrid, FileDown, RotateCcw } from 'lucide-react';
@@ -15,8 +17,23 @@ import { getLayoutedElements } from '../lib/layoutUtils';
 import * as XLSX from 'xlsx';
 import { getContractorCounts } from '../../../lib/api';
 
+const AptAllyNode = memo(({ data }) => (
+  <div className={`of-ally-node of-ally-node--${data.allyType}`}>
+    <Handle type="target" position={Position.Top} className="of-handle" />
+    <div className="of-ally-body">
+      <div className="of-ally-name">{data.name}</div>
+      <div className="of-ally-role">{data.role}</div>
+      <div className={`of-ally-badge of-ally-badge--${data.allyType}`}>
+        {data.allyType === 'contractor' ? 'Contractor' : 'Perm Placement'}
+      </div>
+    </div>
+  </div>
+));
+AptAllyNode.displayName = 'AptAllyNode';
+
 const nodeTypes = {
   employee: EmployeeNode,
+  aptAlly: AptAllyNode,
 };
 
 function OrgChartContent({ clientId, onBack }) {
@@ -140,6 +157,11 @@ function OrgChartContent({ clientId, onBack }) {
         ? emp.num_ftes
         : directReportsCount;
 
+      // Extract counts from new data shape (object with contractors/permPlacements)
+      const empCounts = emp.email ? (liveContractorCounts[emp.email.toLowerCase()] || null) : null;
+      const liveContractors = empCounts ? empCounts.contractors : 0;
+      const livePermPlacements = empCounts ? empCounts.permPlacements : 0;
+
       return {
         id: emp.id,
         type: 'employee',
@@ -154,13 +176,51 @@ function OrgChartContent({ clientId, onBack }) {
           numFtes: fteValue,
           numContractors: emp.num_contractors || 0,
           numAptContractors: emp.num_apt_contractors || 0,
-          liveContractors: emp.email ? (liveContractorCounts[emp.email.toLowerCase()] || 0) : 0,
+          liveContractors,
+          livePermPlacements,
           onEdit: () => handleSelectEmployee(emp),
           onUpdateHeadcount: handleUpdateHeadcount,
           depth: depthMap.get(emp.id) || 0,
           directReportsCount: directReportsCount,
         },
       };
+    });
+
+    // Create virtual Apt Ally nodes (contractors + perm placements) under their managers
+    const allyNodes = [];
+    const allyEdges = [];
+    employees.forEach((emp) => {
+      if (!emp.email) return;
+      const empCounts = liveContractorCounts[emp.email.toLowerCase()];
+      if (!empCounts || !empCounts.placements) return;
+
+      const empPos = { x: emp.position_x || 0, y: emp.position_y || 0 };
+      const totalAllies = empCounts.placements.length;
+
+      empCounts.placements.forEach((placement, idx) => {
+        const allyId = `ally-${placement.id}`;
+        const offsetX = (idx - (totalAllies - 1) / 2) * 200;
+        allyNodes.push({
+          id: allyId,
+          type: 'aptAlly',
+          draggable: false,
+          selectable: false,
+          position: { x: empPos.x + offsetX, y: empPos.y + 200 },
+          data: {
+            name: placement.candidateName,
+            role: placement.jobTitle,
+            allyType: placement.type,
+          },
+        });
+        allyEdges.push({
+          id: `${emp.id}-${allyId}`,
+          source: emp.id,
+          target: allyId,
+          type: 'smoothstep',
+          animated: false,
+          style: { stroke: '#16a34a', strokeWidth: 2, strokeDasharray: '6 3' },
+        });
+      });
     });
 
     const newEdges = employees
@@ -183,13 +243,42 @@ function OrgChartContent({ clientId, onBack }) {
       (emp) => emp.position_x === null || emp.position_x === 0
     );
 
+    // Reposition ally nodes relative to their parent's final position
+    const repositionAllies = (finalNodes) => {
+      const nodeMap = new Map(finalNodes.map(n => [n.id, n]));
+      return allyNodes.map((ally) => {
+        // Find the parent edge to get the source employee
+        const parentEdge = allyEdges.find(e => e.target === ally.id);
+        if (parentEdge) {
+          const parentNode = nodeMap.get(parentEdge.source);
+          if (parentNode) {
+            const parentPlacementData = employees.find(e => e.id === parentEdge.source);
+            const email = parentPlacementData?.email?.toLowerCase();
+            const empCounts = email ? liveContractorCounts[email] : null;
+            const totalAllies = empCounts?.placements?.length || 1;
+            const allyIdx = empCounts?.placements?.findIndex(p => `ally-${p.id}` === ally.id) ?? 0;
+            const offsetX = (allyIdx - (totalAllies - 1) / 2) * 200;
+            return {
+              ...ally,
+              position: {
+                x: parentNode.position.x + offsetX,
+                y: parentNode.position.y + 200,
+              },
+            };
+          }
+        }
+        return ally;
+      });
+    };
+
     if (hasUnpositionedNodes && newNodes.length > 0) {
       const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
         newNodes,
         newEdges
       );
-      setNodes(layoutedNodes);
-      setEdges(layoutedEdges);
+      const positionedAllies = repositionAllies(layoutedNodes);
+      setNodes([...layoutedNodes, ...positionedAllies]);
+      setEdges([...layoutedEdges, ...allyEdges]);
 
       setTimeout(async () => {
         for (const node of layoutedNodes) {
@@ -207,8 +296,9 @@ function OrgChartContent({ clientId, onBack }) {
       }, 100);
     } else {
       const { edges: styledEdges } = getLayoutedElements(newNodes, newEdges);
-      setNodes(newNodes);
-      setEdges(styledEdges);
+      const positionedAllies = repositionAllies(newNodes);
+      setNodes([...newNodes, ...positionedAllies]);
+      setEdges([...styledEdges, ...allyEdges]);
     }
   }, [employees, liveContractorCounts]);
 
@@ -347,13 +437,40 @@ function OrgChartContent({ clientId, onBack }) {
   };
 
   const handleSelectionChange = useCallback((params) => {
-    setSelectedNodes(params.nodes);
+    // Only track real employee nodes for selection (not virtual ally nodes)
+    setSelectedNodes(params.nodes.filter(n => n.type === 'employee'));
   }, []);
 
   const handleAutoLayout = () => {
-    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges);
-    setNodes(layoutedNodes);
-    setEdges(layoutedEdges);
+    // Separate employee nodes from ally nodes for layout
+    const empNodes = nodes.filter(n => n.type === 'employee');
+    const allyNodesInState = nodes.filter(n => n.type === 'aptAlly');
+    const empEdges = edges.filter(e => !e.id.includes('ally-'));
+    const allyEdgesInState = edges.filter(e => e.id.includes('ally-'));
+
+    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(empNodes, empEdges);
+
+    // Reposition ally nodes relative to their newly-layouted parents
+    const nodeMap = new Map(layoutedNodes.map(n => [n.id, n]));
+    const repositionedAllies = allyNodesInState.map((ally) => {
+      const parentEdge = allyEdgesInState.find(e => e.target === ally.id);
+      if (parentEdge) {
+        const parentNode = nodeMap.get(parentEdge.source);
+        if (parentNode) {
+          const parentEmp = employees.find(e => e.id === parentEdge.source);
+          const email = parentEmp?.email?.toLowerCase();
+          const empCounts = email ? liveContractorCounts[email] : null;
+          const totalAllies = empCounts?.placements?.length || 1;
+          const allyIdx = empCounts?.placements?.findIndex(p => `ally-${p.id}` === ally.id) ?? 0;
+          const offsetX = (allyIdx - (totalAllies - 1) / 2) * 200;
+          return { ...ally, position: { x: parentNode.position.x + offsetX, y: parentNode.position.y + 200 } };
+        }
+      }
+      return ally;
+    });
+
+    setNodes([...layoutedNodes, ...repositionedAllies]);
+    setEdges([...layoutedEdges, ...allyEdgesInState]);
 
     setTimeout(() => {
       fitView({ padding: 0.2 });
@@ -363,11 +480,14 @@ function OrgChartContent({ clientId, onBack }) {
   const handleSavePositions = async () => {
     setSaving(true);
     try {
-      const updates = nodes.map((node) => ({
-        id: node.id,
-        position_x: node.position.x,
-        position_y: node.position.y,
-      }));
+      // Filter out virtual ally nodes — only save real employee positions
+      const updates = nodes
+        .filter((node) => node.type === 'employee')
+        .map((node) => ({
+          id: node.id,
+          position_x: node.position.x,
+          position_y: node.position.y,
+        }));
 
       for (const update of updates) {
         await supabase

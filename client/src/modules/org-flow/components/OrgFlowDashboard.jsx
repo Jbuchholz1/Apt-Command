@@ -601,20 +601,26 @@ export default function OrgFlowDashboard({ onSelectClient }) {
                   </div>
                   <h3 className="of-client-name">{client.name}</h3>
                   {clientHealthStats[client.id] && (
-                    <div
-                      className="of-healthy-managers of-healthy-clickable"
-                      title="Healthy = has 1+ active Apt placement. People Manager = has direct reports, FTEs, contractors, or active placements."
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setHealthModal({ clientName: client.name, ...clientHealthStats[client.id] });
-                      }}
-                    >
-                      <span className="of-healthy-label">Healthy Managers:</span>
-                      <span className={`of-healthy-value ${clientHealthStats[client.id].percentage >= 80 ? 'of-healthy-good' : clientHealthStats[client.id].percentage >= 50 ? 'of-healthy-warn' : 'of-healthy-low'}`}>
-                        {clientHealthStats[client.id].percentage}%
-                      </span>
-                      <span className="of-healthy-detail">({clientHealthStats[client.id].healthyManagers}/{clientHealthStats[client.id].totalManagers})</span>
-                    </div>
+                    <>
+                      <div
+                        className="of-healthy-managers of-healthy-clickable"
+                        title="Healthy = has 1+ active Apt placement. People Manager = has direct reports, FTEs, contractors, or active placements."
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setHealthModal({ clientName: client.name, ...clientHealthStats[client.id] });
+                        }}
+                      >
+                        <span className="of-healthy-label">Healthy Managers:</span>
+                        <span className={`of-healthy-value ${clientHealthStats[client.id].percentage >= 80 ? 'of-healthy-good' : clientHealthStats[client.id].percentage >= 50 ? 'of-healthy-warn' : 'of-healthy-low'}`}>
+                          {clientHealthStats[client.id].percentage}%
+                        </span>
+                        <span className="of-healthy-detail">({clientHealthStats[client.id].healthyManagers}/{clientHealthStats[client.id].totalManagers})</span>
+                      </div>
+                      <div className="of-allies-row">
+                        <span className="of-allies-label">Apt Allies:</span>
+                        <span className="of-allies-value">{clientHealthStats[client.id].totalAllies || 0}</span>
+                      </div>
+                    </>
                   )}
                   <div className="of-client-details">
                     <div className="of-detail-row">
@@ -892,7 +898,8 @@ export default function OrgFlowDashboard({ onSelectClient }) {
                     <th>Status</th>
                     <th>Name</th>
                     <th>Role</th>
-                    <th>Active Contractors</th>
+                    <th>Apt Contractors</th>
+                    <th>Apt Perm</th>
                     <th>FTEs</th>
                     <th>Contractors</th>
                     <th>Direct Reports</th>
@@ -908,6 +915,7 @@ export default function OrgFlowDashboard({ onSelectClient }) {
                       <td style={{ fontWeight: 600 }}>{m.name}</td>
                       <td>{m.role || '—'}</td>
                       <td style={{ textAlign: 'center', fontWeight: 600, color: m.activeContractors > 0 ? '#16a34a' : '#991b1b' }}>{m.activeContractors}</td>
+                      <td style={{ textAlign: 'center', fontWeight: 600, color: (m.activePerm || 0) > 0 ? '#2563eb' : 'var(--text-light)' }}>{m.activePerm || 0}</td>
                       <td style={{ textAlign: 'center' }}>{m.ftes}</td>
                       <td style={{ textAlign: 'center' }}>{m.contractors}</td>
                       <td style={{ textAlign: 'center' }}>{m.directReports ? 'Yes' : '—'}</td>

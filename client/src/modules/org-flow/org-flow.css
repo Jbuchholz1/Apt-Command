@@ -199,6 +199,20 @@
 .of-assignment-list { display: flex; flex-direction: column; gap: 8px; margin: 16px 0; }
 .of-assignment-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; }
 
+/* ---- Apt Allies Row (Client Card) ---- */
+.of-allies-row { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-bottom: 10px; padding: 2px 6px; margin: 0 -6px 10px; }
+.of-allies-label { color: var(--text-muted); font-weight: 500; }
+.of-allies-value { font-weight: 700; font-size: 13px; color: #16a34a; }
+
+/* ---- Apt Ally Node (Org Chart) ---- */
+.of-ally-node { width: 220px; border: 2px solid #16a34a; border-radius: 10px; background: #fff; box-shadow: 0 1px 4px rgba(22,163,74,0.15); }
+.of-ally-body { padding: 12px 14px; text-align: center; }
+.of-ally-name { font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 2px; }
+.of-ally-role { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.of-ally-badge { display: inline-block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 8px; border-radius: 4px; }
+.of-ally-badge--contractor { background: #dcfce7; color: #166534; }
+.of-ally-badge--perm { background: #dbeafe; color: #1e40af; }
+
 /* ---- ReactFlow Overrides ---- */
 .react-flow__node { cursor: pointer; }
 .react-flow__controls { border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
