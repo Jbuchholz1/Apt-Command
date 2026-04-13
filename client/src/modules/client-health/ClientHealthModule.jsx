@@ -331,7 +331,7 @@ export default function ClientHealthModule() {
                       {gaugeModal.label === 'MAR Total' && <><th>Person</th><th>Role</th><th>MAR</th></>}
                       {gaugeModal.label === 'Input' && <><th>Job</th><th>Client</th><th>Type</th><th>AM</th><th>Input</th></>}
                       {gaugeModal.label.includes('Fill Ratio') && <><th>Job</th><th>Priority</th><th>Openings</th><th>Fills</th></>}
-                      {gaugeModal.label === 'Backout %' && <><th>Note ID</th><th>Candidate</th><th>Entity</th><th>Entity ID</th></>}
+                      {gaugeModal.label === 'Backout %' && <><th>Note ID</th><th>Candidate ID</th><th>Candidate</th><th>Entity</th><th>Entity ID</th></>}
                       {isCheckin && <>
                         <th className="sortable" onClick={() => toggleCheckinSort(ownerKey)}>{ownerLabel}{cSortIcon(ownerKey)}</th>
                         <th className="sortable" onClick={() => toggleCheckinSort('candidateId')}>Candidate #{cSortIcon('candidateId')}</th>
@@ -350,7 +350,7 @@ export default function ClientHealthModule() {
                         {gaugeModal.label === 'MAR Total' && <><td>{r.name}</td><td>{r.role}</td><td className="ch-num">{r.mar}</td></>}
                         {gaugeModal.label === 'Input' && <><td>{r.jobTitle}</td><td>{r.client}</td><td>{r.empType}</td><td>{r.am}</td><td className="ch-num">${Number(r.input).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td></>}
                         {gaugeModal.label.includes('Fill Ratio') && <><td>{r.title}</td><td>{r.priority}</td><td className="ch-num">{r.openings}</td><td className="ch-num">{r.fills}</td></>}
-                        {gaugeModal.label === 'Backout %' && <><td><a href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=Note&id=${r.noteId}`} target="_blank" rel="noopener noreferrer" className="ch-bh-link">{r.noteId}</a></td><td>{r.candidateName || '—'}</td><td>{r.entity}</td><td>{r.entityId}</td></>}
+                        {gaugeModal.label === 'Backout %' && <><td><a href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=Note&id=${r.noteId}`} target="_blank" rel="noopener noreferrer" className="ch-bh-link">{r.noteId}</a></td><td>{r.candidateId ? <a href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=Candidate&id=${r.candidateId}`} target="_blank" rel="noopener noreferrer" className="ch-bh-link">{r.candidateId}</a> : '—'}</td><td>{r.candidateName || '—'}</td><td>{r.entity}</td><td>{r.entityId}</td></>}
                         {isCheckin && <>
                           <td>{r[ownerKey] || '—'}</td>
                           <td>{r.candidateId ? <a href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=Candidate&id=${r.candidateId}`} target="_blank" rel="noopener noreferrer" className="ch-bh-link">{r.candidateId}</a> : '—'}</td>
