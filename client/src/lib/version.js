@@ -19,6 +19,7 @@ export const CHANGELOG = [
     changes: [
       { type: 'patch', text: 'Fix split commission credit: all recruiters and AMs on a placement now receive their share (previously only the last entry was credited)' },
       { type: 'patch', text: 'Starts now round up to the nearest .25 instead of rounding to 2 decimal places' },
+      { type: 'patch', text: 'Fix 500 error when updating user roles in Admin panel' },
     ],
   },
   {
