@@ -336,19 +336,20 @@ router.get('/sales-dashboard', async (req, res, next) => {
     const closedJobs = closedJobsRes?.data || [];
     const placements = placementsRes?.data || [];
 
-    // Sales commissions for placements
-    let salesCommMap = {};
+    // Sales commissions for placements (supports split credit)
+    let salesCommMap = {}; // placementId → [{ id, name, percentage }, ...]
     if (placements.length > 0) {
       try {
         const commRes = await getSalesCommissions(placements.map(p => p.id));
         for (const c of (commRes?.data || [])) {
           const pId = c.placement?.id;
           if (pId && c.user) {
-            salesCommMap[pId] = {
+            if (!salesCommMap[pId]) salesCommMap[pId] = [];
+            salesCommMap[pId].push({
               id: c.user.id,
               name: `${c.user.firstName || ''} ${c.user.lastName || ''}`.trim(),
               percentage: c.commissionPercentage || 1,
-            };
+            });
           }
         }
       } catch (err) {
@@ -425,38 +426,41 @@ router.get('/sales-dashboard', async (req, res, next) => {
       }
     }
 
-    // --- Placements (New Placements + New Input) ---
+    // --- Placements (New Placements + New Input, supports split sales credit) ---
     for (const p of placements) {
-      const comm = salesCommMap[p.id];
-      const amId = comm?.id;
-      if (amId && metricsMap[amId]) {
-        metricsMap[amId].jobMetrics.newPlacements++;
-        metricsMap[amId].jobDetails.newPlacements.push({
-          placementId: p.id,
-          jobTitle: p.jobOrder?.title || '',
-          client: p.jobOrder?.clientCorporation?.name || '',
-          candidate: p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '',
-          link: bhLink('Placement', p.id),
-        });
+      const commissions = salesCommMap[p.id] || [];
 
-        const bill = Number(p.clientBillRate) || 0;
-        const pay = Number(p.payRate) || 0;
-        const sal = Number(p.salary) || 0;
-        const feeRate = Number(p.fee) || 0;
-        const empType = (p.employeeType || '').toLowerCase();
-        let spread = 0;
+      const bill = Number(p.clientBillRate) || 0;
+      const pay = Number(p.payRate) || 0;
+      const sal = Number(p.salary) || 0;
+      const feeRate = Number(p.fee) || 0;
+      const empType = (p.employeeType || '').toLowerCase();
+      let spread = 0;
 
-        if (empType === 'perm' && sal > 0 && feeRate > 0) {
-          spread = Math.round((sal * feeRate / 26) * 100) / 100;
-        } else if (empType === 'corp-to-corp' && bill > 0 && pay > 0) {
-          spread = Math.round((bill - pay * 1.05) * 40 * 100) / 100;
-        } else if (bill > 0 && pay > 0) {
-          spread = Math.round((bill - pay * 1.25) * 40 * 100) / 100;
-        }
+      if (empType === 'perm' && sal > 0 && feeRate > 0) {
+        spread = Math.round((sal * feeRate / 26) * 100) / 100;
+      } else if (empType === 'corp-to-corp' && bill > 0 && pay > 0) {
+        spread = Math.round((bill - pay * 1.05) * 40 * 100) / 100;
+      } else if (bill > 0 && pay > 0) {
+        spread = Math.round((bill - pay * 1.25) * 40 * 100) / 100;
+      }
 
-        if (spread > 0) {
-          const commPct = comm?.percentage || 1;
-          metricsMap[amId].newInput += Math.round(spread * commPct * 100) / 100;
+      for (const comm of commissions) {
+        const amId = comm.id;
+        if (amId && metricsMap[amId]) {
+          metricsMap[amId].jobMetrics.newPlacements++;
+          metricsMap[amId].jobDetails.newPlacements.push({
+            placementId: p.id,
+            jobTitle: p.jobOrder?.title || '',
+            client: p.jobOrder?.clientCorporation?.name || '',
+            candidate: p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '',
+            link: bhLink('Placement', p.id),
+          });
+
+          if (spread > 0) {
+            const commPct = comm.percentage || 1;
+            metricsMap[amId].newInput += Math.round(spread * commPct * 100) / 100;
+          }
         }
       }
     }

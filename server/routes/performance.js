@@ -286,19 +286,20 @@ async function handleAM(req, res, { userId, fullName, tier, spreadGoal, weeks, s
   const closedJobs = closedJobsRes?.data || [];
   const allPlacements = placementsRes?.data || [];
 
-  // Sales commissions
-  let salesCommMap = {};
+  // Sales commissions (supports split credit)
+  let salesCommMap = {}; // placementId → [{ id, name, percentage }, ...]
   if (allPlacements.length > 0) {
     try {
       const commRes = await getSalesCommissions(allPlacements.map(p => p.id));
       for (const c of (commRes?.data || [])) {
         const pId = c.placement?.id;
         if (pId && c.user) {
-          salesCommMap[pId] = {
+          if (!salesCommMap[pId]) salesCommMap[pId] = [];
+          salesCommMap[pId].push({
             id: c.user.id,
             name: `${c.user.firstName || ''} ${c.user.lastName || ''}`.trim(),
             percentage: c.commissionPercentage || 1,
-          };
+          });
         }
       }
     } catch (err) {
@@ -346,11 +347,12 @@ async function handleAM(req, res, { userId, fullName, tier, spreadGoal, weeks, s
     jobDetails.closedReqs.push(detail);
   }
 
-  // Placements — new placements + new input
+  // Placements — new placements + new input (supports split sales credit)
   let newInput = 0;
   for (const p of allPlacements) {
-    const comm = salesCommMap[p.id];
-    if (comm?.id !== userId) continue;
+    const commissions = salesCommMap[p.id] || [];
+    const myComm = commissions.find(c => c.id === userId);
+    if (!myComm) continue;
 
     jobMetrics.newPlacements++;
     jobDetails.newPlacements.push({
@@ -377,7 +379,7 @@ async function handleAM(req, res, { userId, fullName, tier, spreadGoal, weeks, s
     }
 
     if (spread > 0) {
-      const commPct = comm?.percentage || 1;
+      const commPct = myComm.percentage || 1;
       newInput += Math.round(spread * commPct * 100) / 100;
     }
   }
