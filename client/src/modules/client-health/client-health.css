@@ -57,6 +57,14 @@
   text-align: left;
 }
 
+.gauge-tooltip-icon {
+  margin-left: 4px;
+  font-size: 11px;
+  color: var(--text-light);
+  cursor: help;
+  vertical-align: middle;
+}
+
 .gauge-target {
   font-size: 10px;
   color: var(--text-muted);

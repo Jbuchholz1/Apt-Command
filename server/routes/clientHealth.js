@@ -547,11 +547,11 @@ router.get('/kpis', async (req, res, next) => {
       gauges: [
         { label: 'MAR Total', value: totalMAR, target: marTarget, format: 'number', details: marDetails },
         { label: 'Input', value: totalNewInput, target: 40000, format: 'currency', details: inputDetails },
-        { label: 'A/B Fill Ratio - Staffing', value: abFillRatio, target: 60, format: 'percent', details: fillDetails },
-        { label: 'Backout %', value: backoutPct, target: 10, format: 'percent', invert: true, details: backoutDetails },
-        { label: 'Fill Ratio - Project', value: projFillRatio, target: 60, format: 'percent', details: projFillDetails },
-        trCheckinGauge,
-        amCheckinGauge,
+        { label: 'A/B Fill Ratio - Staffing', value: abFillRatio, target: 60, format: 'percent', details: fillDetails, tooltip: 'Fills / Total Openings for A & B priority staffing jobs in the date range' },
+        { label: 'Backout %', value: backoutPct, target: 10, format: 'percent', invert: true, details: backoutDetails, tooltip: 'Backout Notes / Total Placements in the date range. Lower is better.' },
+        { label: 'Fill Ratio - Project', value: projFillRatio, target: 60, format: 'percent', details: projFillDetails, tooltip: 'Fills / Total Openings for Project-type jobs in the date range' },
+        { ...trCheckinGauge, tooltip: 'TR 30/90 check-in completion for active placements (30-365 days old). Each placement has a 30-day and 90-day milestone. Done = a TR 30/90 note exists for the candidate.' },
+        { ...amCheckinGauge, tooltip: 'AM 30/90 check-in completion for active placements (30-365 days old). Each placement has a 30-day and 90-day milestone. Done = an AM 30/90 note exists for the candidate.' },
       ],
     });
   } catch (err) {

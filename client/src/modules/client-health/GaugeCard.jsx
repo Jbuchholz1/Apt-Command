@@ -24,7 +24,7 @@ function describeArc(cx, cy, radius, startDeg, endDeg) {
   return `M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}`;
 }
 
-export default function GaugeCard({ label, value, target, format, invert, placeholder, details, onClick }) {
+export default function GaugeCard({ label, value, target, format, invert, placeholder, details, onClick, tooltip }) {
   const pct = (value !== null && target > 0) ? Math.min((value / target) * 100, 100) : 0;
   const color = placeholder ? '#e2e8f0' : getColor(pct, invert);
 
@@ -46,7 +46,10 @@ export default function GaugeCard({ label, value, target, format, invert, placeh
   return (
     <div className={`gauge-card ${details?.length ? 'gauge-clickable' : ''}`} onClick={() => details?.length && onClick?.(label, details)}>
       <div className="gauge-header">
-        <span className="gauge-label">{label}</span>
+        <span className="gauge-label">
+          {label}
+          {tooltip && <span className="gauge-tooltip-icon" title={tooltip}>{'\u24D8'}</span>}
+        </span>
         <span className="gauge-target">Target: {format === 'currency' ? `$${target.toLocaleString()}` : format === 'percent' ? `${target}%` : target.toLocaleString()}</span>
       </div>
       <div className="gauge-value" style={{ color: placeholder ? '#94a3b8' : color }}>
