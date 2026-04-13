@@ -178,7 +178,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
     { label: 'Open Reqs', value: openReqs, color: '#c9a227', onClick: () => setShowOpenReqs(true) },
     { label: 'Accepting Candidates', value: acceptingCandidates, color: '#16a34a', onClick: () => setShowAccepting(true) },
     { label: 'Missed Follow Ups', value: missedFollowUps, color: '#dc2626', onClick: () => setShowMissedFollowUps(true) },
-    { label: 'A & B Reqs Covered', value: `${abCovered} / ${abTotal}`, color: '#c9a227', onClick: () => setShowAB(true) },
+    { label: 'A/B Covered', value: `${abCovered} / ${abTotal}`, color: '#c9a227', onClick: () => setShowAB(true) },
     { label: 'C Reqs', value: cReqCount, color: '#94a3b8', onClick: () => setShowC(true) },
     { label: 'On The Board', value: filledCount, color: '#7c3aed', tooltip: 'The number of Jobs with a status of Filled', onClick: () => setShowFilled(true) },
     { label: 'Total Opportunities', value: totalOpportunities, color: '#0369a1', onClick: handleOpportunitiesClick },
