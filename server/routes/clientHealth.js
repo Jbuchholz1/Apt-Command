@@ -412,10 +412,9 @@ router.get('/kpis', async (req, res, next) => {
     const backoutPct = totalPlacements > 0 ? Math.round((backoutCount / totalPlacements) * 100) : 0;
     const backoutDetails = backoutNotes.map(n => ({
       noteId: n.id,
-      entity: n.targetEntityName || '',
-      entityId: n.targetEntityID || '',
       candidateName: n.candidateName || '',
       candidateId: n.candidateId || null,
+      comment: n.comment || '',
     }));
 
     // --- A/B Fill Ratio ---
