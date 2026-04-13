@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const SPLASH_DURATION = 5000;
+const SPLASH_DURATION = 3000;
 
 export default function ModuleSplash({ text, hashtag, onComplete }) {
   const [fadeOut, setFadeOut] = useState(false);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const SPLASH_DURATION = 5000; // 5 seconds
+const SPLASH_DURATION = 3000; // 3 seconds
 
 export default function SplashScreen({ onComplete }) {
   const [fadeOut, setFadeOut] = useState(false);

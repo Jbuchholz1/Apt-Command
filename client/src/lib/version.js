@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.1.1';
+export const APP_VERSION = '2.1.2';
 
 export const CHANGELOG = [
+  {
+    version: '2.1.2',
+    date: '2026-04-13',
+    title: 'Splash Screen Timing',
+    changes: [
+      { type: 'patch', text: 'Reduced splash loading screens from 5 seconds to 3 seconds for faster navigation' },
+    ],
+  },
   {
     version: '2.1.1',
     date: '2026-04-13',
