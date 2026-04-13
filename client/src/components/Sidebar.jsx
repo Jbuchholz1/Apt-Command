@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -9,6 +9,7 @@ import {
   BarChart3,
   Target,
   Settings,
+  Shield,
   ExternalLink,
   ChevronDown,
   ChevronRight,
@@ -40,10 +41,18 @@ const QUICK_LINKS = [
   { label: 'SharePoint', href: 'https://login.microsoftonline.com/a78736a9-b975-4898-ae0e-2f783c0bcf14/oauth2/authorize?client_id=00000003-0000-0ff1-ce00-000000000000&response_mode=form_post&redirect_uri=https%3A%2F%2Fbytesizeinc.sharepoint.com%2F_forms%2Fdefault.aspx' },
 ];
 
-export default function Sidebar({ userName, onLogout, mobileOpen }) {
+export default function Sidebar({ userName, userRole, onLogout, mobileOpen }) {
   const location = useLocation();
   const [linksOpen, setLinksOpen] = useState(false);
   const [changelogOpen, setChangelogOpen] = useState(false);
+
+  const navItems = useMemo(() => {
+    const items = [...NAV_ITEMS];
+    if (userRole === 'admin') {
+      items.push({ label: 'Admin', icon: Shield, path: '/admin' });
+    }
+    return items;
+  }, [userRole]);
 
   const isActive = (item) => {
     if (item.exact) return location.pathname === item.path;
@@ -61,7 +70,7 @@ export default function Sidebar({ userName, onLogout, mobileOpen }) {
 
         {/* Navigation */}
         <nav className="sidebar-nav">
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const Icon = item.icon;
             if (item.disabled) {
               return (

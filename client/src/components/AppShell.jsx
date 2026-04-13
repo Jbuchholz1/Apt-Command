@@ -3,12 +3,14 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { useMsal } from '@azure/msal-react';
 import { Menu } from 'lucide-react';
 import Sidebar from './Sidebar';
+import { UserRoleProvider, useUserRole } from '../lib/UserRoleContext';
 
-export default function AppShell() {
+function AppShellInner() {
   const { instance, accounts } = useMsal();
   const location = useLocation();
   const userName = accounts[0]?.name || accounts[0]?.username || '';
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { role: userRole } = useUserRole();
 
   const handleLogout = () => {
     instance.logoutRedirect({ postLogoutRedirectUri: window.location.origin });
@@ -29,6 +31,7 @@ export default function AppShell() {
       <div onClick={handleNavClick}>
         <Sidebar
           userName={userName}
+          userRole={userRole}
           onLogout={handleLogout}
           mobileOpen={mobileOpen}
         />
@@ -37,5 +40,13 @@ export default function AppShell() {
         <Outlet />
       </div>
     </div>
+  );
+}
+
+export default function AppShell() {
+  return (
+    <UserRoleProvider>
+      <AppShellInner />
+    </UserRoleProvider>
   );
 }

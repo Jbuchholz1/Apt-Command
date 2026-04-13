@@ -9,9 +9,20 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.0.0';
+export const APP_VERSION = '2.1.0';
 
 export const CHANGELOG = [
+  {
+    version: '2.1.0',
+    date: '2026-04-13',
+    title: 'User Management & Roles',
+    changes: [
+      { type: 'minor', text: 'Added Admin and Basic roles with user management system' },
+      { type: 'minor', text: 'New Admin panel for managing user roles (admin-only)' },
+      { type: 'minor', text: 'Admin tab in sidebar visible only to admin users' },
+      { type: 'patch', text: 'Server-side role resolution with bootstrap admin fallback' },
+    ],
+  },
   {
     version: '2.0.0',
     date: '2026-04-13',

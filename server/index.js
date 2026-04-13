@@ -9,6 +9,8 @@ const reportingRouter = require('./routes/reporting');
 const clientHealthRouter = require('./routes/clientHealth');
 const performanceRouter = require('./routes/performance');
 const orgflowRouter = require('./routes/orgflow');
+const usersRouter = require('./routes/users');
+const adminRouter = require('./routes/admin');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -62,6 +64,9 @@ app.use('/api/client-health', clientHealthRouter);
 app.use('/api/performance', performanceRouter);
 // Org Flow module
 app.use('/api/org-flow', orgflowRouter);
+// User management
+app.use('/api/users', usersRouter);
+app.use('/api/admin', adminRouter);
 // Legacy routes (backward compat — remove after deploy confirmed)
 app.use('/api/jobs', jobsRouter);
 app.use('/api/placements', placementsRouter);

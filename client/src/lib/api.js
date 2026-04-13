@@ -140,6 +140,23 @@ export function getClientHealthStats() {
   return fetchAPI('/api/org-flow/client-health');
 }
 
+// --- User Management ---
+
+export function getCurrentUser() {
+  return fetchAPI('/api/users/me');
+}
+
+export function getAdminUsers() {
+  return fetchAPI('/api/admin/users');
+}
+
+export function updateUserRole(userId, role) {
+  return fetchAPI(`/api/admin/users/${userId}/role`, {
+    method: 'PATCH',
+    body: { role },
+  });
+}
+
 // --- Client Health ---
 
 export function getClientHealth(startDate, endDate) {
