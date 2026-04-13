@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMsal } from '@azure/msal-react';
+import { APP_VERSION } from '../lib/version';
+import ChangelogModal from './ChangelogModal';
 
 const modules = [
   {
@@ -63,6 +66,7 @@ const modules = [
 export default function HomePage() {
   const { accounts } = useMsal();
   const firstName = (accounts[0]?.name || '').split(' ')[0] || 'there';
+  const [changelogOpen, setChangelogOpen] = useState(false);
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
@@ -113,8 +117,12 @@ export default function HomePage() {
         </div>
       </div>
       <footer className="home-footer">
-        <span className="home-footer-brand">APT COMMAND</span> &middot; v1.0
+        <span className="home-footer-brand">APT COMMAND</span> &middot;{' '}
+        <button className="version-link" onClick={() => setChangelogOpen(true)}>
+          v{APP_VERSION}
+        </button>
       </footer>
+      <ChangelogModal open={changelogOpen} onClose={() => setChangelogOpen(false)} />
     </div>
   );
 }
