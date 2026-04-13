@@ -210,7 +210,7 @@
 .of-ally-name { font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 2px; }
 .of-ally-role { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .of-ally-badge { display: inline-block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 8px; border-radius: 4px; margin-bottom: 6px; }
-.of-ally-bh-link { display: block; font-size: 10px; font-family: var(--mono); color: #2563eb; text-decoration: none; transition: color 0.15s; }
+.of-ally-bh-link { display: block; font-size: 10px; font-family: var(--mono); color: #2563eb; background: none; border: none; padding: 2px 0; cursor: pointer; text-decoration: none; transition: color 0.15s; }
 .of-ally-bh-link:hover { color: #1d4ed8; text-decoration: underline; }
 .of-ally-badge--contractor { background: #dcfce7; color: #166534; }
 .of-ally-badge--perm { background: #dbeafe; color: #1e40af; }

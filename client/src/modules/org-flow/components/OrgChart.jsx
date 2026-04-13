@@ -22,29 +22,36 @@ const BH_BASE = 'https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.
 const ALLY_NODE_WIDTH = 220;
 const ALLY_HORIZONTAL_GAP = 120;
 
-const AptAllyNode = memo(({ data }) => (
-  <div className={`of-ally-node of-ally-node--${data.allyType}`}>
-    <Handle type="target" position={Position.Top} className="of-handle" />
-    <div className="of-ally-body">
-      <div className="of-ally-name">{data.name}</div>
-      <div className="of-ally-role">{data.role}</div>
-      <div className={`of-ally-badge of-ally-badge--${data.allyType}`}>
-        {data.allyType === 'contractor' ? 'Contractor' : 'Perm Placement'}
+const AptAllyNode = memo(({ data }) => {
+  const handleBhClick = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    window.open(`${BH_BASE}?Entity=Candidate&id=${data.candidateId}`, '_blank');
+  };
+
+  return (
+    <div className={`of-ally-node of-ally-node--${data.allyType}`}>
+      <Handle type="target" position={Position.Top} className="of-handle" />
+      <div className="of-ally-body">
+        <div className="of-ally-name">{data.name}</div>
+        <div className="of-ally-role">{data.role}</div>
+        <div className={`of-ally-badge of-ally-badge--${data.allyType}`}>
+          {data.allyType === 'contractor' ? 'Contractor' : 'Perm Placement'}
+        </div>
+        {data.candidateId && (
+          <button
+            className="of-ally-bh-link"
+            onClick={handleBhClick}
+            onMouseDown={(e) => e.stopPropagation()}
+            title={`Open candidate ${data.candidateId} in Bullhorn`}
+          >
+            BH #{data.candidateId}
+          </button>
+        )}
       </div>
-      {data.candidateId && (
-        <a
-          href={`${BH_BASE}?Entity=Candidate&id=${data.candidateId}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="of-ally-bh-link nopan nodrag"
-          onClick={(e) => e.stopPropagation()}
-        >
-          BH #{data.candidateId}
-        </a>
-      )}
     </div>
-  </div>
-));
+  );
+});
 AptAllyNode.displayName = 'AptAllyNode';
 
 const nodeTypes = {
