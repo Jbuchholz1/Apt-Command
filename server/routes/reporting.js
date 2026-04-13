@@ -70,8 +70,8 @@ router.get('/recruiter-dashboard', async (req, res, next) => {
     const interviews = interviewsRes?.data || [];
     const placements = placementsRes?.data || [];
 
-    // Look up recruiting commissions for placements
-    let commissionMap = {}; // placementId → { recruiterId, recruiterName, percentage }
+    // Look up recruiting commissions for placements (supports split credit)
+    let commissionMap = {}; // placementId → [{ id, name, percentage }, ...]
     if (placements.length > 0) {
       const placementIds = placements.map(p => p.id);
       try {
@@ -80,11 +80,12 @@ router.get('/recruiter-dashboard', async (req, res, next) => {
         for (const c of commissions) {
           const pId = c.placement?.id;
           if (pId && c.user) {
-            commissionMap[pId] = {
+            if (!commissionMap[pId]) commissionMap[pId] = [];
+            commissionMap[pId].push({
               id: c.user.id,
               name: `${c.user.firstName || ''} ${c.user.lastName || ''}`.trim(),
               percentage: c.commissionPercentage || 1,
-            };
+            });
           }
         }
       } catch (err) {
@@ -157,19 +158,11 @@ router.get('/recruiter-dashboard', async (req, res, next) => {
       });
     }
 
-    // Starts + New Input detail (from Placement, recruiter = submission sendingUser)
+    // Starts + New Input detail (from Placement, supports split recruiting credit)
     const startsDetail = [];
     const newInputDetail = [];
     for (const p of placements) {
-      // Look up recruiter and commission split from PlacementCommission
-      const commission = commissionMap[p.id];
-      const recruiterId = commission?.id;
-      const recruiterName = commission?.name || '';
-      const commPct = commission?.percentage || 0;
-
-      if (recruiterId && metricsMap[recruiterId] && commPct > 0) {
-        metricsMap[recruiterId].metrics.starts += commPct;
-      }
+      const commissions = commissionMap[p.id] || [];
 
       const bill = Number(p.clientBillRate) || 0;
       const pay = Number(p.payRate) || 0;
@@ -187,42 +180,84 @@ router.get('/recruiter-dashboard', async (req, res, next) => {
         spread = Math.round((bill - pay * 1.25) * 40 * 100) / 100;
       }
 
-      if (spread > 0 && recruiterId && metricsMap[recruiterId]) {
-        metricsMap[recruiterId].metrics.newInput += Math.round(spread * commPct * 100) / 100;
-      }
-
       const client = p.jobOrder?.clientCorporation?.name || '';
       const beginMs = p.dateBegin;
       const endMs2 = p.dateEnd;
       const daysBetween = (beginMs && endMs2) ? Math.round((endMs2 - beginMs) / (1000 * 60 * 60 * 24) / 7) : '';
 
-      startsDetail.push({
-        recruiter: recruiterName,
-        placementId: p.id,
-        placementLink: bhLink('Placement', p.id),
-        client,
-        candidateId: p.candidate?.id || '',
-        candidateName: candidateName(p.candidate),
-        candidateLink: p.candidate?.id ? bhLink('Candidate', p.candidate.id) : '',
-        guarantee: endMs2 ? formatISO(endMs2) : 'Yes',
-        date: formatDate(beginMs),
-        recruiterId,
-      });
+      // Credit each recruiter on the split
+      for (const comm of commissions) {
+        const recruiterId = comm.id;
+        const recruiterName = comm.name;
+        const commPct = comm.percentage || 0;
 
-      newInputDetail.push({
-        recruiter: recruiterName,
-        placementId: p.id,
-        placementLink: bhLink('Placement', p.id),
-        employeeType: p.employeeType || '',
-        candidateName: candidateName(p.candidate),
-        startDate: formatDate(beginMs),
-        scheduledEnd: endMs2 ? formatDate(endMs2) : '',
-        daysBetween,
-        guarantee: endMs2 ? formatISO(endMs2) : 'Yes',
-        newInput: spread,
-        recruiterId,
-        client,
-      });
+        if (recruiterId && metricsMap[recruiterId] && commPct > 0) {
+          metricsMap[recruiterId].metrics.starts += commPct;
+        }
+
+        if (spread > 0 && recruiterId && metricsMap[recruiterId]) {
+          metricsMap[recruiterId].metrics.newInput += Math.round(spread * commPct * 100) / 100;
+        }
+
+        startsDetail.push({
+          recruiter: recruiterName,
+          placementId: p.id,
+          placementLink: bhLink('Placement', p.id),
+          client,
+          candidateId: p.candidate?.id || '',
+          candidateName: candidateName(p.candidate),
+          candidateLink: p.candidate?.id ? bhLink('Candidate', p.candidate.id) : '',
+          guarantee: endMs2 ? formatISO(endMs2) : 'Yes',
+          date: formatDate(beginMs),
+          recruiterId,
+        });
+
+        newInputDetail.push({
+          recruiter: recruiterName,
+          placementId: p.id,
+          placementLink: bhLink('Placement', p.id),
+          employeeType: p.employeeType || '',
+          candidateName: candidateName(p.candidate),
+          startDate: formatDate(beginMs),
+          scheduledEnd: endMs2 ? formatDate(endMs2) : '',
+          daysBetween,
+          guarantee: endMs2 ? formatISO(endMs2) : 'Yes',
+          newInput: Math.round(spread * commPct * 100) / 100,
+          recruiterId,
+          client,
+        });
+      }
+
+      // If no commission records, still add to detail for visibility
+      if (commissions.length === 0) {
+        startsDetail.push({
+          recruiter: '(No commission)',
+          placementId: p.id,
+          placementLink: bhLink('Placement', p.id),
+          client,
+          candidateId: p.candidate?.id || '',
+          candidateName: candidateName(p.candidate),
+          candidateLink: p.candidate?.id ? bhLink('Candidate', p.candidate.id) : '',
+          guarantee: endMs2 ? formatISO(endMs2) : 'Yes',
+          date: formatDate(beginMs),
+          recruiterId: null,
+        });
+
+        newInputDetail.push({
+          recruiter: '(No commission)',
+          placementId: p.id,
+          placementLink: bhLink('Placement', p.id),
+          employeeType: p.employeeType || '',
+          candidateName: candidateName(p.candidate),
+          startDate: formatDate(beginMs),
+          scheduledEnd: endMs2 ? formatDate(endMs2) : '',
+          daysBetween,
+          guarantee: endMs2 ? formatISO(endMs2) : 'Yes',
+          newInput: 0,
+          recruiterId: null,
+          client,
+        });
+      }
     }
 
     // Calculate MAR and points

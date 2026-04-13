@@ -111,19 +111,20 @@ async function handleRecruiter(req, res, { userId, fullName, tier, spreadGoal, w
   const allInterviews = interviewsRes?.data || [];
   const allPlacements = placementsRes?.data || [];
 
-  // Get recruiting commissions
-  let commissionMap = {};
+  // Get recruiting commissions (supports split credit)
+  let commissionMap = {}; // placementId → [{ id, name, percentage }, ...]
   if (allPlacements.length > 0) {
     try {
       const commRes = await getRecruitingCommissions(allPlacements.map(p => p.id));
       for (const c of (commRes?.data || [])) {
         const pId = c.placement?.id;
         if (pId && c.user) {
-          commissionMap[pId] = {
+          if (!commissionMap[pId]) commissionMap[pId] = [];
+          commissionMap[pId].push({
             id: c.user.id,
             name: `${c.user.firstName || ''} ${c.user.lastName || ''}`.trim(),
             percentage: c.commissionPercentage || 0,
-          };
+          });
         }
       }
     } catch (err) {
@@ -173,10 +174,12 @@ async function handleRecruiter(req, res, { userId, fullName, tier, spreadGoal, w
   const startsDetail = [];
   const newInputDetail = [];
   for (const p of allPlacements) {
-    const commission = commissionMap[p.id];
-    if (commission?.id !== userId || !commission.percentage) continue;
+    const commissions = commissionMap[p.id] || [];
+    // Find this user's commission on the placement
+    const myComm = commissions.find(c => c.id === userId);
+    if (!myComm || !myComm.percentage) continue;
 
-    const commPct = commission.percentage;
+    const commPct = myComm.percentage;
     starts += commPct;
 
     const bill = Number(p.clientBillRate) || 0;
@@ -223,7 +226,7 @@ async function handleRecruiter(req, res, { userId, fullName, tier, spreadGoal, w
       scheduledEnd: endMs2 ? formatDate(endMs2) : '',
       daysBetween,
       guarantee: endMs2 ? formatISO(endMs2) : 'Yes',
-      newInput: spread,
+      newInput: Math.round(spread * commPct * 100) / 100,
       client,
     });
   }
