@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.1.0';
+export const APP_VERSION = '2.1.1';
 
 export const CHANGELOG = [
+  {
+    version: '2.1.1',
+    date: '2026-04-13',
+    title: 'Commission & Rounding Fixes',
+    changes: [
+      { type: 'patch', text: 'Fix split commission credit: all recruiters and AMs on a placement now receive their share (previously only the last entry was credited)' },
+      { type: 'patch', text: 'Starts now round up to the nearest .25 instead of rounding to 2 decimal places' },
+    ],
+  },
   {
     version: '2.1.0',
     date: '2026-04-13',
