@@ -201,8 +201,13 @@
 
 /* ---- Apt Allies Row (Client Card) ---- */
 .of-allies-row { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-bottom: 10px; padding: 2px 6px; margin: 0 -6px 10px; }
+.of-allies-clickable { cursor: pointer; border-radius: 4px; transition: background 0.15s; }
+.of-allies-clickable:hover { background: rgba(4,20,79,0.04); }
 .of-allies-label { color: var(--text-muted); font-weight: 500; }
 .of-allies-value { font-weight: 700; font-size: 13px; color: #16a34a; }
+.of-allies-type-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+.of-allies-type-contractor { background: #dcfce7; color: #166534; }
+.of-allies-type-perm { background: #dbeafe; color: #1e40af; }
 
 /* ---- Apt Ally Node (Org Chart) ---- */
 .of-ally-node { width: 220px; border: 2px solid #16a34a; border-radius: 10px; background: #fff; box-shadow: 0 1px 4px rgba(22,163,74,0.15); }

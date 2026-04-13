@@ -64,13 +64,15 @@ router.get('/client-health', async (req, res, next) => {
     const employees = employeesRes?.data || [];
     const placements = placementsResult?.data || [];
 
-    // Build live counts by email, split by type
+    // Build live counts by email, split by type, and track individual placements
     const liveCountByEmail = {};
+    const placementsByEmail = {};
     for (const p of placements) {
       const email = p.jobOrder?.clientContact?.email;
       if (!email) continue;
       const key = email.toLowerCase();
       if (!liveCountByEmail[key]) liveCountByEmail[key] = { contractors: 0, permPlacements: 0, total: 0 };
+      if (!placementsByEmail[key]) placementsByEmail[key] = [];
 
       const empType = (p.employeeType || '').toLowerCase();
       if (empType === 'perm') {
@@ -79,6 +81,12 @@ router.get('/client-health', async (req, res, next) => {
         liveCountByEmail[key].contractors++;
       }
       liveCountByEmail[key].total++;
+
+      placementsByEmail[key].push({
+        candidateName: `${p.candidate?.firstName || ''} ${p.candidate?.lastName || ''}`.trim(),
+        type: empType === 'perm' ? 'Perm' : 'Contractor',
+        jobTitle: p.jobOrder?.title || '',
+      });
     }
 
     // Build set of employee IDs that have direct reports
@@ -98,9 +106,10 @@ router.get('/client-health', async (req, res, next) => {
 
     for (const emp of employees) {
       const cid = emp.client_id;
-      if (!clientStats[cid]) clientStats[cid] = { totalManagers: 0, healthyManagers: 0, managers: [], totalAllies: 0 };
+      if (!clientStats[cid]) clientStats[cid] = { totalManagers: 0, healthyManagers: 0, managers: [], totalAllies: 0, allies: [] };
 
-      const counts = emp.email ? (liveCountByEmail[emp.email.toLowerCase()] || { contractors: 0, permPlacements: 0, total: 0 }) : { contractors: 0, permPlacements: 0, total: 0 };
+      const emailKey = emp.email ? emp.email.toLowerCase() : null;
+      const counts = emailKey ? (liveCountByEmail[emailKey] || { contractors: 0, permPlacements: 0, total: 0 }) : { contractors: 0, permPlacements: 0, total: 0 };
       const hasFtes = (emp.num_ftes || 0) > 0;
       const hasContractors = (emp.num_contractors || 0) > 0;
       const hasReports = hasDirectReports.has(emp.id);
@@ -108,6 +117,18 @@ router.get('/client-health', async (req, res, next) => {
 
       // Accumulate allies for this client
       clientStats[cid].totalAllies += counts.total;
+      if (hasLivePlacements && emailKey) {
+        const empPlacements = placementsByEmail[emailKey] || [];
+        for (const pl of empPlacements) {
+          clientStats[cid].allies.push({
+            contactName: emp.name || '',
+            contactRole: emp.role || '',
+            candidateName: pl.candidateName,
+            type: pl.type,
+            jobTitle: pl.jobTitle,
+          });
+        }
+      }
 
       // Is this a people manager?
       const isPeopleManager = hasReports || hasFtes || hasContractors || hasLivePlacements;
@@ -138,12 +159,14 @@ router.get('/client-health', async (req, res, next) => {
         if (a.healthy !== b.healthy) return a.healthy ? 1 : -1;
         return a.name.localeCompare(b.name);
       });
+      stats.allies.sort((a, b) => a.contactName.localeCompare(b.contactName) || a.candidateName.localeCompare(b.candidateName));
       result[cid] = {
         totalManagers: stats.totalManagers,
         healthyManagers: stats.healthyManagers,
         percentage: stats.totalManagers > 0 ? Math.round((stats.healthyManagers / stats.totalManagers) * 100) : 0,
         managers: stats.managers,
         totalAllies: stats.totalAllies,
+        allies: stats.allies,
       };
     }
 

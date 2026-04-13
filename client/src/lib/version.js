@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.2.1';
+export const APP_VERSION = '2.2.2';
 
 export const CHANGELOG = [
+  {
+    version: '2.2.2',
+    date: '2026-04-13',
+    title: 'Apt Allies Detail Modal',
+    changes: [
+      { type: 'patch', text: 'Apt Allies on Org Flow client cards is now a clickable link that opens a detail modal showing each active placement (client contact, candidate, job title, type)' },
+    ],
+  },
   {
     version: '2.2.1',
     date: '2026-04-13',

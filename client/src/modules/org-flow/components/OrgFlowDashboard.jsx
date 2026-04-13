@@ -32,6 +32,7 @@ export default function OrgFlowDashboard({ onSelectClient }) {
   const [currentUserId, setCurrentUserId] = useState(null);
   const [clientHealthStats, setClientHealthStats] = useState({});
   const [healthModal, setHealthModal] = useState(null);
+  const [alliesModal, setAlliesModal] = useState(null);
 
   // Resolve MSAL email to Supabase user_profiles ID on mount
   useEffect(() => {
@@ -616,7 +617,14 @@ export default function OrgFlowDashboard({ onSelectClient }) {
                         </span>
                         <span className="of-healthy-detail">({clientHealthStats[client.id].healthyManagers}/{clientHealthStats[client.id].totalManagers})</span>
                       </div>
-                      <div className="of-allies-row">
+                      <div
+                        className="of-allies-row of-allies-clickable"
+                        title="Click to see active placements at this client"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setAlliesModal({ clientName: client.name, ...clientHealthStats[client.id] });
+                        }}
+                      >
                         <span className="of-allies-label">Apt Allies:</span>
                         <span className="of-allies-value">{clientHealthStats[client.id].totalAllies || 0}</span>
                       </div>
@@ -923,6 +931,52 @@ export default function OrgFlowDashboard({ onSelectClient }) {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Apt Allies Modal */}
+      {alliesModal && (
+        <div className="of-modal-overlay" onClick={() => setAlliesModal(null)}>
+          <div className="of-modal of-modal-lg" onClick={e => e.stopPropagation()}>
+            <div className="of-modal-header-row">
+              <h3 className="of-modal-title">
+                {alliesModal.clientName} — Apt Allies ({alliesModal.totalAllies || 0})
+              </h3>
+              <button className="of-btn-close" onClick={() => setAlliesModal(null)}>&times;</button>
+            </div>
+            <div className="of-health-modal-body">
+              {(alliesModal.allies || []).length > 0 ? (
+                <table className="of-health-modal-table">
+                  <thead>
+                    <tr>
+                      <th>Client Contact</th>
+                      <th>Contact Role</th>
+                      <th>Candidate</th>
+                      <th>Job Title</th>
+                      <th>Type</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(alliesModal.allies || []).map((a, i) => (
+                      <tr key={i}>
+                        <td style={{ fontWeight: 600 }}>{a.contactName || '—'}</td>
+                        <td>{a.contactRole || '—'}</td>
+                        <td style={{ fontWeight: 600 }}>{a.candidateName || '—'}</td>
+                        <td>{a.jobTitle || '—'}</td>
+                        <td>
+                          <span className={`of-allies-type-badge ${a.type === 'Perm' ? 'of-allies-type-perm' : 'of-allies-type-contractor'}`}>
+                            {a.type}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p style={{ padding: '20px', color: 'var(--text-muted)', textAlign: 'center' }}>No active placements at this client.</p>
+              )}
             </div>
           </div>
         </div>
