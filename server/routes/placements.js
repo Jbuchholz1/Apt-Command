@@ -24,10 +24,7 @@ router.get('/', async (req, res, next) => {
       am: p.jobOrder?.owner
         ? `${(p.jobOrder.owner.firstName || '')[0] || ''}${(p.jobOrder.owner.lastName || '')[0] || ''}`.toUpperCase()
         : '—',
-      tr: (p.jobOrder?.assignedUsers?.data || [])
-        .map(u => `${(u.firstName || '')[0] || ''}${(u.lastName || '')[0] || ''}`.toUpperCase())
-        .filter(Boolean)
-        .join(', ') || '*',
+      tr: '*', // assignedUsers (TO_MANY) corrupts Bullhorn JSON when nested in jobOrder — default to *
     }));
     res.json({ total: placements.length, data: placements });
   } catch (err) {
