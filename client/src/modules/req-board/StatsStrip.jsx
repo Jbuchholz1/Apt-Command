@@ -613,9 +613,9 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
                     {filteredPlacements.map((p, idx) => (
                       <tr key={p.id}>
                         <td>
-                          {p.candidateId ? (
+                          {p.id ? (
                             <a
-                              href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=Candidate&id=${p.candidateId}`}
+                              href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=Placement&id=${p.id}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="bh-link"
