@@ -7,6 +7,7 @@ const {
   getInterviewsInRange,
   getPlacementsInRange,
   getRecruitingCommissions,
+  getLeadsInRange,
   getAMUsers,
   getAppointmentsInRange,
   getNewJobsInRange,
@@ -57,18 +58,20 @@ router.get('/recruiter-dashboard', async (req, res, next) => {
     const weeks = Math.max(1, Math.ceil(diffMs / (7 * 24 * 60 * 60 * 1000)));
     const goalForRange = weeks * POINTS.WEEKLY_TARGET;
 
-    // Fire 4 parallel Bullhorn queries
-    const [recruitersRes, subsRes, interviewsRes, placementsRes] = await Promise.all([
+    // Fire 5 parallel Bullhorn queries
+    const [recruitersRes, subsRes, interviewsRes, placementsRes, leadsRes] = await Promise.all([
       getRecruiterUsers(),
       getClientSubsInRange(startMs, endMs),
       getInterviewsInRange(startMs, endMs),
       getPlacementsInRange(startMs, endMs),
+      getLeadsInRange(startMs, endMs),
     ]);
 
     const recruiters = (recruitersRes?.data || []).filter(r => !EXCLUDED_RECRUITERS.has(`${r.firstName} ${r.lastName}`));
     const subs = subsRes?.data || [];
     const interviews = interviewsRes?.data || [];
     const placements = placementsRes?.data || [];
+    const leads = leadsRes?.data || [];
 
     // Look up recruiting commissions for placements (supports split credit)
     let commissionMap = {}; // placementId → [{ id, name, percentage }, ...]
@@ -110,7 +113,7 @@ router.get('/recruiter-dashboard', async (req, res, next) => {
         name,
         tier,
         spreadGoal,
-        metrics: { clientSubs: 0, interviews: 0, starts: 0, mar: 0, newInput: 0 },
+        metrics: { clientSubs: 0, interviews: 0, starts: 0, mar: 0, newInput: 0, leads: 0 },
         points: { subsPoints: 0, interviewPoints: 0, startsPoints: 0, total: 0 },
       };
     }
@@ -260,8 +263,26 @@ router.get('/recruiter-dashboard', async (req, res, next) => {
       }
     }
 
+    // Leads detail (from Lead entity, owner = recruiter)
+    const leadsDetail = [];
+    for (const lead of leads) {
+      const userId = lead.owner?.id;
+      if (userId && metricsMap[userId]) {
+        metricsMap[userId].metrics.leads++;
+      }
+      leadsDetail.push({
+        recruiter: recruiterNames[userId] || (lead.owner ? `${lead.owner.firstName || ''} ${lead.owner.lastName || ''}`.trim() : ''),
+        dateAdded: formatDate(lead.dateAdded),
+        leadId: lead.id,
+        leadName: lead.name || '',
+        companyName: lead.companyName || '',
+        status: lead.status || '',
+        recruiterId: userId,
+      });
+    }
+
     // Calculate MAR and points
-    const totals = { clientSubs: 0, interviews: 0, starts: 0, mar: 0, newInput: 0 };
+    const totals = { clientSubs: 0, interviews: 0, starts: 0, mar: 0, newInput: 0, leads: 0 };
     const recruiterList = Object.values(metricsMap).map(r => {
       const m = r.metrics;
       m.starts = Math.ceil(m.starts * 4) / 4; // Round up to nearest .25
@@ -278,6 +299,7 @@ router.get('/recruiter-dashboard', async (req, res, next) => {
       totals.starts += m.starts;
       totals.mar += m.mar;
       totals.newInput += m.newInput;
+      totals.leads += m.leads;
 
       return r;
     });
@@ -296,6 +318,7 @@ router.get('/recruiter-dashboard', async (req, res, next) => {
         clientSubs: subsDetail,
         starts: startsDetail,
         newInput: newInputDetail,
+        leads: leadsDetail,
       },
     });
   } catch (err) {

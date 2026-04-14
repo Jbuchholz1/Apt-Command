@@ -7,6 +7,7 @@ import TeamAlerts from './components/TeamAlerts';
 import MetricsTable from './components/MetricsTable';
 import InputVsGoalsChart from './components/InputVsGoalsChart';
 import GoalPointsChart from './components/GoalPointsChart';
+import LeadsSubmittedChart from './components/LeadsSubmittedChart';
 import DetailTable from './components/DetailTable';
 
 function getDefaultDates() {
@@ -142,6 +143,7 @@ export default function RecruiterDashboard() {
         clientSubs: filterDetail(data.details.clientSubs, 'submittedBy', 'companyName'),
         starts: filterDetail(data.details.starts, 'recruiter', 'client'),
         newInput: filterDetail(data.details.newInput, 'recruiter', 'client'),
+        leads: filterDetail(data.details.leads || [], 'recruiter', null),
       },
     };
   }, [data, filters]);
@@ -204,6 +206,9 @@ export default function RecruiterDashboard() {
           <div className="charts-row">
             <InputVsGoalsChart recruiters={filtered.recruiters} startDate={startDate} endDate={endDate} />
             <GoalPointsChart recruiters={filtered.recruiters} startDate={startDate} endDate={endDate} weeklyTarget={26} />
+          </div>
+          <div style={{ padding: '0 24px 24px' }}>
+            <LeadsSubmittedChart recruiters={filtered.recruiters} />
           </div>
           <DetailTable title="Interviews" columns={INTERVIEW_COLS} data={filtered.details.interviews} />
           <DetailTable title="Client Submissions" columns={CLIENT_SUBS_COLS} data={filtered.details.clientSubs} />

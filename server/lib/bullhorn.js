@@ -299,6 +299,16 @@ async function getPlacementsInRange(startMs, endMs) {
   });
 }
 
+async function getLeadsInRange(startMs, endMs) {
+  return paginatedQuery({
+    entityType: 'Lead',
+    dateField: 'dateAdded',
+    startMs, endMs,
+    extraWhere: 'AND isDeleted = false',
+    fields: 'id,owner,dateAdded,name,companyName,status',
+  });
+}
+
 async function getRecruitingCommissions(placementIds) {
   if (!placementIds.length) return { data: [] };
   const idList = placementIds.join(',');
@@ -560,5 +570,6 @@ module.exports = {
   getPlacementsForJobs,
   getBackoutNotesInRange,
   getCheckinNotesForType,
+  getLeadsInRange,
   getCorporateUserByEmail,
 };

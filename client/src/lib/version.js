@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.4.6';
+export const APP_VERSION = '2.4.7';
 
 export const CHANGELOG = [
+  {
+    version: '2.4.7',
+    date: '2026-04-14',
+    title: 'Recruiter Dashboard — Leads Submitted Chart',
+    changes: [
+      { type: 'minor', text: 'Added Leads Submitted bar chart to Recruiter Dashboard — shows Bullhorn Lead count per recruiter, filtered by date range and recruiter filters' },
+    ],
+  },
   {
     version: '2.4.6',
     date: '2026-04-14',
