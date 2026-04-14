@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { getOperationsPlacements, updatePlacementChecklist, updatePlacementBullhorn } from '../../lib/api';
 
 const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const BH_BASE = 'https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm';
 
 const CHECKBOX_FIELDS = [
   { key: 'ob_paperwork_complete', label: 'OB Paperwork' },
@@ -181,7 +182,16 @@ export default function PlacementsTracker() {
                   </td>
                   <td>{p.am}</td>
                   <td>{p.tr}</td>
-                  <td><strong>{p.candidate || '—'}</strong></td>
+                  <td>
+                    <a
+                      href={`${BH_BASE}?Entity=Placement&id=${p.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ops-bh-link"
+                    >
+                      <strong>{p.candidate || '—'}</strong>
+                    </a>
+                  </td>
                   <td className="ops-date-cell">
                     <input
                       type="date"

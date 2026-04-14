@@ -236,3 +236,14 @@
 }
 .ops-status-pending { background: #fef3c7; color: #92400e; }
 .ops-status-approved { background: #d1fae5; color: #065f46; }
+
+/* ---- Bullhorn link ---- */
+.ops-bh-link {
+  color: var(--navy);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.ops-bh-link:hover {
+  color: var(--gold);
+  text-decoration: underline;
+}
