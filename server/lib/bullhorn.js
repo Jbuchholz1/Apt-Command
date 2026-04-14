@@ -158,7 +158,7 @@ async function getPendingApprovedPlacements() {
   return callTool('query_entity', {
     entityType: 'Placement',
     where: "status = 'Pending' OR status = 'Approved'",
-    fields: 'id,candidate(id,firstName,lastName),jobOrder(id,title,owner(id,firstName,lastName)),dateBegin,status,employmentType',
+    fields: 'id,candidate(id,firstName,lastName),jobOrder(id,title,owner(id,firstName,lastName),clientCorporation(id,name)),dateBegin,status,employmentType',
     orderBy: '-dateBegin',
     count: 500,
   });
@@ -194,6 +194,14 @@ async function updateJobField(jobOrderId, fields) {
   return callTool('update_entity', {
     entityType: 'JobOrder',
     entityId: parseInt(jobOrderId, 10),
+    fields,
+  });
+}
+
+async function updatePlacementField(placementId, fields) {
+  return callTool('update_entity', {
+    entityType: 'Placement',
+    entityId: parseInt(placementId, 10),
     fields,
   });
 }
@@ -559,6 +567,7 @@ module.exports = {
   searchJobs,
   addNoteToJob,
   updateJobField,
+  updatePlacementField,
   updateOpportunityField,
   updateSubmissionField,
   getCorporateUsers,

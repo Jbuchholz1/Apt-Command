@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getOperationsPlacements, updatePlacementChecklist } from '../../lib/api';
+import { getOperationsPlacements, updatePlacementChecklist, updatePlacementBullhorn } from '../../lib/api';
 
 const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
@@ -106,6 +106,24 @@ export default function PlacementsTracker() {
     }
   };
 
+  const handleStartDateChange = async (placementId, newValue) => {
+    // Convert YYYY-MM-DD to Unix ms for Bullhorn
+    const ts = newValue ? new Date(newValue + 'T12:00:00').getTime() : null;
+    const isoVal = newValue ? new Date(newValue + 'T12:00:00').toISOString() : null;
+
+    // Optimistic update
+    setPlacements(prev =>
+      prev.map(p => p.id === placementId ? { ...p, dateBegin: isoVal } : p)
+    );
+
+    try {
+      await updatePlacementBullhorn(placementId, { dateBegin: ts });
+    } catch (err) {
+      console.error('[PlacementsTracker] start date error:', err);
+      fetchData();
+    }
+  };
+
   if (loading) {
     return <div className="ops-loading">Loading placements...</div>;
   }
@@ -137,6 +155,8 @@ export default function PlacementsTracker() {
               <th>AM</th>
               <th>TR</th>
               <th>Placement Name</th>
+              <th>Start Date</th>
+              <th>Client</th>
               {CHECKBOX_FIELDS.map(f => (
                 <th key={f.key} className="ops-check-col">{f.label}</th>
               ))}
@@ -162,6 +182,15 @@ export default function PlacementsTracker() {
                   <td>{p.am}</td>
                   <td>{p.tr}</td>
                   <td><strong>{p.candidate || '—'}</strong></td>
+                  <td className="ops-date-cell">
+                    <input
+                      type="date"
+                      className="ops-date-input"
+                      value={toInputDate(p.dateBegin)}
+                      onChange={(e) => handleStartDateChange(p.id, e.target.value)}
+                    />
+                  </td>
+                  <td>{p.client || '—'}</td>
                   {CHECKBOX_FIELDS.map(f => (
                     <td key={f.key} className="ops-check-cell">
                       <input

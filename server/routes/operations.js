@@ -1,5 +1,5 @@
 const express = require('express');
-const { getPendingApprovedPlacements } = require('../lib/bullhorn');
+const { getPendingApprovedPlacements, updatePlacementField } = require('../lib/bullhorn');
 const { getAllPlacementChecklist, upsertPlacementChecklist } = require('../lib/db');
 
 const router = express.Router();
@@ -22,6 +22,7 @@ router.get('/placements', async (req, res, next) => {
         candidateId: p.candidate?.id || null,
         jobTitle: p.jobOrder?.title || null,
         jobOrderId: p.jobOrder?.id || null,
+        client: p.jobOrder?.clientCorporation?.name || null,
         employmentType: p.employmentType || null,
         dateBegin: p.dateBegin ? new Date(p.dateBegin).toISOString() : null,
         status: p.status,
@@ -46,6 +47,33 @@ router.get('/placements', async (req, res, next) => {
     });
 
     res.json({ total: placements.length, data: placements });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/operations/placements/:id/bullhorn-update — Update Bullhorn fields on a placement
+const ALLOWED_BH_FIELDS = new Set(['dateBegin']);
+router.post('/placements/:id/bullhorn-update', async (req, res, next) => {
+  try {
+    const placementId = parseInt(req.params.id, 10);
+    if (isNaN(placementId)) {
+      return res.status(400).json({ error: 'Invalid placement ID' });
+    }
+
+    const updates = {};
+    for (const [key, val] of Object.entries(req.body)) {
+      if (ALLOWED_BH_FIELDS.has(key)) {
+        updates[key] = val;
+      }
+    }
+
+    if (!Object.keys(updates).length) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+
+    await updatePlacementField(placementId, updates);
+    res.json({ success: true });
   } catch (err) {
     next(err);
   }

@@ -251,6 +251,13 @@ export function updatePlacementChecklist(placementId, data) {
   });
 }
 
+export function updatePlacementBullhorn(placementId, fields) {
+  return fetchAPI(`/api/operations/placements/${placementId}/bullhorn-update`, {
+    method: 'POST',
+    body: fields,
+  });
+}
+
 export function exportHealthDashboard() {
   return downloadExcel('/api/client-health/export', `APT_Health_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
