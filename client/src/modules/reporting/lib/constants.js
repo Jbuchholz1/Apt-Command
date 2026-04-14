@@ -15,4 +15,7 @@ export const CHART_COLORS = {
   startsPoints: '#4ade80',
   goalLine: '#dc2626',
   goalBar: '#94a3b8',
+  fills: '#14b8a6',
+  losses: '#dc2626',
+  washed: '#94a3b8',
 };

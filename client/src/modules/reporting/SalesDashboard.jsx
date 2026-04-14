@@ -123,6 +123,16 @@ export default function SalesDashboard() {
     }));
   }, [filteredAms, marPacingTarget]);
 
+  // Fills / Losses / Washes chart data
+  const flwData = useMemo(() => {
+    return filteredAms.map(am => ({
+      name: am.name,
+      Fills: am.jobMetrics.fills,
+      Losses: am.jobMetrics.losses,
+      Washed: am.jobMetrics.washed,
+    }));
+  }, [filteredAms]);
+
   const ams = filteredAms;
 
   return (
@@ -220,6 +230,21 @@ export default function SalesDashboard() {
                     activeDot={{ r: 7 }}
                   />
                 </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="chart-section">
+              <h3 className="section-title">Fills / Losses / Washes</h3>
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart data={flwData} barGap={4} margin={{ top: 10, right: 20, bottom: 30, left: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} />
+                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="Fills" fill={CHART_COLORS.fills} radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="Losses" fill={CHART_COLORS.losses} radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="Washed" fill={CHART_COLORS.washed} radius={[3, 3, 0, 0]} />
+                </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
