@@ -1,9 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { getPlacements, updateJobInBullhorn, updateJobOverrides, getRecruiters, getOpportunities, updateOpportunityInBullhorn } from '../../lib/api';
 import { getFollowUpUrgency } from './lib/urgency';
 import EditableDate from './EditableDate';
 import EditableSelect from './EditableSelect';
 import EditableCell from './EditableCell';
+
+const TYPE_OPTIONS = [
+  'Direct Hire', 'Contract', 'Contract To Hire', 'Project',
+].map(s => ({ value: s, label: s }));
+
+const TYPE_ABBREV = {
+  'Contract': 'CON',
+  'Direct Hire': 'DR',
+  'Contract To Hire': 'C2H',
+  'Project': 'SOW',
+};
 
 export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   const [showContractors, setShowContractors] = useState(false);
@@ -21,6 +32,8 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   const [opportunities, setOpportunities] = useState([]);
   const [opportunitiesLoading, setOpportunitiesLoading] = useState(false);
   const [recruiters, setRecruiters] = useState([]);
+  const [oppOwnerFilter, setOppOwnerFilter] = useState('');
+  const [oppSort, setOppSort] = useState({ key: 'id', dir: 'desc' });
 
   useEffect(() => {
     getRecruiters().then(res => setRecruiters(res.data || [])).catch(() => {});
@@ -62,6 +75,47 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
 
   const fmtCurrency = (val) => `$${Math.round(val).toLocaleString('en-US')}`;
 
+  // Opportunities: owner filter + sortable columns
+  const oppOwners = useMemo(() => {
+    const set = new Set();
+    opportunities.forEach(o => { if (o.owner) set.add(o.owner); });
+    return [...set].sort();
+  }, [opportunities]);
+
+  const handleOppSort = (key) => {
+    setOppSort(prev =>
+      prev.key === key
+        ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
+        : { key, dir: 'asc' }
+    );
+  };
+
+  const oppSortIcon = (key) => {
+    if (oppSort.key !== key) return ' ↕';
+    return oppSort.dir === 'asc' ? ' ↑' : ' ↓';
+  };
+
+  const filteredOpps = useMemo(() => {
+    let result = opportunities;
+    if (oppOwnerFilter) {
+      result = result.filter(o => o.owner === oppOwnerFilter);
+    }
+    const arr = [...result];
+    arr.sort((a, b) => {
+      let av = a[oppSort.key];
+      let bv = b[oppSort.key];
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      if (typeof av === 'number' && typeof bv === 'number') {
+        return oppSort.dir === 'asc' ? av - bv : bv - av;
+      }
+      const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true });
+      return oppSort.dir === 'asc' ? cmp : -cmp;
+    });
+    return arr;
+  }, [opportunities, oppOwnerFilter, oppSort]);
+
   const handleContractorsClick = async () => {
     setShowContractors(true);
     setPlacementsLoading(true);
@@ -79,6 +133,8 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   const handleOpportunitiesClick = async () => {
     setShowOpportunities(true);
     setOpportunitiesLoading(true);
+    setOppOwnerFilter('');
+    setOppSort({ key: 'id', dir: 'desc' });
     try {
       const res = await getOpportunities();
       setOpportunities(res.data || []);
@@ -142,6 +198,24 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
         updateJobOverrides(job.id, { recruiter: '', tr_reassigned: '', tr_assigned_at: now }).catch(() => {});
       }
     } catch (err) { console.error('Failed to update TR in Bullhorn:', err); }
+  };
+
+  const handleTypeSave = async (job, rawValue) => {
+    try {
+      await updateJobInBullhorn(job.id, { employmentType: rawValue });
+      if (onJobUpdated) onJobUpdated(job.id, 'employmentType', rawValue);
+    } catch (err) {
+      console.error('Failed to update employment type:', err);
+    }
+  };
+
+  const handleStartDateSave = async (job, tsValue) => {
+    try {
+      await updateJobInBullhorn(job.id, { startDate: tsValue });
+      if (onJobUpdated) onJobUpdated(job.id, 'startDate', tsValue ? new Date(tsValue).toISOString() : null);
+    } catch (err) {
+      console.error('Failed to update start date:', err);
+    }
   };
 
   const renderTrCell = (job) => {
@@ -390,8 +464,19 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
         <div className="modal-overlay" onClick={() => setShowOpportunities(false)}>
           <div className="modal-content contractors-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Open Opportunities ({opportunities.length})</h2>
+              <h2>Open Opportunities ({filteredOpps.length}{oppOwnerFilter ? ` of ${opportunities.length}` : ''})</h2>
               <button className="modal-close" onClick={() => setShowOpportunities(false)}>✕</button>
+            </div>
+            <div style={{ padding: '0 20px 12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <label style={{ fontWeight: 600, fontSize: '13px' }}>Owner:</label>
+              <select
+                value={oppOwnerFilter}
+                onChange={e => setOppOwnerFilter(e.target.value)}
+                style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+              >
+                <option value="">All</option>
+                {oppOwners.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
             </div>
             {opportunitiesLoading ? (
               <div className="modal-loading">Loading opportunities...</div>
@@ -399,18 +484,24 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
               <table className="contractors-table">
                 <thead>
                   <tr>
-                    <th>ID</th>
-                    <th>Title</th>
-                    <th>Client</th>
-                    <th>Owner</th>
-                    <th>Status</th>
-                    <th>Exp Close</th>
-                    <th>Deal Value</th>
-                    <th>Weighted</th>
+                    {[
+                      { key: 'id', label: 'ID' },
+                      { key: 'title', label: 'Title' },
+                      { key: 'client', label: 'Client' },
+                      { key: 'owner', label: 'Owner' },
+                      { key: 'status', label: 'Status' },
+                      { key: 'expectedCloseDate', label: 'Exp Close' },
+                      { key: 'dealValue', label: 'Deal Value' },
+                      { key: 'weightedDealValue', label: 'Weighted' },
+                    ].map(col => (
+                      <th key={col.key} className="sortable" style={{ cursor: 'pointer' }} onClick={() => handleOppSort(col.key)}>
+                        {col.label}<span className="sort-icon">{oppSortIcon(col.key)}</span>
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {opportunities.map(o => (
+                  {filteredOpps.map(o => (
                     <tr key={o.id}>
                       <td><a href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=Opportunity&id=${o.id}`} target="_blank" rel="noopener noreferrer" className="bh-link">{o.id}</a></td>
                       <td>{o.title || '—'}</td>
@@ -434,14 +525,14 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
                       <td className="cell-money">{o.weightedDealValue ? fmtCurrency(o.weightedDealValue) : '—'}</td>
                     </tr>
                   ))}
-                  {opportunities.length > 0 && (
+                  {filteredOpps.length > 0 && (
                     <tr className="total-row">
                       <td colSpan="6" style={{ textAlign: 'right', fontWeight: 700 }}>Totals</td>
-                      <td className="cell-money" style={{ fontWeight: 700 }}>{fmtCurrency(opportunities.reduce((s, o) => s + (o.dealValue || 0), 0))}</td>
-                      <td className="cell-money" style={{ fontWeight: 700 }}>{fmtCurrency(opportunities.reduce((s, o) => s + (o.weightedDealValue || 0), 0))}</td>
+                      <td className="cell-money" style={{ fontWeight: 700 }}>{fmtCurrency(filteredOpps.reduce((s, o) => s + (o.dealValue || 0), 0))}</td>
+                      <td className="cell-money" style={{ fontWeight: 700 }}>{fmtCurrency(filteredOpps.reduce((s, o) => s + (o.weightedDealValue || 0), 0))}</td>
                     </tr>
                   )}
-                  {opportunities.length === 0 && (
+                  {filteredOpps.length === 0 && (
                     <tr><td colSpan="8" style={{ textAlign: 'center', padding: '20px' }}>No open opportunities found</td></tr>
                   )}
                 </tbody>
@@ -544,9 +635,19 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
                     <td>{j.title || '—'}</td>
                     <td>{j.client || '—'}</td>
                     <td>{j.owner || '—'}</td>
-                    <td>{j.recruiter || '—'}</td>
-                    <td>{j.employmentType || '—'}</td>
-                    <td>{formatDate(j.startDate)}</td>
+                    {renderTrCell(j)}
+                    <EditableSelect
+                      value={j.employmentType || ''}
+                      displayValue={TYPE_ABBREV[j.employmentType] || j.employmentType || '—'}
+                      options={TYPE_OPTIONS}
+                      onSave={(val) => handleTypeSave(j, val)}
+                      className="cell-editable"
+                    />
+                    <EditableDate
+                      value={j.startDate}
+                      onSave={(val) => handleStartDateSave(j, val)}
+                      className="cell-editable cell-date"
+                    />
                   </tr>
                 ))}
                 {filledJobs.length === 0 && (

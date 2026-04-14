@@ -57,7 +57,7 @@ async function getOverrides(jobId) {
 /**
  * Upsert overrides for a job. Only updates fields that are provided.
  */
-async function upsertOverrides(jobId, { recruiter, follow_up, deadline, notes, coverage_needed, tr_reassigned, tr_assigned_at, called_shot, updated_by }) {
+async function upsertOverrides(jobId, { recruiter, follow_up, deadline, notes, coverage_needed, tr_reassigned, tr_assigned_at, called_shot, forty_eight_hr, updated_by }) {
   if (!supabase) return null;
 
   const updates = { updated_at: new Date().toISOString() };
@@ -69,6 +69,7 @@ async function upsertOverrides(jobId, { recruiter, follow_up, deadline, notes, c
   if (tr_reassigned !== undefined) updates.tr_reassigned = tr_reassigned;
   if (tr_assigned_at !== undefined) updates.tr_assigned_at = tr_assigned_at;
   if (called_shot !== undefined) updates.called_shot = called_shot;
+  if (forty_eight_hr !== undefined) updates.forty_eight_hr = forty_eight_hr;
   if (updated_by) updates.updated_by = updated_by;
 
   const { data, error } = await supabase

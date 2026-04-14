@@ -9,9 +9,20 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.2.2';
+export const APP_VERSION = '2.3.0';
 
 export const CHANGELOG = [
+  {
+    version: '2.3.0',
+    date: '2026-04-13',
+    title: 'Req Board Enhancements',
+    changes: [
+      { type: 'minor', text: 'Added "48 hr" free-text column next to TR on the Req Board (saved to Supabase)' },
+      { type: 'minor', text: 'Opportunities modal now has an Owner filter dropdown and all columns are sortable' },
+      { type: 'minor', text: 'Filled jobs automatically drop off the main Req Board list the day after status change (still counted in On The Board)' },
+      { type: 'minor', text: 'On The Board modal: TR, Type, and Start Date are now editable inline' },
+    ],
+  },
   {
     version: '2.2.2',
     date: '2026-04-13',

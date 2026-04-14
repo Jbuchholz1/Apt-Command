@@ -76,6 +76,7 @@ const COLUMNS = [
   { key: 'dateAdded', label: 'Date', sortable: true, width: '70px' },
   { key: 'ownerInitials', label: 'AM', sortable: true, width: '50px', editType: 'select', bullhornField: 'owner' },
   { key: 'recruiter', label: 'TR', sortable: true, width: '60px', editType: 'select', bullhornField: 'assignedUsers' },
+  { key: 'fortyEightHr', label: '48 hr', sortable: true, width: '70px', editable: true },
   { key: 'title', label: 'Job Title', sortable: true, width: '140px' },
   { key: 'client', label: 'Client', sortable: true, width: '50px' },
   { key: 'status', label: 'Status', sortable: true, width: '55px', editType: 'select', bullhornField: 'status' },
@@ -99,6 +100,7 @@ const OVERRIDE_FIELD_MAP = {
   deadline: 'deadline',
   coverageNeeded: 'coverage_needed',
   calledShot: 'called_shot',
+  fortyEightHr: 'forty_eight_hr',
 };
 
 const COVERAGE_OPTIONS = [
@@ -269,7 +271,7 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
 
     // Editable free-text cells
     if (col.editable) {
-      const placeholders = { notes: 'Notes', deadline: 'Deadline', followUp: 'Follow Up' };
+      const placeholders = { notes: 'Notes', deadline: 'Deadline', followUp: 'Follow Up', fortyEightHr: '48 hr' };
       const placeholder = placeholders[col.key] || '';
       // Compute urgency coloring for deadline and follow-up
       let cellStyle;

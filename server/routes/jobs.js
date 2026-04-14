@@ -39,6 +39,7 @@ router.get('/export', async (req, res, next) => {
       { header: 'Date', key: 'dateAdded', width: 10 },
       { header: 'AM', key: 'ownerInitials', width: 5 },
       { header: 'TR', key: 'recruiter', width: 5 },
+      { header: '48 hr', key: 'fortyEightHr', width: 12 },
       { header: 'Job Title', key: 'title', width: 28 },
       { header: 'Client', key: 'client', width: 18 },
       { header: 'Status', key: 'status', width: 20 },
@@ -72,6 +73,7 @@ router.get('/export', async (req, res, next) => {
         dateAdded: dateStr,
         ownerInitials: job.ownerInitials || '',
         recruiter: job.recruiter || '',
+        fortyEightHr: job.fortyEightHr || '',
         title: job.title || '',
         client: job.client || '',
         status: job.status || '',
@@ -94,7 +96,7 @@ router.get('/export', async (req, res, next) => {
     sheet.getColumn('permFee').numFmt = '$#,##0';
 
     // Auto-filter
-    sheet.autoFilter = { from: 'A1', to: `S${jobs.length + 1}` };
+    sheet.autoFilter = { from: 'A1', to: `T${jobs.length + 1}` };
 
     // Freeze header row
     sheet.views = [{ state: 'frozen', ySplit: 1 }];
@@ -336,7 +338,7 @@ router.patch('/:id/overrides', async (req, res, next) => {
       return res.status(400).json({ error: 'Invalid job ID' });
     }
 
-    const { recruiter, notes, follow_up, deadline, coverage_needed, tr_reassigned, tr_assigned_at, called_shot } = req.body;
+    const { recruiter, notes, follow_up, deadline, coverage_needed, tr_reassigned, tr_assigned_at, called_shot, forty_eight_hr } = req.body;
     const updatedBy = req.user?.email || req.user?.name || 'unknown';
 
     const result = await upsertOverrides(jobId, {
@@ -348,6 +350,7 @@ router.patch('/:id/overrides', async (req, res, next) => {
       tr_reassigned,
       tr_assigned_at,
       called_shot,
+      forty_eight_hr: sanitize(forty_eight_hr),
       updated_by: updatedBy,
     });
 
@@ -407,6 +410,7 @@ function mergeOverrides(job, overridesMap) {
     job.notes = ov.notes || '';
     job.coverageNeeded = ov.coverage_needed || '';
     job.calledShot = ov.called_shot === true || ov.called_shot === 'true';
+    job.fortyEightHr = ov.forty_eight_hr || '';
   } else {
     job.recruiter = job.recruiter || '';
     job.trReassigned = false;
@@ -416,6 +420,7 @@ function mergeOverrides(job, overridesMap) {
     job.notes = job.notes || '';
     job.coverageNeeded = job.coverageNeeded || '';
     job.calledShot = false;
+    job.fortyEightHr = '';
   }
   return job;
 }

@@ -10,6 +10,17 @@ import SplashScreen from './SplashScreen';
 
 const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
+// Filled jobs stay on the board the day they were filled, then disappear the next day.
+// The "On The Board" counter and modal still show them via the unfiltered jobs array.
+function isFilledAndExpired(job) {
+  if (job.status !== 'Filled') return false;
+  if (!job.dateLastModified) return false;
+  const now = new Date();
+  const centralStr = now.toLocaleDateString('en-US', { timeZone: 'America/Chicago' });
+  const startOfToday = new Date(centralStr + ' 00:00:00');
+  return new Date(job.dateLastModified) < startOfToday;
+}
+
 export default function ReqBoardModule() {
   const [showSplash, setShowSplash] = useState(true);
 
@@ -57,6 +68,7 @@ export default function ReqBoardModule() {
 
   const filteredJobs = useMemo(() => {
     return jobs.filter(job => {
+      if (isFilledAndExpired(job)) return false;
       if (filters.status?.length && !filters.status.includes(job.status)) return false;
       if (filters.employmentType?.length && !filters.employmentType.includes(job.employmentType)) return false;
       if (filters.owner?.length && !filters.owner.includes(job.owner)) return false;
