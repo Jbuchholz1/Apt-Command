@@ -48,6 +48,8 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   const [accSort, setAccSort] = useState({ key: 'id', dir: 'desc' });
   const [abOwnerFilter, setAbOwnerFilter] = useState('');
   const [abSort, setAbSort] = useState({ key: 'id', dir: 'desc' });
+  const [cOwnerFilter, setCOwnerFilter] = useState('');
+  const [cSort, setCSort] = useState({ key: 'id', dir: 'desc' });
 
   useEffect(() => {
     getRecruiters().then(res => setRecruiters(res.data || [])).catch(() => {});
@@ -230,6 +232,47 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
     return arr;
   }, [abReqs, abOwnerFilter, abSort]);
 
+  // C Reqs: owner filter + sortable columns
+  const cOwners = useMemo(() => {
+    const set = new Set();
+    cReqs.forEach(j => { if (j.owner) set.add(j.owner); });
+    return [...set].sort();
+  }, [cReqs]);
+
+  const handleCSort = (key) => {
+    setCSort(prev =>
+      prev.key === key
+        ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
+        : { key, dir: 'asc' }
+    );
+  };
+
+  const cSortIcon = (key) => {
+    if (cSort.key !== key) return ' ↕';
+    return cSort.dir === 'asc' ? ' ↑' : ' ↓';
+  };
+
+  const filteredC = useMemo(() => {
+    let result = cReqs;
+    if (cOwnerFilter) {
+      result = result.filter(j => j.owner === cOwnerFilter);
+    }
+    const arr = [...result];
+    arr.sort((a, b) => {
+      let av = a[cSort.key];
+      let bv = b[cSort.key];
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      if (typeof av === 'number' && typeof bv === 'number') {
+        return cSort.dir === 'asc' ? av - bv : bv - av;
+      }
+      const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true });
+      return cSort.dir === 'asc' ? cmp : -cmp;
+    });
+    return arr;
+  }, [cReqs, cOwnerFilter, cSort]);
+
   const handleContractorsClick = async () => {
     setShowContractors(true);
     setPlacementsLoading(true);
@@ -367,7 +410,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
     { label: 'Accepting Candidates', value: acceptingCandidates, color: '#16a34a', onClick: () => { setAccOwnerFilter(''); setAccSort({ key: 'id', dir: 'desc' }); setShowAccepting(true); } },
     { label: 'Missed Follow Ups', value: missedFollowUps, color: '#dc2626', onClick: () => setShowMissedFollowUps(true) },
     { label: 'A/B Covered', value: `${abCovered} / ${abTotal}`, color: '#c9a227', onClick: () => { setAbOwnerFilter(''); setAbSort({ key: 'id', dir: 'desc' }); setShowAB(true); } },
-    { label: 'C Reqs', value: cReqCount, color: '#94a3b8', onClick: () => setShowC(true) },
+    { label: 'C Reqs', value: cReqCount, color: '#94a3b8', onClick: () => { setCOwnerFilter(''); setCSort({ key: 'id', dir: 'desc' }); setShowC(true); } },
     { label: 'On The Board', value: filledCount, color: '#7c3aed', tooltip: 'The number of Jobs with a status of Filled', onClick: () => setShowFilled(true) },
     { label: 'Opportunities', value: totalOpportunities, color: '#0369a1', onClick: handleOpportunitiesClick },
     { label: 'Active Contractors', value: activeContractors, color: '#0d9488', onClick: handleContractorsClick },
@@ -852,36 +895,65 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
         <div className="modal-overlay" onClick={() => setShowC(false)}>
           <div className="modal-content contractors-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>C Reqs ({cReqCount})</h2>
+              <h2>C Reqs ({filteredC.length}{cOwnerFilter ? ` of ${cReqCount}` : ''})</h2>
               <button className="modal-close" onClick={() => setShowC(false)}>✕</button>
+            </div>
+            <div style={{ padding: '0 20px 12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <label style={{ fontWeight: 600, fontSize: '13px' }}>Owner:</label>
+              <select
+                value={cOwnerFilter}
+                onChange={e => setCOwnerFilter(e.target.value)}
+                style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+              >
+                <option value="">All</option>
+                {cOwners.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
             </div>
             <table className="contractors-table">
               <thead>
                 <tr>
-                  <th>Req#</th>
-                  <th>Job Title</th>
-                  <th>Client</th>
-                  <th>Status</th>
-                  <th>Owner</th>
-                  <th>TR</th>
-                  <th>Type</th>
+                  {[
+                    { key: 'id', label: 'Req#' },
+                    { key: 'title', label: 'Job Title' },
+                    { key: 'client', label: 'Client' },
+                    { key: 'status', label: 'Status' },
+                    { key: 'owner', label: 'Owner' },
+                    { key: 'recruiter', label: 'TR' },
+                    { key: 'employmentType', label: 'Type' },
+                  ].map(col => (
+                    <th key={col.key} className="sortable" style={{ cursor: 'pointer' }} onClick={() => handleCSort(col.key)}>
+                      {col.label}<span className="sort-icon">{cSortIcon(col.key)}</span>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {cReqs.map(j => (
+                {filteredC.map(j => (
                   <tr key={j.id}>
                     <td>
                       <a href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=JobOrder&id=${j.id}`} target="_blank" rel="noopener noreferrer" className="bh-link">{j.id}</a>
                     </td>
                     <td>{j.title || '—'}</td>
                     <td>{j.client || '—'}</td>
-                    <td>{j.status || '—'}</td>
+                    <EditableSelect
+                      value={j.status || ''}
+                      displayValue={j.status || '—'}
+                      options={STATUS_OPTIONS}
+                      onSave={(val) => handleStatusSave(j, val)}
+                      className="cell-editable"
+                    />
                     <td>{j.owner || '—'}</td>
                     {renderTrCell(j)}
-                    <td>{j.employmentType || '—'}</td>
+                    <EditableSelect
+                      value={j.employmentType || ''}
+                      displayValue={TYPE_ABBREV[j.employmentType] || j.employmentType || '—'}
+                      options={TYPE_OPTIONS}
+                      onSave={(val) => handleTypeSave(j, val)}
+                      className="cell-editable"
+                    />
                   </tr>
                 ))}
-                {cReqs.length === 0 && (
+                {filteredC.length === 0 && (
                   <tr><td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>No C reqs</td></tr>
                 )}
               </tbody>
