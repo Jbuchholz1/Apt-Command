@@ -72,7 +72,6 @@ const REMOTE_OPTIONS = [
 const COLUMNS = [
   { key: 'priority', label: 'Pri', sortable: true, width: '42px' },
   { key: 'calledShot', label: 'CS', sortable: true, width: '36px' },
-  { key: 'id', label: 'Req#', sortable: true, width: '55px' },
   { key: 'dateAdded', label: 'Date', sortable: true, width: '70px' },
   { key: 'ownerInitials', label: 'AM', sortable: true, width: '50px', editType: 'select', bullhornField: 'owner' },
   { key: 'recruiter', label: 'TR', sortable: true, width: '60px', editType: 'select', bullhornField: 'assignedUsers' },
@@ -404,7 +403,19 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
       case 'dateAdded':
         return <td key={col.key} className="cell-date">{formatDate(job.dateAdded)}</td>;
       case 'title':
-        return <td key={col.key} className="cell-title cell-truncate" style={{ maxWidth: '140px' }} title={job.title || ''}>{job.title}</td>;
+        return (
+          <td key={col.key} className="cell-title cell-truncate" style={{ maxWidth: '140px' }} title={job.title || ''}>
+            <a
+              href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=JobOrder&id=${job.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bh-link"
+              onClick={e => e.stopPropagation()}
+            >
+              {job.title}
+            </a>
+          </td>
+        );
       case 'client':
         return <td key={col.key} className="cell-truncate" title={job.client || ''}>{job.client || '—'}</td>;
       case 'brSalary':

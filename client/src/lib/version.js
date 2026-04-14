@@ -9,11 +9,11 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.3.5';
+export const APP_VERSION = '2.3.6';
 
 export const CHANGELOG = [
   {
-    version: '2.3.5',
+    version: '2.3.6',
     date: '2026-04-13',
     title: 'Submissions & Req Board Updates',
     changes: [
@@ -28,6 +28,7 @@ export const CHANGELOG = [
       { type: 'minor', text: 'A/B Reqs modal: Owner filter, sortable columns, editable Status/Type' },
       { type: 'minor', text: 'C Reqs modal: Owner filter, sortable columns, editable Status/Type' },
       { type: 'minor', text: 'On The Board modal: Owner filter and editable Status column added' },
+      { type: 'patch', text: 'Removed Req# column from main board; Job Title is now a clickable Bullhorn link' },
     ],
   },
   {
