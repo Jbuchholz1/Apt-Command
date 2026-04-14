@@ -1,18 +1,23 @@
 const express = require('express');
-const { getPendingApprovedPlacements } = require('../lib/bullhorn');
+const { getActivePlacements } = require('../lib/bullhorn');
 const { getAllPlacementChecklist, upsertPlacementChecklist } = require('../lib/db');
 
 const router = express.Router();
+
+const OPS_STATUSES = new Set(['Pending', 'Approved']);
 
 // GET /api/operations/placements — Pending & Approved placements with checklist state
 router.get('/placements', async (req, res, next) => {
   try {
     const [bhResult, checklistMap] = await Promise.all([
-      getPendingApprovedPlacements(),
+      getActivePlacements(),
       getAllPlacementChecklist(),
     ]);
 
-    const placements = (bhResult?.data || []).map(p => {
+    // Filter to only Pending & Approved (getActivePlacements also returns Active)
+    const filtered = (bhResult?.data || []).filter(p => OPS_STATUSES.has(p.status));
+
+    const placements = filtered.map(p => {
       const checklist = checklistMap[p.id] || {};
       return {
         id: p.id,
