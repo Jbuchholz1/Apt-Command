@@ -2,7 +2,9 @@ const TENANT_ID = import.meta.env.VITE_AZURE_TENANT_ID;
 const CLIENT_ID = import.meta.env.VITE_AZURE_CLIENT_ID;
 
 if (!TENANT_ID || !CLIENT_ID) {
-  console.error('VITE_AZURE_TENANT_ID and VITE_AZURE_CLIENT_ID must be set');
+  if (import.meta.env.DEV) {
+    console.error('VITE_AZURE_TENANT_ID and VITE_AZURE_CLIENT_ID must be set');
+  }
 }
 
 export const msalConfig = {

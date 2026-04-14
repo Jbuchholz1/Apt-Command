@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const { requireAuth } = require('./middleware/auth');
 
 const jobsRouter = require('./routes/jobs');
@@ -25,6 +26,9 @@ const allowedOrigins = [
 ].filter(Boolean).map(u => u.replace(/\/+$/, '')); // strip trailing slashes
 
 console.log('Allowed CORS origins:', allowedOrigins);
+
+// --- Security headers (CSP disabled to avoid breaking inline styles/scripts) ---
+app.use(helmet({ contentSecurityPolicy: false }));
 
 app.use(cors({
   origin: (origin, callback) => {

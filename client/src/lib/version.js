@@ -9,9 +9,21 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.5.2';
+export const APP_VERSION = '2.5.3';
 
 export const CHANGELOG = [
+  {
+    version: '2.5.3',
+    date: '2026-04-14',
+    title: 'Security Hardening (Round 2)',
+    changes: [
+      { type: 'patch', text: 'Added Helmet middleware for secure HTTP response headers (X-Content-Type-Options, X-Frame-Options, HSTS, etc.)' },
+      { type: 'patch', text: 'Patched Vite dev server vulnerabilities (path traversal, WebSocket file read)' },
+      { type: 'patch', text: 'Disabled production source maps explicitly to prevent code exposure' },
+      { type: 'patch', text: 'Suppressed auth config console errors in production builds' },
+      { type: 'patch', text: 'Added .env exclusion to client .gitignore for defense-in-depth' },
+    ],
+  },
   {
     version: '2.5.2',
     date: '2026-04-14',
