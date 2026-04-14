@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.4.0';
+export const APP_VERSION = '2.4.1';
 
 export const CHANGELOG = [
+  {
+    version: '2.4.1',
+    date: '2026-04-14',
+    title: 'AM Performance — Fills / Losses / Washes Chart',
+    changes: [
+      { type: 'minor', text: 'Added Fills / Losses / Washes bar chart to each AM\'s individual performance score card, below the MAR & Input charts' },
+      { type: 'minor', text: 'Chart bars are clickable — click to view job detail records with Bullhorn links' },
+    ],
+  },
   {
     version: '2.4.0',
     date: '2026-04-14',

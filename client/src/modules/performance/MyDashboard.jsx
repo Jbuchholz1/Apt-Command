@@ -368,6 +368,15 @@ function RecruiterView({ data, formatCurrency }) {
 function AMView({ data, formatCurrency, modal, setModal }) {
   const inputChartData = [{ name: data.name, 'Spread Goal': data.spreadGoal, 'New Input': data.newInput }];
   const marChartData = [{ name: data.name, 'Goal': data.marGoal, 'MAR Points': data.mar }];
+  const flwChartData = [{ name: data.name, Fills: data.jobMetrics.fills, Losses: data.jobMetrics.losses, Washed: data.jobMetrics.washed }];
+
+  const handleFlwBarClick = (category) => () => {
+    const detailKeyMap = { Fills: 'fills', Losses: 'losses', Washed: 'washed' };
+    const details = data.jobDetails?.[detailKeyMap[category]] || [];
+    if (details.length > 0) {
+      setModal({ amName: data.name, activityType: category, records: details, isJob: true });
+    }
+  };
 
   const activityKeys = Object.keys(data.activityPoints || {});
 
@@ -428,6 +437,25 @@ function AMView({ data, formatCurrency, modal, setModal }) {
               <Legend />
               <Bar dataKey="Goal" fill={CHART_COLORS.navy} radius={[3, 3, 0, 0]} />
               <Bar dataKey="MAR Points" fill={CHART_COLORS.gold} radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Fills / Losses / Washes chart — full width below MAR & Input */}
+      <div style={{ padding: '0 24px 16px' }}>
+        <div className="chart-section" style={{ flex: 'none', width: '100%' }}>
+          <h3 className="section-title">Fills / Losses / Washes</h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={flwChartData} barGap={4} margin={{ top: 10, right: 20, bottom: 30, left: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="Fills" fill={CHART_COLORS.fills} radius={[3, 3, 0, 0]} cursor="pointer" onClick={handleFlwBarClick('Fills')} />
+              <Bar dataKey="Losses" fill={CHART_COLORS.losses} radius={[3, 3, 0, 0]} cursor="pointer" onClick={handleFlwBarClick('Losses')} />
+              <Bar dataKey="Washed" fill={CHART_COLORS.washed} radius={[3, 3, 0, 0]} cursor="pointer" onClick={handleFlwBarClick('Washed')} />
             </BarChart>
           </ResponsiveContainer>
         </div>
