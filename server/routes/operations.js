@@ -6,6 +6,26 @@ const router = express.Router();
 
 const OPS_STATUSES = new Set(['Pending', 'Approved']);
 
+// GET /api/operations/debug — Raw Bullhorn response for debugging
+router.get('/debug', async (req, res, next) => {
+  try {
+    console.log('[operations/debug] Calling getActivePlacements...');
+    const result = await getActivePlacements();
+    console.log('[operations/debug] Result type:', typeof result, '| Has data:', !!result?.data, '| Count:', result?.data?.length ?? 'N/A');
+    res.json({
+      resultType: typeof result,
+      isNull: result === null,
+      hasData: !!result?.data,
+      dataLength: result?.data?.length ?? 0,
+      firstItem: result?.data?.[0] || null,
+      rawKeys: result ? Object.keys(result) : [],
+    });
+  } catch (err) {
+    console.log('[operations/debug] ERROR:', err.message);
+    res.status(500).json({ error: err.message, stack: err.stack });
+  }
+});
+
 // GET /api/operations/placements — Pending & Approved placements with checklist state
 router.get('/placements', async (req, res, next) => {
   try {
@@ -13,9 +33,9 @@ router.get('/placements', async (req, res, next) => {
     let bhResult;
     try {
       bhResult = await getActivePlacements();
-      console.log('[operations] Bullhorn returned:', bhResult?.data?.length ?? 'null', 'placements');
+      console.log('[operations] Bullhorn OK — type:', typeof bhResult, '| data count:', bhResult?.data?.length ?? 'NO DATA PROP');
     } catch (bhErr) {
-      console.error('[operations] Bullhorn error:', bhErr.message);
+      console.log('[operations] Bullhorn FAILED:', bhErr.message);
       bhResult = null;
     }
 
@@ -23,8 +43,9 @@ router.get('/placements', async (req, res, next) => {
     let checklistMap = {};
     try {
       checklistMap = await getAllPlacementChecklist();
+      console.log('[operations] Supabase OK — keys:', Object.keys(checklistMap).length);
     } catch (dbErr) {
-      console.error('[operations] Supabase error:', dbErr.message);
+      console.log('[operations] Supabase FAILED:', dbErr.message);
     }
 
     const allPlacements = bhResult?.data || [];
