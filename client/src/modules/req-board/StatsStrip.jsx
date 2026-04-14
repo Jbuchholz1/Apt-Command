@@ -50,6 +50,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   const [abSort, setAbSort] = useState({ key: 'id', dir: 'desc' });
   const [cOwnerFilter, setCOwnerFilter] = useState('');
   const [cSort, setCSort] = useState({ key: 'id', dir: 'desc' });
+  const [filledOwnerFilter, setFilledOwnerFilter] = useState('');
 
   useEffect(() => {
     getRecruiters().then(res => setRecruiters(res.data || [])).catch(() => {});
@@ -273,6 +274,18 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
     return arr;
   }, [cReqs, cOwnerFilter, cSort]);
 
+  // On The Board (Filled): owner filter
+  const filledOwners = useMemo(() => {
+    const set = new Set();
+    filledJobs.forEach(j => { if (j.owner) set.add(j.owner); });
+    return [...set].sort();
+  }, [filledJobs]);
+
+  const filteredFilled = useMemo(() => {
+    if (!filledOwnerFilter) return filledJobs;
+    return filledJobs.filter(j => j.owner === filledOwnerFilter);
+  }, [filledJobs, filledOwnerFilter]);
+
   const handleContractorsClick = async () => {
     setShowContractors(true);
     setPlacementsLoading(true);
@@ -411,7 +424,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
     { label: 'Missed Follow Ups', value: missedFollowUps, color: '#dc2626', onClick: () => setShowMissedFollowUps(true) },
     { label: 'A/B Covered', value: `${abCovered} / ${abTotal}`, color: '#c9a227', onClick: () => { setAbOwnerFilter(''); setAbSort({ key: 'id', dir: 'desc' }); setShowAB(true); } },
     { label: 'C Reqs', value: cReqCount, color: '#94a3b8', onClick: () => { setCOwnerFilter(''); setCSort({ key: 'id', dir: 'desc' }); setShowC(true); } },
-    { label: 'On The Board', value: filledCount, color: '#7c3aed', tooltip: 'The number of Jobs with a status of Filled', onClick: () => setShowFilled(true) },
+    { label: 'On The Board', value: filledCount, color: '#7c3aed', tooltip: 'The number of Jobs with a status of Filled', onClick: () => { setFilledOwnerFilter(''); setShowFilled(true); } },
     { label: 'Opportunities', value: totalOpportunities, color: '#0369a1', onClick: handleOpportunitiesClick },
     { label: 'Active Contractors', value: activeContractors, color: '#0d9488', onClick: handleContractorsClick },
     { label: 'Potential CE Spread', value: fmtCurrency(totalCE), color: '#2563eb', onClick: () => setShowCE(true), tooltip: 'W2: (Bill Rate - Pay Rate × 1.25) × 40 | C2C: (Bill Rate - Pay Rate × 1.05) × 40 | A/B priority, Accepting Candidates & Filled jobs only' },
@@ -761,8 +774,19 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
         <div className="modal-overlay" onClick={() => setShowFilled(false)}>
           <div className="modal-content contractors-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>On The Board — Filled ({filledJobs.length})</h2>
+              <h2>On The Board — Filled ({filteredFilled.length}{filledOwnerFilter ? ` of ${filledJobs.length}` : ''})</h2>
               <button className="modal-close" onClick={() => setShowFilled(false)}>✕</button>
+            </div>
+            <div style={{ padding: '0 20px 12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <label style={{ fontWeight: 600, fontSize: '13px' }}>Owner:</label>
+              <select
+                value={filledOwnerFilter}
+                onChange={e => setFilledOwnerFilter(e.target.value)}
+                style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+              >
+                <option value="">All</option>
+                {filledOwners.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
             </div>
             <table className="contractors-table">
               <thead>
@@ -771,13 +795,14 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
                   <th>Job Title</th>
                   <th>Client</th>
                   <th>Owner</th>
+                  <th>Status</th>
                   <th>TR</th>
                   <th>Type</th>
                   <th>Start</th>
                 </tr>
               </thead>
               <tbody>
-                {filledJobs.map(j => (
+                {filteredFilled.map(j => (
                   <tr key={j.id}>
                     <td>
                       <a
@@ -792,6 +817,13 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
                     <td>{j.title || '—'}</td>
                     <td>{j.client || '—'}</td>
                     <td>{j.owner || '—'}</td>
+                    <EditableSelect
+                      value={j.status || ''}
+                      displayValue={j.status || '—'}
+                      options={STATUS_OPTIONS}
+                      onSave={(val) => handleStatusSave(j, val)}
+                      className="cell-editable"
+                    />
                     {renderTrCell(j)}
                     <EditableSelect
                       value={j.employmentType || ''}
@@ -807,8 +839,8 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
                     />
                   </tr>
                 ))}
-                {filledJobs.length === 0 && (
-                  <tr><td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>No filled jobs</td></tr>
+                {filteredFilled.length === 0 && (
+                  <tr><td colSpan="8" style={{ textAlign: 'center', padding: '20px' }}>No filled jobs</td></tr>
                 )}
               </tbody>
             </table>
