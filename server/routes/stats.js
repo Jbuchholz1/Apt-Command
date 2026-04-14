@@ -15,6 +15,10 @@ router.get('/', async (req, res, next) => {
     const jobs = jobsResult?.data || [];
     const placements = placementsResult?.data || [];
     const opportunities = opportunitiesResult?.data || [];
+    const activeOpportunities = opportunities.filter(o => {
+      const s = Array.isArray(o.status) ? o.status[0] : o.status;
+      return ['Open', 'Qualifying', 'Negotiating'].includes(s);
+    });
 
     const statusCount = (status) =>
       jobs.filter(j => {
@@ -25,7 +29,7 @@ router.get('/', async (req, res, next) => {
     res.json({
       openReqs: jobs.length,
       activeContractors: placements.length,
-      totalOpportunities: opportunities.length,
+      totalOpportunities: activeOpportunities.length,
       offersOut: statusCount('Offer Out'),
       covered: statusCount('Covered'),
       acceptingCandidates: statusCount('Accepting Candidates'),

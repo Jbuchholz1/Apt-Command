@@ -9,9 +9,26 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.4.1';
+export const APP_VERSION = '2.4.3';
 
 export const CHANGELOG = [
+  {
+    version: '2.4.3',
+    date: '2026-04-14',
+    title: 'Fix Opportunities Count',
+    changes: [
+      { type: 'patch', text: 'Req Board opportunities stat now counts only Open, Qualifying, and Negotiating stages' },
+    ],
+  },
+  {
+    version: '2.4.2',
+    date: '2026-04-14',
+    title: 'Bug Fixes',
+    changes: [
+      { type: 'fix', text: '"On The Board" counter now correctly counts all Filled jobs visible on the board, including recently closed ones' },
+      { type: 'fix', text: 'Archive, Placed, and Lost jobs now fall off the board after 24 hours instead of 48' },
+    ],
+  },
   {
     version: '2.4.1',
     date: '2026-04-14',
