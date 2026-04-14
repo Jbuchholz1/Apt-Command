@@ -59,6 +59,20 @@
 .ops-refresh-btn:hover { background: var(--gold-light); }
 .ops-refresh-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
+.ops-export-btn {
+  background: transparent;
+  color: var(--gold);
+  border: 1px solid var(--gold);
+  padding: 6px 16px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.ops-export-btn:hover { background: var(--gold); color: var(--navy-dark); }
+.ops-export-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
 /* ---- Section Header ---- */
 .ops-section {
   padding: 0;

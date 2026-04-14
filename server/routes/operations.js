@@ -1,8 +1,18 @@
 const express = require('express');
+const ExcelJS = require('exceljs');
 const { getPendingApprovedPlacements, updatePlacementField } = require('../lib/bullhorn');
 const { getAllPlacementChecklist, upsertPlacementChecklist } = require('../lib/db');
 
 const router = express.Router();
+
+// Helper: format Bullhorn timestamp to MM/DD/YY
+function fmtDate(val) {
+  if (!val) return '';
+  try {
+    const d = new Date(val);
+    return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${String(d.getFullYear()).slice(-2)}`;
+  } catch { return ''; }
+}
 
 // GET /api/operations/placements — Pending & Approved placements with checklist state
 router.get('/placements', async (req, res, next) => {
@@ -97,6 +107,84 @@ router.patch('/placements/:id', async (req, res, next) => {
     }
 
     res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/operations/placements/export — Excel export of placements tracker
+router.get('/placements/export', async (req, res, next) => {
+  try {
+    const [bhResult, checklistMap] = await Promise.all([
+      getPendingApprovedPlacements(),
+      getAllPlacementChecklist(),
+    ]);
+
+    const placements = (bhResult?.data || []).map(p => {
+      const cl = checklistMap[p.id] || {};
+      return {
+        employmentType: p.employmentType || '',
+        am: p.jobOrder?.owner
+          ? `${(p.jobOrder.owner.firstName || '')[0] || ''}${(p.jobOrder.owner.lastName || '')[0] || ''}`.toUpperCase()
+          : '',
+        tr: (p.jobOrder?.assignedUsers?.data || [])
+          .map(u => `${(u.firstName || '')[0] || ''}${(u.lastName || '')[0] || ''}`.toUpperCase())
+          .filter(Boolean).join(', ') || '*',
+        candidate: p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '',
+        startDate: fmtDate(p.dateBegin),
+        client: p.jobOrder?.clientCorporation?.name || '',
+        obPaperwork: cl.ob_paperwork_complete ? 'Yes' : '',
+        newHireFiled: cl.new_hire_filed ? 'Yes' : '',
+        hcEffective: fmtDate(cl.healthcare_effective_date),
+        hcPayrollDed: fmtDate(cl.healthcare_payroll_deduction_date),
+        enrolledHc: cl.enrolled_in_healthcare ? 'Yes' : '',
+        addedPayroll: cl.added_to_payroll ? 'Yes' : '',
+        four01kOptIn: cl.four01k_opt_in ? 'Yes' : '',
+        four01kForms: cl.four01k_forms_received ? 'Yes' : '',
+        addedCensus: cl.added_to_census ? 'Yes' : '',
+      };
+    });
+
+    const wb = new ExcelJS.Workbook();
+    const sheet = wb.addWorksheet('Placements');
+
+    sheet.columns = [
+      { header: 'Type', key: 'employmentType', width: 14 },
+      { header: 'AM', key: 'am', width: 5 },
+      { header: 'TR', key: 'tr', width: 5 },
+      { header: 'Placement Name', key: 'candidate', width: 22 },
+      { header: 'Start Date', key: 'startDate', width: 12 },
+      { header: 'Client', key: 'client', width: 22 },
+      { header: 'OB Paperwork', key: 'obPaperwork', width: 13 },
+      { header: 'New Hire Filed', key: 'newHireFiled', width: 14 },
+      { header: 'HC Effective Date', key: 'hcEffective', width: 16 },
+      { header: 'HC Payroll Ded.', key: 'hcPayrollDed', width: 16 },
+      { header: 'Enrolled HC', key: 'enrolledHc', width: 12 },
+      { header: 'Added Payroll', key: 'addedPayroll', width: 13 },
+      { header: '401k Opt In', key: 'four01kOptIn', width: 12 },
+      { header: '401k Forms', key: 'four01kForms', width: 12 },
+      { header: 'Added Census', key: 'addedCensus', width: 13 },
+    ];
+
+    // Style header row
+    const headerRow = sheet.getRow(1);
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF04144F' } };
+    headerRow.alignment = { vertical: 'middle' };
+    headerRow.height = 22;
+
+    for (const p of placements) {
+      sheet.addRow(p);
+    }
+
+    // Auto-filter & freeze header
+    sheet.autoFilter = { from: 'A1', to: `O${placements.length + 1}` };
+    sheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=APT_Placements_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    await wb.xlsx.write(res);
+    res.end();
   } catch (err) {
     next(err);
   }

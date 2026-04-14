@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Download } from 'lucide-react';
 import ModuleSplash from '../../components/ModuleSplash';
 import PlacementsTracker from './PlacementsTracker';
+import { exportOperationsPlacements } from '../../lib/api';
 import './operations.css';
 
 export default function OperationsModule() {
@@ -9,6 +10,18 @@ export default function OperationsModule() {
   const [lastRefresh, setLastRefresh] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = useCallback(async () => {
+    try {
+      setExporting(true);
+      await exportOperationsPlacements();
+    } catch (err) {
+      console.error('[Operations] export error:', err);
+    } finally {
+      setExporting(false);
+    }
+  }, []);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -41,6 +54,14 @@ export default function OperationsModule() {
               Updated {lastRefresh.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
             </span>
           )}
+          <button
+            className="ops-export-btn"
+            onClick={handleExport}
+            disabled={exporting}
+          >
+            <Download size={12} style={{ marginRight: 4, verticalAlign: -1 }} />
+            {exporting ? 'Exporting...' : 'Export Excel'}
+          </button>
           <button
             className="ops-refresh-btn"
             onClick={handleRefresh}
