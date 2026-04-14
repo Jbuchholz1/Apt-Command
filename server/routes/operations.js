@@ -9,13 +9,30 @@ const OPS_STATUSES = new Set(['Pending', 'Approved']);
 // GET /api/operations/placements — Pending & Approved placements with checklist state
 router.get('/placements', async (req, res, next) => {
   try {
-    const [bhResult, checklistMap] = await Promise.all([
-      getActivePlacements(),
-      getAllPlacementChecklist(),
-    ]);
+    // Fetch Bullhorn placements first (proven function)
+    let bhResult;
+    try {
+      bhResult = await getActivePlacements();
+      console.log('[operations] Bullhorn returned:', bhResult?.data?.length ?? 'null', 'placements');
+    } catch (bhErr) {
+      console.error('[operations] Bullhorn error:', bhErr.message);
+      bhResult = null;
+    }
 
-    // Filter to only Pending & Approved (getActivePlacements also returns Active)
-    const filtered = (bhResult?.data || []).filter(p => OPS_STATUSES.has(p.status));
+    // Fetch checklist state separately so Supabase issues don't block Bullhorn data
+    let checklistMap = {};
+    try {
+      checklistMap = await getAllPlacementChecklist();
+    } catch (dbErr) {
+      console.error('[operations] Supabase error:', dbErr.message);
+    }
+
+    const allPlacements = bhResult?.data || [];
+    console.log('[operations] Statuses found:', [...new Set(allPlacements.map(p => p.status))]);
+
+    // Filter to only Pending & Approved
+    const filtered = allPlacements.filter(p => OPS_STATUSES.has(p.status));
+    console.log('[operations] After filter:', filtered.length, 'of', allPlacements.length);
 
     const placements = filtered.map(p => {
       const checklist = checklistMap[p.id] || {};
@@ -52,6 +69,7 @@ router.get('/placements', async (req, res, next) => {
 
     res.json({ total: placements.length, data: placements });
   } catch (err) {
+    console.error('[operations] Unhandled error:', err.message);
     next(err);
   }
 });
