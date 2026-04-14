@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.3.6';
+export const APP_VERSION = '2.3.7';
 
 export const CHANGELOG = [
+  {
+    version: '2.3.7',
+    date: '2026-04-13',
+    title: 'Pipeline — Show All Opportunities',
+    changes: [
+      { type: 'minor', text: 'Pipeline tab now shows all opportunities regardless of status (previously excluded Closed, Closed-Lost, Closed-Won, Converted)' },
+    ],
+  },
   {
     version: '2.3.6',
     date: '2026-04-13',

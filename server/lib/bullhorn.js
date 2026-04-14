@@ -166,7 +166,7 @@ async function getClientSubmissions() {
 async function getOpenOpportunities() {
   return callTool('query_entity', {
     entityType: 'Opportunity',
-    where: "isDeleted = false AND status NOT IN ('Closed','Closed-Lost','Closed-Won','Converted')",
+    where: "isDeleted = false",
     fields: 'id',
     count: 500,
   });
@@ -216,7 +216,7 @@ async function getCorporateUsers() {
 async function getOpenOpportunitiesFull() {
   return callTool('query_entity', {
     entityType: 'Opportunity',
-    where: "isDeleted = false AND status NOT IN ('Closed','Closed-Lost','Closed-Won','Converted')",
+    where: "isDeleted = false",
     fields: 'id,title,status,owner,clientCorporation,dateAdded,expectedCloseDate,dealValue,weightedDealValue',
     orderBy: '-dateAdded',
     count: 500,

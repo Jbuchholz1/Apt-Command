@@ -88,7 +88,7 @@ export default function OpportunityPipeline() {
         <div className="pipeline-summary">
           <div className="pipeline-stat">
             <div className="pipeline-stat-value">{filtered.length}</div>
-            <div className="pipeline-stat-label">Open Opportunities</div>
+            <div className="pipeline-stat-label">Total Opportunities</div>
           </div>
           <div className="pipeline-stat">
             <div className="pipeline-stat-value">{fmtCurrency(totalDeal)}</div>
@@ -170,7 +170,7 @@ export default function OpportunityPipeline() {
                   </tr>
                 )}
                 {filtered.length === 0 && (
-                  <tr><td colSpan="8" className="pipeline-empty">No open opportunities found</td></tr>
+                  <tr><td colSpan="8" className="pipeline-empty">No opportunities found</td></tr>
                 )}
               </tbody>
             </table>
