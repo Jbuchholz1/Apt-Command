@@ -110,7 +110,7 @@ router.get('/export', async (req, res, next) => {
   }
 });
 
-// GET /api/jobs — All open jobs + recently closed (Archive/Placed/Lost within 48hrs)
+// GET /api/jobs — All open jobs + recently closed (Archive/Placed/Lost/Wash within 12hrs)
 router.get('/', async (req, res, next) => {
   try {
     const [openResult, closedResult, clientSubsResult] = await Promise.all([
@@ -147,7 +147,7 @@ router.get('/', async (req, res, next) => {
           : null;
         // Mark recently-closed jobs so the frontend can style them
         const status = Array.isArray(j.status) ? j.status[0] : j.status;
-        if (['Archive', 'Placed', 'Lost'].includes(status) && !j.isOpen) {
+        if (['Archive', 'Placed', 'Lost', 'Wash'].includes(status) && !j.isOpen) {
           formatted.fallingOff = true;
         }
         allJobs.push(mergeOverrides(formatted, overrides));
