@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.5.0';
+export const APP_VERSION = '2.5.1';
 
 export const CHANGELOG = [
+  {
+    version: '2.5.1',
+    date: '2026-04-14',
+    title: 'Req Board Column & Contractor Fixes',
+    changes: [
+      { type: 'patch', text: 'Moved # Op and # CS columns to the right of Follow Up for better workflow visibility' },
+      { type: 'patch', text: 'Fixed Active Contractors count showing 0 — removed assignedUsers field that corrupted Bullhorn query' },
+    ],
+  },
   {
     version: '2.5.0',
     date: '2026-04-14',

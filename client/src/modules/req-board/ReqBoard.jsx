@@ -82,14 +82,14 @@ const COLUMNS = [
   { key: 'notes', label: 'Notes', sortable: true, width: '175px', editable: true },
   { key: 'deadline', label: 'Deadline', sortable: true, width: '110px', editable: true },
   { key: 'followUp', label: 'Follow Up', sortable: true, width: '120px', editable: true },
+  { key: 'numOpenings', label: '# Op', sortable: true, width: '45px' },
+  { key: 'clientSubs', label: '# CS', sortable: true, width: '45px' },
   { key: 'brSalary', label: 'PrBr/Salary LH', sortable: true, width: '130px' },
   { key: 'ceSpread', label: 'CE $', sortable: true, width: '70px' },
   { key: 'permFee', label: 'Perm $', sortable: true, width: '75px' },
   { key: 'clientContact', label: 'Manager', sortable: true, width: '100px' },
   { key: 'employmentType', label: 'Type', sortable: true, width: '55px', editType: 'select', bullhornField: 'employmentType' },
   { key: 'remote', label: 'Remote', sortable: true, width: '75px', editType: 'select', bullhornField: 'customText1' },
-  { key: 'numOpenings', label: '# Op', sortable: true, width: '45px' },
-  { key: 'clientSubs', label: '# CS', sortable: true, width: '45px' },
 ];
 
 // Maps column keys to the API field names for overrides
