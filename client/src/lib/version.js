@@ -9,15 +9,16 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.3.9';
+export const APP_VERSION = '2.4.0';
 
 export const CHANGELOG = [
   {
-    version: '2.3.9',
-    date: '2026-04-13',
+    version: '2.4.0',
+    date: '2026-04-14',
     title: 'Sales Dashboard — Fills / Losses / Washes Chart',
     changes: [
-      { type: 'minor', text: 'Added Fills / Losses / Washes bar chart to Sales Dashboard — grouped bars per AM, updates with date range and AM filters' },
+      { type: 'minor', text: 'Added Fills / Losses / Washes bar chart to Sales Dashboard — full-width below the existing charts, updates with date range and AM filters' },
+      { type: 'minor', text: 'Chart bars are clickable — click any bar to view the job detail records with Bullhorn links' },
     ],
   },
   {

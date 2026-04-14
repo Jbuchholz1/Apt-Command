@@ -133,6 +133,18 @@ export default function SalesDashboard() {
     }));
   }, [filteredAms]);
 
+  // Click handler for Fills/Losses/Washes chart bars
+  const handleBarClick = (category) => (data) => {
+    const amName = data.name;
+    const am = filteredAms.find(a => a.name === amName);
+    if (!am) return;
+    const detailKeyMap = { Fills: 'fills', Losses: 'losses', Washed: 'washed' };
+    const details = am.jobDetails?.[detailKeyMap[category]] || [];
+    if (details.length > 0) {
+      setModal({ amName, activityType: category, records: details, isJob: true });
+    }
+  };
+
   const ams = filteredAms;
 
   return (
@@ -232,7 +244,11 @@ export default function SalesDashboard() {
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
-            <div className="chart-section">
+          </div>
+
+          {/* Fills / Losses / Washes — full width below the two charts */}
+          <div style={{ padding: '0 24px 24px' }}>
+            <div className="chart-section" style={{ flex: 'none', width: '100%' }}>
               <h3 className="section-title">Fills / Losses / Washes</h3>
               <ResponsiveContainer width="100%" height={320}>
                 <BarChart data={flwData} barGap={4} margin={{ top: 10, right: 20, bottom: 30, left: 20 }}>
@@ -241,9 +257,9 @@ export default function SalesDashboard() {
                   <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                   <Tooltip />
                   <Legend />
-                  <Bar dataKey="Fills" fill={CHART_COLORS.fills} radius={[3, 3, 0, 0]} />
-                  <Bar dataKey="Losses" fill={CHART_COLORS.losses} radius={[3, 3, 0, 0]} />
-                  <Bar dataKey="Washed" fill={CHART_COLORS.washed} radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="Fills" fill={CHART_COLORS.fills} radius={[3, 3, 0, 0]} cursor="pointer" onClick={handleBarClick('Fills')} />
+                  <Bar dataKey="Losses" fill={CHART_COLORS.losses} radius={[3, 3, 0, 0]} cursor="pointer" onClick={handleBarClick('Losses')} />
+                  <Bar dataKey="Washed" fill={CHART_COLORS.washed} radius={[3, 3, 0, 0]} cursor="pointer" onClick={handleBarClick('Washed')} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
