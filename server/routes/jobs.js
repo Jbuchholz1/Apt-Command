@@ -1,6 +1,6 @@
 const express = require('express');
 const ExcelJS = require('exceljs');
-const { getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getSubmissions, addNoteToJob, updateJobField, updateOpportunityField, getCorporateUsers, getOpenOpportunitiesFull, getClientSubmissions } = require('../lib/bullhorn');
+const { getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getSubmissions, addNoteToJob, updateJobField, updateOpportunityField, updateSubmissionField, getCorporateUsers, getOpenOpportunitiesFull, getClientSubmissions } = require('../lib/bullhorn');
 const { getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote } = require('../lib/db');
 
 const router = express.Router();
@@ -249,6 +249,35 @@ router.post('/opportunities/:id/update', async (req, res, next) => {
 
     await updateOpportunityField(id, sanitized);
     res.json({ success: true, id, updated: sanitized });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/jobs/submissions/:id/update — Update submission fields in Bullhorn
+router.post('/submissions/:id/update', async (req, res, next) => {
+  try {
+    const subId = parseInt(req.params.id, 10);
+    if (isNaN(subId)) {
+      return res.status(400).json({ error: 'Invalid submission ID' });
+    }
+
+    const { fields } = req.body;
+    if (!fields || typeof fields !== 'object' || Object.keys(fields).length === 0) {
+      return res.status(400).json({ error: 'fields object is required' });
+    }
+
+    const ALLOWED_FIELDS = new Set(['status']);
+    const sanitized = {};
+    for (const [key, value] of Object.entries(fields)) {
+      if (!ALLOWED_FIELDS.has(key)) {
+        return res.status(400).json({ error: `Field "${key}" is not allowed` });
+      }
+      sanitized[key] = value;
+    }
+
+    const result = await updateSubmissionField(subId, sanitized);
+    res.json({ success: true, data: result });
   } catch (err) {
     next(err);
   }
@@ -525,6 +554,9 @@ function formatSubmission(sub) {
     status: sub.status,
     dateAdded: sub.dateAdded ? new Date(sub.dateAdded).toISOString() : null,
     source: sub.source || null,
+    sendingUser: sub.sendingUser
+      ? `${(sub.sendingUser.firstName || '')[0] || ''}${(sub.sendingUser.lastName || '')[0] || ''}`.toUpperCase()
+      : null,
   };
 }
 

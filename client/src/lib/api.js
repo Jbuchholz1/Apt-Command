@@ -146,6 +146,13 @@ export function updateOpportunityInBullhorn(id, fields) {
   });
 }
 
+export function updateSubmissionInBullhorn(id, fields) {
+  return fetchAPI(`/api/req-board/jobs/submissions/${id}/update`, {
+    method: 'POST',
+    body: { fields },
+  });
+}
+
 export function getAnnouncement() {
   return fetchAPI('/api/users/announcement');
 }

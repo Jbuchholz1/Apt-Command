@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react';
-import { getJobDetail, addJobNote } from '../../lib/api';
+import { getJobDetail, addJobNote, updateSubmissionInBullhorn } from '../../lib/api';
 import StatusBadge from './StatusBadge';
+import EditableSelect from './EditableSelect';
+
+const SUBMISSION_STATUS_OPTIONS = [
+  'Client Submission', 'Internally Submitted', 'Candidate Interested',
+  'Client Feedback', 'Interview Feedback', 'Offer Extended', 'Backout',
+].map(s => ({ value: s, label: s }));
 
 function formatDate(iso) {
   if (!iso) return '—';
@@ -126,6 +132,7 @@ export default function JobDetail({ jobId, onClose }) {
                   <thead>
                     <tr>
                       <th>Candidate</th>
+                      <th>TR</th>
                       <th>Status</th>
                       <th>Date</th>
                     </tr>
@@ -134,7 +141,29 @@ export default function JobDetail({ jobId, onClose }) {
                     {data.submissions.data.map(sub => (
                       <tr key={sub.id}>
                         <td>{sub.candidate || '—'}</td>
-                        <td>{sub.status || '—'}</td>
+                        <td>{sub.sendingUser || '—'}</td>
+                        <EditableSelect
+                          value={sub.status || ''}
+                          displayValue={sub.status || '—'}
+                          options={SUBMISSION_STATUS_OPTIONS}
+                          onSave={async (val) => {
+                            try {
+                              await updateSubmissionInBullhorn(sub.id, { status: val });
+                              setData(prev => ({
+                                ...prev,
+                                submissions: {
+                                  ...prev.submissions,
+                                  data: prev.submissions.data.map(s =>
+                                    s.id === sub.id ? { ...s, status: val } : s
+                                  ),
+                                },
+                              }));
+                            } catch (err) {
+                              console.error('Failed to update submission status:', err);
+                            }
+                          }}
+                          className="cell-editable"
+                        />
                         <td>{formatDate(sub.dateAdded)}</td>
                       </tr>
                     ))}

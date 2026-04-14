@@ -139,7 +139,7 @@ async function getJobById(id) {
 async function getSubmissions(jobOrderId) {
   return callTool('get_submissions', {
     jobOrderId: parseInt(jobOrderId, 10),
-    fields: 'id,candidate,status,dateAdded,source',
+    fields: 'id,candidate,status,dateAdded,source,sendingUser',
     count: 50,
   });
 }
@@ -192,6 +192,14 @@ async function updateOpportunityField(opportunityId, fields) {
   return callTool('update_entity', {
     entityType: 'Opportunity',
     entityId: parseInt(opportunityId, 10),
+    fields,
+  });
+}
+
+async function updateSubmissionField(submissionId, fields) {
+  return callTool('update_entity', {
+    entityType: 'JobSubmission',
+    entityId: parseInt(submissionId, 10),
     fields,
   });
 }
@@ -532,6 +540,7 @@ module.exports = {
   addNoteToJob,
   updateJobField,
   updateOpportunityField,
+  updateSubmissionField,
   getCorporateUsers,
   getRecruiterUsers,
   getClientSubsInRange,
