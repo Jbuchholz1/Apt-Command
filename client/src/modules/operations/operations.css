@@ -62,6 +62,12 @@
 /* ---- Section Header ---- */
 .ops-section {
   padding: 0;
+  margin: 20px 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
 }
 
 .ops-section-header {
