@@ -9,11 +9,11 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.3.1';
+export const APP_VERSION = '2.3.2';
 
 export const CHANGELOG = [
   {
-    version: '2.3.1',
+    version: '2.3.2',
     date: '2026-04-13',
     title: 'Submissions & Req Board Updates',
     changes: [
@@ -24,6 +24,7 @@ export const CHANGELOG = [
       { type: 'minor', text: 'Submissions panel now shows the TR (recruiter) who submitted each candidate' },
       { type: 'minor', text: 'Submission Status is now editable inline — click to update directly in Bullhorn' },
       { type: 'patch', text: 'Submissions panel now shows Client Submissions only (removed Internally Submitted)' },
+      { type: 'minor', text: 'Accepting Candidates modal: Owner filter, sortable columns, editable TR/Type/Remote' },
     ],
   },
   {

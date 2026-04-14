@@ -16,6 +16,12 @@ const TYPE_ABBREV = {
   'Project': 'SOW',
 };
 
+const REMOTE_OPTIONS = [
+  { value: 'Yes', label: 'Yes' },
+  { value: 'No', label: 'No' },
+  { value: 'Hybrid', label: 'Hybrid' },
+];
+
 export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   const [showContractors, setShowContractors] = useState(false);
   const [showCE, setShowCE] = useState(false);
@@ -34,6 +40,8 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   const [recruiters, setRecruiters] = useState([]);
   const [oppOwnerFilter, setOppOwnerFilter] = useState('');
   const [oppSort, setOppSort] = useState({ key: 'id', dir: 'desc' });
+  const [accOwnerFilter, setAccOwnerFilter] = useState('');
+  const [accSort, setAccSort] = useState({ key: 'id', dir: 'desc' });
 
   useEffect(() => {
     getRecruiters().then(res => setRecruiters(res.data || [])).catch(() => {});
@@ -115,6 +123,56 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
     });
     return arr;
   }, [opportunities, oppOwnerFilter, oppSort]);
+
+  // Accepting Candidates: owner filter + sortable columns
+  const accOwners = useMemo(() => {
+    const set = new Set();
+    acceptingJobs.forEach(j => { if (j.owner) set.add(j.owner); });
+    return [...set].sort();
+  }, [acceptingJobs]);
+
+  const handleAccSort = (key) => {
+    setAccSort(prev =>
+      prev.key === key
+        ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
+        : { key, dir: 'asc' }
+    );
+  };
+
+  const accSortIcon = (key) => {
+    if (accSort.key !== key) return ' ↕';
+    return accSort.dir === 'asc' ? ' ↑' : ' ↓';
+  };
+
+  const filteredAccepting = useMemo(() => {
+    let result = acceptingJobs;
+    if (accOwnerFilter) {
+      result = result.filter(j => j.owner === accOwnerFilter);
+    }
+    const arr = [...result];
+    arr.sort((a, b) => {
+      let av = a[accSort.key];
+      let bv = b[accSort.key];
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      if (typeof av === 'number' && typeof bv === 'number') {
+        return accSort.dir === 'asc' ? av - bv : bv - av;
+      }
+      const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true });
+      return accSort.dir === 'asc' ? cmp : -cmp;
+    });
+    return arr;
+  }, [acceptingJobs, accOwnerFilter, accSort]);
+
+  const handleRemoteSave = async (job, rawValue) => {
+    try {
+      await updateJobInBullhorn(job.id, { customText1: rawValue });
+      if (onJobUpdated) onJobUpdated(job.id, 'remote', rawValue);
+    } catch (err) {
+      console.error('Failed to update remote:', err);
+    }
+  };
 
   const handleContractorsClick = async () => {
     setShowContractors(true);
@@ -250,7 +308,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
 
   const items = [
     { label: 'Open Reqs', value: openReqs, color: '#c9a227', onClick: () => setShowOpenReqs(true) },
-    { label: 'Accepting Candidates', value: acceptingCandidates, color: '#16a34a', onClick: () => setShowAccepting(true) },
+    { label: 'Accepting Candidates', value: acceptingCandidates, color: '#16a34a', onClick: () => { setAccOwnerFilter(''); setAccSort({ key: 'id', dir: 'desc' }); setShowAccepting(true); } },
     { label: 'Missed Follow Ups', value: missedFollowUps, color: '#dc2626', onClick: () => setShowMissedFollowUps(true) },
     { label: 'A/B Covered', value: `${abCovered} / ${abTotal}`, color: '#c9a227', onClick: () => setShowAB(true) },
     { label: 'C Reqs', value: cReqCount, color: '#94a3b8', onClick: () => setShowC(true) },
@@ -790,34 +848,63 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
         <div className="modal-overlay" onClick={() => setShowAccepting(false)}>
           <div className="modal-content contractors-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Accepting Candidates ({acceptingJobs.length})</h2>
+              <h2>Accepting Candidates ({filteredAccepting.length}{accOwnerFilter ? ` of ${acceptingJobs.length}` : ''})</h2>
               <button className="modal-close" onClick={() => setShowAccepting(false)}>✕</button>
+            </div>
+            <div style={{ padding: '0 20px 12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <label style={{ fontWeight: 600, fontSize: '13px' }}>Owner:</label>
+              <select
+                value={accOwnerFilter}
+                onChange={e => setAccOwnerFilter(e.target.value)}
+                style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+              >
+                <option value="">All</option>
+                {accOwners.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
             </div>
             <table className="contractors-table">
               <thead>
                 <tr>
-                  <th>Req#</th>
-                  <th>Job Title</th>
-                  <th>Client</th>
-                  <th>Owner</th>
-                  <th>TR</th>
-                  <th>Type</th>
-                  <th>Remote</th>
+                  {[
+                    { key: 'id', label: 'Req#' },
+                    { key: 'title', label: 'Job Title' },
+                    { key: 'client', label: 'Client' },
+                    { key: 'owner', label: 'Owner' },
+                    { key: 'recruiter', label: 'TR' },
+                    { key: 'employmentType', label: 'Type' },
+                    { key: 'remote', label: 'Remote' },
+                  ].map(col => (
+                    <th key={col.key} className="sortable" style={{ cursor: 'pointer' }} onClick={() => handleAccSort(col.key)}>
+                      {col.label}<span className="sort-icon">{accSortIcon(col.key)}</span>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {acceptingJobs.map(j => (
+                {filteredAccepting.map(j => (
                   <tr key={j.id}>
                     <td><a href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=JobOrder&id=${j.id}`} target="_blank" rel="noopener noreferrer" className="bh-link">{j.id}</a></td>
                     <td>{j.title || '—'}</td>
                     <td>{j.client || '—'}</td>
                     <td>{j.owner || '—'}</td>
-                    <td>{j.recruiter || '—'}</td>
-                    <td>{j.employmentType || '—'}</td>
-                    <td>{j.remote || '—'}</td>
+                    {renderTrCell(j)}
+                    <EditableSelect
+                      value={j.employmentType || ''}
+                      displayValue={TYPE_ABBREV[j.employmentType] || j.employmentType || '—'}
+                      options={TYPE_OPTIONS}
+                      onSave={(val) => handleTypeSave(j, val)}
+                      className="cell-editable"
+                    />
+                    <EditableSelect
+                      value={j.remote || ''}
+                      displayValue={j.remote || '—'}
+                      options={REMOTE_OPTIONS}
+                      onSave={(val) => handleRemoteSave(j, val)}
+                      className="cell-editable"
+                    />
                   </tr>
                 ))}
-                {acceptingJobs.length === 0 && (
+                {filteredAccepting.length === 0 && (
                   <tr><td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>No jobs accepting candidates</td></tr>
                 )}
               </tbody>
