@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.5.1';
+export const APP_VERSION = '2.5.2';
 
 export const CHANGELOG = [
+  {
+    version: '2.5.2',
+    date: '2026-04-14',
+    title: 'On The Board — Candidate Name',
+    changes: [
+      { type: 'minor', text: 'On The Board modal now shows the placed candidate name next to the client for each filled job' },
+    ],
+  },
   {
     version: '2.5.1',
     date: '2026-04-14',

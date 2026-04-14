@@ -316,7 +316,30 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
     return arr;
   }, [cReqs, cOwnerFilter, cSort]);
 
-  // On The Board (Filled): owner filter
+  // On The Board (Filled): placement candidate map + owner filter
+  const [filledCandidateMap, setFilledCandidateMap] = useState({});
+
+  const handleFilledClick = async () => {
+    setFilledOwnerFilter('');
+    setShowFilled(true);
+    try {
+      const res = await getPlacements();
+      const map = {};
+      (res.data || []).forEach(p => {
+        if (p.jobOrderId && p.candidate) {
+          if (map[p.jobOrderId]) {
+            map[p.jobOrderId] += ', ' + p.candidate;
+          } else {
+            map[p.jobOrderId] = p.candidate;
+          }
+        }
+      });
+      setFilledCandidateMap(map);
+    } catch (err) {
+      console.error('Failed to load placements for filled:', err);
+    }
+  };
+
   const filledOwners = useMemo(() => {
     const set = new Set();
     filledJobs.forEach(j => { if (j.owner) set.add(j.owner); });
@@ -517,7 +540,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
     { label: 'Missed Follow Ups', value: missedFollowUps, color: '#dc2626', onClick: () => setShowMissedFollowUps(true) },
     { label: 'A/B Covered', value: `${abCovered} / ${abTotal}`, color: '#c9a227', onClick: () => { setAbOwnerFilter(''); setAbSort({ key: 'id', dir: 'desc' }); setShowAB(true); } },
     { label: 'C Reqs', value: cReqCount, color: '#94a3b8', onClick: () => { setCOwnerFilter(''); setCSort({ key: 'id', dir: 'desc' }); setShowC(true); } },
-    { label: 'On The Board', value: filledJobs.length, color: '#7c3aed', tooltip: 'The number of Jobs with a status of Filled', onClick: () => { setFilledOwnerFilter(''); setShowFilled(true); } },
+    { label: 'On The Board', value: filledJobs.length, color: '#7c3aed', tooltip: 'The number of Jobs with a status of Filled', onClick: handleFilledClick },
     { label: 'Opportunities', value: totalOpportunities, color: '#0369a1', onClick: handleOpportunitiesClick },
     { label: 'Active Contractors', value: activeContractors, color: '#0d9488', onClick: handleContractorsClick },
     { label: 'Potential CE Spread', value: fmtCurrency(totalCE), color: '#2563eb', onClick: () => setShowCE(true), tooltip: 'W2: (Bill Rate - Pay Rate × 1.25) × 40 | C2C: (Bill Rate - Pay Rate × 1.05) × 40 | A/B priority, Accepting Candidates & Filled jobs only' },
@@ -922,6 +945,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
                   <th>Req#</th>
                   <th>Job Title</th>
                   <th>Client</th>
+                  <th>Candidate</th>
                   <th>Owner</th>
                   <th>Status</th>
                   <th>TR</th>
@@ -944,6 +968,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
                     </td>
                     <td>{j.title || '—'}</td>
                     <td>{j.client || '—'}</td>
+                    <td>{filledCandidateMap[j.id] || '—'}</td>
                     <td>{j.owner || '—'}</td>
                     <EditableSelect
                       value={j.status || ''}
@@ -968,7 +993,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
                   </tr>
                 ))}
                 {filteredFilled.length === 0 && (
-                  <tr><td colSpan="8" style={{ textAlign: 'center', padding: '20px' }}>No filled jobs</td></tr>
+                  <tr><td colSpan="9" style={{ textAlign: 'center', padding: '20px' }}>No filled jobs</td></tr>
                 )}
               </tbody>
             </table>
