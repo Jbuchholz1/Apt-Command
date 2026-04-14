@@ -441,7 +441,7 @@ function mergeOverrides(job, overridesMap) {
     job.calledShot = ov.called_shot === true || ov.called_shot === 'true';
     job.fortyEightHr = ov.forty_eight_hr || '';
   } else {
-    job.recruiter = job.recruiter || '';
+    job.recruiter = job.recruiter || '*';
     job.trReassigned = false;
     job.trAssignedAt = null;
     job.followUp = job.followUp || '';
@@ -535,7 +535,7 @@ function formatJob(job) {
     recruiter: (job.assignedUsers?.data || [])
       .map(u => `${(u.firstName || '')[0] || ''}${(u.lastName || '')[0] || ''}`.toUpperCase())
       .filter(Boolean)
-      .join(', ') || '',
+      .join(', ') || '*',
     // Editable fields (populated from overrides)
     notes: '',
     followUp: '',

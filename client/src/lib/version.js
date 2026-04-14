@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.4.4';
+export const APP_VERSION = '2.4.5';
 
 export const CHANGELOG = [
+  {
+    version: '2.4.5',
+    date: '2026-04-14',
+    title: 'TR Default to *',
+    changes: [
+      { type: 'patch', text: 'TR assignment now defaults to "*" for all jobs with no recruiter assigned (previously showed "—")' },
+    ],
+  },
   {
     version: '2.4.4',
     date: '2026-04-14',
