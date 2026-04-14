@@ -28,6 +28,16 @@
 .pipeline-filter-clear { padding: 6px 12px; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); cursor: pointer; color: var(--text-muted); }
 .pipeline-filter-clear:hover { background: #f1f5f9; }
 
+/* Multi-select dropdown */
+.pipeline-multiselect { position: relative; }
+.pipeline-multiselect .pipeline-filter-select { min-width: 150px; display: block; width: 100%; }
+.pipeline-multiselect-dropdown { position: absolute; top: 100%; left: 0; min-width: 180px; max-height: 260px; overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.12); z-index: 100; margin-top: 2px; padding: 4px 0; }
+.pipeline-multiselect-option { display: flex; align-items: center; gap: 6px; padding: 5px 10px; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.pipeline-multiselect-option:hover { background: #f1f5f9; }
+.pipeline-multiselect-option input { margin: 0; accent-color: var(--gold); }
+.pipeline-multiselect-clear { width: 100%; padding: 5px 10px; font-size: 11px; color: var(--text-muted); background: none; border: none; border-top: 1px solid var(--border); cursor: pointer; text-align: left; }
+.pipeline-multiselect-clear:hover { background: #f1f5f9; }
+
 /* Table */
 .pipeline-table-wrap { overflow-x: auto; }
 .pipeline-table { width: 100%; border-collapse: collapse; font-size: 12px; background: var(--surface); border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }

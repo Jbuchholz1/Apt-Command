@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.3.7';
+export const APP_VERSION = '2.3.8';
 
 export const CHANGELOG = [
+  {
+    version: '2.3.8',
+    date: '2026-04-13',
+    title: 'Pipeline Multi-Select Status Filter',
+    changes: [
+      { type: 'minor', text: 'Pipeline status filter is now multi-select — pick any combination of statuses to filter by' },
+    ],
+  },
   {
     version: '2.3.7',
     date: '2026-04-13',

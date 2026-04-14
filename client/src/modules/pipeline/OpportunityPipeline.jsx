@@ -1,6 +1,46 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getOpportunities, updateOpportunityInBullhorn } from '../../lib/api';
 import EditableDate from '../req-board/EditableDate';
+
+function MultiSelect({ label, options, selected, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const toggle = (opt) => {
+    onChange(selected.includes(opt) ? selected.filter(s => s !== opt) : [...selected, opt]);
+  };
+
+  const display = selected.length === 0 ? `All ${label}`
+    : selected.length === 1 ? selected[0]
+    : `${selected.length} selected`;
+
+  return (
+    <div className="pipeline-multiselect" ref={ref}>
+      <button className="pipeline-filter-select" onClick={() => setOpen(!open)} style={{ cursor: 'pointer', textAlign: 'left' }}>
+        {display} <span style={{ float: 'right', marginLeft: 6 }}>{open ? '\u25B2' : '\u25BC'}</span>
+      </button>
+      {open && (
+        <div className="pipeline-multiselect-dropdown">
+          {options.map(opt => (
+            <label key={opt} className="pipeline-multiselect-option">
+              <input type="checkbox" checked={selected.includes(opt)} onChange={() => toggle(opt)} />
+              {opt}
+            </label>
+          ))}
+          {selected.length > 0 && (
+            <button className="pipeline-multiselect-clear" onClick={() => onChange([])}>Clear</button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const BH_BASE = 'https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm';
 
@@ -19,7 +59,7 @@ export default function OpportunityPipeline() {
   const [opportunities, setOpportunities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [filter, setFilter] = useState({ status: '', owner: '', client: '' });
+  const [filter, setFilter] = useState({ status: [], owner: '', client: '' });
   const [sort, setSort] = useState({ key: 'dateAdded', dir: 'desc' });
 
   const fetchData = useCallback(async () => {
@@ -43,7 +83,7 @@ export default function OpportunityPipeline() {
 
   const filtered = opportunities
     .filter(o => {
-      if (filter.status && o.status !== filter.status) return false;
+      if (filter.status.length > 0 && !filter.status.includes(o.status)) return false;
       if (filter.owner && o.owner !== filter.owner) return false;
       if (filter.client && o.client !== filter.client) return false;
       return true;
@@ -102,10 +142,12 @@ export default function OpportunityPipeline() {
 
         {/* Filters */}
         <div className="pipeline-filters">
-          <select value={filter.status} onChange={e => setFilter(f => ({ ...f, status: e.target.value }))} className="pipeline-filter-select">
-            <option value="">All Statuses</option>
-            {statuses.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
+          <MultiSelect
+            label="Statuses"
+            options={statuses}
+            selected={filter.status}
+            onChange={val => setFilter(f => ({ ...f, status: val }))}
+          />
           <select value={filter.owner} onChange={e => setFilter(f => ({ ...f, owner: e.target.value }))} className="pipeline-filter-select">
             <option value="">All Owners</option>
             {owners.map(o => <option key={o} value={o}>{o}</option>)}
@@ -114,8 +156,8 @@ export default function OpportunityPipeline() {
             <option value="">All Clients</option>
             {clients.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
-          {(filter.status || filter.owner || filter.client) && (
-            <button onClick={() => setFilter({ status: '', owner: '', client: '' })} className="pipeline-filter-clear">Clear</button>
+          {(filter.status.length > 0 || filter.owner || filter.client) && (
+            <button onClick={() => setFilter({ status: [], owner: '', client: '' })} className="pipeline-filter-clear">Clear</button>
           )}
         </div>
 
