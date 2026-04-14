@@ -22,6 +22,10 @@ const REMOTE_OPTIONS = [
   { value: 'Hybrid', label: 'Hybrid' },
 ];
 
+const STATUS_OPTIONS = [
+  'Accepting Candidates', 'Covered', 'Offer Out', 'Placed', 'Filled', 'Lost', 'Wash', 'Archive',
+].map(s => ({ value: s, label: s }));
+
 export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   const [showContractors, setShowContractors] = useState(false);
   const [showCE, setShowCE] = useState(false);
@@ -42,6 +46,8 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   const [oppSort, setOppSort] = useState({ key: 'id', dir: 'desc' });
   const [accOwnerFilter, setAccOwnerFilter] = useState('');
   const [accSort, setAccSort] = useState({ key: 'id', dir: 'desc' });
+  const [abOwnerFilter, setAbOwnerFilter] = useState('');
+  const [abSort, setAbSort] = useState({ key: 'id', dir: 'desc' });
 
   useEffect(() => {
     getRecruiters().then(res => setRecruiters(res.data || [])).catch(() => {});
@@ -173,6 +179,56 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
       console.error('Failed to update remote:', err);
     }
   };
+
+  const handleStatusSave = async (job, rawValue) => {
+    try {
+      await updateJobInBullhorn(job.id, { status: rawValue });
+      if (onJobUpdated) onJobUpdated(job.id, 'status', rawValue);
+    } catch (err) {
+      console.error('Failed to update status:', err);
+    }
+  };
+
+  // A/B Reqs: owner filter + sortable columns
+  const abOwners = useMemo(() => {
+    const set = new Set();
+    abReqs.forEach(j => { if (j.owner) set.add(j.owner); });
+    return [...set].sort();
+  }, [abReqs]);
+
+  const handleAbSort = (key) => {
+    setAbSort(prev =>
+      prev.key === key
+        ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
+        : { key, dir: 'asc' }
+    );
+  };
+
+  const abSortIcon = (key) => {
+    if (abSort.key !== key) return ' ↕';
+    return abSort.dir === 'asc' ? ' ↑' : ' ↓';
+  };
+
+  const filteredAB = useMemo(() => {
+    let result = abReqs;
+    if (abOwnerFilter) {
+      result = result.filter(j => j.owner === abOwnerFilter);
+    }
+    const arr = [...result];
+    arr.sort((a, b) => {
+      let av = a[abSort.key];
+      let bv = b[abSort.key];
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      if (typeof av === 'number' && typeof bv === 'number') {
+        return abSort.dir === 'asc' ? av - bv : bv - av;
+      }
+      const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true });
+      return abSort.dir === 'asc' ? cmp : -cmp;
+    });
+    return arr;
+  }, [abReqs, abOwnerFilter, abSort]);
 
   const handleContractorsClick = async () => {
     setShowContractors(true);
@@ -310,7 +366,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
     { label: 'Open Reqs', value: openReqs, color: '#c9a227', onClick: () => setShowOpenReqs(true) },
     { label: 'Accepting Candidates', value: acceptingCandidates, color: '#16a34a', onClick: () => { setAccOwnerFilter(''); setAccSort({ key: 'id', dir: 'desc' }); setShowAccepting(true); } },
     { label: 'Missed Follow Ups', value: missedFollowUps, color: '#dc2626', onClick: () => setShowMissedFollowUps(true) },
-    { label: 'A/B Covered', value: `${abCovered} / ${abTotal}`, color: '#c9a227', onClick: () => setShowAB(true) },
+    { label: 'A/B Covered', value: `${abCovered} / ${abTotal}`, color: '#c9a227', onClick: () => { setAbOwnerFilter(''); setAbSort({ key: 'id', dir: 'desc' }); setShowAB(true); } },
     { label: 'C Reqs', value: cReqCount, color: '#94a3b8', onClick: () => setShowC(true) },
     { label: 'On The Board', value: filledCount, color: '#7c3aed', tooltip: 'The number of Jobs with a status of Filled', onClick: () => setShowFilled(true) },
     { label: 'Opportunities', value: totalOpportunities, color: '#0369a1', onClick: handleOpportunitiesClick },
@@ -722,24 +778,41 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
         <div className="modal-overlay" onClick={() => setShowAB(false)}>
           <div className="modal-content contractors-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>A & B Reqs ({abTotal}) — {abCovered} Covered</h2>
+              <h2>A & B Reqs ({filteredAB.length}{abOwnerFilter ? ` of ${abTotal}` : ''}) — {abCovered} Covered</h2>
               <button className="modal-close" onClick={() => setShowAB(false)}>✕</button>
+            </div>
+            <div style={{ padding: '0 20px 12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <label style={{ fontWeight: 600, fontSize: '13px' }}>Owner:</label>
+              <select
+                value={abOwnerFilter}
+                onChange={e => setAbOwnerFilter(e.target.value)}
+                style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+              >
+                <option value="">All</option>
+                {abOwners.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
             </div>
             <table className="contractors-table">
               <thead>
                 <tr>
-                  <th>Pri</th>
-                  <th>Req#</th>
-                  <th>Job Title</th>
-                  <th>Client</th>
-                  <th>Status</th>
-                  <th>Owner</th>
-                  <th>TR</th>
-                  <th>Type</th>
+                  {[
+                    { key: 'priority', label: 'Pri' },
+                    { key: 'id', label: 'Req#' },
+                    { key: 'title', label: 'Job Title' },
+                    { key: 'client', label: 'Client' },
+                    { key: 'status', label: 'Status' },
+                    { key: 'owner', label: 'Owner' },
+                    { key: 'recruiter', label: 'TR' },
+                    { key: 'employmentType', label: 'Type' },
+                  ].map(col => (
+                    <th key={col.key} className="sortable" style={{ cursor: 'pointer' }} onClick={() => handleAbSort(col.key)}>
+                      {col.label}<span className="sort-icon">{abSortIcon(col.key)}</span>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {abReqs.map(j => (
+                {filteredAB.map(j => (
                   <tr key={j.id}>
                     <td><span style={{ fontWeight: 700, color: j.priority === 'A' ? '#16a34a' : '#eab308' }}>{j.priority}</span></td>
                     <td>
@@ -747,13 +820,25 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
                     </td>
                     <td>{j.title || '—'}</td>
                     <td>{j.client || '—'}</td>
-                    <td>{j.status || '—'}</td>
+                    <EditableSelect
+                      value={j.status || ''}
+                      displayValue={j.status || '—'}
+                      options={STATUS_OPTIONS}
+                      onSave={(val) => handleStatusSave(j, val)}
+                      className="cell-editable"
+                    />
                     <td>{j.owner || '—'}</td>
                     {renderTrCell(j)}
-                    <td>{j.employmentType || '—'}</td>
+                    <EditableSelect
+                      value={j.employmentType || ''}
+                      displayValue={TYPE_ABBREV[j.employmentType] || j.employmentType || '—'}
+                      options={TYPE_OPTIONS}
+                      onSave={(val) => handleTypeSave(j, val)}
+                      className="cell-editable"
+                    />
                   </tr>
                 ))}
-                {abReqs.length === 0 && (
+                {filteredAB.length === 0 && (
                   <tr><td colSpan="8" style={{ textAlign: 'center', padding: '20px' }}>No A or B reqs</td></tr>
                 )}
               </tbody>
