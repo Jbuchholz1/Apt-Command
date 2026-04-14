@@ -238,6 +238,19 @@ async function downloadExcel(path, filename) {
   showToast('Export downloaded!');
 }
 
+// --- Operations module ---
+
+export function getOperationsPlacements() {
+  return fetchAPI('/api/operations/placements');
+}
+
+export function updatePlacementChecklist(placementId, data) {
+  return fetchAPI(`/api/operations/placements/${placementId}`, {
+    method: 'PATCH',
+    body: data,
+  });
+}
+
 export function exportHealthDashboard() {
   return downloadExcel('/api/client-health/export', `APT_Health_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }

@@ -154,6 +154,16 @@ async function getActivePlacements() {
   });
 }
 
+async function getPendingApprovedPlacements() {
+  return callTool('query_entity', {
+    entityType: 'Placement',
+    where: "status = 'Pending' OR status = 'Approved'",
+    fields: 'id,candidate,jobOrder,dateBegin,status,employmentType,jobOrder.owner,jobOrder.assignedUsers',
+    orderBy: '-dateBegin',
+    count: 200,
+  });
+}
+
 async function getClientSubmissions() {
   return callTool('query_entity', {
     entityType: 'JobSubmission',
@@ -562,6 +572,7 @@ module.exports = {
   getNewJobsInRange,
   getClosedJobsInRange,
   getSalesCommissions,
+  getPendingApprovedPlacements,
   getActivePlacementsWithClient,
   getRecentAppointments,
   getClientCorporations,

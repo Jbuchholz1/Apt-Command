@@ -121,4 +121,76 @@ async function addNote(jobId, comment, createdBy) {
   return data;
 }
 
-module.exports = { getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote };
+// --- Placement Checklist ---
+
+async function getAllPlacementChecklist() {
+  if (!supabase) return {};
+  const { data, error } = await supabase
+    .from('placement_checklist')
+    .select('*');
+
+  if (error) {
+    console.error('[db] getAllPlacementChecklist error:', error.message);
+    return {};
+  }
+
+  const map = {};
+  for (const row of (data || [])) {
+    map[row.placement_id] = row;
+  }
+  return map;
+}
+
+async function getPlacementChecklist(placementId) {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from('placement_checklist')
+    .select('*')
+    .eq('placement_id', placementId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[db] getPlacementChecklist error:', error.message);
+    return null;
+  }
+  return data;
+}
+
+async function upsertPlacementChecklist(placementId, fields) {
+  if (!supabase) return null;
+
+  const ALLOWED = new Set([
+    'ob_paperwork_complete', 'new_hire_filed',
+    'healthcare_effective_date', 'healthcare_payroll_deduction_date',
+    'enrolled_in_healthcare', 'added_to_payroll',
+    'four01k_opt_in', 'four01k_forms_received', 'added_to_census',
+  ]);
+
+  const updates = { updated_at: new Date().toISOString() };
+  for (const [key, val] of Object.entries(fields)) {
+    if (ALLOWED.has(key) && val !== undefined) {
+      updates[key] = val;
+    }
+  }
+  if (fields.updated_by) updates.updated_by = fields.updated_by;
+
+  const { data, error } = await supabase
+    .from('placement_checklist')
+    .upsert({
+      placement_id: placementId,
+      ...updates,
+    }, { onConflict: 'placement_id' })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('[db] upsertPlacementChecklist error:', error.message);
+    return null;
+  }
+  return data;
+}
+
+module.exports = {
+  getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote,
+  getAllPlacementChecklist, getPlacementChecklist, upsertPlacementChecklist,
+};

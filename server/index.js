@@ -11,6 +11,7 @@ const performanceRouter = require('./routes/performance');
 const orgflowRouter = require('./routes/orgflow');
 const usersRouter = require('./routes/users');
 const adminRouter = require('./routes/admin');
+const operationsRouter = require('./routes/operations');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -64,6 +65,8 @@ app.use('/api/client-health', clientHealthRouter);
 app.use('/api/performance', performanceRouter);
 // Org Flow module
 app.use('/api/org-flow', orgflowRouter);
+// Operations module
+app.use('/api/operations', operationsRouter);
 // User management
 app.use('/api/users', usersRouter);
 app.use('/api/admin', adminRouter);

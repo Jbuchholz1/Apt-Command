@@ -9,9 +9,21 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.4.7';
+export const APP_VERSION = '2.5.0';
 
 export const CHANGELOG = [
+  {
+    version: '2.5.0',
+    date: '2026-04-14',
+    title: 'Operations Tab — Placements Tracker',
+    changes: [
+      { type: 'minor', text: 'New Operations tab (admin-only) with Placements Tracker — view all Pending & Approved placements from Bullhorn' },
+      { type: 'minor', text: 'Onboarding checklist per placement: OB Paperwork, New Hire Filed, Enrolled in Healthcare, Added to Payroll, 401k Opt In, 401k Forms Received, Added to Census' },
+      { type: 'minor', text: 'Editable Healthcare Effective Date and Healthcare Payroll Deduction Date fields per placement' },
+      { type: 'minor', text: 'All checklist and date fields persist to Supabase and are shared across the team' },
+      { type: 'minor', text: 'Completed rows (all checkboxes checked) highlight green for at-a-glance status' },
+    ],
+  },
   {
     version: '2.4.7',
     date: '2026-04-14',

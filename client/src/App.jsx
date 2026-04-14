@@ -15,6 +15,7 @@ import MyDashboard from './modules/performance/MyDashboard';
 import PipelineModule from './modules/pipeline/PipelineModule';
 import OpportunityPipeline from './modules/pipeline/OpportunityPipeline';
 import AdminModule from './modules/admin/AdminModule';
+import OperationsModule from './modules/operations/OperationsModule';
 import ComingSoon from './components/ComingSoon';
 
 export default function App() {
@@ -43,6 +44,7 @@ export default function App() {
             <Route path="performance" element={<PerformanceModule />}>
               <Route index element={<MyDashboard />} />
             </Route>
+            <Route path="operations" element={<OperationsModule />} />
             <Route path="admin" element={<AdminModule />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

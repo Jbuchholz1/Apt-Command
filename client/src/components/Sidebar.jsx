@@ -29,7 +29,7 @@ const NAV_ITEMS = [
   { label: 'Reporting', icon: BarChart3, path: '/reporting' },
   { label: 'Performance', icon: Target, path: '/performance' },
   { label: 'Huddles', icon: MessageCircle, path: '/huddles', disabled: true },
-  { label: 'Operations', icon: Settings, path: '/operations', disabled: true, adminOnly: true },
+  { label: 'Operations', icon: Settings, path: '/operations', adminOnly: true },
 ];
 
 const QUICK_LINKS = [
