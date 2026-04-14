@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getOpportunities, updateOpportunityInBullhorn } from '../../lib/api';
 import EditableDate from '../req-board/EditableDate';
+import EditableSelect from '../req-board/EditableSelect';
 
 function MultiSelect({ label, options, selected, onChange }) {
   const [open, setOpen] = useState(false);
@@ -186,7 +187,26 @@ export default function OpportunityPipeline() {
                     <td>{o.title || '—'}</td>
                     <td>{o.client || '—'}</td>
                     <td>{o.owner || '—'}</td>
-                    <td>{o.status || '—'}</td>
+                    <EditableSelect
+                      value={o.status || ''}
+                      options={[
+                        { value: 'Open', label: 'Open' },
+                        { value: 'Qualifying', label: 'Qualifying' },
+                        { value: 'Negotiating', label: 'Negotiating' },
+                        { value: 'Closed-Won', label: 'Closed-Won' },
+                        { value: 'Closed-Lost', label: 'Closed-Lost' },
+                      ]}
+                      onSave={async (newStatus) => {
+                        try {
+                          await updateOpportunityInBullhorn(o.id, { status: newStatus });
+                          setOpportunities(prev => prev.map(op =>
+                            op.id === o.id ? { ...op, status: newStatus } : op
+                          ));
+                        } catch (err) {
+                          console.error('Failed to update opportunity status:', err);
+                        }
+                      }}
+                    />
                     <EditableDate
                       value={o.expectedCloseDate}
                       onSave={async (tsValue) => {

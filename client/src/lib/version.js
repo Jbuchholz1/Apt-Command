@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.4.3';
+export const APP_VERSION = '2.4.4';
 
 export const CHANGELOG = [
+  {
+    version: '2.4.4',
+    date: '2026-04-14',
+    title: 'Editable Opportunity Status',
+    changes: [
+      { type: 'minor', text: 'Opportunity Status is now editable inline on the Pipeline tab — click to update directly in Bullhorn' },
+      { type: 'minor', text: 'Opportunity Status is now editable inline in the Req Board opportunities modal' },
+    ],
+  },
   {
     version: '2.4.3',
     date: '2026-04-14',

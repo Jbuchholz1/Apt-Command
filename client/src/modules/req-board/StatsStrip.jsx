@@ -424,7 +424,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
     { label: 'Missed Follow Ups', value: missedFollowUps, color: '#dc2626', onClick: () => setShowMissedFollowUps(true) },
     { label: 'A/B Covered', value: `${abCovered} / ${abTotal}`, color: '#c9a227', onClick: () => { setAbOwnerFilter(''); setAbSort({ key: 'id', dir: 'desc' }); setShowAB(true); } },
     { label: 'C Reqs', value: cReqCount, color: '#94a3b8', onClick: () => { setCOwnerFilter(''); setCSort({ key: 'id', dir: 'desc' }); setShowC(true); } },
-    { label: 'On The Board', value: filledCount, color: '#7c3aed', tooltip: 'The number of Jobs with a status of Filled', onClick: () => { setFilledOwnerFilter(''); setShowFilled(true); } },
+    { label: 'On The Board', value: filledJobs.length, color: '#7c3aed', tooltip: 'The number of Jobs with a status of Filled', onClick: () => { setFilledOwnerFilter(''); setShowFilled(true); } },
     { label: 'Opportunities', value: totalOpportunities, color: '#0369a1', onClick: handleOpportunitiesClick },
     { label: 'Active Contractors', value: activeContractors, color: '#0d9488', onClick: handleContractorsClick },
     { label: 'Potential CE Spread', value: fmtCurrency(totalCE), color: '#2563eb', onClick: () => setShowCE(true), tooltip: 'W2: (Bill Rate - Pay Rate × 1.25) × 40 | C2C: (Bill Rate - Pay Rate × 1.05) × 40 | A/B priority, Accepting Candidates & Filled jobs only' },
@@ -677,7 +677,26 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
                       <td>{o.title || '—'}</td>
                       <td>{o.client || '—'}</td>
                       <td>{o.owner || '—'}</td>
-                      <td>{o.status || '—'}</td>
+                      <EditableSelect
+                        value={o.status || ''}
+                        options={[
+                          { value: 'Open', label: 'Open' },
+                          { value: 'Qualifying', label: 'Qualifying' },
+                          { value: 'Negotiating', label: 'Negotiating' },
+                          { value: 'Closed-Won', label: 'Closed-Won' },
+                          { value: 'Closed-Lost', label: 'Closed-Lost' },
+                        ]}
+                        onSave={async (newStatus) => {
+                          try {
+                            await updateOpportunityInBullhorn(o.id, { status: newStatus });
+                            setOpportunities(prev => prev.map(op =>
+                              op.id === o.id ? { ...op, status: newStatus } : op
+                            ));
+                          } catch (err) {
+                            console.error('Failed to update opportunity status:', err);
+                          }
+                        }}
+                      />
                       <EditableDate
                         value={o.expectedCloseDate}
                         onSave={async (tsValue) => {
