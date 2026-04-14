@@ -33,7 +33,7 @@ router.get('/placements', async (req, res, next) => {
     let bhResult;
     try {
       bhResult = await getActivePlacements();
-      console.log('[operations] Bullhorn OK — type:', typeof bhResult, '| data count:', bhResult?.data?.length ?? 'NO DATA PROP');
+      console.log('[operations] Bullhorn OK — type:', typeof bhResult, '| keys:', Object.keys(bhResult || {}), '| raw:', JSON.stringify(bhResult).slice(0, 500));
     } catch (bhErr) {
       console.log('[operations] Bullhorn FAILED:', bhErr.message);
       bhResult = null;
