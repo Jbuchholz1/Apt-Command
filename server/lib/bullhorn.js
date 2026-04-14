@@ -158,7 +158,7 @@ async function getPendingApprovedPlacements() {
   return callTool('query_entity', {
     entityType: 'Placement',
     where: "status = 'Pending' OR status = 'Approved'",
-    fields: 'id,candidate(id,firstName,lastName),jobOrder(id,title,owner(id,firstName,lastName),assignedUsers),dateBegin,status,employmentType',
+    fields: 'id,candidate(id,firstName,lastName),jobOrder(id,title,owner(id,firstName,lastName)),dateBegin,status,employmentType',
     orderBy: '-dateBegin',
     count: 500,
   });
