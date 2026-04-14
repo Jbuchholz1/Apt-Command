@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { getPlacements, updateJobInBullhorn, updateJobOverrides, getRecruiters, getOpportunities, updateOpportunityInBullhorn } from '../../lib/api';
 import { getFollowUpUrgency } from './lib/urgency';
 import EditableDate from './EditableDate';
@@ -26,6 +26,45 @@ const STATUS_OPTIONS = [
   'Accepting Candidates', 'Covered', 'Offer Out', 'Placed', 'Filled', 'Lost', 'Wash', 'Archive',
 ].map(s => ({ value: s, label: s }));
 
+function ContractorMultiSelect({ label, options, selected, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handle = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, []);
+
+  const toggle = (val) => {
+    onChange(selected.includes(val) ? selected.filter(v => v !== val) : [...selected, val]);
+  };
+
+  const display = selected.length === 0 ? `All ${label}s` : selected.length === 1 ? selected[0] : `${selected.length} selected`;
+
+  return (
+    <div className="contractor-multiselect" ref={ref}>
+      <label style={{ fontWeight: 600, fontSize: '13px', marginRight: 4 }}>{label}:</label>
+      <button className="contractor-filter-btn" onClick={() => setOpen(!open)}>
+        {display} <span style={{ float: 'right', marginLeft: 6 }}>{open ? '\u25B2' : '\u25BC'}</span>
+      </button>
+      {open && (
+        <div className="contractor-multiselect-dropdown">
+          {options.map(opt => (
+            <label key={opt} className="contractor-multiselect-option">
+              <input type="checkbox" checked={selected.includes(opt)} onChange={() => toggle(opt)} />
+              {opt}
+            </label>
+          ))}
+          {selected.length > 0 && (
+            <button className="contractor-multiselect-clear" onClick={() => onChange([])}>Clear</button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   const [showContractors, setShowContractors] = useState(false);
   const [showCE, setShowCE] = useState(false);
@@ -38,6 +77,9 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   const [showAccepting, setShowAccepting] = useState(false);
   const [placements, setPlacements] = useState([]);
   const [placementsLoading, setPlacementsLoading] = useState(false);
+  const [contractorSort, setContractorSort] = useState({ key: 'candidate', dir: 'asc' });
+  const [contractorAmFilter, setContractorAmFilter] = useState([]);
+  const [contractorTrFilter, setContractorTrFilter] = useState([]);
   const [showOpportunities, setShowOpportunities] = useState(false);
   const [opportunities, setOpportunities] = useState([]);
   const [opportunitiesLoading, setOpportunitiesLoading] = useState(false);
@@ -76,7 +118,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   // A + B reqs combined: covered = has an assigned TR
   const abReqs = (jobs || []).filter(j => j.priority === 'A' || j.priority === 'B');
   const abTotal = abReqs.length;
-  const abCovered = abReqs.filter(j => (j.recruiter || '').trim()).length;
+  const abCovered = abReqs.filter(j => { const r = (j.recruiter || '').trim(); return r && r !== '*'; }).length;
 
   // C reqs only
   const cReqs = (jobs || []).filter(j => j.priority === 'C');
@@ -289,6 +331,9 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   const handleContractorsClick = async () => {
     setShowContractors(true);
     setPlacementsLoading(true);
+    setContractorAmFilter([]);
+    setContractorTrFilter([]);
+    setContractorSort({ key: 'candidate', dir: 'asc' });
     try {
       const res = await getPlacements();
       setPlacements(res.data || []);
@@ -299,6 +344,54 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
     }
   };
 
+  const contractorAMs = useMemo(() => {
+    const set = new Set();
+    placements.forEach(p => { if (p.am) set.add(p.am); });
+    return [...set].sort();
+  }, [placements]);
+
+  const contractorTRs = useMemo(() => {
+    const set = new Set();
+    placements.forEach(p => { if (p.tr) set.add(p.tr); });
+    return [...set].sort();
+  }, [placements]);
+
+  const handleContractorSort = (key) => {
+    setContractorSort(prev =>
+      prev.key === key
+        ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
+        : { key, dir: 'asc' }
+    );
+  };
+
+  const contractorSortIcon = (key) => {
+    if (contractorSort.key !== key) return ' \u2195';
+    return contractorSort.dir === 'asc' ? ' \u2191' : ' \u2193';
+  };
+
+  const filteredPlacements = useMemo(() => {
+    let result = placements;
+    if (contractorAmFilter.length > 0) {
+      result = result.filter(p => contractorAmFilter.includes(p.am));
+    }
+    if (contractorTrFilter.length > 0) {
+      result = result.filter(p => contractorTrFilter.includes(p.tr));
+    }
+    const arr = [...result];
+    arr.sort((a, b) => {
+      let av = a[contractorSort.key];
+      let bv = b[contractorSort.key];
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      if (typeof av === 'number' && typeof bv === 'number') {
+        return contractorSort.dir === 'asc' ? av - bv : bv - av;
+      }
+      const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true });
+      return contractorSort.dir === 'asc' ? cmp : -cmp;
+    });
+    return arr;
+  }, [placements, contractorAmFilter, contractorTrFilter, contractorSort]);
 
   const handleOpportunitiesClick = async () => {
     setShowOpportunities(true);
@@ -462,66 +555,82 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
         <div className="modal-overlay" onClick={() => setShowContractors(false)}>
           <div className="modal-content contractors-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Active Contractors ({placements.length})</h2>
+              <h2>Active Contractors ({filteredPlacements.length}{(contractorAmFilter.length || contractorTrFilter.length) ? ` of ${placements.length}` : ''})</h2>
               <button className="modal-close" onClick={() => setShowContractors(false)}>✕</button>
             </div>
             {placementsLoading ? (
               <div className="modal-loading">Loading contractors...</div>
             ) : (
-              <table className="contractors-table">
-                <thead>
-                  <tr>
-                    <th>Contractor</th>
-                    <th>Job Title</th>
-                    <th>Type</th>
-                    <th>Start</th>
-                    <th>End</th>
-                    <th>Spread</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {placements.map((p, idx) => (
-                    <tr key={p.id}>
-                      <td>
-                        {p.candidateId ? (
-                          <a
-                            href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=Candidate&id=${p.candidateId}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="bh-link"
-                          >
-                            {p.candidate || '—'}
-                          </a>
-                        ) : (p.candidate || '—')}
-                      </td>
-                      <td>{p.jobTitle || '—'}</td>
-                      <td>{p.employmentType || '—'}</td>
-                      <EditableDate
-                        value={p.dateBegin}
-                        onSave={(val) => handlePlacementDateSave(idx, 'dateBegin', val)}
-                        className="cell-editable cell-date"
-                      />
-                      <EditableDate
-                        value={p.dateEnd}
-                        onSave={(val) => handlePlacementDateSave(idx, 'dateEnd', val)}
-                        className="cell-editable cell-date"
-                      />
-                      <td className="cell-money">
-                        {p.employmentType === 'Direct Hire'
-                          ? (p.payRate ? `Perm` : '—')
-                          : (p.billRate && p.payRate
-                            ? `$${Math.round(((p.payRate * 1.25 - p.billRate) * 40 * -1)).toLocaleString('en-US')} CE`
-                            : '—')}
-                      </td>
-                      <td>{p.status || '—'}</td>
+              <>
+                <div style={{ padding: '0 20px 12px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <ContractorMultiSelect label="AM" options={contractorAMs} selected={contractorAmFilter} onChange={setContractorAmFilter} />
+                  <ContractorMultiSelect label="TR" options={contractorTRs} selected={contractorTrFilter} onChange={setContractorTrFilter} />
+                </div>
+                <table className="contractors-table">
+                  <thead>
+                    <tr>
+                      {[
+                        { key: 'candidate', label: 'Contractor' },
+                        { key: 'jobTitle', label: 'Job Title' },
+                        { key: 'am', label: 'AM' },
+                        { key: 'tr', label: 'TR' },
+                        { key: 'employmentType', label: 'Type' },
+                        { key: 'dateBegin', label: 'Start' },
+                        { key: 'dateEnd', label: 'End' },
+                        { key: 'spread', label: 'Spread' },
+                        { key: 'status', label: 'Status' },
+                      ].map(col => (
+                        <th key={col.key} className="sortable" style={{ cursor: 'pointer' }} onClick={() => handleContractorSort(col.key)}>
+                          {col.label}<span className="sort-icon">{contractorSortIcon(col.key)}</span>
+                        </th>
+                      ))}
                     </tr>
-                  ))}
-                  {placements.length === 0 && (
-                    <tr><td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>No active contractors found</td></tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {filteredPlacements.map((p, idx) => (
+                      <tr key={p.id}>
+                        <td>
+                          {p.candidateId ? (
+                            <a
+                              href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=Candidate&id=${p.candidateId}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="bh-link"
+                            >
+                              {p.candidate || '—'}
+                            </a>
+                          ) : (p.candidate || '—')}
+                        </td>
+                        <td>{p.jobTitle || '—'}</td>
+                        <td>{p.am || '—'}</td>
+                        <td>{p.tr || '—'}</td>
+                        <td>{p.employmentType || '—'}</td>
+                        <EditableDate
+                          value={p.dateBegin}
+                          onSave={(val) => handlePlacementDateSave(idx, 'dateBegin', val)}
+                          className="cell-editable cell-date"
+                        />
+                        <EditableDate
+                          value={p.dateEnd}
+                          onSave={(val) => handlePlacementDateSave(idx, 'dateEnd', val)}
+                          className="cell-editable cell-date"
+                        />
+                        <td className="cell-money">
+                          {p.employmentType === 'Direct Hire'
+                            ? (p.payRate ? `Perm` : '—')
+                            : (p.billRate && p.payRate
+                              ? `$${Math.round(((p.payRate * 1.25 - p.billRate) * 40 * -1)).toLocaleString('en-US')} CE`
+                              : '—')}
+                        </td>
+                        <td>{p.status || '—'}</td>
+                      </tr>
+                    ))}
+                    {filteredPlacements.length === 0 && (
+                      <tr><td colSpan="9" style={{ textAlign: 'center', padding: '20px' }}>No active contractors found</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </>
             )}
           </div>
         </div>

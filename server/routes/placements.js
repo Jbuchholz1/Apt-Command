@@ -21,6 +21,13 @@ router.get('/', async (req, res, next) => {
       payRate: p.payRate || null,
       billRate: p.clientBillRate || null,
       status: p.status,
+      am: p.jobOrder?.owner
+        ? `${(p.jobOrder.owner.firstName || '')[0] || ''}${(p.jobOrder.owner.lastName || '')[0] || ''}`.toUpperCase()
+        : '—',
+      tr: (p.jobOrder?.assignedUsers?.data || [])
+        .map(u => `${(u.firstName || '')[0] || ''}${(u.lastName || '')[0] || ''}`.toUpperCase())
+        .filter(Boolean)
+        .join(', ') || '*',
     }));
     res.json({ total: placements.length, data: placements });
   } catch (err) {

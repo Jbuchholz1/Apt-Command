@@ -9,14 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.4.5';
+export const APP_VERSION = '2.4.6';
 
 export const CHANGELOG = [
   {
-    version: '2.4.5',
+    version: '2.4.6',
     date: '2026-04-14',
-    title: 'TR Default to *',
+    title: 'Active Contractors & TR Updates',
     changes: [
+      { type: 'minor', text: 'Active Contractors modal now shows AM and TR columns with initials' },
+      { type: 'minor', text: 'All columns in Active Contractors modal are now sortable' },
+      { type: 'minor', text: 'Added multi-select AM and TR filters to Active Contractors modal' },
+      { type: 'patch', text: 'A/B Reqs Covered count no longer counts "*" as covered' },
       { type: 'patch', text: 'TR assignment now defaults to "*" for all jobs with no recruiter assigned (previously showed "—")' },
     ],
   },
