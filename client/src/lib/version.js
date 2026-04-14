@@ -9,18 +9,21 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.3.0';
+export const APP_VERSION = '2.3.1';
 
 export const CHANGELOG = [
   {
-    version: '2.3.0',
+    version: '2.3.1',
     date: '2026-04-13',
-    title: 'Req Board Enhancements',
+    title: 'Submissions & Req Board Updates',
     changes: [
       { type: 'minor', text: 'Added "48 hr" free-text column next to TR on the Req Board (saved to Supabase)' },
       { type: 'minor', text: 'Opportunities modal now has an Owner filter dropdown and all columns are sortable' },
       { type: 'minor', text: 'Filled jobs automatically drop off the main Req Board list the day after status change (still counted in On The Board)' },
       { type: 'minor', text: 'On The Board modal: TR, Type, and Start Date are now editable inline' },
+      { type: 'minor', text: 'Submissions panel now shows the TR (recruiter) who submitted each candidate' },
+      { type: 'minor', text: 'Submission Status is now editable inline — click to update directly in Bullhorn' },
+      { type: 'patch', text: 'Submissions panel now shows Client Submissions only (removed Internally Submitted)' },
     ],
   },
   {

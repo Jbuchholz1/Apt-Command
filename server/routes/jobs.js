@@ -307,7 +307,7 @@ router.get('/:id', async (req, res, next) => {
 
     const notes = await getNotesForJob(parseInt(req.params.id, 10));
 
-    const validStatuses = new Set(['Client Submission', 'Internally Submitted']);
+    const validStatuses = new Set(['Client Submission']);
     const filteredSubs = (subsResult?.data || [])
       .filter(s => validStatuses.has(s.status))
       .map(formatSubmission);
