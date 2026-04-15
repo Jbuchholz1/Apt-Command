@@ -106,10 +106,10 @@ router.get('/tickets', async (req, res, next) => {
       return res.json(tickets);
     }
 
-    // All tickets — requires manager/admin
+    // All tickets — requires admin
     const role = await resolveRole(req.user.email);
-    if (role !== 'admin' && role !== 'manager') {
-      return res.status(403).json({ error: 'Forbidden — manager or admin access required' });
+    if (role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden — admin access required' });
     }
 
     const tickets = await db.getSupportTickets({});

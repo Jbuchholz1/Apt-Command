@@ -28,7 +28,7 @@ const CATEGORY_COLORS = {
 };
 
 export default function FeedbackForm() {
-  const { isManager } = useUserRole();
+  const { isAdmin } = useUserRole();
   const [view, setView] = useState('submit'); // 'submit' | 'my' | 'all'
   const [form, setForm] = useState({ category: 'bug', title: '', description: '' });
   const [screenshot, setScreenshot] = useState(null);
@@ -110,7 +110,7 @@ export default function FeedbackForm() {
           <button className={`feedback-tab ${view === 'my' ? 'active' : ''}`} onClick={() => setView('my')}>
             My Tickets
           </button>
-          {isManager && (
+          {isAdmin && (
             <button className={`feedback-tab ${view === 'all' ? 'active' : ''}`} onClick={() => setView('all')}>
               All Tickets
             </button>
@@ -196,7 +196,7 @@ export default function FeedbackForm() {
                       <span className="ticket-category-badge" style={{ background: CATEGORY_COLORS[ticket.category] || '#6b7280' }}>
                         {ticket.category.replace('_', ' ')}
                       </span>
-                      {view === 'all' && isManager ? (
+                      {view === 'all' && isAdmin ? (
                         <select
                           className="ticket-status-select"
                           value={ticket.status}

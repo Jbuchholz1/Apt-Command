@@ -611,6 +611,10 @@ async function createSupportTicket({ category, title, description, screenshot_ur
 
 async function getSupportTickets({ submittedBy }) {
   if (!supabase) return [];
+
+  // Auto-close resolved tickets older than 72 hours
+  await autoCloseResolvedTickets();
+
   let query = supabase
     .from('support_tickets')
     .select('*')
@@ -623,10 +627,24 @@ async function getSupportTickets({ submittedBy }) {
   return data || [];
 }
 
+async function autoCloseResolvedTickets() {
+  if (!supabase) return;
+  const cutoff = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
+  const { error } = await supabase
+    .from('support_tickets')
+    .update({ status: 'closed', updated_at: new Date().toISOString(), updated_by: 'system' })
+    .eq('status', 'resolved')
+    .lt('resolved_at', cutoff);
+  if (error) console.error('[db] autoCloseResolvedTickets error:', error.message);
+}
+
 async function updateSupportTicket(id, { status, admin_notes, updated_by }) {
   if (!supabase) return null;
   const updates = { updated_at: new Date().toISOString() };
-  if (status) updates.status = status;
+  if (status) {
+    updates.status = status;
+    if (status === 'resolved') updates.resolved_at = new Date().toISOString();
+  }
   if (admin_notes !== undefined) updates.admin_notes = admin_notes;
   if (updated_by) updates.updated_by = updated_by;
 
