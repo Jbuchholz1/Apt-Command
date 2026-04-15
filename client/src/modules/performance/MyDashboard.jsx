@@ -5,6 +5,7 @@ import DateRangePicker from '../reporting/components/DateRangePicker';
 import DetailTable from '../reporting/components/DetailTable';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { CHART_COLORS } from '../reporting/lib/constants';
+import './performance.css';
 
 function getDefaultDates() {
   const today = new Date();
