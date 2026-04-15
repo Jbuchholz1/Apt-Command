@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDown, ChevronRight, ArrowLeft, ExternalLink, Search } from 'lucide-react';
-import { FAQ_SECTIONS, TRAINING_VIDEOS } from './lib/supportData';
+import { PLAYBOOKS, FAQ_SECTIONS, TRAINING_VIDEOS } from './lib/supportData';
 
 export default function HelpDocs() {
   const [openItems, setOpenItems] = useState({});
@@ -39,6 +39,26 @@ export default function HelpDocs() {
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
+        </div>
+
+        {/* Playbooks */}
+        <div className="playbooks-section">
+          <h3 className="faq-section-title">Playbooks</h3>
+          <div className="playbooks-list">
+            {PLAYBOOKS.map((pb, idx) => (
+              pb.url ? (
+                <a key={idx} href={pb.url} target="_blank" rel="noopener noreferrer" className="playbook-link">
+                  <ExternalLink size={14} />
+                  <span>{pb.title}</span>
+                </a>
+              ) : (
+                <span key={idx} className="playbook-link placeholder">
+                  <ExternalLink size={14} />
+                  <span>{pb.title}</span>
+                </span>
+              )
+            ))}
+          </div>
         </div>
 
         {/* FAQ Sections */}

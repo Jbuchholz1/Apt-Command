@@ -186,6 +186,44 @@
   border-color: var(--gold);
 }
 
+/* ---- Playbooks ---- */
+.playbooks-section {
+  margin-bottom: 28px;
+}
+
+.playbooks-list {
+  display: flex;
+  gap: 10px;
+}
+
+.playbook-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--navy);
+  text-decoration: none;
+  transition: all 0.15s;
+}
+.playbook-link:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.playbook-link.placeholder {
+  color: var(--text-muted);
+  cursor: default;
+  border-style: dashed;
+}
+.playbook-link.placeholder:hover {
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+
 /* ---- FAQ Accordion ---- */
 .faq-section {
   margin-bottom: 28px;

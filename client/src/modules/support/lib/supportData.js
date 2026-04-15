@@ -3,6 +3,12 @@
  * FAQ sections, training links, IT contact info, escalation path.
  */
 
+export const PLAYBOOKS = [
+  { title: 'Sales', url: '', description: 'Sales playbook and processes' },
+  { title: 'Delivery', url: '', description: 'Delivery playbook and processes' },
+  { title: 'Operations', url: '', description: 'Operations playbook and processes' },
+];
+
 export const FAQ_SECTIONS = [
   {
     module: 'Req Board',
