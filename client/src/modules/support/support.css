@@ -811,6 +811,66 @@
 .feedback-submit-btn:hover { opacity: 0.85; }
 .feedback-submit-btn:disabled { opacity: 0.5; cursor: default; }
 
+/* ---- Ticket KPI Cards ---- */
+.ticket-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.ticket-kpi-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.ticket-kpi-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.ticket-kpi-body {
+  min-width: 0;
+}
+
+.ticket-kpi-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.ticket-kpi-cat-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ticket-kpi-value {
+  font-size: 22px;
+  font-weight: 700;
+  font-family: var(--mono);
+  color: var(--navy);
+  line-height: 1.2;
+  margin: 3px 0 1px;
+}
+
+.ticket-kpi-sub {
+  font-size: 10px;
+  color: var(--text-light);
+}
+
 /* ---- Ticket Filter Bar ---- */
 .ticket-filter-bar {
   display: flex;
@@ -1016,6 +1076,10 @@
 
   .health-cards {
     grid-template-columns: 1fr;
+  }
+
+  .ticket-kpi-row {
+    grid-template-columns: 1fr 1fr;
   }
 
   .feedback-tabs {

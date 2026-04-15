@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Send, Image, X, Calendar, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Send, Image, X, Calendar, CheckCircle, Clock } from 'lucide-react';
 import { getSupportTickets, submitSupportTicket, updateTicketStatus } from '../../lib/api';
 import { useUserRole } from '../../lib/UserRoleContext';
 import { showToast } from '../../lib/toast';
@@ -76,6 +76,20 @@ export default function FeedbackForm() {
   const filteredTickets = categoryFilter
     ? tickets.filter(t => t.category === categoryFilter)
     : tickets;
+
+  const closeTimeKPIs = useMemo(() => {
+    const categories = ['bug', 'feature', 'feedback', 'it_support'];
+    return categories.map(cat => {
+      const closed = tickets.filter(t =>
+        t.category === cat && t.resolved_at && t.created_at
+      );
+      if (closed.length === 0) return { category: cat, avg: null, count: 0 };
+      const totalMs = closed.reduce((sum, t) => {
+        return sum + (new Date(t.resolved_at) - new Date(t.created_at));
+      }, 0);
+      return { category: cat, avg: totalMs / closed.length, count: closed.length };
+    });
+  }, [tickets]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -209,20 +223,41 @@ export default function FeedbackForm() {
         {/* Ticket List */}
         {(view === 'my' || view === 'all') && (
           <div className="ticket-list-section">
-            {/* Category Filter (All Tickets tab only) */}
+            {/* KPI Cards + Category Filter (All Tickets tab only) */}
             {view === 'all' && (
-              <div className="ticket-filter-bar">
-                <select
-                  className="ticket-filter-select"
-                  value={categoryFilter}
-                  onChange={e => setCategoryFilter(e.target.value)}
-                >
-                  {ALL_CATEGORIES.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+              <>
+                <div className="ticket-kpi-row">
+                  {closeTimeKPIs.map(kpi => (
+                    <div key={kpi.category} className="ticket-kpi-card">
+                      <Clock size={16} className="ticket-kpi-icon" />
+                      <div className="ticket-kpi-body">
+                        <div className="ticket-kpi-label">
+                          <span className="ticket-kpi-cat-dot" style={{ background: CATEGORY_COLORS[kpi.category] }} />
+                          {kpi.category === 'it_support' ? 'IT Support' : kpi.category.charAt(0).toUpperCase() + kpi.category.slice(1)}
+                        </div>
+                        <div className="ticket-kpi-value">
+                          {kpi.avg != null ? formatDuration(kpi.avg) : '—'}
+                        </div>
+                        <div className="ticket-kpi-sub">
+                          {kpi.count > 0 ? `${kpi.count} resolved` : 'No data'}
+                        </div>
+                      </div>
+                    </div>
                   ))}
-                </select>
-                <span className="ticket-count">{filteredTickets.length} ticket{filteredTickets.length !== 1 ? 's' : ''}</span>
-              </div>
+                </div>
+                <div className="ticket-filter-bar">
+                  <select
+                    className="ticket-filter-select"
+                    value={categoryFilter}
+                    onChange={e => setCategoryFilter(e.target.value)}
+                  >
+                    {ALL_CATEGORIES.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                  <span className="ticket-count">{filteredTickets.length} ticket{filteredTickets.length !== 1 ? 's' : ''}</span>
+                </div>
+              </>
             )}
 
             {ticketsLoading ? (
@@ -290,4 +325,15 @@ export default function FeedbackForm() {
       </div>
     </div>
   );
+}
+
+function formatDuration(ms) {
+  const mins = Math.round(ms / 60000);
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  const remMins = mins % 60;
+  if (hours < 24) return remMins > 0 ? `${hours}h ${remMins}m` : `${hours}h`;
+  const days = Math.floor(hours / 24);
+  const remHours = hours % 24;
+  return remHours > 0 ? `${days}d ${remHours}h` : `${days}d`;
 }
