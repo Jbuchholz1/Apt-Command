@@ -23,6 +23,8 @@ export const CHANGELOG = [
       { type: 'minor', text: 'Bug & Feedback form with screenshot upload, ticket tracking, and admin triage view' },
       { type: 'minor', text: 'Known Issues board — managers can post and resolve active issues visible to all users' },
       { type: 'minor', text: 'IT Support page with contact info, escalation path, and quick ticket submission' },
+      { type: 'minor', text: 'Resolved tickets auto-close after 72 hours' },
+      { type: 'minor', text: 'All Tickets admin view restricted to admin role only' },
       { type: 'minor', text: 'Full version changelog now accessible from the System Status page' },
     ],
   },
