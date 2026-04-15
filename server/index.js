@@ -21,6 +21,9 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const IS_PROD = process.env.NODE_ENV === 'production';
 
+// Railway runs behind a reverse proxy — trust it for accurate rate limiting
+app.set('trust proxy', 1);
+
 // --- CORS: strict origin control ---
 const allowedOrigins = [
   process.env.FRONTEND_URL,        // Production frontend (Railway)
