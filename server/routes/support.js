@@ -65,18 +65,74 @@ const TEAMS_WEBHOOK_URL = process.env.TEAMS_WEBHOOK_URL;
 async function notifyTeams(ticket) {
   if (!TEAMS_WEBHOOK_URL) return;
   try {
+    const categoryLabel = {
+      bug: 'Bug Report',
+      feature: 'Feature Request',
+      feedback: 'General Feedback',
+      it_support: 'IT Support',
+    }[ticket.category] || ticket.category;
+
+    const time = ticket.created_at
+      ? new Date(ticket.created_at).toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'short', timeStyle: 'short' })
+      : '';
+
+    const card = {
+      type: 'AdaptiveCard',
+      $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
+      version: '1.4',
+      body: [
+        {
+          type: 'TextBlock',
+          text: 'NEW SUPPORT TICKET',
+          weight: 'Bolder',
+          color: 'Attention',
+          size: 'Small',
+        },
+        {
+          type: 'TextBlock',
+          text: ticket.title,
+          weight: 'Bolder',
+          size: 'Medium',
+          wrap: true,
+        },
+        {
+          type: 'TextBlock',
+          text: ticket.description,
+          wrap: true,
+          size: 'Small',
+        },
+        {
+          type: 'FactSet',
+          facts: [
+            { title: 'Category', value: categoryLabel },
+            { title: 'Submitted by', value: ticket.submitted_by_name || ticket.submitted_by },
+            { title: 'Time', value: time },
+          ],
+        },
+      ],
+    };
+
+    if (ticket.screenshot_url) {
+      card.body.push({
+        type: 'ActionSet',
+        actions: [{
+          type: 'Action.OpenUrl',
+          title: 'View Screenshot',
+          url: ticket.screenshot_url,
+        }],
+      });
+    }
+
     await fetch(TEAMS_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        id: ticket.id,
-        category: ticket.category,
-        title: ticket.title,
-        description: ticket.description,
-        submitted_by: ticket.submitted_by,
-        submitted_by_name: ticket.submitted_by_name,
-        screenshot_url: ticket.screenshot_url,
-        created_at: ticket.created_at,
+        type: 'message',
+        attachments: [{
+          contentType: 'application/vnd.microsoft.card.adaptive',
+          contentUrl: null,
+          content: card,
+        }],
       }),
     });
   } catch (err) {
