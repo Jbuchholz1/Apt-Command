@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="900" viewBox="0 0 900 900">
+  <defs>
+    <style>
+      .hex { fill: none; stroke: #04144F; stroke-width: 1; }
+      .hex-bold { fill: none; stroke: #04144F; stroke-width: 1.5; }
+      .line { stroke: #04144F; stroke-width: 0.8; }
+      .dot { fill: #04144F; }
+      .dot-ring { fill: none; stroke: #04144F; stroke-width: 0.8; }
+    </style>
+  </defs>
+
+  <!-- Bottom-left cluster -->
+  <g opacity="0.18">
+    <!-- Large hexagons -->
+    <polygon class="hex" points="80,680 120,657 120,611 80,588 40,611 40,657"/>
+    <polygon class="hex" points="160,720 200,697 200,651 160,628 120,651 120,697"/>
+    <polygon class="hex-bold" points="80,760 120,737 120,691 80,668 40,691 40,737"/>
+    <polygon class="hex" points="0,720 40,697 40,651 0,628 -40,651 -40,697"/>
+    <polygon class="hex" points="160,800 200,777 200,731 160,708 120,731 120,777"/>
+    <polygon class="hex-bold" points="240,760 280,737 280,691 240,668 200,691 200,737"/>
+    <polygon class="hex" points="240,680 280,657 280,611 240,588 200,611 200,657"/>
+    <polygon class="hex" points="320,720 360,697 360,651 320,628 280,651 280,697"/>
+    <polygon class="hex-bold" points="320,800 360,777 360,731 320,708 280,731 280,777"/>
+    <polygon class="hex" points="0,800 40,777 40,731 0,708 -40,731 -40,777"/>
+    <polygon class="hex" points="80,840 120,817 120,771 80,748 40,771 40,817"/>
+    <polygon class="hex" points="240,840 280,817 280,771 240,748 200,771 200,817"/>
+    <polygon class="hex-bold" points="160,880 200,857 200,811 160,788 120,811 120,857"/>
+    <polygon class="hex" points="320,880 360,857 360,811 320,788 280,811 280,857"/>
+    <polygon class="hex" points="400,760 440,737 440,691 400,668 360,691 360,737"/>
+    <polygon class="hex" points="400,840 440,817 440,771 400,748 360,771 360,817"/>
+  </g>
+
+  <!-- Bottom-left connecting lines & dots -->
+  <g opacity="0.14">
+    <line class="line" x1="120" y1="657" x2="160" y2="628"/>
+    <line class="line" x1="120" y1="697" x2="120" y2="651"/>
+    <line class="line" x1="200" y1="697" x2="240" y2="668"/>
+    <line class="line" x1="280" y1="657" x2="320" y2="628"/>
+    <line class="line" x1="200" y1="777" x2="240" y2="748"/>
+    <line class="line" x1="360" y1="697" x2="400" y2="668"/>
+    <line class="line" x1="120" y1="817" x2="160" y2="788"/>
+    <line class="line" x1="280" y1="817" x2="320" y2="788"/>
+    <line class="line" x1="360" y1="777" x2="400" y2="748"/>
+    <circle class="dot" cx="120" cy="657" r="3"/>
+    <circle class="dot" cx="200" cy="697" r="2.5"/>
+    <circle class="dot" cx="280" cy="657" r="2"/>
+    <circle class="dot" cx="360" cy="697" r="3"/>
+    <circle class="dot" cx="120" cy="737" r="2"/>
+    <circle class="dot" cx="200" cy="777" r="2.5"/>
+    <circle class="dot" cx="280" cy="737" r="3"/>
+    <circle class="dot" cx="360" cy="777" r="2"/>
+    <circle class="dot" cx="440" cy="737" r="2.5"/>
+    <circle class="dot-ring" cx="160" cy="628" r="4"/>
+    <circle class="dot-ring" cx="320" cy="628" r="4"/>
+    <circle class="dot" cx="40" cy="697" r="2"/>
+    <circle class="dot" cx="40" cy="777" r="2.5"/>
+    <circle class="dot" cx="120" cy="817" r="2"/>
+    <circle class="dot" cx="280" cy="817" r="2"/>
+  </g>
+
+  <!-- Scattered mid-area hexagons (very subtle) -->
+  <g opacity="0.07">
+    <polygon class="hex" points="380,460 410,443 410,409 380,392 350,409 350,443"/>
+    <polygon class="hex" points="440,500 470,483 470,449 440,432 410,449 410,483"/>
+    <circle class="dot" cx="410" cy="443" r="2"/>
+    <line class="line" x1="410" y1="443" x2="440" y2="432"/>
+    <polygon class="hex" points="280,380 310,363 310,329 280,312 250,329 250,363"/>
+    <circle class="dot" cx="310" cy="363" r="2"/>
+  </g>
+
+  <!-- Top-right cluster -->
+  <g opacity="0.16">
+    <polygon class="hex-bold" points="720,120 760,97 760,51 720,28 680,51 680,97"/>
+    <polygon class="hex" points="800,80 840,57 840,11 800,-12 760,11 760,57"/>
+    <polygon class="hex" points="800,160 840,137 840,91 800,68 760,91 760,137"/>
+    <polygon class="hex-bold" points="880,120 920,97 920,51 880,28 840,51 840,97"/>
+    <polygon class="hex" points="880,200 920,177 920,131 880,108 840,131 840,177"/>
+    <polygon class="hex" points="720,200 760,177 760,131 720,108 680,131 680,177"/>
+    <polygon class="hex-bold" points="640,160 680,137 680,91 640,68 600,91 600,137"/>
+    <polygon class="hex" points="640,80 680,57 680,11 640,-12 600,11 600,57"/>
+    <polygon class="hex" points="560,120 600,97 600,51 560,28 520,51 520,97"/>
+    <polygon class="hex" points="800,240 840,217 840,171 800,148 760,171 760,217"/>
+    <polygon class="hex" points="720,280 760,257 760,211 720,188 680,211 680,257"/>
+    <polygon class="hex-bold" points="880,280 920,257 920,211 880,188 840,211 840,257"/>
+    <polygon class="hex" points="640,240 680,217 680,171 640,148 600,171 600,217"/>
+    <polygon class="hex" points="560,200 600,177 600,131 560,108 520,131 520,177"/>
+  </g>
+
+  <!-- Top-right connecting lines & dots -->
+  <g opacity="0.12">
+    <line class="line" x1="760" y1="97" x2="800" y2="68"/>
+    <line class="line" x1="760" y1="57" x2="760" y2="91"/>
+    <line class="line" x1="840" y1="97" x2="880" y2="68"/>
+    <line class="line" x1="680" y1="97" x2="720" y2="68"/>
+    <line class="line" x1="680" y1="137" x2="680" y2="91"/>
+    <line class="line" x1="600" y1="97" x2="640" y2="68"/>
+    <line class="line" x1="760" y1="177" x2="800" y2="148"/>
+    <line class="line" x1="840" y1="177" x2="880" y2="148"/>
+    <line class="line" x1="680" y1="257" x2="640" y2="240"/>
+    <line class="line" x1="760" y1="257" x2="800" y2="240"/>
+    <line class="line" x1="600" y1="177" x2="560" y2="148"/>
+    <circle class="dot" cx="760" cy="97" r="3"/>
+    <circle class="dot" cx="840" cy="97" r="2.5"/>
+    <circle class="dot" cx="680" cy="97" r="2"/>
+    <circle class="dot" cx="600" cy="97" r="3"/>
+    <circle class="dot" cx="760" cy="177" r="2.5"/>
+    <circle class="dot" cx="840" cy="177" r="2"/>
+    <circle class="dot" cx="680" cy="177" r="3"/>
+    <circle class="dot" cx="920" cy="97" r="2"/>
+    <circle class="dot" cx="920" cy="177" r="2.5"/>
+    <circle class="dot" cx="920" cy="257" r="2"/>
+    <circle class="dot-ring" cx="800" cy="68" r="4"/>
+    <circle class="dot-ring" cx="640" cy="68" r="4"/>
+    <circle class="dot" cx="680" cy="257" r="2"/>
+    <circle class="dot" cx="760" cy="257" r="2.5"/>
+    <circle class="dot" cx="600" cy="177" r="2"/>
+    <circle class="dot" cx="520" cy="97" r="2"/>
+  </g>
+
+  <!-- Bottom-right accent hexagons -->
+  <g opacity="0.10">
+    <polygon class="hex" points="700,700 730,683 730,649 700,632 670,649 670,683"/>
+    <polygon class="hex-bold" points="780,740 810,723 810,689 780,672 750,689 750,723"/>
+    <polygon class="hex" points="860,700 890,683 890,649 860,632 830,649 830,683"/>
+    <polygon class="hex" points="780,660 810,643 810,609 780,592 750,609 750,643"/>
+    <circle class="dot" cx="730" cy="683" r="2.5"/>
+    <circle class="dot" cx="810" cy="723" r="2"/>
+    <circle class="dot" cx="810" cy="643" r="2"/>
+    <line class="line" x1="730" y1="683" x2="780" y2="672"/>
+    <line class="line" x1="810" y1="689" x2="860" y2="672"/>
+    <line class="line" x1="810" y1="643" x2="780" y2="632"/>
+  </g>
+
+  <!-- Top-left accent hexagons -->
+  <g opacity="0.08">
+    <polygon class="hex" points="120,180 150,163 150,129 120,112 90,129 90,163"/>
+    <polygon class="hex" points="200,140 230,123 230,89 200,72 170,89 170,123"/>
+    <polygon class="hex-bold" points="120,100 150,83 150,49 120,32 90,49 90,83"/>
+    <polygon class="hex" points="40,140 70,123 70,89 40,72 10,89 10,123"/>
+    <circle class="dot" cx="150" cy="163" r="2"/>
+    <circle class="dot" cx="150" cy="83" r="2.5"/>
+    <circle class="dot" cx="70" cy="123" r="2"/>
+    <line class="line" x1="150" y1="129" x2="200" y2="112"/>
+    <line class="line" x1="150" y1="83" x2="120" y2="72"/>
+  </g>
+</svg>
