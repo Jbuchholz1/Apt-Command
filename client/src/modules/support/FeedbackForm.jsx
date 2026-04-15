@@ -239,7 +239,7 @@ export default function FeedbackForm() {
                           {kpi.avg != null ? formatDuration(kpi.avg) : '—'}
                         </div>
                         <div className="ticket-kpi-sub">
-                          {kpi.count > 0 ? `${kpi.count} resolved` : 'No data'}
+                          Avg Time to Close {kpi.count > 0 ? `(${kpi.count} resolved)` : '— No data'}
                         </div>
                       </div>
                     </div>
