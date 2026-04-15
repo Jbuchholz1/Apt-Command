@@ -26,7 +26,7 @@ const allowedOrigins = [
   'http://localhost:5174',          // Vite alt port
 ].filter(Boolean).map(u => u.replace(/\/+$/, '')); // strip trailing slashes
 
-console.log('Allowed CORS origins:', allowedOrigins);
+console.log(`CORS: ${allowedOrigins.length} origin(s) configured`);
 
 // --- Security headers (CSP disabled to avoid breaking inline styles/scripts) ---
 app.use(helmet({ contentSecurityPolicy: false }));

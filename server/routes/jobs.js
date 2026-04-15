@@ -229,7 +229,11 @@ router.get('/opportunities', async (req, res, next) => {
 // POST /api/jobs/opportunities/:id/update — Update opportunity fields in Bullhorn
 router.post('/opportunities/:id/update', async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const oppId = parseInt(req.params.id, 10);
+    if (isNaN(oppId) || oppId <= 0) {
+      return res.status(400).json({ error: 'Invalid opportunity ID' });
+    }
+
     const { fields } = req.body || {};
 
     if (!fields || typeof fields !== 'object') {
@@ -247,8 +251,8 @@ router.post('/opportunities/:id/update', async (req, res, next) => {
       return res.status(400).json({ error: `No valid fields. Allowed: ${[...ALLOWED].join(', ')}` });
     }
 
-    await updateOpportunityField(id, sanitized);
-    res.json({ success: true, id, updated: sanitized });
+    await updateOpportunityField(oppId, sanitized);
+    res.json({ success: true, id: oppId, updated: sanitized });
   } catch (err) {
     next(err);
   }
@@ -286,9 +290,14 @@ router.post('/submissions/:id/update', async (req, res, next) => {
 // GET /api/jobs/:id — Single job detail + submissions + overrides (must be after named routes)
 router.get('/:id', async (req, res, next) => {
   try {
+    const jobId = parseInt(req.params.id, 10);
+    if (isNaN(jobId) || jobId <= 0) {
+      return res.status(400).json({ error: 'Invalid job ID' });
+    }
+
     const [jobResult, subsResult] = await Promise.all([
-      getJobById(req.params.id),
-      getSubmissions(req.params.id),
+      getJobById(jobId),
+      getSubmissions(jobId),
     ]);
 
     const job = jobResult?.data?.[0];
@@ -296,7 +305,7 @@ router.get('/:id', async (req, res, next) => {
       return res.status(404).json({ error: 'Job not found' });
     }
 
-    const overrides = await getOverrides(parseInt(req.params.id, 10));
+    const overrides = await getOverrides(jobId);
     const formatted = formatJob(job);
     if (overrides) {
       formatted.recruiter = overrides.recruiter || '';
@@ -305,7 +314,7 @@ router.get('/:id', async (req, res, next) => {
       formatted.notes = overrides.notes || '';
     }
 
-    const notes = await getNotesForJob(parseInt(req.params.id, 10));
+    const notes = await getNotesForJob(jobId);
 
     const validStatuses = new Set(['Client Submission']);
     const filteredSubs = (subsResult?.data || [])

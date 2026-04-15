@@ -508,7 +508,12 @@ async function getBackoutNotesInRange(startMs, endMs) {
   return { data: uniqueNotes };
 }
 
+const ALLOWED_CHECKIN_TYPES = new Set(['TR 30/90', 'AM 30/90']);
+
 async function getCheckinNotesForType(actionType) {
+  if (!ALLOWED_CHECKIN_TYPES.has(actionType)) {
+    throw new Error(`Invalid checkin action type: ${actionType}`);
+  }
   // Query ALL checkin notes (no date range — we need full history for active placements)
   // Filter to targetEntityName = 'User' to get only candidate-linked rows
   // (each note creates rows for User, Placement, JobOrder — we only need User)

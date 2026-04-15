@@ -9,9 +9,19 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.6.1';
+export const APP_VERSION = '2.6.2';
 
 export const CHANGELOG = [
+  {
+    version: '2.6.2',
+    date: '2026-04-14',
+    title: 'Security Hardening — Input Validation & Log Sanitization',
+    changes: [
+      { type: 'patch', text: 'Added allowlist validation on MCP checkin note queries to prevent query injection' },
+      { type: 'patch', text: 'Added ID parameter validation on job detail, opportunity update, and related endpoints — invalid IDs now return 400 instead of server errors' },
+      { type: 'patch', text: 'Sanitized server startup logs to stop printing Supabase URLs and CORS origin lists to Railway logs' },
+    ],
+  },
   {
     version: '2.6.1',
     date: '2026-04-14',

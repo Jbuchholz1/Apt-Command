@@ -8,7 +8,7 @@ if (!supabaseUrl || !supabaseKey) {
   console.error('[db]   SUPABASE_URL:', supabaseUrl ? 'SET' : 'MISSING');
   console.error('[db]   SUPABASE_SERVICE_KEY:', supabaseKey ? 'SET' : 'MISSING');
 } else {
-  console.log('[db] Supabase connected:', supabaseUrl);
+  console.log('[db] Supabase connected');
 }
 
 const supabase = supabaseUrl && supabaseKey
