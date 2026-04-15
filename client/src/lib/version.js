@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.7.0';
+export const APP_VERSION = '2.8.0';
 
 export const CHANGELOG = [
+  {
+    version: '2.8.0',
+    date: '2026-04-15',
+    title: 'Fluid Sidebar Redesign & Dev Tooling',
+    changes: [
+      { type: 'major', text: 'Active sidebar tab now seamlessly merges into the content area — light background with inverse rounded corners creates a fluid, connected tab effect' },
+      { type: 'major', text: 'Dev auth bypass for local preview — set VITE_DEV_BYPASS_AUTH=true to skip Microsoft login during development' },
+    ],
+  },
   {
     version: '2.7.0',
     date: '2026-04-15',
