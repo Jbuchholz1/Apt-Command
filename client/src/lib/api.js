@@ -430,7 +430,8 @@ export function getSystemHealth() {
 }
 
 export function getSupportTickets(mine = false) {
-  return fetchAPI(`/api/support/tickets${mine ? '?mine=true' : ''}`);
+  const cacheBust = `_t=${Date.now()}`;
+  return fetchAPI(`/api/support/tickets?${mine ? 'mine=true&' : ''}${cacheBust}`);
 }
 
 export async function submitSupportTicket(formData) {
