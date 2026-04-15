@@ -1,12 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { createClient } = require('@supabase/supabase-js');
+const { supabase } = require('../lib/db');
 const { requireAdmin, requireManager } = require('../middleware/adminAuth');
 const { VALID_ROLES } = require('../lib/roles');
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
-const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 
 // Most admin routes require manager or above; role changes require full admin
 router.use(requireManager);

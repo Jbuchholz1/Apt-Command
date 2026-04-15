@@ -347,11 +347,7 @@ router.get('/contractor-counts', async (req, res, next) => {
 router.get('/client-health', async (req, res, next) => {
   try {
     // Fetch all employees and contractor counts in parallel
-    const { createClient } = require('@supabase/supabase-js');
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
-    const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
-
+    const { supabase } = require('../lib/db');
     if (!supabase) return res.json({});
 
     const [employeesRes, placementsResult] = await Promise.all([

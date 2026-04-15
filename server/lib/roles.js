@@ -7,11 +7,7 @@
  *   3. Default to 'basic'
  */
 
-const { createClient } = require('@supabase/supabase-js');
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
-const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
+const { supabase } = require('./db');
 
 // Bootstrap admin list — works even before the DB migration runs
 const BOOTSTRAP_ADMINS = new Set([

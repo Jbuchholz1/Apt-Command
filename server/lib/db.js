@@ -737,6 +737,7 @@ async function removeClientLogo(clientId) {
 }
 
 module.exports = {
+  supabase, // Shared client — import this instead of creating your own
   getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote,
   getAllPlacementChecklist, getPlacementChecklist, upsertPlacementChecklist,
   // Org Flow

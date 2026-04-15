@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const { requireAuth } = require('./middleware/auth');
 
@@ -23,14 +24,19 @@ const IS_PROD = process.env.NODE_ENV === 'production';
 // --- CORS: strict origin control ---
 const allowedOrigins = [
   process.env.FRONTEND_URL,        // Production frontend (Railway)
-  'http://localhost:5173',          // Vite dev server
-  'http://localhost:5174',          // Vite alt port
+  ...(!IS_PROD ? [
+    'http://localhost:5173',        // Vite dev server
+    'http://localhost:5174',        // Vite alt port
+  ] : []),
 ].filter(Boolean).map(u => u.replace(/\/+$/, '')); // strip trailing slashes
 
 console.log(`CORS: ${allowedOrigins.length} origin(s) configured`);
 
 // --- Security headers (CSP disabled to avoid breaking inline styles/scripts) ---
 app.use(helmet({ contentSecurityPolicy: false }));
+
+// --- Response compression (gzip) ---
+app.use(compression());
 
 // --- Rate limiting ---
 const generalLimiter = rateLimit({
@@ -74,6 +80,14 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+// --- Cache-Control for GET responses (browser can reuse recent responses) ---
+app.use('/api', (req, res, next) => {
+  if (req.method === 'GET') {
+    res.set('Cache-Control', 'private, max-age=300'); // 5 minutes
+  }
+  next();
+});
 
 // --- Health check (UNAUTHENTICATED — Railway needs this) ---
 app.get('/api/health', (req, res) => {
