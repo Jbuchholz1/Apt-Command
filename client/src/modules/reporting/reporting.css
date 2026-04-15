@@ -29,20 +29,24 @@
 }
 
 .reporting-dash-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 10px;
   padding: 28px 24px;
   text-decoration: none;
   color: inherit;
-  transition: all 0.2s;
+  transition: all 0.25s ease;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  box-shadow: 0 6px 28px rgba(4, 20, 79, 0.16), 0 3px 10px rgba(0,0,0,0.1);
 }
 .reporting-dash-card:hover {
-  border-color: var(--gold);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  border-color: rgba(211, 191, 48, 0.4);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 16px 48px rgba(4, 20, 79, 0.22), 0 6px 20px rgba(0,0,0,0.12);
   transform: translateY(-2px);
 }
 .reporting-dash-card.disabled {

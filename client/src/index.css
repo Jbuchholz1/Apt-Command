@@ -146,11 +146,14 @@ button:active:not(:disabled) { transform: scale(0.97); }
 
 /* ---- Announcement Card ---- */
 .announcement-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: 10px;
   overflow: hidden;
   margin-top: 8px;
+  box-shadow: 0 6px 28px rgba(4, 20, 79, 0.16), 0 3px 10px rgba(0,0,0,0.1);
 }
 .announcement-header {
   display: flex;
@@ -432,8 +435,10 @@ button:active:not(:disabled) { transform: scale(0.97); }
 }
 
 .module-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
   border-left: 3px solid var(--gold);
   border-radius: 12px;
   padding: 28px 24px;
@@ -445,7 +450,7 @@ button:active:not(:disabled) { transform: scale(0.97); }
   display: flex;
   flex-direction: column;
   gap: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+  box-shadow: 0 6px 28px rgba(4, 20, 79, 0.16), 0 3px 10px rgba(0,0,0,0.1);
 }
 .module-card::after {
   content: '';
@@ -463,7 +468,8 @@ button:active:not(:disabled) { transform: scale(0.97); }
 }
 .module-card:hover {
   border-color: var(--gold);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.06);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 16px 48px rgba(4, 20, 79, 0.22), 0 6px 20px rgba(0,0,0,0.12);
   transform: translateY(-3px);
 }
 .module-card.disabled {
@@ -539,12 +545,14 @@ button:active:not(:disabled) { transform: scale(0.97); }
 
 /* ---- Resources Card ---- */
 .resources-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
   border-left: 3px solid var(--navy);
   border-radius: 12px;
   padding: 20px 24px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+  box-shadow: 0 6px 28px rgba(4, 20, 79, 0.16), 0 3px 10px rgba(0,0,0,0.1);
   margin-top: 24px;
 }
 

@@ -41,11 +41,14 @@
 
 /* --- Welcome banner --- */
 .perf-banner {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 10px;
   padding: 20px 24px;
   margin: 20px 24px;
+  box-shadow: 0 6px 28px rgba(4, 20, 79, 0.16), 0 3px 10px rgba(0,0,0,0.1);
   display: flex;
   align-items: center;
   justify-content: space-between;

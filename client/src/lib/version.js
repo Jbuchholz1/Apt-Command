@@ -9,9 +9,19 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.9.0';
+export const APP_VERSION = '3.0.0';
 
 export const CHANGELOG = [
+  {
+    version: '3.0.0',
+    date: '2026-04-15',
+    title: 'Visual Redesign',
+    changes: [
+      { type: 'major', text: 'Hexagonal network background pattern across all pages — subtle navy-blue hex clusters fade from corners into the background' },
+      { type: 'major', text: 'Glass card styling — all cards now feature frosted-glass backgrounds with prominent navy-tinted drop shadows' },
+      { type: 'minor', text: 'Hover states enhanced with deeper shadow lift and brighter card surface' },
+    ],
+  },
   {
     version: '2.9.0',
     date: '2026-04-15',

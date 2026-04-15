@@ -91,8 +91,8 @@
 
 /* ---- Dashboard: Client Cards ---- */
 .of-client-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
-.of-client-card { background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--gold); border-radius: 12px; overflow: hidden; transition: all 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
-.of-client-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); transform: translateY(-1px); }
+.of-client-card { background: rgba(255,255,255,0.55); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.6); border-top: 3px solid var(--gold); border-radius: 12px; overflow: hidden; transition: all 0.25s ease; box-shadow: 0 6px 28px rgba(4,20,79,0.16), 0 3px 10px rgba(0,0,0,0.1); }
+.of-client-card:hover { background: rgba(255,255,255,0.9); box-shadow: 0 16px 48px rgba(4,20,79,0.22), 0 6px 20px rgba(0,0,0,0.12); transform: translateY(-1px); }
 .of-card-body { display: block; width: 100%; padding: 20px; cursor: pointer; text-align: left; background: none; border: none; font-family: var(--sans); }
 .of-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
 .of-card-actions { display: flex; gap: 4px; padding: 8px 16px; background: #f8fafc; border-top: 1px solid var(--border); }
