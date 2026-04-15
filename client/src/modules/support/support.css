@@ -9,6 +9,39 @@
   padding: 60px 24px;
 }
 
+/* ---- Support Home Health Strip ---- */
+.support-home-health {
+  margin-bottom: 32px;
+}
+
+.support-home-health-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.support-refresh-btn-sm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.15s;
+}
+.support-refresh-btn-sm:hover {
+  color: var(--navy);
+  border-color: var(--navy);
+}
+.support-refresh-btn-sm:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .support-home-title {
   font-size: 22px;
   font-weight: 700;

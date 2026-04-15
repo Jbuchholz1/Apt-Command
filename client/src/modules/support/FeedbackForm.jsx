@@ -139,7 +139,7 @@ export default function FeedbackForm() {
     <div className="support-page">
       <div className="support-toolbar">
         <Link to="/support" className="support-back-btn"><ArrowLeft size={16} /> Support</Link>
-        <h2 className="support-toolbar-title">Bug & Feedback</h2>
+        <h2 className="support-toolbar-title">Support & Requests</h2>
       </div>
 
       <div className="support-page-body">

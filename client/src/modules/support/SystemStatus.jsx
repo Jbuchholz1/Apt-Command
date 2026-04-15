@@ -85,7 +85,7 @@ export default function SystemStatus() {
     <div className="support-page">
       <div className="support-toolbar">
         <Link to="/support" className="support-back-btn"><ArrowLeft size={16} /> Support</Link>
-        <h2 className="support-toolbar-title">System Status</h2>
+        <h2 className="support-toolbar-title">Change Log</h2>
         <button className="support-refresh-btn" onClick={loadHealth} disabled={healthLoading}>
           <RefreshCw size={14} className={healthLoading ? 'spin' : ''} /> Refresh
         </button>

@@ -21,7 +21,6 @@ import SupportHome from './modules/support/SupportHome';
 import HelpDocs from './modules/support/HelpDocs';
 import FeedbackForm from './modules/support/FeedbackForm';
 import SystemStatus from './modules/support/SystemStatus';
-import ITSupport from './modules/support/ITSupport';
 import ComingSoon from './components/ComingSoon';
 
 const DEV_BYPASS = import.meta.env.DEV && import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
@@ -50,7 +49,7 @@ function AppRoutes() {
           <Route path="help" element={<HelpDocs />} />
           <Route path="feedback" element={<FeedbackForm />} />
           <Route path="status" element={<SystemStatus />} />
-          <Route path="it" element={<ITSupport />} />
+
         </Route>
         <Route path="operations" element={<OperationsModule />} />
         <Route path="admin" element={<AdminModule />} />
