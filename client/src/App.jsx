@@ -24,7 +24,47 @@ import SystemStatus from './modules/support/SystemStatus';
 import ITSupport from './modules/support/ITSupport';
 import ComingSoon from './components/ComingSoon';
 
+const DEV_BYPASS = import.meta.env.DEV && import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
+
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route element={<AppShell />}>
+        <Route index element={<HomePage />} />
+        <Route path="req-board" element={<ReqBoardModule />} />
+        <Route path="org-flow" element={<OrgFlowModule />} />
+        <Route path="pipeline" element={<PipelineModule />}>
+          <Route index element={<OpportunityPipeline />} />
+        </Route>
+        <Route path="clients" element={<ClientHealthModule />} />
+        <Route path="reporting" element={<ReportingModule />}>
+          <Route index element={<ReportingHome />} />
+          <Route path="recruiting" element={<RecruiterDashboard />} />
+          <Route path="sales" element={<SalesDashboard />} />
+        </Route>
+        <Route path="performance" element={<PerformanceModule />}>
+          <Route index element={<MyDashboard />} />
+        </Route>
+        <Route path="support" element={<SupportModule />}>
+          <Route index element={<SupportHome />} />
+          <Route path="help" element={<HelpDocs />} />
+          <Route path="feedback" element={<FeedbackForm />} />
+          <Route path="status" element={<SystemStatus />} />
+          <Route path="it" element={<ITSupport />} />
+        </Route>
+        <Route path="operations" element={<OperationsModule />} />
+        <Route path="admin" element={<AdminModule />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Route>
+    </Routes>
+  );
+}
+
 export default function App() {
+  if (DEV_BYPASS) {
+    return <AppRoutes />;
+  }
+
   return (
     <>
       <UnauthenticatedTemplate>
@@ -33,35 +73,7 @@ export default function App() {
         </Routes>
       </UnauthenticatedTemplate>
       <AuthenticatedTemplate>
-        <Routes>
-          <Route element={<AppShell />}>
-            <Route index element={<HomePage />} />
-            <Route path="req-board" element={<ReqBoardModule />} />
-            <Route path="org-flow" element={<OrgFlowModule />} />
-            <Route path="pipeline" element={<PipelineModule />}>
-              <Route index element={<OpportunityPipeline />} />
-            </Route>
-            <Route path="clients" element={<ClientHealthModule />} />
-            <Route path="reporting" element={<ReportingModule />}>
-              <Route index element={<ReportingHome />} />
-              <Route path="recruiting" element={<RecruiterDashboard />} />
-              <Route path="sales" element={<SalesDashboard />} />
-            </Route>
-            <Route path="performance" element={<PerformanceModule />}>
-              <Route index element={<MyDashboard />} />
-            </Route>
-            <Route path="support" element={<SupportModule />}>
-              <Route index element={<SupportHome />} />
-              <Route path="help" element={<HelpDocs />} />
-              <Route path="feedback" element={<FeedbackForm />} />
-              <Route path="status" element={<SystemStatus />} />
-              <Route path="it" element={<ITSupport />} />
-            </Route>
-            <Route path="operations" element={<OperationsModule />} />
-            <Route path="admin" element={<AdminModule />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Route>
-        </Routes>
+        <AppRoutes />
       </AuthenticatedTemplate>
     </>
   );

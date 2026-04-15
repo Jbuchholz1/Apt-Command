@@ -56,7 +56,7 @@
   color: var(--sidebar-text);
   text-decoration: none;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.2s ease, color 0.2s ease, border-radius 0.2s ease, margin 0.2s ease, padding 0.2s ease;
   border-left: 3px solid transparent;
   position: relative;
 }
@@ -64,11 +64,40 @@
   background: var(--sidebar-hover-bg);
   color: var(--sidebar-text-active);
 }
+
+/* ---- Active Tab — fluid connection to content area ---- */
 .sidebar-nav-item.active {
-  background: var(--sidebar-active-bg);
-  color: var(--sidebar-text-active);
-  border-left-color: var(--sidebar-active-border);
+  background: var(--bg);
+  color: var(--text);
+  border-left-color: transparent;
+  border-radius: 12px 0 0 12px;
+  margin-right: -8px;
+  padding-right: 20px;
   font-weight: 600;
+  z-index: 1;
+}
+.sidebar-nav-item.active:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Inverse rounded corners — creates the smooth curve from sidebar into active tab */
+.sidebar-nav-item.active::before,
+.sidebar-nav-item.active::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+}
+.sidebar-nav-item.active::before {
+  bottom: 100%;
+  background: radial-gradient(circle at 0 0, var(--sidebar-bg) 16px, var(--bg) 16px);
+}
+.sidebar-nav-item.active::after {
+  top: 100%;
+  background: radial-gradient(circle at 0 100%, var(--sidebar-bg) 16px, var(--bg) 16px);
 }
 .sidebar-nav-item.disabled {
   color: rgba(255, 255, 255, 0.3);
