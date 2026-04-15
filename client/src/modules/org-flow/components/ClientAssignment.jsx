@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { X, UserPlus, Trash2 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import {
+  getOrgFlowUsers, getClientAssignments,
+  createClientAssignment, deleteClientAssignment,
+} from '../../../lib/api';
 
 export default function ClientAssignment({ client, onClose }) {
   const [users, setUsers] = useState([]);
@@ -15,23 +18,17 @@ export default function ClientAssignment({ client, onClose }) {
 
   const loadData = async () => {
     try {
-      const [usersRes, assignmentsRes] = await Promise.all([
-        supabase.from('user_profiles').select('*').eq('is_active', true),
-        supabase
-          .from('client_assignments')
-          .select('*, user_profiles(email, full_name)')
-          .eq('client_id', client.id),
+      const [usersData, assignmentsData] = await Promise.all([
+        getOrgFlowUsers(),
+        getClientAssignments(client.id),
       ]);
 
-      if (usersRes.error) throw usersRes.error;
-      if (assignmentsRes.error) throw assignmentsRes.error;
-
-      const sortedUsers = (usersRes.data || []).sort((a, b) =>
+      const sortedUsers = (usersData || []).sort((a, b) =>
         (a.full_name || a.email).localeCompare(b.full_name || b.email)
       );
 
       setUsers(sortedUsers);
-      setAssignments(assignmentsRes.data || []);
+      setAssignments(assignmentsData || []);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -43,18 +40,7 @@ export default function ClientAssignment({ client, onClose }) {
     if (!selectedUserId) return;
 
     try {
-      const { data: userData } = await supabase.auth.getUser();
-
-      const { error } = await supabase.from('client_assignments').insert([
-        {
-          client_id: client.id,
-          user_id: selectedUserId,
-          assigned_by: userData.user?.id,
-        },
-      ]);
-
-      if (error) throw error;
-
+      await createClientAssignment(client.id, selectedUserId);
       setSelectedUserId('');
       loadData();
     } catch (err) {
@@ -66,13 +52,7 @@ export default function ClientAssignment({ client, onClose }) {
     if (!confirm(`Remove access for ${userEmail}?`)) return;
 
     try {
-      const { error } = await supabase
-        .from('client_assignments')
-        .delete()
-        .eq('id', assignmentId);
-
-      if (error) throw error;
-
+      await deleteClientAssignment(assignmentId);
       loadData();
     } catch (err) {
       setError(err.message);

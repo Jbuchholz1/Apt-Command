@@ -266,6 +266,151 @@ export function updatePlacementBullhorn(placementId, fields) {
   });
 }
 
+// --- Org Flow ---
+
+export function getOrgFlowUsers() {
+  return fetchAPI('/api/org-flow/users');
+}
+
+export function getOrgFlowCurrentUser() {
+  return fetchAPI('/api/org-flow/users/me');
+}
+
+export function getOrgFlowClients(view, userId) {
+  const params = view === 'my' && userId ? `?view=my&userId=${userId}` : '';
+  return fetchAPI(`/api/org-flow/clients${params}`);
+}
+
+export function getOrgFlowClient(id) {
+  return fetchAPI(`/api/org-flow/clients/${id}`);
+}
+
+export function createOrgFlowClient(name, createdBy) {
+  return fetchAPI('/api/org-flow/clients', {
+    method: 'POST',
+    body: { name, created_by: createdBy },
+  });
+}
+
+export function updateOrgFlowClient(id, fields) {
+  return fetchAPI(`/api/org-flow/clients/${id}`, {
+    method: 'PATCH',
+    body: fields,
+  });
+}
+
+export function deleteOrgFlowClient(id) {
+  return fetchAPI(`/api/org-flow/clients/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export function importOrgFlowClients(rows, currentUserId) {
+  return fetchAPI('/api/org-flow/clients/import', {
+    method: 'POST',
+    body: { rows, currentUserId },
+  });
+}
+
+export async function uploadClientLogo(clientId, file) {
+  const token = await getToken();
+  const formData = new FormData();
+  formData.append('logo', file);
+
+  const headers = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`${BASE_URL}/api/org-flow/clients/${clientId}/logo`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  if (res.status === 401) {
+    if (msalInstance) msalInstance.acquireTokenRedirect(loginRequest);
+    throw new Error('Session expired — redirecting to login');
+  }
+  if (res.status === 429) {
+    throw new Error('Too many requests — please wait a moment and try again');
+  }
+  if (!res.ok) throw new Error(`Upload failed: ${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export function removeClientLogo(clientId) {
+  return fetchAPI(`/api/org-flow/clients/${clientId}/logo`, {
+    method: 'DELETE',
+  });
+}
+
+export function getClientEmployees(clientId) {
+  return fetchAPI(`/api/org-flow/clients/${clientId}/employees`);
+}
+
+export function createEmployee(clientId, fields) {
+  return fetchAPI(`/api/org-flow/clients/${clientId}/employees`, {
+    method: 'POST',
+    body: fields,
+  });
+}
+
+export function updateEmployee(employeeId, fields) {
+  return fetchAPI(`/api/org-flow/employees/${employeeId}`, {
+    method: 'PATCH',
+    body: fields,
+  });
+}
+
+export function deleteOrgFlowEmployee(employeeId, clientId) {
+  return fetchAPI(`/api/org-flow/employees/${employeeId}?clientId=${clientId}`, {
+    method: 'DELETE',
+  });
+}
+
+export function bulkDeleteEmployees(ids, clientId) {
+  return fetchAPI('/api/org-flow/employees/bulk-delete', {
+    method: 'POST',
+    body: { ids, clientId },
+  });
+}
+
+export function saveEmployeePositions(clientId, updates) {
+  return fetchAPI(`/api/org-flow/clients/${clientId}/employees/positions`, {
+    method: 'POST',
+    body: { updates },
+  });
+}
+
+export function resetEmployeePositions(clientId) {
+  return fetchAPI(`/api/org-flow/clients/${clientId}/employees/reset-positions`, {
+    method: 'POST',
+  });
+}
+
+export function importEmployees(clientId, toInsert, toUpdate, validRows) {
+  return fetchAPI(`/api/org-flow/clients/${clientId}/employees/import`, {
+    method: 'POST',
+    body: { toInsert, toUpdate, validRows },
+  });
+}
+
+export function getClientAssignments(clientId) {
+  return fetchAPI(`/api/org-flow/clients/${clientId}/assignments`);
+}
+
+export function createClientAssignment(clientId, userId) {
+  return fetchAPI(`/api/org-flow/clients/${clientId}/assignments`, {
+    method: 'POST',
+    body: { user_id: userId },
+  });
+}
+
+export function deleteClientAssignment(assignmentId) {
+  return fetchAPI(`/api/org-flow/assignments/${assignmentId}`, {
+    method: 'DELETE',
+  });
+}
+
 export function exportHealthDashboard() {
   return downloadExcel('/api/client-health/export', `APT_Health_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }

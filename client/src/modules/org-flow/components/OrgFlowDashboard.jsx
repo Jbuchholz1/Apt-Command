@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { Plus, Building2, FolderOpen, Trash2, Users, User as UserIcon, Settings, CreditCard as Edit2, FileDown, Upload, Search, Image } from 'lucide-react';
 import { useMsal } from '@azure/msal-react';
-import { supabase } from '../lib/supabase';
 import ClientAssignment from './ClientAssignment';
 import * as XLSX from 'xlsx';
-import { getClientHealthStats } from '../../../lib/api';
+import {
+  getClientHealthStats, getOrgFlowCurrentUser, getOrgFlowClients,
+  getOrgFlowUsers, updateOrgFlowClient, uploadClientLogo, removeClientLogo,
+  createOrgFlowClient, deleteOrgFlowClient, importOrgFlowClients,
+} from '../../../lib/api';
 
 export default function OrgFlowDashboard({ onSelectClient }) {
   const { accounts } = useMsal();
@@ -37,14 +40,11 @@ export default function OrgFlowDashboard({ onSelectClient }) {
   // Resolve MSAL email to Supabase user_profiles ID on mount
   useEffect(() => {
     if (currentUserEmail) {
-      supabase
-        .from('user_profiles')
-        .select('id')
-        .ilike('email', currentUserEmail)
-        .maybeSingle()
-        .then(({ data }) => {
+      getOrgFlowCurrentUser()
+        .then((data) => {
           if (data) setCurrentUserId(data.id);
-        });
+        })
+        .catch(() => {});
     }
   }, [currentUserEmail]);
 
@@ -57,28 +57,7 @@ export default function OrgFlowDashboard({ onSelectClient }) {
 
   const loadClients = async () => {
     try {
-      let query = supabase
-        .from('clients')
-        .select('*, account_manager:user_profiles!created_by(email, full_name)');
-
-      if (viewMode === 'my' && currentUserId) {
-        const { data: assignments } = await supabase
-          .from('client_assignments')
-          .select('client_id')
-          .eq('user_id', currentUserId);
-
-        const assignedClientIds = assignments?.map(a => a.client_id) || [];
-
-        if (assignedClientIds.length > 0) {
-          query = query.or(`created_by.eq.${currentUserId},id.in.(${assignedClientIds.join(',')})`);
-        } else {
-          query = query.eq('created_by', currentUserId);
-        }
-      }
-
-      const { data, error } = await query.order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const data = await getOrgFlowClients(viewMode, currentUserId);
       setClients(data || []);
     } catch (err) {
       setError(err.message);
@@ -88,11 +67,7 @@ export default function OrgFlowDashboard({ onSelectClient }) {
   };
 
   const loadAllUsers = async () => {
-    const { data } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('is_active', true)
-      .order('full_name', { nullsFirst: false });
+    const data = await getOrgFlowUsers();
     setAllUsers(data || []);
   };
 
@@ -100,13 +75,7 @@ export default function OrgFlowDashboard({ onSelectClient }) {
     if (!editManagerClient || !newManagerId) return;
 
     try {
-      const { error } = await supabase
-        .from('clients')
-        .update({ created_by: newManagerId })
-        .eq('id', editManagerClient.id);
-
-      if (error) throw error;
-
+      await updateOrgFlowClient(editManagerClient.id, { created_by: newManagerId });
       setEditManagerClient(null);
       setNewManagerId('');
       loadClients();
@@ -120,39 +89,7 @@ export default function OrgFlowDashboard({ onSelectClient }) {
 
     setUploadingLogo(true);
     try {
-      if (logoUploadClient.logo_url) {
-        const oldPath = logoUploadClient.logo_url.split('/').pop();
-        if (oldPath) {
-          await supabase.storage
-            .from('client-logos')
-            .remove([`${logoUploadClient.id}/${oldPath}`]);
-        }
-      }
-
-      const fileExt = logoFile.name.split('.').pop();
-      const fileName = `${Date.now()}.${fileExt}`;
-      const filePath = `${logoUploadClient.id}/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('client-logos')
-        .upload(filePath, logoFile, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('client-logos')
-        .getPublicUrl(filePath);
-
-      const { error: updateError } = await supabase
-        .from('clients')
-        .update({ logo_url: publicUrl })
-        .eq('id', logoUploadClient.id);
-
-      if (updateError) throw updateError;
-
+      await uploadClientLogo(logoUploadClient.id, logoFile);
       setLogoUploadClient(null);
       setLogoFile(null);
       loadClients();
@@ -168,22 +105,7 @@ export default function OrgFlowDashboard({ onSelectClient }) {
 
     setUploadingLogo(true);
     try {
-      if (logoUploadClient.logo_url) {
-        const oldPath = logoUploadClient.logo_url.split('/').pop();
-        if (oldPath) {
-          await supabase.storage
-            .from('client-logos')
-            .remove([`${logoUploadClient.id}/${oldPath}`]);
-        }
-      }
-
-      const { error } = await supabase
-        .from('clients')
-        .update({ logo_url: null })
-        .eq('id', logoUploadClient.id);
-
-      if (error) throw error;
-
+      await removeClientLogo(logoUploadClient.id);
       setLogoUploadClient(null);
       setLogoFile(null);
       loadClients();
@@ -199,12 +121,7 @@ export default function OrgFlowDashboard({ onSelectClient }) {
     if (!newClientName.trim()) return;
 
     try {
-      const { error } = await supabase
-        .from('clients')
-        .insert([{ name: newClientName, created_by: currentUserId }]);
-
-      if (error) throw error;
-
+      await createOrgFlowClient(newClientName, currentUserId);
       setNewClientName('');
       setShowAddModal(false);
       loadClients();
@@ -215,10 +132,7 @@ export default function OrgFlowDashboard({ onSelectClient }) {
 
   const handleDeleteClient = async (clientId) => {
     try {
-      const { error } = await supabase.from('clients').delete().eq('id', clientId);
-
-      if (error) throw error;
-
+      await deleteOrgFlowClient(clientId);
       setDeleteConfirmId(null);
       loadClients();
     } catch (err) {
@@ -257,115 +171,26 @@ export default function OrgFlowDashboard({ onSelectClient }) {
           return;
         }
 
-        const { data: allUsers, error: usersError } = await supabase
-          .from('user_profiles')
-          .select('id, email')
-          .eq('is_active', true);
-
-        if (usersError) throw usersError;
-
-        const emailToIdMap = new Map(allUsers?.map(u => [u.email.toLowerCase(), u.id]) || []);
-
-        const { data: existingClients } = await supabase
-          .from('clients')
-          .select('id, name');
-
-        const existingClientMap = new Map(
-          existingClients?.map(c => [c.name.toLowerCase().trim(), c.id]) || []
-        );
-
-        const clientsToInsert = [];
-        const clientsToUpdate = [];
-        const skippedRows = [];
-        const warnings = [];
-
-        jsonData.forEach((row, index) => {
-          const rowNumber = index + 2;
-
-          if (!row.ClientName || !row.ClientName.trim()) {
-            skippedRows.push(`Row ${rowNumber}: Missing ClientName`);
-            return;
-          }
-
-          const clientName = row.ClientName.trim();
-          const accountManager = row.AccountManager?.trim() || '';
-          let managerId;
-
-          const managerEmailField = row.AccountManagerEmail || row.reportToEmail || row.ReportToEmail || '';
-
-          if (managerEmailField && managerEmailField.trim()) {
-            const email = managerEmailField.trim().toLowerCase();
-            const userId = emailToIdMap.get(email);
-
-            if (!userId) {
-              warnings.push(`Row ${rowNumber}: Email "${managerEmailField}" not found, using current user`);
-              managerId = currentUserId;
-            } else {
-              managerId = userId;
-            }
-          } else {
-            managerId = currentUserId;
-          }
-
-          const existingClientId = existingClientMap.get(clientName.toLowerCase());
-
-          if (existingClientId) {
-            clientsToUpdate.push({
-              id: existingClientId,
-              name: clientName,
-              created_by: managerId,
-              account_manager: accountManager,
-            });
-          } else {
-            clientsToInsert.push({
-              name: clientName,
-              created_by: managerId,
-              account_manager: accountManager,
-            });
-          }
-        });
-
-        if (clientsToInsert.length === 0 && clientsToUpdate.length === 0) {
-          setError('No valid clients to import. Please check your file format.');
-          return;
-        }
-
-        if (clientsToInsert.length > 0) {
-          const { error: insertError } = await supabase
-            .from('clients')
-            .insert(clientsToInsert);
-
-          if (insertError) throw insertError;
-        }
-
-        for (const client of clientsToUpdate) {
-          const { error: updateError } = await supabase
-            .from('clients')
-            .update({ name: client.name, created_by: client.created_by, account_manager: client.account_manager })
-            .eq('id', client.id);
-
-          if (updateError) {
-            console.error(`Failed to update client ${client.name}:`, updateError);
-          }
-        }
+        // Send parsed rows to server — server handles user resolution and insert/update logic
+        const result = await importOrgFlowClients(jsonData, currentUserId);
 
         loadClients();
         setError('');
 
-        let message = `Successfully imported ${clientsToInsert.length} new client(s)`;
-        if (clientsToUpdate.length > 0) {
-          message += ` and updated ${clientsToUpdate.length} existing client(s)`;
+        let message = `Successfully imported ${result.inserted} new client(s)`;
+        if (result.updated > 0) {
+          message += ` and updated ${result.updated} existing client(s)`;
         }
-        if (skippedRows.length > 0) {
-          message += `\n\nSkipped ${skippedRows.length} row(s):\n${skippedRows.slice(0, 5).join('\n')}`;
-          if (skippedRows.length > 5) {
-            message += `\n... and ${skippedRows.length - 5} more`;
+        if (result.skippedRows?.length > 0) {
+          message += `\n\nSkipped ${result.skippedRows.length} row(s):\n${result.skippedRows.slice(0, 5).join('\n')}`;
+          if (result.skippedRows.length > 5) {
+            message += `\n... and ${result.skippedRows.length - 5} more`;
           }
         }
-        if (warnings.length > 0) {
-          message += `\n\nWarnings:\n${warnings.slice(0, 3).join('\n')}`;
-          if (warnings.length > 3) {
-            message += `\n... and ${warnings.length - 3} more`;
+        if (result.warnings?.length > 0) {
+          message += `\n\nWarnings:\n${result.warnings.slice(0, 3).join('\n')}`;
+          if (result.warnings.length > 3) {
+            message += `\n... and ${result.warnings.length - 3} more`;
           }
         }
 

@@ -11,11 +11,14 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { ArrowLeft, Plus, Download, Upload, Save, Search, CreditCard as Edit, Trash2, X, LayoutGrid, FileDown, RotateCcw } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import EmployeeNode from './EmployeeNode';
 import { getLayoutedElements } from '../lib/layoutUtils';
 import * as XLSX from 'xlsx';
-import { getContractorCounts } from '../../../lib/api';
+import {
+  getContractorCounts, getOrgFlowClient, getClientEmployees,
+  updateEmployee as apiUpdateEmployee, createEmployee, deleteOrgFlowEmployee,
+  bulkDeleteEmployees, saveEmployeePositions, resetEmployeePositions, importEmployees,
+} from '../../../lib/api';
 import { useUserRole } from '../../../lib/UserRoleContext';
 
 const BH_BASE = 'https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm';
@@ -100,34 +103,23 @@ function OrgChartContent({ clientId, onBack }) {
   }, [employees, liveContractorCounts]);
 
   const loadClient = async () => {
-    const { data } = await supabase
-      .from('clients')
-      .select('*')
-      .eq('id', clientId)
-      .maybeSingle();
+    const data = await getOrgFlowClient(clientId);
     setClient(data);
   };
 
   const loadEmployees = async () => {
-    const { data, error } = await supabase
-      .from('employees')
-      .select('*')
-      .eq('client_id', clientId);
-
-    if (!error && data) {
-      setEmployees(data);
+    try {
+      const data = await getClientEmployees(clientId);
+      if (data) setEmployees(data);
+    } catch (err) {
+      console.error('Error loading employees:', err);
     }
   };
 
   const handleUpdateHeadcount = async (id, field, value) => {
     try {
       const updates = { [field]: value };
-
-      await supabase
-        .from('employees')
-        .update(updates)
-        .eq('id', id);
-
+      await apiUpdateEmployee(id, updates);
       setEmployees(prev =>
         prev.map(emp =>
           emp.id === id ? { ...emp, ...updates } : emp
@@ -305,17 +297,18 @@ function OrgChartContent({ clientId, onBack }) {
       setEdges([...layoutedEdges, ...allyEdges]);
 
       setTimeout(async () => {
-        for (const node of layoutedNodes) {
-          const emp = employees.find((e) => e.id === node.id);
-          if (emp && (emp.position_x === null || emp.position_x === 0)) {
-            await supabase
-              .from('employees')
-              .update({
-                position_x: node.position.x,
-                position_y: node.position.y,
-              })
-              .eq('id', node.id);
-          }
+        const posUpdates = layoutedNodes
+          .filter(node => {
+            const emp = employees.find(e => e.id === node.id);
+            return emp && (emp.position_x === null || emp.position_x === 0);
+          })
+          .map(node => ({
+            id: node.id,
+            position_x: node.position.x,
+            position_y: node.position.y,
+          }));
+        if (posUpdates.length > 0) {
+          await saveEmployeePositions(clientId, posUpdates);
         }
       }, 100);
     } else {
@@ -356,30 +349,24 @@ function OrgChartContent({ clientId, onBack }) {
     setSaving(true);
     try {
       if (selectedEmployee) {
-        await supabase
-          .from('employees')
-          .update({
-            name: editForm.name,
-            role: editForm.role,
-            department: editForm.department,
-            email: editForm.email,
-            phone: editForm.phone,
-            reports_to_id: editForm.reports_to_id || null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', selectedEmployee.id);
+        await apiUpdateEmployee(selectedEmployee.id, {
+          name: editForm.name,
+          role: editForm.role,
+          department: editForm.department,
+          email: editForm.email,
+          phone: editForm.phone,
+          reports_to_id: editForm.reports_to_id || null,
+          updated_at: new Date().toISOString(),
+        });
       } else {
-        await supabase.from('employees').insert([
-          {
-            client_id: clientId,
-            name: editForm.name,
-            role: editForm.role,
-            department: editForm.department,
-            email: editForm.email,
-            phone: editForm.phone,
-            reports_to_id: editForm.reports_to_id || null,
-          },
-        ]);
+        await createEmployee(clientId, {
+          name: editForm.name,
+          role: editForm.role,
+          department: editForm.department,
+          email: editForm.email,
+          phone: editForm.phone,
+          reports_to_id: editForm.reports_to_id || null,
+        });
       }
       setShowEditPanel(false);
       loadEmployees();
@@ -395,20 +382,7 @@ function OrgChartContent({ clientId, onBack }) {
     if (!confirm(`Delete ${selectedEmployee.name}?`)) return;
 
     try {
-      // Find all employees who report to this employee
-      const directReports = employees.filter(emp => emp.reports_to_id === selectedEmployee.id);
-
-      // Reassign them to the deleted employee's manager (or null if at top level)
-      if (directReports.length > 0) {
-        await supabase
-          .from('employees')
-          .update({ reports_to_id: selectedEmployee.reports_to_id })
-          .in('id', directReports.map(emp => emp.id));
-      }
-
-      // Delete the employee
-      await supabase.from('employees').delete().eq('id', selectedEmployee.id);
-
+      await deleteOrgFlowEmployee(selectedEmployee.id, clientId);
       setShowEditPanel(false);
       loadEmployees();
     } catch (error) {
@@ -430,28 +404,7 @@ function OrgChartContent({ clientId, onBack }) {
 
     try {
       const selectedIds = selectedNodes.map(node => node.id);
-
-      // For each employee being deleted, reassign their direct reports
-      for (const node of selectedNodes) {
-        const employee = employees.find(emp => emp.id === node.id);
-        if (!employee) continue;
-
-        const directReports = employees.filter(emp => emp.reports_to_id === employee.id);
-
-        if (directReports.length > 0) {
-          await supabase
-            .from('employees')
-            .update({ reports_to_id: employee.reports_to_id })
-            .in('id', directReports.map(emp => emp.id));
-        }
-      }
-
-      // Delete all selected employees
-      await supabase
-        .from('employees')
-        .delete()
-        .in('id', selectedIds);
-
+      await bulkDeleteEmployees(selectedIds, clientId);
       setSelectedNodes([]);
       loadEmployees();
     } catch (error) {
@@ -504,7 +457,6 @@ function OrgChartContent({ clientId, onBack }) {
   const handleSavePositions = async () => {
     setSaving(true);
     try {
-      // Filter out virtual ally nodes — only save real employee positions
       const updates = nodes
         .filter((node) => node.type === 'employee')
         .map((node) => ({
@@ -512,16 +464,7 @@ function OrgChartContent({ clientId, onBack }) {
           position_x: node.position.x,
           position_y: node.position.y,
         }));
-
-      for (const update of updates) {
-        await supabase
-          .from('employees')
-          .update({
-            position_x: update.position_x,
-            position_y: update.position_y,
-          })
-          .eq('id', update.id);
-      }
+      await saveEmployeePositions(clientId, updates);
     } finally {
       setSaving(false);
     }
@@ -534,11 +477,7 @@ function OrgChartContent({ clientId, onBack }) {
 
     setSaving(true);
     try {
-      await supabase
-        .from('employees')
-        .update({ position_x: 0, position_y: 0 })
-        .eq('client_id', clientId);
-
+      await resetEmployeePositions(clientId);
       await loadEmployees();
 
       setTimeout(() => {
@@ -641,20 +580,13 @@ function OrgChartContent({ clientId, onBack }) {
 
   const handleImportExcel = (e) => {
     const file = e.target.files?.[0];
-    if (!file) {
-      console.log('No file selected');
-      return;
-    }
+    if (!file) return;
 
-    console.log('File selected:', file.name, 'Size:', file.size);
     const reader = new FileReader();
     reader.onload = async (event) => {
-      console.log('FileReader onload triggered');
       try {
         const data = new Uint8Array(event.target?.result);
-        console.log('Data read, length:', data.length);
         const workbook = XLSX.read(data, { type: 'array' });
-        console.log('Workbook parsed, sheets:', workbook.SheetNames);
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet);
@@ -683,20 +615,10 @@ function OrgChartContent({ clientId, onBack }) {
           return normalizedRow;
         });
 
-        console.log('Raw columns from Excel:', Object.keys(jsonData[0] || {}));
-        console.log('First 3 raw rows:', jsonData.slice(0, 3));
-
-        console.log('Starting Excel import...');
-        console.log('Raw data rows:', jsonData.length);
-        console.log('First row sample:', jsonData[0]);
-
         // Validate required columns exist - need at least Name OR Email
         const firstRow = normalizedData[0];
         const hasName = firstRow.Name !== undefined;
         const hasEmail = firstRow.Email !== undefined;
-
-        console.log('Normalized first row:', firstRow);
-        console.log('Has Name column:', hasName, 'Has Email column:', hasEmail);
 
         if (!hasName && !hasEmail) {
           const columns = Object.keys(jsonData[0] || {}).join(', ');
@@ -704,29 +626,20 @@ function OrgChartContent({ clientId, onBack }) {
           return;
         }
 
-        // Get existing employees for this client to handle updates
-        const { data: existingEmployees } = await supabase
-          .from('employees')
-          .select('id, email, name')
-          .eq('client_id', clientId);
-
+        // Get existing employees from server to handle updates
+        const existingEmployees = await getClientEmployees(clientId);
         const existingEmailMap = new Map(
-          existingEmployees?.map(e => [e.email.toLowerCase().trim(), e.id]) || []
+          (existingEmployees || []).filter(e => e.email).map(e => [e.email.toLowerCase().trim(), e.id])
         );
-
         const existingNameMap = new Map(
-          existingEmployees?.map(e => [e.name.toLowerCase().trim(), e.id]) || []
+          (existingEmployees || []).filter(e => e.name).map(e => [e.name.toLowerCase().trim(), e.id])
         );
 
         const skippedRows = [];
-        const warnings = [];
         const validRows = [];
 
-        // Validate and prepare data
         normalizedData.forEach((row, index) => {
           const rowNumber = index + 2;
-
-          // Skip rows with missing both name AND email
           const hasRowName = row.Name && row.Name.trim();
           const hasRowEmail = row.Email && row.Email.trim();
 
@@ -734,11 +647,7 @@ function OrgChartContent({ clientId, onBack }) {
             skippedRows.push(`Row ${rowNumber}: Missing both Name and Email`);
             return;
           }
-
-          validRows.push({
-            ...row,
-            rowNumber,
-          });
+          validRows.push({ ...row, rowNumber });
         });
 
         if (validRows.length === 0) {
@@ -754,190 +663,43 @@ function OrgChartContent({ clientId, onBack }) {
           const email = row.Email?.trim() || '';
           const name = row.Name?.trim() || '';
 
-          // Try to find existing employee by email first, then by name
           let existingId = email ? existingEmailMap.get(email.toLowerCase()) : null;
-          if (!existingId && name) {
-            existingId = existingNameMap.get(name.toLowerCase());
-          }
+          if (!existingId && name) existingId = existingNameMap.get(name.toLowerCase());
 
           const employeeData = {
             client_id: clientId,
-            name: name,
-            role: row.Role?.trim() || '',
-            department: row.Department?.trim() || '',
-            email: email,
-            phone: row.Phone?.trim() || '',
-            position_x: 0,
-            position_y: 0,
+            name, role: row.Role?.trim() || '', department: row.Department?.trim() || '',
+            email, phone: row.Phone?.trim() || '',
+            position_x: 0, position_y: 0,
             num_contractors: parseInt(row.Contractors) || 0,
             num_apt_contractors: parseInt(row.AptContractors) || 0,
           };
 
           if (existingId) {
-            employeesToUpdate.push({
-              ...employeeData,
-              id: existingId,
-            });
+            employeesToUpdate.push({ ...employeeData, id: existingId });
           } else {
             employeesToInsert.push(employeeData);
           }
         });
 
-        let processedCount = 0;
-
-        // Update existing employees
-        for (const emp of employeesToUpdate) {
-          const { error } = await supabase
-            .from('employees')
-            .update({
-              name: emp.name,
-              email: emp.email,
-              role: emp.role,
-              department: emp.department,
-              phone: emp.phone,
-              num_contractors: emp.num_contractors,
-              num_apt_contractors: emp.num_apt_contractors,
-            })
-            .eq('id', emp.id);
-
-          if (!error) processedCount++;
-        }
-
-        // Insert new employees
-        const { data: insertedEmployees, error: insertError } = await supabase
-          .from('employees')
-          .insert(employeesToInsert)
-          .select();
-
-        if (insertError) throw insertError;
-        processedCount += insertedEmployees?.length || 0;
-
-        // Re-fetch all employees to get the most current data after updates and inserts
-        const { data: allEmployees, error: fetchError } = await supabase
-          .from('employees')
-          .select('*')
-          .eq('client_id', clientId);
-
-        if (fetchError) throw fetchError;
-
-        // Create mapping from email and name to actual database ID
-        const emailToDbId = new Map();
-        const nameToDbId = new Map();
-
-        allEmployees?.forEach((emp) => {
-          if (emp.email && emp.email.trim()) {
-            emailToDbId.set(emp.email.trim().toLowerCase(), emp.id);
-          }
-          if (emp.name && emp.name.trim()) {
-            nameToDbId.set(emp.name.trim().toLowerCase(), emp.id);
-          }
-        });
-
-        console.log('Email to ID map:', Object.fromEntries(emailToDbId));
-        console.log('Name to ID map:', Object.fromEntries(nameToDbId));
-
-        // Second pass: Update reports_to_id based on ReportsToEmail (or name)
-        console.log('Starting second pass for reporting relationships...');
-        console.log('Valid rows count:', validRows.length);
-        console.log('First 3 valid rows:', JSON.stringify(validRows.slice(0, 3), null, 2));
-        let relationshipsUpdated = 0;
-
-        for (let i = 0; i < validRows.length; i++) {
-          const row = validRows[i];
-          const reportsToField = row.ReportsToEmail || row.reportToEmail || row.ReportsTo || '';
-
-          if (reportsToField && reportsToField.trim()) {
-            const reportsToValue = reportsToField.trim();
-            const reportsToLower = reportsToValue.toLowerCase();
-
-            // Find current employee by email or name
-            const employeeEmail = row.Email?.trim().toLowerCase() || '';
-            const employeeName = row.Name?.trim().toLowerCase() || '';
-
-            console.log(`Processing row ${row.rowNumber}: ${row.Name} reports to ${reportsToValue}`);
-            console.log(`  Employee email: "${employeeEmail}", name: "${employeeName}"`);
-
-            let employeeId = employeeEmail ? emailToDbId.get(employeeEmail) : null;
-            if (!employeeId && employeeName) {
-              employeeId = nameToDbId.get(employeeName);
-            }
-
-            if (!employeeId) {
-              const msg = `Row ${row.rowNumber}: Could not find employee "${row.Name}" in database`;
-              console.warn(msg);
-              warnings.push(msg);
-              continue;
-            }
-
-            console.log(`  Found employee ID: ${employeeId}`);
-
-            // Try to find manager by email first, then by name
-            // Check if reportsToValue looks like an email (contains @)
-            let managerId = null;
-
-            if (reportsToValue.includes('@')) {
-              // Likely an email
-              managerId = emailToDbId.get(reportsToLower);
-              console.log(`  Looking up manager by email "${reportsToLower}": ${managerId}`);
-            } else {
-              // Likely a name, try name first
-              managerId = nameToDbId.get(reportsToLower);
-              console.log(`  Looking up manager by name "${reportsToLower}": ${managerId}`);
-              // If not found by name, try email as fallback
-              if (!managerId) {
-                managerId = emailToDbId.get(reportsToLower);
-                console.log(`  Fallback to email lookup: ${managerId}`);
-              }
-            }
-
-            if (!managerId) {
-              const msg = `Row ${row.rowNumber}: Manager "${reportsToValue}" not found in import data`;
-              console.warn(msg);
-              warnings.push(msg);
-              continue;
-            }
-
-            console.log(`  Found manager ID: ${managerId}`);
-
-            if (employeeId && managerId && employeeId !== managerId) {
-              const { error: updateError } = await supabase
-                .from('employees')
-                .update({ reports_to_id: managerId })
-                .eq('id', employeeId);
-
-              if (updateError) {
-                console.error(`  Error updating relationship: ${updateError.message}`);
-              } else {
-                console.log(`  Updated: ${row.Name} now reports to ${reportsToValue}`);
-                relationshipsUpdated++;
-              }
-            }
-          }
-        }
-
-        console.log(`Updated ${relationshipsUpdated} reporting relationships`);
+        // Send to server — handles inserts, updates, and relationship resolution
+        const result = await importEmployees(clientId, employeesToInsert, employeesToUpdate, validRows);
 
         loadEmployees();
 
-        let message = `Successfully imported ${processedCount} employee(s)`;
-        if (relationshipsUpdated > 0) {
-          message += `\nUpdated ${relationshipsUpdated} reporting relationship(s)`;
+        let message = `Successfully imported ${result.processedCount} employee(s)`;
+        if (result.relationshipsUpdated > 0) {
+          message += `\nUpdated ${result.relationshipsUpdated} reporting relationship(s)`;
         }
-
         if (skippedRows.length > 0) {
           message += `\n\nSkipped ${skippedRows.length} row(s):\n${skippedRows.slice(0, 5).join('\n')}`;
-          if (skippedRows.length > 5) {
-            message += `\n... and ${skippedRows.length - 5} more`;
-          }
+          if (skippedRows.length > 5) message += `\n... and ${skippedRows.length - 5} more`;
         }
-
-        if (warnings.length > 0) {
-          message += `\n\nWarnings:\n${warnings.slice(0, 3).join('\n')}`;
-          if (warnings.length > 3) {
-            message += `\n... and ${warnings.length - 3} more`;
-          }
+        const allWarnings = [...(result.warnings || [])];
+        if (allWarnings.length > 0) {
+          message += `\n\nWarnings:\n${allWarnings.slice(0, 3).join('\n')}`;
+          if (allWarnings.length > 3) message += `\n... and ${allWarnings.length - 3} more`;
         }
-
         alert(message);
       } catch (error) {
         console.error('Error importing Excel:', error);

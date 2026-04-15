@@ -190,7 +190,418 @@ async function upsertPlacementChecklist(placementId, fields) {
   return data;
 }
 
+// =============================================
+// Org Flow — user_profiles
+// =============================================
+
+async function getUserByEmail(email) {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .select('id')
+    .ilike('email', email)
+    .maybeSingle();
+  if (error) { console.error('[db] getUserByEmail error:', error.message); return null; }
+  return data;
+}
+
+async function getActiveUsers() {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .select('*')
+    .eq('is_active', true)
+    .order('full_name', { nullsFirst: false });
+  if (error) { console.error('[db] getActiveUsers error:', error.message); return []; }
+  return data || [];
+}
+
+// =============================================
+// Org Flow — clients
+// =============================================
+
+async function getClients(userId) {
+  if (!supabase) return [];
+
+  let query = supabase
+    .from('clients')
+    .select('*, account_manager:user_profiles!created_by(email, full_name)');
+
+  if (userId) {
+    const { data: assignments } = await supabase
+      .from('client_assignments')
+      .select('client_id')
+      .eq('user_id', userId);
+
+    const assignedClientIds = assignments?.map(a => a.client_id) || [];
+
+    if (assignedClientIds.length > 0) {
+      query = query.or(`created_by.eq.${userId},id.in.(${assignedClientIds.join(',')})`);
+    } else {
+      query = query.eq('created_by', userId);
+    }
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: false });
+  if (error) { console.error('[db] getClients error:', error.message); return []; }
+  return data || [];
+}
+
+async function getClientById(clientId) {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from('clients')
+    .select('*')
+    .eq('id', clientId)
+    .maybeSingle();
+  if (error) { console.error('[db] getClientById error:', error.message); return null; }
+  return data;
+}
+
+async function createClient(name, createdBy) {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from('clients')
+    .insert([{ name, created_by: createdBy }])
+    .select()
+    .single();
+  if (error) { console.error('[db] createClient error:', error.message); throw error; }
+  return data;
+}
+
+async function updateClient(clientId, fields) {
+  if (!supabase) return null;
+  const ALLOWED = new Set(['name', 'created_by', 'logo_url', 'account_manager']);
+  const updates = {};
+  for (const [key, val] of Object.entries(fields)) {
+    if (ALLOWED.has(key)) updates[key] = val;
+  }
+  const { data, error } = await supabase
+    .from('clients')
+    .update(updates)
+    .eq('id', clientId)
+    .select()
+    .single();
+  if (error) { console.error('[db] updateClient error:', error.message); throw error; }
+  return data;
+}
+
+async function deleteClient(clientId) {
+  if (!supabase) return;
+  const { error } = await supabase.from('clients').delete().eq('id', clientId);
+  if (error) { console.error('[db] deleteClient error:', error.message); throw error; }
+}
+
+async function bulkImportClients(clientsToInsert, clientsToUpdate) {
+  if (!supabase) return { inserted: 0, updated: 0 };
+
+  let inserted = 0;
+  let updated = 0;
+
+  if (clientsToInsert.length > 0) {
+    const { error } = await supabase.from('clients').insert(clientsToInsert);
+    if (error) throw error;
+    inserted = clientsToInsert.length;
+  }
+
+  for (const client of clientsToUpdate) {
+    const { error } = await supabase
+      .from('clients')
+      .update({ name: client.name, created_by: client.created_by, account_manager: client.account_manager })
+      .eq('id', client.id);
+    if (error) {
+      console.error(`[db] bulkImportClients update error for ${client.name}:`, error.message);
+    } else {
+      updated++;
+    }
+  }
+
+  return { inserted, updated };
+}
+
+// =============================================
+// Org Flow — employees
+// =============================================
+
+async function getEmployeesByClient(clientId) {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from('employees')
+    .select('*')
+    .eq('client_id', clientId);
+  if (error) { console.error('[db] getEmployeesByClient error:', error.message); return []; }
+  return data || [];
+}
+
+async function createEmployee(fields) {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from('employees')
+    .insert([fields])
+    .select()
+    .single();
+  if (error) { console.error('[db] createEmployee error:', error.message); throw error; }
+  return data;
+}
+
+async function updateEmployee(employeeId, fields) {
+  if (!supabase) return null;
+  const ALLOWED = new Set([
+    'name', 'role', 'department', 'email', 'phone',
+    'reports_to_id', 'num_ftes', 'num_contractors', 'num_apt_contractors',
+    'position_x', 'position_y', 'updated_at',
+  ]);
+  const updates = {};
+  for (const [key, val] of Object.entries(fields)) {
+    if (ALLOWED.has(key)) updates[key] = val;
+  }
+  const { data, error } = await supabase
+    .from('employees')
+    .update(updates)
+    .eq('id', employeeId)
+    .select()
+    .single();
+  if (error) { console.error('[db] updateEmployee error:', error.message); throw error; }
+  return data;
+}
+
+async function deleteEmployee(employeeId, allEmployees) {
+  if (!supabase) return;
+
+  // Find the employee to get their manager
+  const { data: emp } = await supabase.from('employees').select('reports_to_id').eq('id', employeeId).maybeSingle();
+
+  // Reassign direct reports to the deleted employee's manager
+  const directReports = (allEmployees || []).filter(e => e.reports_to_id === employeeId);
+  if (directReports.length > 0) {
+    await supabase
+      .from('employees')
+      .update({ reports_to_id: emp?.reports_to_id || null })
+      .in('id', directReports.map(e => e.id));
+  }
+
+  const { error } = await supabase.from('employees').delete().eq('id', employeeId);
+  if (error) { console.error('[db] deleteEmployee error:', error.message); throw error; }
+}
+
+async function bulkDeleteEmployees(ids, allEmployees) {
+  if (!supabase) return;
+
+  // For each employee being deleted, reassign their direct reports
+  for (const id of ids) {
+    const employee = allEmployees.find(e => e.id === id);
+    if (!employee) continue;
+
+    const directReports = allEmployees.filter(e => e.reports_to_id === employee.id);
+    if (directReports.length > 0) {
+      await supabase
+        .from('employees')
+        .update({ reports_to_id: employee.reports_to_id || null })
+        .in('id', directReports.map(e => e.id));
+    }
+  }
+
+  const { error } = await supabase.from('employees').delete().in('id', ids);
+  if (error) { console.error('[db] bulkDeleteEmployees error:', error.message); throw error; }
+}
+
+async function updateEmployeePositions(updates) {
+  if (!supabase) return;
+  for (const u of updates) {
+    await supabase
+      .from('employees')
+      .update({ position_x: u.position_x, position_y: u.position_y })
+      .eq('id', u.id);
+  }
+}
+
+async function resetEmployeePositions(clientId) {
+  if (!supabase) return;
+  const { error } = await supabase
+    .from('employees')
+    .update({ position_x: 0, position_y: 0 })
+    .eq('client_id', clientId);
+  if (error) { console.error('[db] resetEmployeePositions error:', error.message); throw error; }
+}
+
+async function bulkImportEmployees(clientId, toInsert, toUpdate, validRows) {
+  if (!supabase) return { processedCount: 0, relationshipsUpdated: 0, warnings: [] };
+
+  let processedCount = 0;
+  const warnings = [];
+
+  // Update existing employees
+  for (const emp of toUpdate) {
+    const { error } = await supabase
+      .from('employees')
+      .update({
+        name: emp.name, email: emp.email, role: emp.role,
+        department: emp.department, phone: emp.phone,
+        num_contractors: emp.num_contractors, num_apt_contractors: emp.num_apt_contractors,
+      })
+      .eq('id', emp.id);
+    if (!error) processedCount++;
+  }
+
+  // Insert new employees
+  if (toInsert.length > 0) {
+    const { data: insertedEmployees, error: insertError } = await supabase
+      .from('employees')
+      .insert(toInsert)
+      .select();
+    if (insertError) throw insertError;
+    processedCount += insertedEmployees?.length || 0;
+  }
+
+  // Re-fetch all employees to build ID maps
+  const { data: allEmployees, error: fetchError } = await supabase
+    .from('employees')
+    .select('*')
+    .eq('client_id', clientId);
+  if (fetchError) throw fetchError;
+
+  const emailToDbId = new Map();
+  const nameToDbId = new Map();
+  (allEmployees || []).forEach(emp => {
+    if (emp.email?.trim()) emailToDbId.set(emp.email.trim().toLowerCase(), emp.id);
+    if (emp.name?.trim()) nameToDbId.set(emp.name.trim().toLowerCase(), emp.id);
+  });
+
+  // Second pass: update reporting relationships
+  let relationshipsUpdated = 0;
+  for (const row of validRows) {
+    const reportsToField = row.ReportsToEmail || row.reportToEmail || row.ReportsTo || '';
+    if (!reportsToField?.trim()) continue;
+
+    const reportsToValue = reportsToField.trim();
+    const reportsToLower = reportsToValue.toLowerCase();
+
+    const employeeEmail = row.Email?.trim().toLowerCase() || '';
+    const employeeName = row.Name?.trim().toLowerCase() || '';
+
+    let employeeId = employeeEmail ? emailToDbId.get(employeeEmail) : null;
+    if (!employeeId && employeeName) employeeId = nameToDbId.get(employeeName);
+
+    if (!employeeId) {
+      warnings.push(`Row ${row.rowNumber}: Could not find employee "${row.Name}" in database`);
+      continue;
+    }
+
+    let managerId = null;
+    if (reportsToValue.includes('@')) {
+      managerId = emailToDbId.get(reportsToLower);
+    } else {
+      managerId = nameToDbId.get(reportsToLower);
+      if (!managerId) managerId = emailToDbId.get(reportsToLower);
+    }
+
+    if (!managerId) {
+      warnings.push(`Row ${row.rowNumber}: Manager "${reportsToValue}" not found in import data`);
+      continue;
+    }
+
+    if (employeeId && managerId && employeeId !== managerId) {
+      const { error: updateError } = await supabase
+        .from('employees')
+        .update({ reports_to_id: managerId })
+        .eq('id', employeeId);
+      if (!updateError) relationshipsUpdated++;
+    }
+  }
+
+  return { processedCount, relationshipsUpdated, warnings };
+}
+
+// =============================================
+// Org Flow — client_assignments
+// =============================================
+
+async function getAssignments(clientId) {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from('client_assignments')
+    .select('*, user_profiles(email, full_name)')
+    .eq('client_id', clientId);
+  if (error) { console.error('[db] getAssignments error:', error.message); return []; }
+  return data || [];
+}
+
+async function createAssignment(clientId, userId, assignedBy) {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from('client_assignments')
+    .insert([{ client_id: clientId, user_id: userId, assigned_by: assignedBy }])
+    .select()
+    .single();
+  if (error) { console.error('[db] createAssignment error:', error.message); throw error; }
+  return data;
+}
+
+async function deleteAssignment(assignmentId) {
+  if (!supabase) return;
+  const { error } = await supabase.from('client_assignments').delete().eq('id', assignmentId);
+  if (error) { console.error('[db] deleteAssignment error:', error.message); throw error; }
+}
+
+// =============================================
+// Org Flow — Supabase Storage (client-logos)
+// =============================================
+
+async function uploadClientLogo(clientId, fileBuffer, fileName, mimeType) {
+  if (!supabase) return null;
+
+  // Get current logo URL to remove old file
+  const client = await getClientById(clientId);
+  if (client?.logo_url) {
+    const oldPath = client.logo_url.split('/').pop();
+    if (oldPath) {
+      await supabase.storage.from('client-logos').remove([`${clientId}/${oldPath}`]);
+    }
+  }
+
+  const fileExt = fileName.split('.').pop();
+  const newFileName = `${Date.now()}.${fileExt}`;
+  const filePath = `${clientId}/${newFileName}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from('client-logos')
+    .upload(filePath, fileBuffer, {
+      contentType: mimeType,
+      cacheControl: '3600',
+      upsert: false,
+    });
+  if (uploadError) throw uploadError;
+
+  const { data: { publicUrl } } = supabase.storage
+    .from('client-logos')
+    .getPublicUrl(filePath);
+
+  await updateClient(clientId, { logo_url: publicUrl });
+  return publicUrl;
+}
+
+async function removeClientLogo(clientId) {
+  if (!supabase) return;
+
+  const client = await getClientById(clientId);
+  if (client?.logo_url) {
+    const oldPath = client.logo_url.split('/').pop();
+    if (oldPath) {
+      await supabase.storage.from('client-logos').remove([`${clientId}/${oldPath}`]);
+    }
+  }
+
+  await updateClient(clientId, { logo_url: null });
+}
+
 module.exports = {
   getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote,
   getAllPlacementChecklist, getPlacementChecklist, upsertPlacementChecklist,
+  // Org Flow
+  getUserByEmail, getActiveUsers,
+  getClients, getClientById, createClient, updateClient, deleteClient, bulkImportClients,
+  getEmployeesByClient, createEmployee, updateEmployee, deleteEmployee,
+  bulkDeleteEmployees, updateEmployeePositions, resetEmployeePositions, bulkImportEmployees,
+  getAssignments, createAssignment, deleteAssignment,
+  uploadClientLogo, removeClientLogo,
 };

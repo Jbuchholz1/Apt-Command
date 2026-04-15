@@ -9,9 +9,19 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.5.4';
+export const APP_VERSION = '2.6.0';
 
 export const CHANGELOG = [
+  {
+    version: '2.6.0',
+    date: '2026-04-14',
+    title: 'Org Flow Security — Server-Side Data Access',
+    changes: [
+      { type: 'minor', text: 'Moved all Org Flow data operations from browser-direct Supabase calls to authenticated server API — all data now flows through the secure Express backend' },
+      { type: 'minor', text: 'Removed Supabase anonymous key from client bundle — no database credentials are exposed in the browser' },
+      { type: 'patch', text: 'Fixed client assignment "assigned_by" tracking — now uses authenticated Azure AD user instead of broken Supabase auth lookup' },
+    ],
+  },
   {
     version: '2.5.4',
     date: '2026-04-14',

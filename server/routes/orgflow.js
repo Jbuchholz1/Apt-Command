@@ -1,15 +1,309 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
 const { getActivePlacementsWithClient } = require('../lib/bullhorn');
+const db = require('../lib/db');
 
-// Supabase client for reading employees
-const { createClient } = require('@supabase/supabase-js');
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
-const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
+// Multer: in-memory storage for logo uploads (max 5MB, images only)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) return cb(null, true);
+    cb(new Error('Only image files are allowed'));
+  },
+});
+
+// =============================================
+// Users
+// =============================================
+
+// GET /api/org-flow/users — all active users
+router.get('/users', async (req, res, next) => {
+  try {
+    const users = await db.getActiveUsers();
+    res.json(users);
+  } catch (err) { next(err); }
+});
+
+// GET /api/org-flow/users/me — current user's Supabase profile ID
+router.get('/users/me', async (req, res, next) => {
+  try {
+    const user = await db.getUserByEmail(req.user?.email || '');
+    res.json(user);
+  } catch (err) { next(err); }
+});
+
+// =============================================
+// Clients
+// =============================================
+
+// GET /api/org-flow/clients — list clients (optional ?view=my for user's clients)
+router.get('/clients', async (req, res, next) => {
+  try {
+    let userId = null;
+    if (req.query.view === 'my' && req.query.userId) {
+      userId = req.query.userId;
+    }
+    const clients = await db.getClients(userId);
+    res.json(clients);
+  } catch (err) { next(err); }
+});
+
+// GET /api/org-flow/clients/:id — single client
+router.get('/clients/:id', async (req, res, next) => {
+  try {
+    const client = await db.getClientById(req.params.id);
+    if (!client) return res.status(404).json({ error: 'Client not found' });
+    res.json(client);
+  } catch (err) { next(err); }
+});
+
+// POST /api/org-flow/clients — create client
+router.post('/clients', async (req, res, next) => {
+  try {
+    const { name, created_by } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: 'Name is required' });
+    const client = await db.createClient(name.trim(), created_by || null);
+    res.json(client);
+  } catch (err) { next(err); }
+});
+
+// PATCH /api/org-flow/clients/:id — update client fields
+router.patch('/clients/:id', async (req, res, next) => {
+  try {
+    const client = await db.updateClient(req.params.id, req.body);
+    res.json(client);
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/org-flow/clients/:id — delete client
+router.delete('/clients/:id', async (req, res, next) => {
+  try {
+    await db.deleteClient(req.params.id);
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
+// POST /api/org-flow/clients/import — bulk import clients from parsed Excel data
+router.post('/clients/import', async (req, res, next) => {
+  try {
+    const { rows, currentUserId } = req.body;
+    if (!rows || !Array.isArray(rows)) return res.status(400).json({ error: 'rows array required' });
+
+    // Resolve emails to user IDs
+    const allUsers = await db.getActiveUsers();
+    const emailToIdMap = new Map(allUsers.map(u => [u.email.toLowerCase(), u.id]));
+
+    // Get existing clients for insert-vs-update logic
+    const existingClients = await db.getClients();
+    const existingClientMap = new Map(
+      existingClients.map(c => [c.name.toLowerCase().trim(), c.id])
+    );
+
+    const clientsToInsert = [];
+    const clientsToUpdate = [];
+    const skippedRows = [];
+    const warnings = [];
+
+    rows.forEach((row, index) => {
+      const rowNumber = index + 2;
+
+      if (!row.ClientName?.trim()) {
+        skippedRows.push(`Row ${rowNumber}: Missing ClientName`);
+        return;
+      }
+
+      const clientName = row.ClientName.trim();
+      const accountManager = row.AccountManager?.trim() || '';
+      const managerEmailField = row.AccountManagerEmail || row.reportToEmail || row.ReportToEmail || '';
+      let managerId;
+
+      if (managerEmailField?.trim()) {
+        const email = managerEmailField.trim().toLowerCase();
+        const userId = emailToIdMap.get(email);
+        if (!userId) {
+          warnings.push(`Row ${rowNumber}: Email "${managerEmailField}" not found, using current user`);
+          managerId = currentUserId;
+        } else {
+          managerId = userId;
+        }
+      } else {
+        managerId = currentUserId;
+      }
+
+      const existingClientId = existingClientMap.get(clientName.toLowerCase());
+      if (existingClientId) {
+        clientsToUpdate.push({ id: existingClientId, name: clientName, created_by: managerId, account_manager: accountManager });
+      } else {
+        clientsToInsert.push({ name: clientName, created_by: managerId, account_manager: accountManager });
+      }
+    });
+
+    if (clientsToInsert.length === 0 && clientsToUpdate.length === 0) {
+      return res.status(400).json({ error: 'No valid clients to import' });
+    }
+
+    const result = await db.bulkImportClients(clientsToInsert, clientsToUpdate);
+
+    res.json({
+      inserted: result.inserted,
+      updated: result.updated,
+      skippedRows,
+      warnings,
+    });
+  } catch (err) { next(err); }
+});
+
+// POST /api/org-flow/clients/:id/logo — upload client logo
+router.post('/clients/:id/logo', upload.single('logo'), async (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    const publicUrl = await db.uploadClientLogo(
+      req.params.id,
+      req.file.buffer,
+      req.file.originalname,
+      req.file.mimetype
+    );
+    res.json({ logo_url: publicUrl });
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/org-flow/clients/:id/logo — remove client logo
+router.delete('/clients/:id/logo', async (req, res, next) => {
+  try {
+    await db.removeClientLogo(req.params.id);
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
+// =============================================
+// Employees
+// =============================================
+
+// GET /api/org-flow/clients/:id/employees — list employees for a client
+router.get('/clients/:id/employees', async (req, res, next) => {
+  try {
+    const employees = await db.getEmployeesByClient(req.params.id);
+    res.json(employees);
+  } catch (err) { next(err); }
+});
+
+// POST /api/org-flow/clients/:id/employees — create employee
+router.post('/clients/:id/employees', async (req, res, next) => {
+  try {
+    const fields = { ...req.body, client_id: req.params.id };
+    const employee = await db.createEmployee(fields);
+    res.json(employee);
+  } catch (err) { next(err); }
+});
+
+// PATCH /api/org-flow/employees/:id — update employee
+router.patch('/employees/:id', async (req, res, next) => {
+  try {
+    const employee = await db.updateEmployee(req.params.id, req.body);
+    res.json(employee);
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/org-flow/employees/:id — delete employee (with report reassignment)
+router.delete('/employees/:id', async (req, res, next) => {
+  try {
+    // Need all employees for reassignment logic
+    const clientId = req.query.clientId;
+    const allEmployees = clientId ? await db.getEmployeesByClient(clientId) : [];
+    await db.deleteEmployee(req.params.id, allEmployees);
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
+// POST /api/org-flow/employees/bulk-delete — delete multiple employees
+router.post('/employees/bulk-delete', async (req, res, next) => {
+  try {
+    const { ids, clientId } = req.body;
+    if (!ids || !Array.isArray(ids)) return res.status(400).json({ error: 'ids array required' });
+    const allEmployees = clientId ? await db.getEmployeesByClient(clientId) : [];
+    await db.bulkDeleteEmployees(ids, allEmployees);
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
+// POST /api/org-flow/clients/:id/employees/positions — save employee positions
+router.post('/clients/:id/employees/positions', async (req, res, next) => {
+  try {
+    const { updates } = req.body;
+    if (!updates || !Array.isArray(updates)) return res.status(400).json({ error: 'updates array required' });
+    await db.updateEmployeePositions(updates);
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
+// POST /api/org-flow/clients/:id/employees/reset-positions — reset all positions
+router.post('/clients/:id/employees/reset-positions', async (req, res, next) => {
+  try {
+    await db.resetEmployeePositions(req.params.id);
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
+// POST /api/org-flow/clients/:id/employees/import — bulk import employees from parsed Excel data
+router.post('/clients/:id/employees/import', async (req, res, next) => {
+  try {
+    const clientId = req.params.id;
+    const { toInsert, toUpdate, validRows } = req.body;
+
+    if (!validRows || !Array.isArray(validRows)) {
+      return res.status(400).json({ error: 'validRows array required' });
+    }
+
+    const result = await db.bulkImportEmployees(
+      clientId,
+      toInsert || [],
+      toUpdate || [],
+      validRows
+    );
+
+    res.json(result);
+  } catch (err) { next(err); }
+});
+
+// =============================================
+// Client Assignments
+// =============================================
+
+// GET /api/org-flow/clients/:id/assignments — list assignments for a client
+router.get('/clients/:id/assignments', async (req, res, next) => {
+  try {
+    const assignments = await db.getAssignments(req.params.id);
+    res.json(assignments);
+  } catch (err) { next(err); }
+});
+
+// POST /api/org-flow/clients/:id/assignments — assign user to client
+router.post('/clients/:id/assignments', async (req, res, next) => {
+  try {
+    const { user_id } = req.body;
+    if (!user_id) return res.status(400).json({ error: 'user_id required' });
+    // Use the authenticated user's email for assigned_by tracking
+    const currentUser = await db.getUserByEmail(req.user?.email || '');
+    const assignment = await db.createAssignment(req.params.id, user_id, currentUser?.id || null);
+    res.json(assignment);
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/org-flow/assignments/:id — remove assignment
+router.delete('/assignments/:id', async (req, res, next) => {
+  try {
+    await db.deleteAssignment(req.params.id);
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
+// =============================================
+// Bullhorn-sourced data (existing routes)
+// =============================================
 
 // GET /api/org-flow/contractor-counts
-// Returns a map of clientContact email → { contractors, permPlacements, placements[] }
 router.get('/contractor-counts', async (req, res, next) => {
   try {
     const result = await getActivePlacementsWithClient();
@@ -50,12 +344,16 @@ router.get('/contractor-counts', async (req, res, next) => {
 });
 
 // GET /api/org-flow/client-health
-// Returns per-client healthy manager percentage
 router.get('/client-health', async (req, res, next) => {
   try {
+    // Fetch all employees and contractor counts in parallel
+    const { createClient } = require('@supabase/supabase-js');
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
+    const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
+
     if (!supabase) return res.json({});
 
-    // Fetch all employees and contractor counts in parallel
     const [employeesRes, placementsResult] = await Promise.all([
       supabase.from('employees').select('id,client_id,name,role,email,num_ftes,num_contractors,reports_to_id'),
       getActivePlacementsWithClient(),
@@ -99,10 +397,6 @@ router.get('/client-health', async (req, res, next) => {
 
     // Group employees by client and calculate per-client stats
     const clientStats = {};
-    const nameMap = {};
-    for (const emp of employees) {
-      nameMap[emp.id] = emp.name || `Employee ${emp.id}`;
-    }
 
     for (const emp of employees) {
       const cid = emp.client_id;
