@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.8.0';
+export const APP_VERSION = '2.8.1';
 
 export const CHANGELOG = [
+  {
+    version: '2.8.1',
+    date: '2026-04-15',
+    title: 'Security Hardening (Round 3)',
+    changes: [
+      { type: 'patch', text: 'Removed localhost from production CORS — dev origins only allowed in development mode' },
+      { type: 'patch', text: 'Centralized Supabase client to a single shared instance — removed 4 duplicate connections' },
+    ],
+  },
   {
     version: '2.8.0',
     date: '2026-04-15',
