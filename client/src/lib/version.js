@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.5.3';
+export const APP_VERSION = '2.5.4';
 
 export const CHANGELOG = [
+  {
+    version: '2.5.4',
+    date: '2026-04-14',
+    title: 'API Rate Limiting',
+    changes: [
+      { type: 'patch', text: 'Added rate limiting to API server — 200 requests/min for reads, 30/min for writes — protects against runaway scripts and abuse' },
+      { type: 'patch', text: 'Client now handles 429 (rate limited) responses gracefully with a user-friendly error message' },
+    ],
+  },
   {
     version: '2.5.3',
     date: '2026-04-14',

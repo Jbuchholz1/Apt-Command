@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const { requireAuth } = require('./middleware/auth');
 
 const jobsRouter = require('./routes/jobs');
@@ -29,6 +30,31 @@ console.log('Allowed CORS origins:', allowedOrigins);
 
 // --- Security headers (CSP disabled to avoid breaking inline styles/scripts) ---
 app.use(helmet({ contentSecurityPolicy: false }));
+
+// --- Rate limiting ---
+const generalLimiter = rateLimit({
+  windowMs: 60 * 1000,   // 1 minute
+  max: 200,              // 200 requests per minute per IP
+  standardHeaders: true, // Return rate limit info in RateLimit-* headers
+  legacyHeaders: false,
+  message: { error: 'Too many requests — please try again shortly' },
+});
+
+const writeLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,               // 30 writes per minute per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many updates — please try again shortly' },
+});
+
+app.use('/api', generalLimiter);
+app.use('/api', (req, res, next) => {
+  if (['POST', 'PATCH', 'PUT'].includes(req.method)) {
+    return writeLimiter(req, res, next);
+  }
+  next();
+});
 
 app.use(cors({
   origin: (origin, callback) => {

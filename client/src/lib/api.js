@@ -47,6 +47,10 @@ async function fetchAPI(path, options = {}) {
     throw new Error('Session expired — redirecting to login');
   }
 
+  if (res.status === 429) {
+    throw new Error('Too many requests — please wait a moment and try again');
+  }
+
   if (!res.ok) {
     throw new Error(`API error: ${res.status} ${res.statusText}`);
   }
