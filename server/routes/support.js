@@ -123,7 +123,7 @@ async function notifyTeams(ticket) {
       });
     }
 
-    await fetch(TEAMS_WEBHOOK_URL, {
+    const resp = await fetch(TEAMS_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -135,6 +135,12 @@ async function notifyTeams(ticket) {
         }],
       }),
     });
+    if (!resp.ok) {
+      const body = await resp.text().catch(() => '');
+      console.error(`[support] Teams webhook returned ${resp.status}: ${body}`);
+    } else {
+      console.log('[support] Teams notification sent');
+    }
   } catch (err) {
     console.error('[support] Teams notification failed:', err.message);
   }
