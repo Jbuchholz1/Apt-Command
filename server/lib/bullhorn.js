@@ -45,11 +45,25 @@ async function callTool(toolName, args = {}) {
     headers['Authorization'] = `Bearer ${MCP_API_KEY}`;
   }
 
-  const res = await fetch(MCP_URL, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000); // 30-second timeout
+
+  let res;
+  try {
+    res = await fetch(MCP_URL, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error(`MCP request timed out after 30s (tool: ${toolName})`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!res.ok) {
     throw new Error(`MCP request failed: ${res.status} ${res.statusText}`);

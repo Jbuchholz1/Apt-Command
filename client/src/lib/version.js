@@ -9,9 +9,20 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.8.1';
+export const APP_VERSION = '2.8.2';
 
 export const CHANGELOG = [
+  {
+    version: '2.8.2',
+    date: '2026-04-15',
+    title: 'Performance Fixes',
+    changes: [
+      { type: 'patch', text: 'Added gzip compression to all API responses — 60-80% smaller payloads over the wire' },
+      { type: 'patch', text: 'Added Cache-Control headers to GET endpoints — browser reuses recent responses for 5 minutes' },
+      { type: 'patch', text: 'Added 30-second timeout to Bullhorn MCP calls — prevents server hanging if Bullhorn is slow or down' },
+      { type: 'patch', text: 'Split 2.0 MB JavaScript bundle into 6 vendor chunks — main app chunk reduced to 260 KB (87% smaller)' },
+    ],
+  },
   {
     version: '2.8.1',
     date: '2026-04-15',
