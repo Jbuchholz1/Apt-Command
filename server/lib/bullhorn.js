@@ -22,8 +22,8 @@ const ALLOWED_TOOLS = new Set([
 ]);
 
 /**
- * Call a read-only tool on the Bullhorn MCP server via JSON-RPC over SSE.
- * PRIVATE — not exported. Only used by the convenience wrappers below.
+ * Call a tool on the Bullhorn MCP server via JSON-RPC over SSE.
+ * Used by the convenience wrappers below and exported for health checks.
  */
 async function callTool(toolName, args = {}) {
   if (!ALLOWED_TOOLS.has(toolName)) {
@@ -597,4 +597,5 @@ module.exports = {
   getCheckinNotesForType,
   getLeadsInRange,
   getCorporateUserByEmail,
+  callTool,
 };
