@@ -66,10 +66,10 @@ async function notifyTeams(ticket) {
   if (!TEAMS_WEBHOOK_URL) return;
   try {
     const categoryLabel = {
-      bug: 'Bug Report',
+      issue: 'Issue',
+      bug: 'Issue',
       feature: 'Feature Request',
       feedback: 'General Feedback',
-      it_support: 'IT Support',
     }[ticket.category] || ticket.category;
 
     const time = ticket.created_at
@@ -150,7 +150,7 @@ async function notifyTeams(ticket) {
 // Phase 3: Support Tickets
 // =============================================
 
-const VALID_CATEGORIES = ['bug', 'feature', 'feedback', 'it_support'];
+const VALID_CATEGORIES = ['issue', 'feature', 'feedback', 'bug', 'it_support'];
 const VALID_STATUSES = ['open', 'in_progress', 'resolved', 'closed'];
 
 // POST /api/support/tickets — submit a new ticket (all users)

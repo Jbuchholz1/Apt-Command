@@ -16,7 +16,7 @@ export default function ITSupport() {
     setSubmitting(true);
     try {
       const formData = new FormData();
-      formData.append('category', 'it_support');
+      formData.append('category', 'issue');
       formData.append('title', form.title.trim());
       formData.append('description', form.description.trim());
 

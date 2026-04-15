@@ -6,17 +6,16 @@ import { useUserRole } from '../../lib/UserRoleContext';
 import { showToast } from '../../lib/toast';
 
 const CATEGORY_OPTIONS = [
-  { value: 'bug', label: 'Bug Report' },
+  { value: 'issue', label: 'Issue' },
   { value: 'feature', label: 'Feature Request' },
   { value: 'feedback', label: 'General Feedback' },
 ];
 
 const ALL_CATEGORIES = [
   { value: '', label: 'All Categories' },
-  { value: 'bug', label: 'Bug Report' },
+  { value: 'issue', label: 'Issue' },
   { value: 'feature', label: 'Feature Request' },
   { value: 'feedback', label: 'General Feedback' },
-  { value: 'it_support', label: 'IT Support' },
 ];
 
 const STATUS_OPTIONS = ['open', 'in_progress', 'resolved', 'closed'];
@@ -29,10 +28,10 @@ const STATUS_COLORS = {
 };
 
 const CATEGORY_COLORS = {
-  bug: '#dc2626',
+  issue: '#dc2626',
+  bug: '#dc2626',       // legacy — existing tickets in DB
   feature: '#7c3aed',
   feedback: '#0891b2',
-  it_support: '#ea580c',
 };
 
 function formatDate(dateStr) {
@@ -50,7 +49,7 @@ function formatDate(dateStr) {
 export default function FeedbackForm() {
   const { isAdmin } = useUserRole();
   const [view, setView] = useState('submit'); // 'submit' | 'my' | 'all'
-  const [form, setForm] = useState({ category: 'bug', title: '', description: '' });
+  const [form, setForm] = useState({ category: 'issue', title: '', description: '' });
   const [screenshot, setScreenshot] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [tickets, setTickets] = useState([]);
@@ -78,10 +77,12 @@ export default function FeedbackForm() {
     : tickets;
 
   const closeTimeKPIs = useMemo(() => {
-    const categories = ['bug', 'feature', 'feedback', 'it_support'];
+    const categories = ['issue', 'feature', 'feedback'];
     return categories.map(cat => {
+      // Include legacy 'bug' tickets under 'issue'
+      const matchCats = cat === 'issue' ? ['issue', 'bug', 'it_support'] : [cat];
       const closed = tickets.filter(t =>
-        t.category === cat && t.resolved_at && t.created_at
+        matchCats.includes(t.category) && t.resolved_at && t.created_at
       );
       if (closed.length === 0) return { category: cat, avg: null, count: 0 };
       const totalMs = closed.reduce((sum, t) => {
@@ -104,7 +105,7 @@ export default function FeedbackForm() {
 
       await submitSupportTicket(formData);
       showToast('Ticket submitted!');
-      setForm({ category: 'bug', title: '', description: '' });
+      setForm({ category: 'issue', title: '', description: '' });
       setScreenshot(null);
     } catch (err) {
       showToast(err.message, 'error');
@@ -115,9 +116,10 @@ export default function FeedbackForm() {
 
   const handleStatusChange = async (ticketId, newStatus) => {
     try {
-      await updateTicketStatus(ticketId, { status: newStatus });
+      const updated = await updateTicketStatus(ticketId, { status: newStatus });
+      // Update local state instead of re-fetching the full list
+      setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, ...updated } : t));
       showToast('Status updated');
-      loadTickets();
     } catch (err) {
       showToast(err.message, 'error');
     }
@@ -233,7 +235,7 @@ export default function FeedbackForm() {
                       <div className="ticket-kpi-body">
                         <div className="ticket-kpi-label">
                           <span className="ticket-kpi-cat-dot" style={{ background: CATEGORY_COLORS[kpi.category] }} />
-                          {kpi.category === 'it_support' ? 'IT Support' : kpi.category.charAt(0).toUpperCase() + kpi.category.slice(1)}
+                          {kpi.category.charAt(0).toUpperCase() + kpi.category.slice(1)}
                         </div>
                         <div className="ticket-kpi-value">
                           {kpi.avg != null ? formatDuration(kpi.avg) : '—'}
