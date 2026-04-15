@@ -57,6 +57,34 @@ router.get('/health', async (req, res, next) => {
 });
 
 // =============================================
+// Teams Notification (fire-and-forget)
+// =============================================
+
+const TEAMS_WEBHOOK_URL = process.env.TEAMS_WEBHOOK_URL;
+
+async function notifyTeams(ticket) {
+  if (!TEAMS_WEBHOOK_URL) return;
+  try {
+    await fetch(TEAMS_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: ticket.id,
+        category: ticket.category,
+        title: ticket.title,
+        description: ticket.description,
+        submitted_by: ticket.submitted_by,
+        submitted_by_name: ticket.submitted_by_name,
+        screenshot_url: ticket.screenshot_url,
+        created_at: ticket.created_at,
+      }),
+    });
+  } catch (err) {
+    console.error('[support] Teams notification failed:', err.message);
+  }
+}
+
+// =============================================
 // Phase 3: Support Tickets
 // =============================================
 
@@ -91,6 +119,9 @@ router.post('/tickets', upload.single('screenshot'), async (req, res, next) => {
       submitted_by: req.user.email,
       submitted_by_name: req.user.name || req.user.email,
     });
+
+    // Fire-and-forget — don't block the response
+    notifyTeams(ticket);
 
     res.status(201).json(ticket);
   } catch (err) { next(err); }
