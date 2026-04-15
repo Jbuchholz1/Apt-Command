@@ -13,7 +13,7 @@ import 'reactflow/dist/style.css';
 import { ArrowLeft, Plus, Download, Upload, Save, Search, CreditCard as Edit, Trash2, X, LayoutGrid, FileDown, RotateCcw } from 'lucide-react';
 import EmployeeNode from './EmployeeNode';
 import { getLayoutedElements } from '../lib/layoutUtils';
-import * as XLSX from 'xlsx';
+import { readExcelToJson, writeExcelFile } from '../../../lib/excel';
 import {
   getContractorCounts, getOrgFlowClient, getClientEmployees,
   updateEmployee as apiUpdateEmployee, createEmployee, deleteOrgFlowEmployee,
@@ -488,7 +488,7 @@ function OrgChartContent({ clientId, onBack }) {
     }
   };
 
-  const handleDownloadTemplate = () => {
+  const handleDownloadTemplate = async () => {
     let templateData;
 
     if (employees.length > 0) {
@@ -552,13 +552,10 @@ function OrgChartContent({ clientId, onBack }) {
       ];
     }
 
-    const ws = XLSX.utils.json_to_sheet(templateData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Employees');
-    XLSX.writeFile(wb, `${client?.name || 'orgchart'}_template.xlsx`);
+    await writeExcelFile(templateData, 'Employees', `${client?.name || 'orgchart'}_template.xlsx`);
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     const emailMap = new Map(employees.map((emp) => [emp.id, emp.email]));
 
     const exportData = employees.map((emp) => ({
@@ -572,10 +569,7 @@ function OrgChartContent({ clientId, onBack }) {
       AptContractors: emp.num_apt_contractors || 0,
     }));
 
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Employees');
-    XLSX.writeFile(wb, `${client?.name || 'orgchart'}_employees.xlsx`);
+    await writeExcelFile(exportData, 'Employees', `${client?.name || 'orgchart'}_employees.xlsx`);
   };
 
   const handleImportExcel = (e) => {
@@ -585,11 +579,7 @@ function OrgChartContent({ clientId, onBack }) {
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
-        const data = new Uint8Array(event.target?.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        const jsonData = await readExcelToJson(event.target?.result);
 
         if (!jsonData || jsonData.length === 0) {
           alert('The file is empty or has no valid data.');

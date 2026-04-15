@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.6.0';
+export const APP_VERSION = '2.6.1';
 
 export const CHANGELOG = [
+  {
+    version: '2.6.1',
+    date: '2026-04-14',
+    title: 'Replace Vulnerable xlsx Library',
+    changes: [
+      { type: 'patch', text: 'Replaced SheetJS (xlsx) with ExcelJS for Excel import/export — eliminates prototype pollution and ReDoS vulnerabilities' },
+      { type: 'patch', text: 'Client now has zero known npm audit vulnerabilities' },
+    ],
+  },
   {
     version: '2.6.0',
     date: '2026-04-14',

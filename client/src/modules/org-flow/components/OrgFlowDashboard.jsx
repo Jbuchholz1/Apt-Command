@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Plus, Building2, FolderOpen, Trash2, Users, User as UserIcon, Settings, CreditCard as Edit2, FileDown, Upload, Search, Image } from 'lucide-react';
 import { useMsal } from '@azure/msal-react';
 import ClientAssignment from './ClientAssignment';
-import * as XLSX from 'xlsx';
+import { readExcelToJson, writeExcelFile } from '../../../lib/excel';
 import {
   getClientHealthStats, getOrgFlowCurrentUser, getOrgFlowClients,
   getOrgFlowUsers, updateOrgFlowClient, uploadClientLogo, removeClientLogo,
@@ -140,17 +140,14 @@ export default function OrgFlowDashboard({ onSelectClient }) {
     }
   };
 
-  const handleDownloadClientTemplate = () => {
+  const handleDownloadClientTemplate = async () => {
     const templateData = [
       { ClientName: 'Acme Corporation', AccountManager: 'John Smith', AccountManagerEmail: 'john@example.com' },
       { ClientName: 'TechStart Inc', AccountManager: 'Jane Doe', AccountManagerEmail: 'jane@example.com' },
       { ClientName: 'Global Solutions Ltd', AccountManager: 'John Smith', AccountManagerEmail: 'john@example.com' },
     ];
 
-    const ws = XLSX.utils.json_to_sheet(templateData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Clients');
-    XLSX.writeFile(wb, 'clients_template.xlsx');
+    await writeExcelFile(templateData, 'Clients', 'clients_template.xlsx');
   };
 
   const handleImportClients = (e) => {
@@ -160,11 +157,7 @@ export default function OrgFlowDashboard({ onSelectClient }) {
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
-        const data = new Uint8Array(event.target?.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        const jsonData = await readExcelToJson(event.target?.result);
 
         if (!jsonData || jsonData.length === 0) {
           setError('The file is empty or has no valid data.');
