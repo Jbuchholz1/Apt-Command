@@ -34,7 +34,7 @@ const NAV_ITEMS = [
 
 const QUICK_LINKS = [
   { label: 'ADP', href: 'https://online.adp.com/signin/v1/?APPID=WFNPortal&productId=80e309c3-7085-bae1-e053-3505430b5495&returnURL=https://workforcenow.adp.com/&callingAppId=WFN&TARGET=-SM-https:%2f%2fworkforcenow.adp.com%2ftheme%2findex.html%23/home' },
-  { label: 'Alex', href: 'http://app.alex.com/' },
+  { label: 'Alex', href: 'https://app.alex.com/' },
   { label: 'Align', href: 'https://application.aligntoday.com/' },
   { label: 'Bullhorn', href: 'https://universal.bullhornstaffing.com/universal-login/login' },
   { label: 'CloudCall', href: 'https://auth.cloudcall.com/' },
