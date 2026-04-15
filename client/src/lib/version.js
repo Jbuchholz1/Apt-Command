@@ -9,9 +9,20 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.0.0';
+export const APP_VERSION = '3.1.0';
 
 export const CHANGELOG = [
+  {
+    version: '3.1.0',
+    date: '2026-04-15',
+    title: 'Reporting Consolidation',
+    changes: [
+      { type: 'minor', text: 'Performance tab merged into Reporting — now accessible as "Individual Performance", the third option alongside Recruiting and Sales' },
+      { type: 'minor', text: 'Sidebar simplified — Performance removed as a standalone nav item' },
+      { type: 'patch', text: 'Old /performance URL automatically redirects to /reporting/performance for existing bookmarks' },
+      { type: 'patch', text: 'Individual Performance card centered below Recruiting and Sales on the Reporting home page' },
+    ],
+  },
   {
     version: '3.0.0',
     date: '2026-04-15',
