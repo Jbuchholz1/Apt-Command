@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Send, Image, X } from 'lucide-react';
+import { ArrowLeft, Send, Image, X, Calendar, CheckCircle } from 'lucide-react';
 import { getSupportTickets, submitSupportTicket, updateTicketStatus } from '../../lib/api';
 import { useUserRole } from '../../lib/UserRoleContext';
 import { showToast } from '../../lib/toast';
@@ -9,6 +9,14 @@ const CATEGORY_OPTIONS = [
   { value: 'bug', label: 'Bug Report' },
   { value: 'feature', label: 'Feature Request' },
   { value: 'feedback', label: 'General Feedback' },
+];
+
+const ALL_CATEGORIES = [
+  { value: '', label: 'All Categories' },
+  { value: 'bug', label: 'Bug Report' },
+  { value: 'feature', label: 'Feature Request' },
+  { value: 'feedback', label: 'General Feedback' },
+  { value: 'it_support', label: 'IT Support' },
 ];
 
 const STATUS_OPTIONS = ['open', 'in_progress', 'resolved', 'closed'];
@@ -27,6 +35,18 @@ const CATEGORY_COLORS = {
   it_support: '#ea580c',
 };
 
+function formatDate(dateStr) {
+  if (!dateStr) return null;
+  return new Date(dateStr).toLocaleDateString('en-US', {
+    timeZone: 'America/Chicago',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
 export default function FeedbackForm() {
   const { isAdmin } = useUserRole();
   const [view, setView] = useState('submit'); // 'submit' | 'my' | 'all'
@@ -35,6 +55,7 @@ export default function FeedbackForm() {
   const [submitting, setSubmitting] = useState(false);
   const [tickets, setTickets] = useState([]);
   const [ticketsLoading, setTicketsLoading] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState('');
 
   useEffect(() => {
     if (view === 'my' || view === 'all') loadTickets();
@@ -51,6 +72,10 @@ export default function FeedbackForm() {
       setTicketsLoading(false);
     }
   };
+
+  const filteredTickets = categoryFilter
+    ? tickets.filter(t => t.category === categoryFilter)
+    : tickets;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -184,13 +209,29 @@ export default function FeedbackForm() {
         {/* Ticket List */}
         {(view === 'my' || view === 'all') && (
           <div className="ticket-list-section">
+            {/* Category Filter (All Tickets tab only) */}
+            {view === 'all' && (
+              <div className="ticket-filter-bar">
+                <select
+                  className="ticket-filter-select"
+                  value={categoryFilter}
+                  onChange={e => setCategoryFilter(e.target.value)}
+                >
+                  {ALL_CATEGORIES.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+                <span className="ticket-count">{filteredTickets.length} ticket{filteredTickets.length !== 1 ? 's' : ''}</span>
+              </div>
+            )}
+
             {ticketsLoading ? (
               <p className="support-muted">Loading tickets...</p>
-            ) : tickets.length === 0 ? (
+            ) : filteredTickets.length === 0 ? (
               <p className="support-muted">{view === 'my' ? "You haven't submitted any tickets yet." : 'No tickets found.'}</p>
             ) : (
               <div className="ticket-list">
-                {tickets.map(ticket => (
+                {filteredTickets.map(ticket => (
                   <div key={ticket.id} className="ticket-card">
                     <div className="ticket-card-top">
                       <span className="ticket-category-badge" style={{ background: CATEGORY_COLORS[ticket.category] || '#6b7280' }}>
@@ -220,9 +261,20 @@ export default function FeedbackForm() {
                         <Image size={12} /> View Screenshot
                       </a>
                     )}
+                    <div className="ticket-dates">
+                      <span className="ticket-date">
+                        <Calendar size={12} />
+                        Opened: {formatDate(ticket.created_at)}
+                      </span>
+                      {ticket.resolved_at && (
+                        <span className="ticket-date resolved">
+                          <CheckCircle size={12} />
+                          Resolved: {formatDate(ticket.resolved_at)}
+                        </span>
+                      )}
+                    </div>
                     <div className="ticket-card-meta">
                       {view === 'all' && <span>By: {ticket.submitted_by_name || ticket.submitted_by}</span>}
-                      <span>{new Date(ticket.created_at).toLocaleDateString()}</span>
                     </div>
                     {ticket.admin_notes && (
                       <div className="ticket-admin-notes">

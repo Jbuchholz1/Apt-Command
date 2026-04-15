@@ -811,6 +811,55 @@
 .feedback-submit-btn:hover { opacity: 0.85; }
 .feedback-submit-btn:disabled { opacity: 0.5; cursor: default; }
 
+/* ---- Ticket Filter Bar ---- */
+.ticket-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.ticket-filter-select {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: var(--sans);
+  background: var(--surface);
+  cursor: pointer;
+}
+.ticket-filter-select:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+
+.ticket-count {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ---- Ticket Dates ---- */
+.ticket-dates {
+  display: flex;
+  gap: 16px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.ticket-date {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+.ticket-date.resolved {
+  color: #16a34a;
+}
+
 /* ---- Ticket List ---- */
 .ticket-list {
   display: flex;
