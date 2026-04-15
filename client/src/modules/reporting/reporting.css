@@ -26,6 +26,16 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
+  justify-items: center;
+}
+
+.reporting-card-grid .reporting-dash-card {
+  width: 100%;
+}
+
+.reporting-card-grid .reporting-dash-card:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+  max-width: calc(50% - 10px);
 }
 
 .reporting-dash-card {

@@ -7,7 +7,7 @@ import {
   Users,
   Building2,
   BarChart3,
-  Target,
+
   Settings,
   Shield,
   MessageCircle,
@@ -28,7 +28,7 @@ const NAV_ITEMS = [
   { label: 'Pipeline', icon: Users, path: '/pipeline' },
   { label: 'APT Health', icon: Building2, path: '/clients' },
   { label: 'Reporting', icon: BarChart3, path: '/reporting' },
-  { label: 'Performance', icon: Target, path: '/performance' },
+
   { label: 'Huddles', icon: MessageCircle, path: '/huddles', disabled: true },
   { label: 'Support', icon: LifeBuoy, path: '/support' },
   { label: 'Operations', icon: Settings, path: '/operations', adminOnly: true },

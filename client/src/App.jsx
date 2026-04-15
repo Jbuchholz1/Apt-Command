@@ -10,7 +10,6 @@ import RecruiterDashboard from './modules/reporting/RecruiterDashboard';
 import SalesDashboard from './modules/reporting/SalesDashboard';
 import ClientHealthModule from './modules/client-health/ClientHealthModule';
 import OrgFlowModule from './modules/org-flow/OrgFlowModule';
-import PerformanceModule from './modules/performance/PerformanceModule';
 import MyDashboard from './modules/performance/MyDashboard';
 import PipelineModule from './modules/pipeline/PipelineModule';
 import OpportunityPipeline from './modules/pipeline/OpportunityPipeline';
@@ -40,10 +39,9 @@ function AppRoutes() {
           <Route index element={<ReportingHome />} />
           <Route path="recruiting" element={<RecruiterDashboard />} />
           <Route path="sales" element={<SalesDashboard />} />
+          <Route path="performance" element={<MyDashboard />} />
         </Route>
-        <Route path="performance" element={<PerformanceModule />}>
-          <Route index element={<MyDashboard />} />
-        </Route>
+        <Route path="performance" element={<Navigate to="/reporting/performance" replace />} />
         <Route path="support" element={<SupportModule />}>
           <Route index element={<SupportHome />} />
           <Route path="help" element={<HelpDocs />} />

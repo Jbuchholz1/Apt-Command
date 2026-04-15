@@ -17,6 +17,14 @@ const dashboards = [
     path: '/reporting/sales',
     active: true,
   },
+  {
+    id: 'performance',
+    title: 'Individual Performance',
+    description: 'Personal performance metrics, goal tracking, and follow-up management.',
+    icon: '\u{1F3AF}',
+    path: '/reporting/performance',
+    active: true,
+  },
 ];
 
 export default function ReportingHome() {
