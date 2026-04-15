@@ -9,9 +9,27 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.8.2';
+export const APP_VERSION = '2.9.0';
 
 export const CHANGELOG = [
+  {
+    version: '2.9.0',
+    date: '2026-04-15',
+    title: 'Support Center Enhancements',
+    changes: [
+      { type: 'minor', text: 'Service Health cards (API, Bullhorn MCP, Database) now display at top of Support Center home page' },
+      { type: 'minor', text: 'Teams notifications — new support tickets post an Adaptive Card to the Support channel automatically' },
+      { type: 'minor', text: 'Resolved tickets auto-close after 72 hours' },
+      { type: 'minor', text: 'Category filter and avg time-to-close KPI cards on the All Tickets admin view' },
+      { type: 'minor', text: 'Prominent Opened and Resolved dates on every ticket card' },
+      { type: 'minor', text: 'Renamed Bug & Feedback to Support & Requests, System Status to Change Log' },
+      { type: 'minor', text: 'Removed IT Support section — quick tickets now submit from Support & Requests' },
+      { type: 'minor', text: 'All Tickets view restricted to admin role only' },
+      { type: 'patch', text: 'Fixed ticket status changes not reflecting without page refresh (browser cache bypass)' },
+      { type: 'patch', text: 'Fixed Bullhorn MCP health check showing Down (exported callTool from bullhorn.js)' },
+      { type: 'patch', text: 'Fixed rate limiter crash on Railway (enabled trust proxy for reverse proxy)' },
+    ],
+  },
   {
     version: '2.8.2',
     date: '2026-04-15',
