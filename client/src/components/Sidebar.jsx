@@ -11,6 +11,7 @@ import {
   Settings,
   Shield,
   MessageCircle,
+  LifeBuoy,
   ExternalLink,
   ChevronDown,
   ChevronRight,
@@ -29,6 +30,7 @@ const NAV_ITEMS = [
   { label: 'Reporting', icon: BarChart3, path: '/reporting' },
   { label: 'Performance', icon: Target, path: '/performance' },
   { label: 'Huddles', icon: MessageCircle, path: '/huddles', disabled: true },
+  { label: 'Support', icon: LifeBuoy, path: '/support' },
   { label: 'Operations', icon: Settings, path: '/operations', adminOnly: true },
 ];
 

@@ -9,9 +9,23 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '2.6.2';
+export const APP_VERSION = '2.7.0';
 
 export const CHANGELOG = [
+  {
+    version: '2.7.0',
+    date: '2026-04-15',
+    title: 'Support Center — Help, Status & IT Contact',
+    changes: [
+      { type: 'minor', text: 'New Support tab with four sections: Help & Docs, Bug & Feedback, System Status, and IT Support' },
+      { type: 'minor', text: 'Searchable FAQ accordion with answers grouped by module (Req Board, Reporting, Pipeline, etc.)' },
+      { type: 'minor', text: 'Live system health dashboard — real-time status of API server, Bullhorn MCP, and database' },
+      { type: 'minor', text: 'Bug & Feedback form with screenshot upload, ticket tracking, and admin triage view' },
+      { type: 'minor', text: 'Known Issues board — managers can post and resolve active issues visible to all users' },
+      { type: 'minor', text: 'IT Support page with contact info, escalation path, and quick ticket submission' },
+      { type: 'minor', text: 'Full version changelog now accessible from the System Status page' },
+    ],
+  },
   {
     version: '2.6.2',
     date: '2026-04-14',

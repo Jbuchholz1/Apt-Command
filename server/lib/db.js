@@ -580,6 +580,130 @@ async function uploadClientLogo(clientId, fileBuffer, fileName, mimeType) {
   return publicUrl;
 }
 
+// =============================================
+// Support — Supabase ping
+// =============================================
+
+async function pingSupabase() {
+  if (!supabase) return false;
+  try {
+    const { error } = await supabase.from('job_overrides').select('job_id').limit(1);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+// =============================================
+// Support — Tickets
+// =============================================
+
+async function createSupportTicket({ category, title, description, screenshot_url, submitted_by, submitted_by_name }) {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from('support_tickets')
+    .insert({ category, title, description, screenshot_url, submitted_by, submitted_by_name })
+    .select()
+    .single();
+  if (error) { console.error('[db] createSupportTicket error:', error.message); throw error; }
+  return data;
+}
+
+async function getSupportTickets({ submittedBy }) {
+  if (!supabase) return [];
+  let query = supabase
+    .from('support_tickets')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (submittedBy) {
+    query = query.eq('submitted_by', submittedBy);
+  }
+  const { data, error } = await query;
+  if (error) { console.error('[db] getSupportTickets error:', error.message); return []; }
+  return data || [];
+}
+
+async function updateSupportTicket(id, { status, admin_notes, updated_by }) {
+  if (!supabase) return null;
+  const updates = { updated_at: new Date().toISOString() };
+  if (status) updates.status = status;
+  if (admin_notes !== undefined) updates.admin_notes = admin_notes;
+  if (updated_by) updates.updated_by = updated_by;
+
+  const { data, error } = await supabase
+    .from('support_tickets')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .maybeSingle();
+  if (error) { console.error('[db] updateSupportTicket error:', error.message); throw error; }
+  return data;
+}
+
+async function uploadSupportScreenshot(fileBuffer, fileName, mimeType) {
+  if (!supabase) return null;
+  const fileExt = fileName.split('.').pop();
+  const newFileName = `${Date.now()}.${fileExt}`;
+  const filePath = `tickets/${newFileName}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from('support-screenshots')
+    .upload(filePath, fileBuffer, {
+      contentType: mimeType,
+      cacheControl: '3600',
+      upsert: false,
+    });
+  if (uploadError) throw uploadError;
+
+  const { data: { publicUrl } } = supabase.storage
+    .from('support-screenshots')
+    .getPublicUrl(filePath);
+
+  return publicUrl;
+}
+
+// =============================================
+// Support — Known Issues
+// =============================================
+
+async function getKnownIssues(statusFilter) {
+  if (!supabase) return [];
+  let query = supabase
+    .from('known_issues')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (statusFilter) {
+    query = query.eq('status', statusFilter);
+  }
+  const { data, error } = await query;
+  if (error) { console.error('[db] getKnownIssues error:', error.message); return []; }
+  return data || [];
+}
+
+async function createKnownIssue({ title, description, severity, created_by }) {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from('known_issues')
+    .insert({ title, description, severity, created_by })
+    .select()
+    .single();
+  if (error) { console.error('[db] createKnownIssue error:', error.message); throw error; }
+  return data;
+}
+
+async function updateKnownIssue(id, updates) {
+  if (!supabase) return null;
+  updates.updated_at = new Date().toISOString();
+  const { data, error } = await supabase
+    .from('known_issues')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .maybeSingle();
+  if (error) { console.error('[db] updateKnownIssue error:', error.message); throw error; }
+  return data;
+}
+
 async function removeClientLogo(clientId) {
   if (!supabase) return;
 
@@ -604,4 +728,8 @@ module.exports = {
   bulkDeleteEmployees, updateEmployeePositions, resetEmployeePositions, bulkImportEmployees,
   getAssignments, createAssignment, deleteAssignment,
   uploadClientLogo, removeClientLogo,
+  // Support
+  pingSupabase,
+  createSupportTicket, getSupportTickets, updateSupportTicket, uploadSupportScreenshot,
+  getKnownIssues, createKnownIssue, updateKnownIssue,
 };

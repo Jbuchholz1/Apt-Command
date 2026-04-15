@@ -16,6 +16,12 @@ import PipelineModule from './modules/pipeline/PipelineModule';
 import OpportunityPipeline from './modules/pipeline/OpportunityPipeline';
 import AdminModule from './modules/admin/AdminModule';
 import OperationsModule from './modules/operations/OperationsModule';
+import SupportModule from './modules/support/SupportModule';
+import SupportHome from './modules/support/SupportHome';
+import HelpDocs from './modules/support/HelpDocs';
+import FeedbackForm from './modules/support/FeedbackForm';
+import SystemStatus from './modules/support/SystemStatus';
+import ITSupport from './modules/support/ITSupport';
 import ComingSoon from './components/ComingSoon';
 
 export default function App() {
@@ -43,6 +49,13 @@ export default function App() {
             </Route>
             <Route path="performance" element={<PerformanceModule />}>
               <Route index element={<MyDashboard />} />
+            </Route>
+            <Route path="support" element={<SupportModule />}>
+              <Route index element={<SupportHome />} />
+              <Route path="help" element={<HelpDocs />} />
+              <Route path="feedback" element={<FeedbackForm />} />
+              <Route path="status" element={<SystemStatus />} />
+              <Route path="it" element={<ITSupport />} />
             </Route>
             <Route path="operations" element={<OperationsModule />} />
             <Route path="admin" element={<AdminModule />} />

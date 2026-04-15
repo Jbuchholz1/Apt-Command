@@ -423,6 +423,66 @@ export function exportSalesDashboard(startDate, endDate) {
   return downloadExcel(`/api/reporting/sales-export?start=${startDate}&end=${endDate}`, `Sales_Dashboard_${startDate}_${endDate}.xlsx`);
 }
 
+// --- Support ---
+
+export function getSystemHealth() {
+  return fetchAPI('/api/support/health');
+}
+
+export function getSupportTickets(mine = false) {
+  return fetchAPI(`/api/support/tickets${mine ? '?mine=true' : ''}`);
+}
+
+export async function submitSupportTicket(formData) {
+  const token = await getToken();
+  const headers = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`${BASE_URL}/api/support/tickets`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  if (res.status === 401) {
+    if (msalInstance) msalInstance.acquireTokenRedirect(loginRequest);
+    throw new Error('Session expired — redirecting to login');
+  }
+  if (res.status === 429) {
+    throw new Error('Too many requests — please wait a moment and try again');
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `Submit failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export function updateTicketStatus(id, data) {
+  return fetchAPI(`/api/support/tickets/${id}/status`, {
+    method: 'PATCH',
+    body: data,
+  });
+}
+
+export function getKnownIssues(status) {
+  return fetchAPI(`/api/support/known-issues${status ? `?status=${status}` : ''}`);
+}
+
+export function createKnownIssue(data) {
+  return fetchAPI('/api/support/known-issues', {
+    method: 'POST',
+    body: data,
+  });
+}
+
+export function updateKnownIssue(id, data) {
+  return fetchAPI(`/api/support/known-issues/${id}`, {
+    method: 'PATCH',
+    body: data,
+  });
+}
+
 export async function exportJobs() {
   const token = await getToken();
   const headers = {};

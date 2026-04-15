@@ -14,6 +14,7 @@ const orgflowRouter = require('./routes/orgflow');
 const usersRouter = require('./routes/users');
 const adminRouter = require('./routes/admin');
 const operationsRouter = require('./routes/operations');
+const supportRouter = require('./routes/support');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -97,6 +98,8 @@ app.use('/api/performance', performanceRouter);
 app.use('/api/org-flow', orgflowRouter);
 // Operations module
 app.use('/api/operations', operationsRouter);
+// Support module
+app.use('/api/support', supportRouter);
 // User management
 app.use('/api/users', usersRouter);
 app.use('/api/admin', adminRouter);
