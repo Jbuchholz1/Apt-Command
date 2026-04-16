@@ -655,6 +655,12 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: 'auto' }}>
                 <div style={{ fontSize: '14px', fontWeight: 600, color: '#0d9488' }}>
                   Total Spread: {fmtCurrency(filteredSpreadTotal)}/wk
+                  <span className="stat-tooltip-wrap">
+                    <span className="stat-tooltip-icon">&#9432;</span>
+                    <span className="stat-tooltip-text">
+                      Per contractor: (Pay Rate × 1.25 − Bill Rate) × 40 × −1. Direct Hire placements are excluded. Sum of all visible (filtered) contractors.
+                    </span>
+                  </span>
                 </div>
                 <button className="modal-close" onClick={() => setShowContractors(false)}>✕</button>
               </div>

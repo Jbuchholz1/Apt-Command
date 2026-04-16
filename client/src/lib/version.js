@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.2.3';
+export const APP_VERSION = '3.2.4';
 
 export const CHANGELOG = [
+  {
+    version: '3.2.4',
+    date: '2026-04-16',
+    title: 'Total Spread Tooltip',
+    changes: [
+      { type: 'patch', text: 'Added tooltip to Total Spread in the Active Contractors modal showing the calculation formula' },
+    ],
+  },
   {
     version: '3.2.3',
     date: '2026-04-16',
