@@ -134,20 +134,37 @@ router.get('/', async (req, res, next) => {
       }
     }
 
+    // Statuses that should fall off the board (only shown within 12hr window)
+    const FALLOFF_STATUSES = ['Archive', 'Placed', 'Lost', 'Wash'];
+    const cutoff = Date.now() - (12 * 60 * 60 * 1000); // 12 hours ago
+
+    // Build set of recently-closed job IDs (within 12hr window)
+    const recentlyClosedIds = new Set();
+    for (const j of (closedResult?.data || [])) {
+      recentlyClosedIds.add(j.id);
+    }
+
     // Merge open + recently closed, deduplicate by ID
     const seen = new Set();
     const allJobs = [];
     for (const j of [...(openResult?.data || []), ...(closedResult?.data || [])]) {
       if (!seen.has(j.id)) {
         seen.add(j.id);
+        const status = Array.isArray(j.status) ? j.status[0] : j.status;
+
+        // Skip fall-off status jobs from the open query that aren't within the 12hr window
+        if (FALLOFF_STATUSES.includes(status)) {
+          const modTime = j.dateLastModified || 0;
+          if (modTime < cutoff) continue; // older than 12 hours — drop it
+        }
+
         const formatted = formatJob(j);
         formatted.clientSubs = clientSubCounts[j.id] || 0;
         formatted.latestClientSubDate = latestClientSubDate[j.id]
           ? new Date(latestClientSubDate[j.id]).toISOString()
           : null;
-        // Mark recently-closed jobs so the frontend can style them
-        const status = Array.isArray(j.status) ? j.status[0] : j.status;
-        if (['Archive', 'Placed', 'Lost', 'Wash'].includes(status) && !j.isOpen) {
+        // Mark fall-off status jobs so the frontend can style them
+        if (FALLOFF_STATUSES.includes(status)) {
           formatted.fallingOff = true;
         }
         allJobs.push(mergeOverrides(formatted, overrides));
