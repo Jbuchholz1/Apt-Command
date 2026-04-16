@@ -74,6 +74,9 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   const [showAB, setShowAB] = useState(false);
   const [showC, setShowC] = useState(false);
   const [showCalledShots, setShowCalledShots] = useState(false);
+  const [csOwnerFilter, setCsOwnerFilter] = useState([]);
+  const [csTrFilter, setCsTrFilter] = useState([]);
+  const [csSort, setCsSort] = useState({ key: 'id', dir: 'desc' });
   const [showAccepting, setShowAccepting] = useState(false);
   const [placements, setPlacements] = useState([]);
   const [placementsLoading, setPlacementsLoading] = useState(false);
@@ -116,6 +119,52 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
 
   // Called Shots — jobs flagged as called_shot in overrides
   const calledShotJobs = (jobs || []).filter(j => j.calledShot);
+
+  // Called Shots: owner + TR options, sort, filter
+  const csOwners = useMemo(() => {
+    const set = new Set();
+    calledShotJobs.forEach(j => { if (j.owner) set.add(j.owner); });
+    return [...set].sort();
+  }, [calledShotJobs]);
+
+  const csTRs = useMemo(() => {
+    const set = new Set();
+    calledShotJobs.forEach(j => { if (j.recruiter) set.add(j.recruiter); });
+    return [...set].sort();
+  }, [calledShotJobs]);
+
+  const handleCsSort = (key) => {
+    setCsSort(prev =>
+      prev.key === key
+        ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
+        : { key, dir: 'asc' }
+    );
+  };
+
+  const csSortIcon = (key) => {
+    if (csSort.key !== key) return ' \u2195';
+    return csSort.dir === 'asc' ? ' \u2191' : ' \u2193';
+  };
+
+  const filteredCalledShots = useMemo(() => {
+    let result = calledShotJobs;
+    if (csOwnerFilter.length > 0) result = result.filter(j => csOwnerFilter.includes(j.owner));
+    if (csTrFilter.length > 0) result = result.filter(j => csTrFilter.includes(j.recruiter));
+    const arr = [...result];
+    arr.sort((a, b) => {
+      let av = a[csSort.key];
+      let bv = b[csSort.key];
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      if (typeof av === 'number' && typeof bv === 'number') {
+        return csSort.dir === 'asc' ? av - bv : bv - av;
+      }
+      const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true });
+      return csSort.dir === 'asc' ? cmp : -cmp;
+    });
+    return arr;
+  }, [calledShotJobs, csOwnerFilter, csTrFilter, csSort]);
 
   // A + B reqs combined: covered = has an assigned TR
   const abReqs = (jobs || []).filter(j => j.priority === 'A' || j.priority === 'B');
@@ -542,7 +591,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
     { label: 'A/B Covered', value: `${abCovered} / ${abTotal}`, color: '#c9a227', onClick: () => { setAbOwnerFilter(''); setAbSort({ key: 'id', dir: 'desc' }); setShowAB(true); } },
     { label: 'C Reqs', value: cReqCount, color: '#94a3b8', onClick: () => { setCOwnerFilter(''); setCSort({ key: 'id', dir: 'desc' }); setShowC(true); } },
     { label: 'On The Board', value: filledJobs.length, color: '#7c3aed', tooltip: 'The number of Jobs with a status of Filled', onClick: handleFilledClick },
-    { label: 'Called Shots', value: calledShotJobs.length, color: '#ea580c', tooltip: 'Jobs flagged as a Called Shot', onClick: () => setShowCalledShots(true) },
+    { label: 'Called Shots', value: calledShotJobs.length, color: '#ea580c', tooltip: 'Jobs flagged as a Called Shot', onClick: () => { setCsOwnerFilter([]); setCsTrFilter([]); setCsSort({ key: 'id', dir: 'desc' }); setShowCalledShots(true); } },
     { label: 'Opportunities', value: totalOpportunities, color: '#0369a1', onClick: handleOpportunitiesClick },
     { label: 'Active Contractors', value: activeContractors, color: '#0d9488', onClick: handleContractorsClick },
     { label: 'Potential CE Spread', value: fmtCurrency(totalCE), color: '#2563eb', onClick: () => setShowCE(true), tooltip: 'W2: (Bill Rate - Pay Rate × 1.25) × 40 | C2C: (Bill Rate - Pay Rate × 1.05) × 40 | A/B priority, Accepting Candidates & Filled jobs only' },
@@ -1154,34 +1203,56 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
         <div className="modal-overlay" onClick={() => setShowCalledShots(false)}>
           <div className="modal-content contractors-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Called Shots ({calledShotJobs.length})</h2>
+              <h2>Called Shots ({filteredCalledShots.length}{(csOwnerFilter.length || csTrFilter.length) ? ` of ${calledShotJobs.length}` : ''})</h2>
               <button className="modal-close" onClick={() => setShowCalledShots(false)}>✕</button>
+            </div>
+            <div style={{ padding: '0 20px 12px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <ContractorMultiSelect label="Owner" options={csOwners} selected={csOwnerFilter} onChange={setCsOwnerFilter} />
+              <ContractorMultiSelect label="TR" options={csTRs} selected={csTrFilter} onChange={setCsTrFilter} />
             </div>
             <table className="contractors-table">
               <thead>
                 <tr>
-                  <th>Req#</th>
-                  <th>Job Title</th>
-                  <th>Client</th>
-                  <th>Status</th>
-                  <th>Owner</th>
-                  <th>TR</th>
-                  <th>Type</th>
+                  {[
+                    { key: 'id', label: 'Req#' },
+                    { key: 'title', label: 'Job Title' },
+                    { key: 'client', label: 'Client' },
+                    { key: 'status', label: 'Status' },
+                    { key: 'owner', label: 'Owner' },
+                    { key: 'recruiter', label: 'TR' },
+                    { key: 'employmentType', label: 'Type' },
+                  ].map(col => (
+                    <th key={col.key} className="sortable" style={{ cursor: 'pointer' }} onClick={() => handleCsSort(col.key)}>
+                      {col.label}<span className="sort-icon">{csSortIcon(col.key)}</span>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {calledShotJobs.map(j => (
+                {filteredCalledShots.map(j => (
                   <tr key={j.id}>
                     <td><a href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=JobOrder&id=${j.id}`} target="_blank" rel="noopener noreferrer" className="bh-link">{j.id}</a></td>
                     <td>{j.title || '—'}</td>
                     <td>{j.client || '—'}</td>
-                    <td>{j.status || '—'}</td>
+                    <EditableSelect
+                      value={j.status || ''}
+                      displayValue={j.status || '—'}
+                      options={STATUS_OPTIONS}
+                      onSave={(val) => handleStatusSave(j, val)}
+                      className="cell-editable"
+                    />
                     <td>{j.owner || '—'}</td>
-                    <td>{j.recruiter || '—'}</td>
-                    <td>{j.employmentType || '—'}</td>
+                    {renderTrCell(j)}
+                    <EditableSelect
+                      value={j.employmentType || ''}
+                      displayValue={TYPE_ABBREV[j.employmentType] || j.employmentType || '—'}
+                      options={TYPE_OPTIONS}
+                      onSave={(val) => handleTypeSave(j, val)}
+                      className="cell-editable"
+                    />
                   </tr>
                 ))}
-                {calledShotJobs.length === 0 && (
+                {filteredCalledShots.length === 0 && (
                   <tr><td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>No called shots</td></tr>
                 )}
               </tbody>

@@ -9,9 +9,19 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.2.0';
+export const APP_VERSION = '3.2.1';
 
 export const CHANGELOG = [
+  {
+    version: '3.2.1',
+    date: '2026-04-16',
+    title: 'Called Shots Modal Enhancements',
+    changes: [
+      { type: 'minor', text: 'Called Shots modal columns are now sortable' },
+      { type: 'minor', text: 'Added multi-select Owner and TR filters to Called Shots modal' },
+      { type: 'minor', text: 'Status, TR, and Type are now editable inline in the Called Shots modal' },
+    ],
+  },
   {
     version: '3.2.0',
     date: '2026-04-16',
