@@ -155,6 +155,15 @@
   display: block;
 }
 
+/* Variant: tooltip drops BELOW the icon (use when icon is near top of a container that clips overflow) */
+.stat-tooltip-below .stat-tooltip-text {
+  bottom: auto;
+  top: 100%;
+  margin-top: 6px;
+  right: 0;
+  z-index: 1100;
+}
+
 .stat-link-icon {
   font-size: 9px;
 }
