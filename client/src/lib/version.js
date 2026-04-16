@@ -9,15 +9,23 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.2.5';
+export const APP_VERSION = '3.2.6';
 
 export const CHANGELOG = [
+  {
+    version: '3.2.6',
+    date: '2026-04-16',
+    title: 'Total Spread — Use Actual Fee',
+    changes: [
+      { type: 'patch', text: 'Direct Hire perm contribution to Total Weekly Spread now uses the actual fee percentage from each placement instead of a flat 20%' },
+    ],
+  },
   {
     version: '3.2.5',
     date: '2026-04-16',
     title: 'Total Spread — Perm Fees Included',
     changes: [
-      { type: 'minor', text: 'Direct Hire placements now contribute to Total Weekly Spread in Active Contractors modal using (Salary × 20%) ÷ 52' },
+      { type: 'minor', text: 'Direct Hire placements now contribute to Total Weekly Spread in Active Contractors modal using (Salary × Fee %) ÷ 52' },
     ],
   },
   {

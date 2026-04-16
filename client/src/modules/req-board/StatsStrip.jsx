@@ -480,12 +480,12 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   }, [placements, contractorAmFilter, contractorTrFilter, contractorTypeFilter, contractorSort]);
 
   // Sum of weekly spread: contractors use (BillRate - PayRate×1.25) × 40;
-  // Direct Hire placements add amortized perm fee = (Salary × 20%) / 52
+  // Direct Hire placements add amortized perm fee = (Salary × Fee) / 52
   const filteredSpreadTotal = useMemo(() => {
     return filteredPlacements.reduce((sum, p) => {
       if (p.employmentType === 'Direct Hire') {
-        if (!p.salary) return sum;
-        const perm = Math.round((p.salary * 0.20) / 52);
+        if (!p.salary || !p.fee) return sum;
+        const perm = Math.round((p.salary * p.fee) / 52);
         return sum + perm;
       }
       if (!p.billRate || !p.payRate) return sum;
@@ -663,7 +663,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
                   <span className="stat-tooltip-wrap stat-tooltip-below">
                     <span className="stat-tooltip-icon">&#9432;</span>
                     <span className="stat-tooltip-text">
-                      Contract: (Pay Rate × 1.25 − Bill Rate) × 40 × −1. Direct Hire: (Salary × 20%) ÷ 52. Sum of all visible (filtered) contractors.
+                      Contract: (Pay Rate × 1.25 − Bill Rate) × 40 × −1. Direct Hire: (Salary × Fee %) ÷ 52. Sum of all visible (filtered) contractors.
                     </span>
                   </span>
                 </div>
