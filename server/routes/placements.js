@@ -20,6 +20,8 @@ router.get('/', async (req, res, next) => {
       dateEnd: p.dateEnd ? new Date(p.dateEnd).toISOString() : null,
       payRate: p.payRate || null,
       billRate: p.clientBillRate || null,
+      salary: p.salary || null,
+      fee: p.fee || null,
       status: p.status,
       am: p.jobOrder?.owner
         ? `${(p.jobOrder.owner.firstName || '')[0] || ''}${(p.jobOrder.owner.lastName || '')[0] || ''}`.toUpperCase()

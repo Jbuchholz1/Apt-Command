@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.2.4';
+export const APP_VERSION = '3.2.5';
 
 export const CHANGELOG = [
+  {
+    version: '3.2.5',
+    date: '2026-04-16',
+    title: 'Total Spread — Perm Fees Included',
+    changes: [
+      { type: 'minor', text: 'Direct Hire placements now contribute to Total Weekly Spread in Active Contractors modal using (Salary × 20%) ÷ 52' },
+    ],
+  },
   {
     version: '3.2.4',
     date: '2026-04-16',
