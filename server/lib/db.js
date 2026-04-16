@@ -15,6 +15,29 @@ const supabase = supabaseUrl && supabaseKey
   ? createSupabaseClient(supabaseUrl, supabaseKey)
   : null;
 
+// Auto-migrate: ensure status_changed_at column exists on job_overrides
+async function ensureSchema() {
+  if (!supabase) return;
+  try {
+    // Try reading the column — if it fails, add it via RPC or ignore gracefully
+    const { error } = await supabase.from('job_overrides').select('status_changed_at').limit(1);
+    if (error && error.message.includes('status_changed_at')) {
+      console.log('[db] Adding status_changed_at column to job_overrides...');
+      const { error: rpcErr } = await supabase.rpc('exec_sql', {
+        query: "ALTER TABLE job_overrides ADD COLUMN IF NOT EXISTS status_changed_at TEXT;"
+      });
+      if (rpcErr) {
+        console.warn('[db] Could not auto-add status_changed_at — add manually:', rpcErr.message);
+      } else {
+        console.log('[db] status_changed_at column added successfully');
+      }
+    }
+  } catch (err) {
+    console.warn('[db] Schema check failed:', err.message);
+  }
+}
+ensureSchema();
+
 /**
  * Get all overrides as a map keyed by job_id.
  */
@@ -57,7 +80,7 @@ async function getOverrides(jobId) {
 /**
  * Upsert overrides for a job. Only updates fields that are provided.
  */
-async function upsertOverrides(jobId, { recruiter, follow_up, deadline, notes, coverage_needed, tr_reassigned, tr_assigned_at, called_shot, forty_eight_hr, updated_by }) {
+async function upsertOverrides(jobId, { recruiter, follow_up, deadline, notes, coverage_needed, tr_reassigned, tr_assigned_at, called_shot, forty_eight_hr, status_changed_at, updated_by }) {
   if (!supabase) return null;
 
   const updates = { updated_at: new Date().toISOString() };
@@ -70,6 +93,7 @@ async function upsertOverrides(jobId, { recruiter, follow_up, deadline, notes, c
   if (tr_assigned_at !== undefined) updates.tr_assigned_at = tr_assigned_at;
   if (called_shot !== undefined) updates.called_shot = called_shot;
   if (forty_eight_hr !== undefined) updates.forty_eight_hr = forty_eight_hr;
+  if (status_changed_at !== undefined) updates.status_changed_at = status_changed_at;
   if (updated_by) updates.updated_by = updated_by;
 
   const { data, error } = await supabase

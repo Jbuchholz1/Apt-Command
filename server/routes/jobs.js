@@ -136,13 +136,7 @@ router.get('/', async (req, res, next) => {
 
     // Statuses that should fall off the board (only shown within 12hr window)
     const FALLOFF_STATUSES = ['Archive', 'Placed', 'Lost', 'Wash'];
-    const cutoff = Date.now() - (12 * 60 * 60 * 1000); // 12 hours ago
-
-    // Build set of recently-closed job IDs (within 12hr window)
-    const recentlyClosedIds = new Set();
-    for (const j of (closedResult?.data || [])) {
-      recentlyClosedIds.add(j.id);
-    }
+    const cutoffMs = Date.now() - (12 * 60 * 60 * 1000); // 12 hours ago
 
     // Merge open + recently closed, deduplicate by ID
     const seen = new Set();
@@ -152,10 +146,13 @@ router.get('/', async (req, res, next) => {
         seen.add(j.id);
         const status = Array.isArray(j.status) ? j.status[0] : j.status;
 
-        // Skip fall-off status jobs from the open query that aren't within the 12hr window
+        // For fall-off statuses, use our tracked status_changed_at (precise),
+        // falling back to Bullhorn dateLastModified (less reliable — any edit resets it)
         if (FALLOFF_STATUSES.includes(status)) {
-          const modTime = j.dateLastModified || 0;
-          if (modTime < cutoff) continue; // older than 12 hours — drop it
+          const ov = overrides[j.id];
+          const changedAt = ov?.status_changed_at ? new Date(ov.status_changed_at).getTime() : null;
+          const falloffTime = changedAt || (j.dateLastModified || 0);
+          if (falloffTime < cutoffMs) continue; // older than 12 hours — drop it
         }
 
         const formatted = formatJob(j);
@@ -379,6 +376,16 @@ router.post('/:id/bullhorn-update', async (req, res, next) => {
     }
 
     const result = await updateJobField(jobId, sanitized);
+
+    // Track when status changes to a fall-off status
+    if (sanitized.status) {
+      const FALLOFF_STATUSES = ['Archive', 'Placed', 'Lost', 'Wash'];
+      const statusChangedAt = FALLOFF_STATUSES.includes(sanitized.status)
+        ? new Date().toISOString()
+        : null; // clear it when moving back to an active status
+      await upsertOverrides(jobId, { status_changed_at: statusChangedAt });
+    }
+
     res.json({ success: true, data: result });
   } catch (err) {
     next(err);
@@ -466,6 +473,7 @@ function mergeOverrides(job, overridesMap) {
     job.coverageNeeded = ov.coverage_needed || '';
     job.calledShot = ov.called_shot === true || ov.called_shot === 'true';
     job.fortyEightHr = ov.forty_eight_hr || '';
+    job.statusChangedAt = ov.status_changed_at || null;
   } else {
     job.recruiter = job.recruiter || '*';
     job.trReassigned = false;
@@ -476,6 +484,7 @@ function mergeOverrides(job, overridesMap) {
     job.coverageNeeded = job.coverageNeeded || '';
     job.calledShot = false;
     job.fortyEightHr = '';
+    job.statusChangedAt = null;
   }
   return job;
 }

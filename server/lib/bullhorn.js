@@ -119,9 +119,10 @@ async function getOpenJobs() {
   });
 }
 
-// Jobs with status Archive/Placed/Lost/Wash that were modified in the last 12 hours
+// Jobs with status Archive/Placed/Lost/Wash modified recently — fetch wide window,
+// server-side logic uses status_changed_at for precise 12hr fall-off
 async function getRecentlyClosedJobs() {
-  const cutoff = Date.now() - (12 * 60 * 60 * 1000); // 12 hours ago
+  const cutoff = Date.now() - (48 * 60 * 60 * 1000); // 48 hours ago (wide net)
   return callTool('query_entity', {
     entityType: 'JobOrder',
     where: `isOpen = false AND isDeleted = false AND dateLastModified > ${cutoff} AND (status = 'Archive' OR status = 'Placed' OR status = 'Lost' OR status = 'Wash')`,
