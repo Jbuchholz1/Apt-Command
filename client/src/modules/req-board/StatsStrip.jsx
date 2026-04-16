@@ -452,6 +452,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
       result = result.filter(p => contractorTrFilter.includes(p.tr));
     }
     const arr = [...result];
+    // (spread sum uses this filtered list — computed in memo below)
     arr.sort((a, b) => {
       let av = a[contractorSort.key];
       let bv = b[contractorSort.key];
@@ -466,6 +467,16 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
     });
     return arr;
   }, [placements, contractorAmFilter, contractorTrFilter, contractorSort]);
+
+  // Sum of weekly spread for non-Direct Hire contractors (matches cell formula)
+  const filteredSpreadTotal = useMemo(() => {
+    return filteredPlacements.reduce((sum, p) => {
+      if (p.employmentType === 'Direct Hire') return sum;
+      if (!p.billRate || !p.payRate) return sum;
+      const spread = Math.round((p.payRate * 1.25 - p.billRate) * 40 * -1);
+      return sum + spread;
+    }, 0);
+  }, [filteredPlacements]);
 
   const handleOpportunitiesClick = async () => {
     setShowOpportunities(true);
@@ -630,7 +641,12 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
           <div className="modal-content contractors-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Active Contractors ({filteredPlacements.length}{(contractorAmFilter.length || contractorTrFilter.length) ? ` of ${placements.length}` : ''})</h2>
-              <button className="modal-close" onClick={() => setShowContractors(false)}>✕</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: 'auto' }}>
+                <div style={{ fontSize: '14px', fontWeight: 600, color: '#0d9488' }}>
+                  Total Spread: {fmtCurrency(filteredSpreadTotal)}/wk
+                </div>
+                <button className="modal-close" onClick={() => setShowContractors(false)}>✕</button>
+              </div>
             </div>
             {placementsLoading ? (
               <div className="modal-loading">Loading contractors...</div>

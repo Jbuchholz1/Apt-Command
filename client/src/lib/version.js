@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.2.1';
+export const APP_VERSION = '3.2.2';
 
 export const CHANGELOG = [
+  {
+    version: '3.2.2',
+    date: '2026-04-16',
+    title: 'Active Contractors — Total Spread',
+    changes: [
+      { type: 'minor', text: 'Active Contractors modal now shows the total weekly spread (sum of all CE spreads) in the header, updates with filters' },
+    ],
+  },
   {
     version: '3.2.1',
     date: '2026-04-16',
