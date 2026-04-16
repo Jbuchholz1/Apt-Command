@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.1.1';
+export const APP_VERSION = '3.2.0';
 
 export const CHANGELOG = [
+  {
+    version: '3.2.0',
+    date: '2026-04-16',
+    title: 'Stats Strip Updates',
+    changes: [
+      { type: 'minor', text: 'Added Called Shots counter between On The Board and Opportunities — click to see the list of flagged jobs' },
+      { type: 'patch', text: 'Removed Open Reqs counter from the top of the Req Board' },
+    ],
+  },
   {
     version: '3.1.1',
     date: '2026-04-16',

@@ -73,7 +73,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   const [showFilled, setShowFilled] = useState(false);
   const [showAB, setShowAB] = useState(false);
   const [showC, setShowC] = useState(false);
-  const [showOpenReqs, setShowOpenReqs] = useState(false);
+  const [showCalledShots, setShowCalledShots] = useState(false);
   const [showAccepting, setShowAccepting] = useState(false);
   const [placements, setPlacements] = useState([]);
   const [placementsLoading, setPlacementsLoading] = useState(false);
@@ -99,7 +99,6 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   }, []);
 
   // Compute stats from jobs array
-  const openReqs = stats?.openReqs ?? 0;
   const acceptingCandidates = stats?.acceptingCandidates ?? 0;
   const activeContractors = stats?.activeContractors ?? 0;
   const filledCount = stats?.filled ?? 0;
@@ -114,6 +113,9 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   // Filled jobs (On The Board)
   const filledJobs = (jobs || []).filter(j => j.status === 'Filled');
   const missedFollowUps = missedFollowUpJobs.length;
+
+  // Called Shots — jobs flagged as called_shot in overrides
+  const calledShotJobs = (jobs || []).filter(j => j.calledShot);
 
   // A + B reqs combined: covered = has an assigned TR
   const abReqs = (jobs || []).filter(j => j.priority === 'A' || j.priority === 'B');
@@ -535,12 +537,12 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   };
 
   const items = [
-    { label: 'Open Reqs', value: openReqs, color: '#c9a227', onClick: () => setShowOpenReqs(true) },
     { label: 'Accepting Candidates', value: acceptingCandidates, color: '#16a34a', onClick: () => { setAccOwnerFilter(''); setAccSort({ key: 'id', dir: 'desc' }); setShowAccepting(true); } },
     { label: 'Missed Follow Ups', value: missedFollowUps, color: '#dc2626', onClick: () => setShowMissedFollowUps(true) },
     { label: 'A/B Covered', value: `${abCovered} / ${abTotal}`, color: '#c9a227', onClick: () => { setAbOwnerFilter(''); setAbSort({ key: 'id', dir: 'desc' }); setShowAB(true); } },
     { label: 'C Reqs', value: cReqCount, color: '#94a3b8', onClick: () => { setCOwnerFilter(''); setCSort({ key: 'id', dir: 'desc' }); setShowC(true); } },
     { label: 'On The Board', value: filledJobs.length, color: '#7c3aed', tooltip: 'The number of Jobs with a status of Filled', onClick: handleFilledClick },
+    { label: 'Called Shots', value: calledShotJobs.length, color: '#ea580c', tooltip: 'Jobs flagged as a Called Shot', onClick: () => setShowCalledShots(true) },
     { label: 'Opportunities', value: totalOpportunities, color: '#0369a1', onClick: handleOpportunitiesClick },
     { label: 'Active Contractors', value: activeContractors, color: '#0d9488', onClick: handleContractorsClick },
     { label: 'Potential CE Spread', value: fmtCurrency(totalCE), color: '#2563eb', onClick: () => setShowCE(true), tooltip: 'W2: (Bill Rate - Pay Rate × 1.25) × 40 | C2C: (Bill Rate - Pay Rate × 1.05) × 40 | A/B priority, Accepting Candidates & Filled jobs only' },
@@ -1147,13 +1149,13 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
         </div>
       )}
 
-      {/* Open Reqs Modal */}
-      {showOpenReqs && (
-        <div className="modal-overlay" onClick={() => setShowOpenReqs(false)}>
+      {/* Called Shots Modal */}
+      {showCalledShots && (
+        <div className="modal-overlay" onClick={() => setShowCalledShots(false)}>
           <div className="modal-content contractors-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Open Reqs ({(jobs || []).length})</h2>
-              <button className="modal-close" onClick={() => setShowOpenReqs(false)}>✕</button>
+              <h2>Called Shots ({calledShotJobs.length})</h2>
+              <button className="modal-close" onClick={() => setShowCalledShots(false)}>✕</button>
             </div>
             <table className="contractors-table">
               <thead>
@@ -1168,7 +1170,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
                 </tr>
               </thead>
               <tbody>
-                {(jobs || []).map(j => (
+                {calledShotJobs.map(j => (
                   <tr key={j.id}>
                     <td><a href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=JobOrder&id=${j.id}`} target="_blank" rel="noopener noreferrer" className="bh-link">{j.id}</a></td>
                     <td>{j.title || '—'}</td>
@@ -1179,6 +1181,9 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
                     <td>{j.employmentType || '—'}</td>
                   </tr>
                 ))}
+                {calledShotJobs.length === 0 && (
+                  <tr><td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>No called shots</td></tr>
+                )}
               </tbody>
             </table>
           </div>
