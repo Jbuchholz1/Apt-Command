@@ -83,6 +83,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   const [contractorSort, setContractorSort] = useState({ key: 'candidate', dir: 'asc' });
   const [contractorAmFilter, setContractorAmFilter] = useState([]);
   const [contractorTrFilter, setContractorTrFilter] = useState([]);
+  const [contractorTypeFilter, setContractorTypeFilter] = useState([]);
   const [showOpportunities, setShowOpportunities] = useState(false);
   const [opportunities, setOpportunities] = useState([]);
   const [opportunitiesLoading, setOpportunitiesLoading] = useState(false);
@@ -407,6 +408,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
     setPlacementsLoading(true);
     setContractorAmFilter([]);
     setContractorTrFilter([]);
+    setContractorTypeFilter([]);
     setContractorSort({ key: 'candidate', dir: 'asc' });
     try {
       const res = await getPlacements();
@@ -427,6 +429,12 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   const contractorTRs = useMemo(() => {
     const set = new Set();
     placements.forEach(p => { if (p.tr) set.add(p.tr); });
+    return [...set].sort();
+  }, [placements]);
+
+  const contractorTypes = useMemo(() => {
+    const set = new Set();
+    placements.forEach(p => { if (p.employmentType) set.add(p.employmentType); });
     return [...set].sort();
   }, [placements]);
 
@@ -451,6 +459,9 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
     if (contractorTrFilter.length > 0) {
       result = result.filter(p => contractorTrFilter.includes(p.tr));
     }
+    if (contractorTypeFilter.length > 0) {
+      result = result.filter(p => contractorTypeFilter.includes(p.employmentType));
+    }
     const arr = [...result];
     // (spread sum uses this filtered list — computed in memo below)
     arr.sort((a, b) => {
@@ -466,7 +477,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
       return contractorSort.dir === 'asc' ? cmp : -cmp;
     });
     return arr;
-  }, [placements, contractorAmFilter, contractorTrFilter, contractorSort]);
+  }, [placements, contractorAmFilter, contractorTrFilter, contractorTypeFilter, contractorSort]);
 
   // Sum of weekly spread for non-Direct Hire contractors (matches cell formula)
   const filteredSpreadTotal = useMemo(() => {
@@ -640,7 +651,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
         <div className="modal-overlay" onClick={() => setShowContractors(false)}>
           <div className="modal-content contractors-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Active Contractors ({filteredPlacements.length}{(contractorAmFilter.length || contractorTrFilter.length) ? ` of ${placements.length}` : ''})</h2>
+              <h2>Active Contractors ({filteredPlacements.length}{(contractorAmFilter.length || contractorTrFilter.length || contractorTypeFilter.length) ? ` of ${placements.length}` : ''})</h2>
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: 'auto' }}>
                 <div style={{ fontSize: '14px', fontWeight: 600, color: '#0d9488' }}>
                   Total Spread: {fmtCurrency(filteredSpreadTotal)}/wk
@@ -655,6 +666,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
                 <div style={{ padding: '0 20px 12px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                   <ContractorMultiSelect label="AM" options={contractorAMs} selected={contractorAmFilter} onChange={setContractorAmFilter} />
                   <ContractorMultiSelect label="TR" options={contractorTRs} selected={contractorTrFilter} onChange={setContractorTrFilter} />
+                  <ContractorMultiSelect label="Type" options={contractorTypes} selected={contractorTypeFilter} onChange={setContractorTypeFilter} />
                 </div>
                 <table className="contractors-table">
                   <thead>

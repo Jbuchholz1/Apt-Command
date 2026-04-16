@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.2.2';
+export const APP_VERSION = '3.2.3';
 
 export const CHANGELOG = [
+  {
+    version: '3.2.3',
+    date: '2026-04-16',
+    title: 'Active Contractors — Type Filter',
+    changes: [
+      { type: 'minor', text: 'Added multi-select Type filter to Active Contractors modal (e.g. Contract, Direct Hire, Corp-to-Corp)' },
+    ],
+  },
   {
     version: '3.2.2',
     date: '2026-04-16',
