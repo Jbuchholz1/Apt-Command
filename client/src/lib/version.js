@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.1.0';
+export const APP_VERSION = '3.1.1';
 
 export const CHANGELOG = [
+  {
+    version: '3.1.1',
+    date: '2026-04-16',
+    title: 'Fall-Off Timer Fix',
+    changes: [
+      { type: 'fix', text: 'Archive, Placed, Lost, and Wash jobs now correctly fall off the Req Board 12 hours after the status change — previously any edit to the job would reset the timer and keep it on the board indefinitely' },
+    ],
+  },
   {
     version: '3.1.0',
     date: '2026-04-15',
