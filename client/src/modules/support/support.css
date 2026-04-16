@@ -56,8 +56,9 @@
 }
 
 .support-card-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 20px;
 }
 
@@ -75,6 +76,8 @@
   flex-direction: column;
   gap: 10px;
   box-shadow: 0 6px 28px rgba(4, 20, 79, 0.16), 0 3px 10px rgba(0,0,0,0.1);
+  width: calc(50% - 10px);
+  min-width: 240px;
 }
 .support-card:hover {
   border-color: rgba(211, 191, 48, 0.4);
@@ -1135,8 +1138,8 @@
 
 /* ---- Responsive ---- */
 @media (max-width: 600px) {
-  .support-card-grid {
-    grid-template-columns: 1fr;
+  .support-card {
+    width: 100%;
   }
 
   .support-home {
