@@ -173,3 +173,50 @@
     min-width: 80px;
   }
 }
+
+/* ---- My Tickets Section ---- */
+.my-tickets-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-muted);
+  cursor: pointer;
+  vertical-align: middle;
+}
+.my-tickets-toggle input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+
+.my-tickets-table .my-tickets-title-link {
+  color: var(--navy);
+  text-decoration: none;
+  font-weight: 500;
+}
+.my-tickets-table .my-tickets-title-link:hover {
+  color: var(--gold);
+  text-decoration: underline;
+}
+
+.my-tickets-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.my-tickets-status {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}

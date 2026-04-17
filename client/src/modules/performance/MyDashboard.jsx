@@ -3,6 +3,7 @@ import { getMyDashboard, getPerformanceUsers } from '../../lib/api';
 import { useUserRole } from '../../lib/UserRoleContext';
 import DateRangePicker from '../reporting/components/DateRangePicker';
 import DetailTable from '../reporting/components/DetailTable';
+import MyTicketsSection from './MyTicketsSection';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { CHART_COLORS } from '../reporting/lib/constants';
 import './performance.css';
@@ -184,8 +185,8 @@ export default function MyDashboard() {
         </div>
       )}
 
-      {data?.role === 'Recruiter' && <RecruiterView data={data} formatCurrency={formatCurrency} />}
-      {data?.role === 'Account Manager' && <AMView data={data} formatCurrency={formatCurrency} modal={modal} setModal={setModal} />}
+      {data?.role === 'Recruiter' && <RecruiterView data={data} formatCurrency={formatCurrency} selectedEmail={selectedEmail} />}
+      {data?.role === 'Account Manager' && <AMView data={data} formatCurrency={formatCurrency} modal={modal} setModal={setModal} selectedEmail={selectedEmail} />}
 
       {/* Activity Detail Modal (AM only) */}
       {modal && (
@@ -252,7 +253,7 @@ export default function MyDashboard() {
 }
 
 // --- Recruiter View ---
-function RecruiterView({ data, formatCurrency }) {
+function RecruiterView({ data, formatCurrency, selectedEmail }) {
   const inputChartData = [{ name: data.name, 'Spread Goal': data.spreadGoal, 'New Input': data.metrics.newInput }];
   const marChartData = [{ name: data.name, 'Goal': data.marGoal, 'MAR Points': data.metrics.mar }];
 
@@ -361,12 +362,14 @@ function RecruiterView({ data, formatCurrency }) {
       <DetailTable title="New Input" columns={NEW_INPUT_COLS} data={data.details.newInput} />
 
       {data.followUps && <FollowUpsSection followUps={data.followUps} title="TR 30/90 Check-In Follow Ups" />}
+
+      <MyTicketsSection email={selectedEmail} />
     </>
   );
 }
 
 // --- Account Manager View ---
-function AMView({ data, formatCurrency, modal, setModal }) {
+function AMView({ data, formatCurrency, modal, setModal, selectedEmail }) {
   const inputChartData = [{ name: data.name, 'Spread Goal': data.spreadGoal, 'New Input': data.newInput }];
   const marChartData = [{ name: data.name, 'Goal': data.marGoal, 'MAR Points': data.mar }];
   const flwChartData = [{ name: data.name, Fills: data.jobMetrics.fills, Losses: data.jobMetrics.losses, Washed: data.jobMetrics.washed }];
@@ -529,6 +532,8 @@ function AMView({ data, formatCurrency, modal, setModal }) {
       )}
 
       {data.followUps && <FollowUpsSection followUps={data.followUps} title="AM 30/90 Check-In Follow Ups" />}
+
+      <MyTicketsSection email={selectedEmail} />
     </>
   );
 }

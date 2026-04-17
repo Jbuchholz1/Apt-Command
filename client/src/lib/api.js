@@ -429,9 +429,12 @@ export function getSystemHealth() {
   return fetchAPI('/api/support/health');
 }
 
-export function getSupportTickets(mine = false) {
-  const cacheBust = `_t=${Date.now()}`;
-  return fetchAPI(`/api/support/tickets?${mine ? 'mine=true&' : ''}${cacheBust}`);
+export function getSupportTickets(mine = false, email = null) {
+  const params = new URLSearchParams();
+  if (mine) params.set('mine', 'true');
+  if (email) params.set('email', email);
+  params.set('_t', Date.now().toString());
+  return fetchAPI(`/api/support/tickets?${params}`);
 }
 
 export async function submitSupportTicket(formData) {

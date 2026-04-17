@@ -193,6 +193,17 @@ router.post('/tickets', upload.single('screenshot'), async (req, res, next) => {
 router.get('/tickets', async (req, res, next) => {
   try {
     const mine = req.query.mine === 'true';
+    const targetEmail = req.query.email;
+
+    // If ?email= is provided and differs from caller, require manager/admin
+    if (targetEmail && targetEmail !== req.user.email) {
+      const role = await resolveRole(req.user.email);
+      if (role !== 'admin' && role !== 'manager') {
+        return res.status(403).json({ error: "Forbidden — manager or admin required to view other users' tickets" });
+      }
+      const tickets = await db.getSupportTickets({ submittedBy: targetEmail });
+      return res.json(tickets);
+    }
 
     if (mine) {
       const tickets = await db.getSupportTickets({ submittedBy: req.user.email });
