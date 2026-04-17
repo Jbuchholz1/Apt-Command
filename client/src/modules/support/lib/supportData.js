@@ -4,9 +4,9 @@
  */
 
 export const PLAYBOOKS = [
-  { title: 'Sales', url: '', description: 'Sales playbook and processes' },
-  { title: 'Delivery', url: '', description: 'Delivery playbook and processes' },
-  { title: 'Operations', url: '', description: 'Operations playbook and processes' },
+  { title: 'Sales', url: 'https://bytesizeinc.sharepoint.com/:w:/s/AptOperations/IQBqRMcDkRRVQ7NiFjs_P-LWAQjeJM3djv6TRWd7aYGxM24?e=EAYeNR', description: 'Sales playbook and processes' },
+  { title: 'Delivery', url: 'https://bytesizeinc.sharepoint.com/:w:/s/AptOperations/IQBzXE9KR0qqS7woJDFN27a5ATwX5WF1FCx7iWFfREUqPXc?e=KUaCsn', description: 'Delivery playbook and processes' },
+  { title: 'Operations', url: 'https://bytesizeinc.sharepoint.com/:w:/s/AptOperations/IQDqycooR2SEQJnhOBG5KnuCAaVh42A1R91oI0f5LjWosFY?e=s5wRm5', description: 'Operations playbook and processes' },
 ];
 
 export const FAQ_SECTIONS = [
