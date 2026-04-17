@@ -682,6 +682,53 @@ async function updateSupportTicket(id, { status, admin_notes, updated_by }) {
   return data;
 }
 
+async function getSupportTicketById(id) {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from('support_tickets')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) { console.error('[db] getSupportTicketById error:', error.message); return null; }
+  return data;
+}
+
+// =============================================
+// Support — Ticket Comments (thread)
+// =============================================
+
+async function getTicketComments(ticketId) {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from('support_ticket_comments')
+    .select('*')
+    .eq('ticket_id', ticketId)
+    .order('created_at', { ascending: true });
+  if (error) { console.error('[db] getTicketComments error:', error.message); return []; }
+  return data || [];
+}
+
+async function addTicketComment({ ticketId, authorEmail, authorName, comment }) {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from('support_ticket_comments')
+    .insert({
+      ticket_id: ticketId,
+      author_email: authorEmail,
+      author_name: authorName,
+      comment,
+    })
+    .select()
+    .single();
+  if (error) { console.error('[db] addTicketComment error:', error.message); throw error; }
+  // Bump the parent ticket's updated_at so "latest activity" reflects the new comment
+  await supabase
+    .from('support_tickets')
+    .update({ updated_at: new Date().toISOString() })
+    .eq('id', ticketId);
+  return data;
+}
+
 async function uploadSupportScreenshot(fileBuffer, fileName, mimeType) {
   if (!supabase) return null;
   const fileExt = fileName.split('.').pop();
@@ -773,6 +820,7 @@ module.exports = {
   uploadClientLogo, removeClientLogo,
   // Support
   pingSupabase,
-  createSupportTicket, getSupportTickets, updateSupportTicket, uploadSupportScreenshot,
+  createSupportTicket, getSupportTickets, getSupportTicketById, updateSupportTicket, uploadSupportScreenshot,
+  getTicketComments, addTicketComment,
   getKnownIssues, createKnownIssue, updateKnownIssue,
 };

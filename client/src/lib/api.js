@@ -462,6 +462,17 @@ export async function submitSupportTicket(formData) {
   return res.json();
 }
 
+export function getTicketComments(ticketId) {
+  return fetchAPI(`/api/support/tickets/${ticketId}/comments?_t=${Date.now()}`);
+}
+
+export function addTicketComment(ticketId, comment) {
+  return fetchAPI(`/api/support/tickets/${ticketId}/comments`, {
+    method: 'POST',
+    body: { comment },
+  });
+}
+
 export function updateTicketStatus(id, data) {
   return fetchAPI(`/api/support/tickets/${id}/status`, {
     method: 'PATCH',

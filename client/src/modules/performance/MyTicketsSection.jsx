@@ -1,6 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { Link } from 'react-router-dom';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { getSupportTickets } from '../../lib/api';
+import { useUserRole } from '../../lib/UserRoleContext';
+import TicketThread from '../support/TicketThread';
 
 const CATEGORY_COLORS = {
   issue: '#dc2626',
@@ -35,10 +38,17 @@ function formatDate(dateStr) {
   });
 }
 
+function formatTicketNumber(n) {
+  if (n == null) return '—';
+  return `Apt${String(n).padStart(6, '0')}`;
+}
+
 export default function MyTicketsSection({ email }) {
+  const { isAdmin, email: currentEmail } = useUserRole();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showClosed, setShowClosed] = useState(false);
+  const [expandedId, setExpandedId] = useState(null);
 
   useEffect(() => {
     loadTickets();
@@ -48,8 +58,6 @@ export default function MyTicketsSection({ email }) {
   const loadTickets = async () => {
     setLoading(true);
     try {
-      // When email is empty, server returns the authenticated user's tickets via mine=true
-      // When email is set, server filters by that email (manager/admin only)
       const data = email
         ? await getSupportTickets(false, email)
         : await getSupportTickets(true);
@@ -64,6 +72,8 @@ export default function MyTicketsSection({ email }) {
   const visible = showClosed
     ? tickets
     : tickets.filter(t => t.status !== 'closed');
+
+  const toggleExpand = (id) => setExpandedId(prev => (prev === id ? null : id));
 
   return (
     <div className="detail-table-section">
@@ -91,6 +101,8 @@ export default function MyTicketsSection({ email }) {
           <table className="detail-table my-tickets-table">
             <thead>
               <tr>
+                <th style={{ width: 28 }}></th>
+                <th>Ticket #</th>
                 <th>Title</th>
                 <th>Category</th>
                 <th>Status</th>
@@ -99,33 +111,59 @@ export default function MyTicketsSection({ email }) {
               </tr>
             </thead>
             <tbody>
-              {visible.map(ticket => (
-                <tr key={ticket.id}>
-                  <td>
-                    <Link to="/support/feedback" className="my-tickets-title-link">
-                      {ticket.title}
-                    </Link>
-                  </td>
-                  <td>
-                    <span
-                      className="my-tickets-badge"
-                      style={{ background: CATEGORY_COLORS[ticket.category] || '#6b7280' }}
+              {visible.map(ticket => {
+                const isExpanded = expandedId === ticket.id;
+                const isSubmitter = ticket.submitted_by === currentEmail;
+                const canComment = isAdmin || isSubmitter;
+                return (
+                  <Fragment key={ticket.id}>
+                    <tr
+                      className={`my-tickets-row ${isExpanded ? 'expanded' : ''}`}
+                      onClick={() => toggleExpand(ticket.id)}
                     >
-                      {CATEGORY_LABELS[ticket.category] || ticket.category}
-                    </span>
-                  </td>
-                  <td>
-                    <span
-                      className="my-tickets-status"
-                      style={{ color: STATUS_COLORS[ticket.status] || '#6b7280' }}
-                    >
-                      {ticket.status.replace('_', ' ')}
-                    </span>
-                  </td>
-                  <td>{formatDate(ticket.created_at)}</td>
-                  <td>{ticket.resolved_at ? formatDate(ticket.resolved_at) : '—'}</td>
-                </tr>
-              ))}
+                      <td className="my-tickets-chevron">
+                        {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                      </td>
+                      <td className="my-tickets-number">{formatTicketNumber(ticket.ticket_number)}</td>
+                      <td>
+                        <span className="my-tickets-title-link">{ticket.title}</span>
+                      </td>
+                      <td>
+                        <span
+                          className="my-tickets-badge"
+                          style={{ background: CATEGORY_COLORS[ticket.category] || '#6b7280' }}
+                        >
+                          {CATEGORY_LABELS[ticket.category] || ticket.category}
+                        </span>
+                      </td>
+                      <td>
+                        <span
+                          className="my-tickets-status"
+                          style={{ color: STATUS_COLORS[ticket.status] || '#6b7280' }}
+                        >
+                          {ticket.status.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td>{formatDate(ticket.created_at)}</td>
+                      <td>{ticket.resolved_at ? formatDate(ticket.resolved_at) : '—'}</td>
+                    </tr>
+                    {isExpanded && (
+                      <tr className="my-tickets-thread-row">
+                        <td colSpan={7}>
+                          <div className="my-tickets-thread-wrap">
+                            <div className="my-tickets-thread-desc">{ticket.description}</div>
+                            <TicketThread
+                              ticketId={ticket.id}
+                              canComment={canComment}
+                              currentEmail={currentEmail}
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>

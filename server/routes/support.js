@@ -76,6 +76,10 @@ async function notifyTeams(ticket) {
       ? new Date(ticket.created_at).toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'short', timeStyle: 'short' })
       : '';
 
+    const ticketRef = ticket.ticket_number
+      ? `Apt${String(ticket.ticket_number).padStart(6, '0')}`
+      : null;
+
     const card = {
       type: 'AdaptiveCard',
       $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
@@ -83,7 +87,7 @@ async function notifyTeams(ticket) {
       body: [
         {
           type: 'TextBlock',
-          text: 'NEW SUPPORT TICKET',
+          text: ticketRef ? `NEW SUPPORT TICKET — ${ticketRef}` : 'NEW SUPPORT TICKET',
           weight: 'Bolder',
           color: 'Attention',
           size: 'Small',
@@ -104,6 +108,7 @@ async function notifyTeams(ticket) {
         {
           type: 'FactSet',
           facts: [
+            ...(ticketRef ? [{ title: 'Ticket #', value: ticketRef }] : []),
             { title: 'Category', value: categoryLabel },
             { title: 'Submitted by', value: ticket.submitted_by_name || ticket.submitted_by },
             { title: 'Time', value: time },
@@ -242,6 +247,57 @@ router.patch('/tickets/:id/status', requireManager, async (req, res, next) => {
     }
 
     res.json(ticket);
+  } catch (err) { next(err); }
+});
+
+// =============================================
+// Ticket Comments (admin + submitter only)
+// =============================================
+
+// Helper: load ticket and verify caller can view/comment
+async function loadTicketForComment(req, res) {
+  const { id } = req.params;
+  const ticket = await db.getSupportTicketById(id);
+  if (!ticket) {
+    res.status(404).json({ error: 'Ticket not found' });
+    return null;
+  }
+  const isSubmitter = ticket.submitted_by === req.user.email;
+  const role = await resolveRole(req.user.email);
+  const isAdmin = role === 'admin';
+  if (!isSubmitter && !isAdmin) {
+    res.status(403).json({ error: 'Forbidden — only the submitter or an admin can view/comment on this ticket' });
+    return null;
+  }
+  return { ticket, isSubmitter, isAdmin };
+}
+
+// GET /api/support/tickets/:id/comments — list comments on a ticket
+router.get('/tickets/:id/comments', async (req, res, next) => {
+  try {
+    const ctx = await loadTicketForComment(req, res);
+    if (!ctx) return;
+    const comments = await db.getTicketComments(req.params.id);
+    res.json(comments);
+  } catch (err) { next(err); }
+});
+
+// POST /api/support/tickets/:id/comments — add a comment to a ticket
+router.post('/tickets/:id/comments', async (req, res, next) => {
+  try {
+    const ctx = await loadTicketForComment(req, res);
+    if (!ctx) return;
+    const { comment } = req.body;
+    if (!comment || !comment.trim()) {
+      return res.status(400).json({ error: 'Comment text is required' });
+    }
+    const newComment = await db.addTicketComment({
+      ticketId: req.params.id,
+      authorEmail: req.user.email,
+      authorName: req.user.name || req.user.email,
+      comment: comment.trim(),
+    });
+    res.status(201).json(newComment);
   } catch (err) { next(err); }
 });
 

@@ -1,9 +1,15 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Send, Image, X, Calendar, CheckCircle, Clock } from 'lucide-react';
+import { ArrowLeft, Send, Image, X, Calendar, CheckCircle, Clock, ChevronDown, ChevronRight } from 'lucide-react';
 import { getSupportTickets, submitSupportTicket, updateTicketStatus } from '../../lib/api';
 import { useUserRole } from '../../lib/UserRoleContext';
 import { showToast } from '../../lib/toast';
+import TicketThread from './TicketThread';
+
+function formatTicketNumber(n) {
+  if (n == null) return '';
+  return `Apt${String(n).padStart(6, '0')}`;
+}
 
 const CATEGORY_OPTIONS = [
   { value: 'issue', label: 'Issue' },
@@ -53,7 +59,7 @@ function formatDate(dateStr) {
 }
 
 export default function FeedbackForm() {
-  const { isAdmin } = useUserRole();
+  const { isAdmin, email: currentEmail } = useUserRole();
   const [view, setView] = useState('submit'); // 'submit' | 'my' | 'all'
   const [form, setForm] = useState({ category: 'issue', title: '', description: '' });
   const [screenshot, setScreenshot] = useState(null);
@@ -61,6 +67,9 @@ export default function FeedbackForm() {
   const [tickets, setTickets] = useState([]);
   const [ticketsLoading, setTicketsLoading] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [expandedId, setExpandedId] = useState(null);
+
+  const toggleExpand = (id) => setExpandedId(prev => (prev === id ? null : id));
 
   useEffect(() => {
     if (view === 'my' || view === 'all') loadTickets();
@@ -274,58 +283,90 @@ export default function FeedbackForm() {
               <p className="support-muted">{view === 'my' ? "You haven't submitted any tickets yet." : 'No tickets found.'}</p>
             ) : (
               <div className="ticket-list">
-                {filteredTickets.map(ticket => (
-                  <div key={ticket.id} className="ticket-card">
-                    <div className="ticket-card-top">
-                      <span className="ticket-category-badge" style={{ background: CATEGORY_COLORS[ticket.category] || '#6b7280' }}>
-                        {ticket.category.replace('_', ' ')}
-                      </span>
-                      {view === 'all' && isAdmin ? (
-                        <select
-                          className="ticket-status-select"
-                          value={ticket.status}
-                          onChange={e => handleStatusChange(ticket.id, e.target.value)}
-                          style={{ color: STATUS_COLORS[ticket.status] }}
-                        >
-                          {STATUS_OPTIONS.map(s => (
-                            <option key={s} value={s}>{s.replace('_', ' ')}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        <span className="ticket-status-badge" style={{ color: STATUS_COLORS[ticket.status] }}>
-                          {ticket.status.replace('_', ' ')}
-                        </span>
-                      )}
-                    </div>
-                    <div className="ticket-card-title">{ticket.title}</div>
-                    <div className="ticket-card-desc">{ticket.description}</div>
-                    {ticket.screenshot_url && (
-                      <a href={ticket.screenshot_url} target="_blank" rel="noopener noreferrer" className="ticket-screenshot-link">
-                        <Image size={12} /> View Screenshot
-                      </a>
-                    )}
-                    <div className="ticket-dates">
-                      <span className="ticket-date">
-                        <Calendar size={12} />
-                        Opened: {formatDate(ticket.created_at)}
-                      </span>
-                      {ticket.resolved_at && (
-                        <span className="ticket-date resolved">
-                          <CheckCircle size={12} />
-                          Resolved: {formatDate(ticket.resolved_at)}
-                        </span>
-                      )}
-                    </div>
-                    <div className="ticket-card-meta">
-                      {view === 'all' && <span>By: {ticket.submitted_by_name || ticket.submitted_by}</span>}
-                    </div>
-                    {ticket.admin_notes && (
-                      <div className="ticket-admin-notes">
-                        <strong>Admin notes:</strong> {ticket.admin_notes}
+                {filteredTickets.map(ticket => {
+                  const isExpanded = expandedId === ticket.id;
+                  const isSubmitter = ticket.submitted_by === currentEmail;
+                  const canComment = isAdmin || isSubmitter;
+                  return (
+                    <div key={ticket.id} className={`ticket-card ${isExpanded ? 'expanded' : ''}`}>
+                      <div
+                        className="ticket-card-header"
+                        onClick={() => toggleExpand(ticket.id)}
+                        role="button"
+                        tabIndex={0}
+                      >
+                        <div className="ticket-card-top">
+                          <div className="ticket-card-top-left">
+                            <span className="ticket-expand-chevron">
+                              {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                            </span>
+                            {ticket.ticket_number != null && (
+                              <span className="ticket-number">{formatTicketNumber(ticket.ticket_number)}</span>
+                            )}
+                            <span className="ticket-category-badge" style={{ background: CATEGORY_COLORS[ticket.category] || '#6b7280' }}>
+                              {ticket.category.replace('_', ' ')}
+                            </span>
+                          </div>
+                          {view === 'all' && isAdmin ? (
+                            <select
+                              className="ticket-status-select"
+                              value={ticket.status}
+                              onChange={e => handleStatusChange(ticket.id, e.target.value)}
+                              onClick={e => e.stopPropagation()}
+                              style={{ color: STATUS_COLORS[ticket.status] }}
+                            >
+                              {STATUS_OPTIONS.map(s => (
+                                <option key={s} value={s}>{s.replace('_', ' ')}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className="ticket-status-badge" style={{ color: STATUS_COLORS[ticket.status] }}>
+                              {ticket.status.replace('_', ' ')}
+                            </span>
+                          )}
+                        </div>
+                        <div className="ticket-card-title">{ticket.title}</div>
+                        {!isExpanded && (
+                          <div className="ticket-card-desc">{ticket.description}</div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                ))}
+
+                      {isExpanded && (
+                        <div className="ticket-card-expanded">
+                          <div className="ticket-card-desc">{ticket.description}</div>
+                          {ticket.screenshot_url && (
+                            <a href={ticket.screenshot_url} target="_blank" rel="noopener noreferrer" className="ticket-screenshot-link">
+                              <Image size={12} /> View Screenshot
+                            </a>
+                          )}
+                          <div className="ticket-dates">
+                            <span className="ticket-date">
+                              <Calendar size={12} />
+                              Opened: {formatDate(ticket.created_at)}
+                            </span>
+                            {ticket.resolved_at && (
+                              <span className="ticket-date resolved">
+                                <CheckCircle size={12} />
+                                Resolved: {formatDate(ticket.resolved_at)}
+                              </span>
+                            )}
+                          </div>
+                          {view === 'all' && (
+                            <div className="ticket-card-meta">
+                              <span>By: {ticket.submitted_by_name || ticket.submitted_by}</span>
+                            </div>
+                          )}
+
+                          <TicketThread
+                            ticketId={ticket.id}
+                            canComment={canComment}
+                            currentEmail={currentEmail}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
