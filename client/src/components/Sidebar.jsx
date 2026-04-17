@@ -42,7 +42,7 @@ const QUICK_LINKS = [
   { label: 'CloudCall', href: 'https://auth.cloudcall.com/' },
   { label: 'FullyRamped', href: 'https://app.fullyramped.com/login' },
   { label: 'LinkedIn', href: 'https://www.linkedin.com/feed/' },
-  { label: 'SharePoint', href: 'https://login.microsoftonline.com/a78736a9-b975-4898-ae0e-2f783c0bcf14/oauth2/authorize?client_id=00000003-0000-0ff1-ce00-000000000000&response_mode=form_post&redirect_uri=https%3A%2F%2Fbytesizeinc.sharepoint.com%2F_forms%2Fdefault.aspx' },
+  { label: 'SharePoint', href: 'https://bytesizeinc.sharepoint.com/sites/AptCentral' },
 ];
 
 export default function Sidebar({ userName, userRole, onLogout, mobileOpen }) {
