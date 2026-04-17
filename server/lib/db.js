@@ -729,6 +729,25 @@ async function addTicketComment({ ticketId, authorEmail, authorName, comment }) 
   return data;
 }
 
+async function updateTicketAssignee(id, { assigned_to, assigned_to_name, updated_by }) {
+  if (!supabase) return null;
+  const updates = {
+    assigned_to: assigned_to || null,
+    assigned_to_name: assigned_to_name || null,
+    updated_at: new Date().toISOString(),
+  };
+  if (updated_by) updates.updated_by = updated_by;
+
+  const { data, error } = await supabase
+    .from('support_tickets')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .maybeSingle();
+  if (error) { console.error('[db] updateTicketAssignee error:', error.message); throw error; }
+  return data;
+}
+
 async function uploadSupportScreenshot(fileBuffer, fileName, mimeType) {
   if (!supabase) return null;
   const fileExt = fileName.split('.').pop();
@@ -821,6 +840,6 @@ module.exports = {
   // Support
   pingSupabase,
   createSupportTicket, getSupportTickets, getSupportTicketById, updateSupportTicket, uploadSupportScreenshot,
-  getTicketComments, addTicketComment,
+  getTicketComments, addTicketComment, updateTicketAssignee,
   getKnownIssues, createKnownIssue, updateKnownIssue,
 };

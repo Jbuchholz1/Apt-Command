@@ -245,6 +245,15 @@
   white-space: nowrap;
 }
 
+.my-tickets-assigned {
+  font-size: 12px;
+  color: var(--navy);
+  white-space: nowrap;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .my-tickets-thread-row {
   background: #fafbfc;
 }

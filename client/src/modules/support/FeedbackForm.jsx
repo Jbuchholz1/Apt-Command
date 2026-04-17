@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Send, Image, X, Calendar, CheckCircle, Clock, ChevronDown, ChevronRight } from 'lucide-react';
-import { getSupportTickets, submitSupportTicket, updateTicketStatus } from '../../lib/api';
+import { getSupportTickets, submitSupportTicket, updateTicketStatus, updateTicketAssignee, getAdminUsers } from '../../lib/api';
 import { useUserRole } from '../../lib/UserRoleContext';
 import { showToast } from '../../lib/toast';
 import TicketThread from './TicketThread';
@@ -60,7 +60,7 @@ function formatDate(dateStr) {
 
 export default function FeedbackForm() {
   const { isAdmin, email: currentEmail } = useUserRole();
-  const [view, setView] = useState('submit'); // 'submit' | 'my' | 'all'
+  const [view, setView] = useState('submit'); // 'submit' | 'my' | 'queue' | 'all'
   const [form, setForm] = useState({ category: 'issue', title: '', description: '' });
   const [screenshot, setScreenshot] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -68,17 +68,33 @@ export default function FeedbackForm() {
   const [ticketsLoading, setTicketsLoading] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState('');
   const [expandedId, setExpandedId] = useState(null);
+  const [admins, setAdmins] = useState([]);
 
   const toggleExpand = (id) => setExpandedId(prev => (prev === id ? null : id));
 
   useEffect(() => {
-    if (view === 'my' || view === 'all') loadTickets();
+    if (view === 'my' || view === 'all' || view === 'queue') loadTickets();
   }, [view]);
+
+  useEffect(() => {
+    if (isAdmin) {
+      getAdminUsers()
+        .then(res => {
+          const all = Array.isArray(res) ? res : (res?.users || []);
+          setAdmins(all.filter(u => u.role === 'admin' && u.is_active !== false));
+        })
+        .catch(() => setAdmins([]));
+    }
+  }, [isAdmin]);
 
   const loadTickets = async () => {
     setTicketsLoading(true);
     try {
-      const data = await getSupportTickets(view === 'my');
+      // Queue view: admin fetches all, then filters to assigned_to self
+      // My view: fetches own tickets
+      // All view: fetches all (admin only)
+      const mine = view === 'my';
+      const data = await getSupportTickets(mine);
       setTickets(data);
     } catch {
       setTickets([]);
@@ -87,9 +103,13 @@ export default function FeedbackForm() {
     }
   };
 
-  const filteredTickets = categoryFilter
-    ? tickets.filter(t => t.category === categoryFilter)
+  const scopedTickets = view === 'queue'
+    ? tickets.filter(t => t.assigned_to === currentEmail)
     : tickets;
+
+  const filteredTickets = categoryFilter
+    ? scopedTickets.filter(t => t.category === categoryFilter)
+    : scopedTickets;
 
   const closeTimeKPIs = useMemo(() => {
     const categories = ['issue', 'feature', 'feedback'];
@@ -140,6 +160,20 @@ export default function FeedbackForm() {
     }
   };
 
+  const handleAssigneeChange = async (ticketId, assigneeEmail) => {
+    try {
+      const admin = admins.find(a => a.email === assigneeEmail);
+      const updated = await updateTicketAssignee(ticketId, {
+        assigned_to: assigneeEmail || null,
+        assigned_to_name: admin?.full_name || null,
+      });
+      setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, ...updated } : t));
+      showToast(assigneeEmail ? `Assigned to ${admin?.full_name || assigneeEmail}` : 'Unassigned');
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -166,6 +200,11 @@ export default function FeedbackForm() {
           <button className={`feedback-tab ${view === 'my' ? 'active' : ''}`} onClick={() => setView('my')}>
             My Tickets
           </button>
+          {isAdmin && (
+            <button className={`feedback-tab ${view === 'queue' ? 'active' : ''}`} onClick={() => setView('queue')}>
+              My Queue
+            </button>
+          )}
           {isAdmin && (
             <button className={`feedback-tab ${view === 'all' ? 'active' : ''}`} onClick={() => setView('all')}>
               All Tickets
@@ -238,49 +277,54 @@ export default function FeedbackForm() {
         )}
 
         {/* Ticket List */}
-        {(view === 'my' || view === 'all') && (
+        {(view === 'my' || view === 'all' || view === 'queue') && (
           <div className="ticket-list-section">
-            {/* KPI Cards + Category Filter (All Tickets tab only) */}
+            {/* KPI Cards (All Tickets tab only) */}
             {view === 'all' && (
-              <>
-                <div className="ticket-kpi-row">
-                  {closeTimeKPIs.map(kpi => (
-                    <div key={kpi.category} className="ticket-kpi-card">
-                      <Clock size={16} className="ticket-kpi-icon" />
-                      <div className="ticket-kpi-body">
-                        <div className="ticket-kpi-label">
-                          <span className="ticket-kpi-cat-dot" style={{ background: CATEGORY_COLORS[kpi.category] }} />
-                          {CATEGORY_DISPLAY[kpi.category] || kpi.category}
-                        </div>
-                        <div className="ticket-kpi-value">
-                          {kpi.avg != null ? formatDuration(kpi.avg) : '—'}
-                        </div>
-                        <div className="ticket-kpi-sub">
-                          Avg Time to Close {kpi.count > 0 ? `(${kpi.count} resolved)` : '— No data'}
-                        </div>
+              <div className="ticket-kpi-row">
+                {closeTimeKPIs.map(kpi => (
+                  <div key={kpi.category} className="ticket-kpi-card">
+                    <Clock size={16} className="ticket-kpi-icon" />
+                    <div className="ticket-kpi-body">
+                      <div className="ticket-kpi-label">
+                        <span className="ticket-kpi-cat-dot" style={{ background: CATEGORY_COLORS[kpi.category] }} />
+                        {CATEGORY_DISPLAY[kpi.category] || kpi.category}
+                      </div>
+                      <div className="ticket-kpi-value">
+                        {kpi.avg != null ? formatDuration(kpi.avg) : '—'}
+                      </div>
+                      <div className="ticket-kpi-sub">
+                        Avg Time to Close {kpi.count > 0 ? `(${kpi.count} resolved)` : '— No data'}
                       </div>
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* Category Filter (All Tickets + Queue tabs) */}
+            {(view === 'all' || view === 'queue') && (
+              <div className="ticket-filter-bar">
+                <select
+                  className="ticket-filter-select"
+                  value={categoryFilter}
+                  onChange={e => setCategoryFilter(e.target.value)}
+                >
+                  {ALL_CATEGORIES.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
-                </div>
-                <div className="ticket-filter-bar">
-                  <select
-                    className="ticket-filter-select"
-                    value={categoryFilter}
-                    onChange={e => setCategoryFilter(e.target.value)}
-                  >
-                    {ALL_CATEGORIES.map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
-                  <span className="ticket-count">{filteredTickets.length} ticket{filteredTickets.length !== 1 ? 's' : ''}</span>
-                </div>
-              </>
+                </select>
+                <span className="ticket-count">{filteredTickets.length} ticket{filteredTickets.length !== 1 ? 's' : ''}</span>
+              </div>
             )}
 
             {ticketsLoading ? (
               <p className="support-muted">Loading tickets...</p>
             ) : filteredTickets.length === 0 ? (
-              <p className="support-muted">{view === 'my' ? "You haven't submitted any tickets yet." : 'No tickets found.'}</p>
+              <p className="support-muted">
+                {view === 'my' && "You haven't submitted any tickets yet."}
+                {view === 'queue' && 'No tickets assigned to you.'}
+                {view === 'all' && 'No tickets found.'}
+              </p>
             ) : (
               <div className="ticket-list">
                 {filteredTickets.map(ticket => {
@@ -307,23 +351,30 @@ export default function FeedbackForm() {
                               {ticket.category.replace('_', ' ')}
                             </span>
                           </div>
-                          {view === 'all' && isAdmin ? (
-                            <select
-                              className="ticket-status-select"
-                              value={ticket.status}
-                              onChange={e => handleStatusChange(ticket.id, e.target.value)}
-                              onClick={e => e.stopPropagation()}
-                              style={{ color: STATUS_COLORS[ticket.status] }}
-                            >
-                              {STATUS_OPTIONS.map(s => (
-                                <option key={s} value={s}>{s.replace('_', ' ')}</option>
-                              ))}
-                            </select>
-                          ) : (
-                            <span className="ticket-status-badge" style={{ color: STATUS_COLORS[ticket.status] }}>
-                              {ticket.status.replace('_', ' ')}
-                            </span>
-                          )}
+                          <div className="ticket-card-top-right">
+                            {ticket.assigned_to && (
+                              <span className="ticket-assigned-badge" title={ticket.assigned_to}>
+                                {ticket.assigned_to_name || ticket.assigned_to}
+                              </span>
+                            )}
+                            {(view === 'all' || view === 'queue') && isAdmin ? (
+                              <select
+                                className="ticket-status-select"
+                                value={ticket.status}
+                                onChange={e => handleStatusChange(ticket.id, e.target.value)}
+                                onClick={e => e.stopPropagation()}
+                                style={{ color: STATUS_COLORS[ticket.status] }}
+                              >
+                                {STATUS_OPTIONS.map(s => (
+                                  <option key={s} value={s}>{s.replace('_', ' ')}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span className="ticket-status-badge" style={{ color: STATUS_COLORS[ticket.status] }}>
+                                {ticket.status.replace('_', ' ')}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <div className="ticket-card-title">{ticket.title}</div>
                         {!isExpanded && (
@@ -351,9 +402,32 @@ export default function FeedbackForm() {
                               </span>
                             )}
                           </div>
-                          {view === 'all' && (
+                          {(view === 'all' || view === 'queue') && (
                             <div className="ticket-card-meta">
                               <span>By: {ticket.submitted_by_name || ticket.submitted_by}</span>
+                            </div>
+                          )}
+
+                          {isAdmin && (
+                            <div className="ticket-assignee-row">
+                              <label className="ticket-assignee-label">Assigned to:</label>
+                              <select
+                                className="ticket-assignee-select"
+                                value={ticket.assigned_to || ''}
+                                onChange={e => handleAssigneeChange(ticket.id, e.target.value)}
+                              >
+                                <option value="">Unassigned</option>
+                                {admins.map(admin => (
+                                  <option key={admin.email} value={admin.email}>
+                                    {admin.full_name || admin.email}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                          {!isAdmin && ticket.assigned_to && (
+                            <div className="ticket-card-meta">
+                              <span>Assigned to: {ticket.assigned_to_name || ticket.assigned_to}</span>
                             </div>
                           )}
 

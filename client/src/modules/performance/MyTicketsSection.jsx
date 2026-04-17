@@ -106,6 +106,7 @@ export default function MyTicketsSection({ email }) {
                 <th>Title</th>
                 <th>Category</th>
                 <th>Status</th>
+                <th>Assigned To</th>
                 <th>Opened</th>
                 <th>Resolved</th>
               </tr>
@@ -144,12 +145,15 @@ export default function MyTicketsSection({ email }) {
                           {ticket.status.replace('_', ' ')}
                         </span>
                       </td>
+                      <td className="my-tickets-assigned">
+                        {ticket.assigned_to_name || ticket.assigned_to || '—'}
+                      </td>
                       <td>{formatDate(ticket.created_at)}</td>
                       <td>{ticket.resolved_at ? formatDate(ticket.resolved_at) : '—'}</td>
                     </tr>
                     {isExpanded && (
                       <tr className="my-tickets-thread-row">
-                        <td colSpan={7}>
+                        <td colSpan={8}>
                           <div className="my-tickets-thread-wrap">
                             <div className="my-tickets-thread-desc">{ticket.description}</div>
                             <TicketThread

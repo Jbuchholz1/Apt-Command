@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const { requireManager } = require('../middleware/adminAuth');
+const { requireManager, requireAdmin } = require('../middleware/adminAuth');
 const { resolveRole } = require('../lib/roles');
 const db = require('../lib/db');
 
@@ -239,6 +239,27 @@ router.patch('/tickets/:id/status', requireManager, async (req, res, next) => {
     const ticket = await db.updateSupportTicket(id, {
       status,
       admin_notes: admin_notes || undefined,
+      updated_by: req.user.email,
+    });
+
+    if (!ticket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+
+    res.json(ticket);
+  } catch (err) { next(err); }
+});
+
+// PATCH /api/support/tickets/:id/assignee — assign ticket to an admin (admin-only)
+router.patch('/tickets/:id/assignee', requireAdmin, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { assigned_to, assigned_to_name } = req.body;
+
+    // Empty string / null means "unassigned"
+    const ticket = await db.updateTicketAssignee(id, {
+      assigned_to: assigned_to || null,
+      assigned_to_name: assigned_to_name || null,
       updated_by: req.user.email,
     });
 
