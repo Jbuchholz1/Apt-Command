@@ -2,8 +2,13 @@ const express = require('express');
 const ExcelJS = require('exceljs');
 const { getPendingApprovedPlacements, updatePlacementField } = require('../lib/bullhorn');
 const { getAllPlacementChecklist, upsertPlacementChecklist } = require('../lib/db');
+const { requireAdmin } = require('../middleware/adminAuth');
+const { sanitizeRow } = require('../lib/excelSafe');
 
 const router = express.Router();
+
+// All Operations routes require admin role — matches existing UI-level restriction
+router.use(requireAdmin);
 
 // Helper: format Bullhorn timestamp to MM/DD/YY
 function fmtDate(val) {
@@ -174,7 +179,7 @@ router.get('/placements/export', async (req, res, next) => {
     headerRow.height = 22;
 
     for (const p of placements) {
-      sheet.addRow(p);
+      sheet.addRow(sanitizeRow(p));
     }
 
     // Auto-filter & freeze header

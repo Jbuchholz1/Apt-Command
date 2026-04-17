@@ -1,5 +1,6 @@
 const express = require('express');
 const ExcelJS = require('exceljs');
+const { sanitizeRow } = require('../lib/excelSafe');
 const router = express.Router();
 const {
   getRecruiterUsers,
@@ -597,13 +598,13 @@ router.get('/recruiter-export', async (req, res, next) => {
     for (const r of recruiters) recruiterNames[r.id] = `${r.firstName} ${r.lastName}`;
     for (const iv of interviews) {
       const uid = iv.owner?.id;
-      iws.addRow({
+      iws.addRow(sanitizeRow({
         recruiter: recruiterNames[uid] || '',
         date: iv.dateBegin ? formatDate(iv.dateBegin) : '',
         jobId: iv.jobOrder?.id || '',
         jobTitle: iv.jobOrder?.title || '',
         candidate: iv.candidateReference ? `${iv.candidateReference.firstName || ''} ${iv.candidateReference.lastName || ''}`.trim() : '',
-      });
+      }));
     }
 
     // Client Subs sheet
@@ -619,14 +620,14 @@ router.get('/recruiter-export', async (req, res, next) => {
     styleSheet(sws, 6);
     for (const s of subs) {
       const uid = s.user?.id;
-      sws.addRow({
+      sws.addRow(sanitizeRow({
         submittedBy: recruiterNames[uid] || '',
         jobId: s.jobOrder?.id || '',
         jobTitle: s.jobOrder?.title || '',
         date: s.dateAdded ? formatDate(s.dateAdded) : '',
         company: s.clientCorporation?.name || '',
         candidate: s.candidate ? `${s.candidate.firstName || ''} ${s.candidate.lastName || ''}`.trim() : '',
-      });
+      }));
     }
 
     // Placements sheet
@@ -642,7 +643,7 @@ router.get('/recruiter-export', async (req, res, next) => {
     ];
     styleSheet(pws, 7);
     for (const p of placements) {
-      pws.addRow({
+      pws.addRow(sanitizeRow({
         id: p.id,
         jobTitle: p.jobOrder?.title || '',
         candidate: p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '',
@@ -650,7 +651,7 @@ router.get('/recruiter-export', async (req, res, next) => {
         startDate: p.dateBegin ? formatDate(p.dateBegin) : '',
         billRate: p.clientBillRate || '',
         payRate: p.payRate || '',
-      });
+      }));
     }
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -697,13 +698,13 @@ router.get('/sales-export', async (req, res, next) => {
     const amNames = {};
     for (const a of ams) amNames[a.id] = `${a.firstName} ${a.lastName}`;
     for (const a of (apptRes?.data || [])) {
-      aws.addRow({
+      aws.addRow(sanitizeRow({
         am: amNames[a.owner?.id] || '',
         date: a.dateBegin ? formatDate(a.dateBegin) : '',
         type: a.type || '',
         client: a.clientContactReference?.clientCorporation?.name || a.jobOrder?.clientCorporation?.name || '',
         subject: a.subject || '',
-      });
+      }));
     }
 
     // New Jobs sheet
@@ -718,14 +719,14 @@ router.get('/sales-export', async (req, res, next) => {
     ];
     styleSheet(jws, 6);
     for (const j of (newJobsRes?.data || [])) {
-      jws.addRow({
+      jws.addRow(sanitizeRow({
         id: j.id,
         title: j.title || '',
         status: Array.isArray(j.status) ? j.status[0] : (j.status || ''),
         openings: j.numOpenings || 0,
         owner: j.owner ? `${j.owner.firstName || ''} ${j.owner.lastName || ''}`.trim() : '',
         client: j.clientCorporation?.name || '',
-      });
+      }));
     }
 
     // Closed Jobs sheet
@@ -733,14 +734,14 @@ router.get('/sales-export', async (req, res, next) => {
     cws.columns = jws.columns.map(c => ({ ...c }));
     styleSheet(cws, 6);
     for (const j of (closedJobsRes?.data || [])) {
-      cws.addRow({
+      cws.addRow(sanitizeRow({
         id: j.id,
         title: j.title || '',
         status: Array.isArray(j.status) ? j.status[0] : (j.status || ''),
         openings: j.numOpenings || 0,
         owner: j.owner ? `${j.owner.firstName || ''} ${j.owner.lastName || ''}`.trim() : '',
         client: j.clientCorporation?.name || '',
-      });
+      }));
     }
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

@@ -1,5 +1,6 @@
 const express = require('express');
 const ExcelJS = require('exceljs');
+const { sanitizeRow } = require('../lib/excelSafe');
 const router = express.Router();
 const {
   getActivePlacementsWithClient,
@@ -195,7 +196,7 @@ router.get('/export', async (req, res, next) => {
     ws.views = [{ state: 'frozen', ySplit: 1 }];
 
     for (const c of clients) {
-      const row = ws.addRow(c);
+      const row = ws.addRow(sanitizeRow(c));
       const healthColors = { GREEN: 'FF16A34A', YELLOW: 'FFEAB308', RED: 'FFDC2626' };
       row.getCell('health').font = { bold: true, color: { argb: healthColors[c.health] || 'FF000000' } };
     }
@@ -219,7 +220,7 @@ router.get('/export', async (req, res, next) => {
 
     for (const c of clients) {
       for (const d of c.details) {
-        ps.addRow({ client: c.name, ...d });
+        ps.addRow(sanitizeRow({ client: c.name, ...d }));
       }
     }
 

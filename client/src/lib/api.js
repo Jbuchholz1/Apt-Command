@@ -129,7 +129,7 @@ export function getSalesDashboard(startDate, endDate) {
 }
 
 export function getTeamAlerts(team) {
-  return fetchAPI(`/api/reporting/team-alerts?team=${team}`);
+  return fetchAPI(`/api/reporting/team-alerts?team=${encodeURIComponent(team)}`);
 }
 
 // --- Individual Performance ---
@@ -277,7 +277,7 @@ export function getOrgFlowCurrentUser() {
 }
 
 export function getOrgFlowClients(view, userId) {
-  const params = view === 'my' && userId ? `?view=my&userId=${userId}` : '';
+  const params = view === 'my' && userId ? `?view=my&userId=${encodeURIComponent(userId)}` : '';
   return fetchAPI(`/api/org-flow/clients${params}`);
 }
 
@@ -362,7 +362,7 @@ export function updateEmployee(employeeId, fields) {
 }
 
 export function deleteOrgFlowEmployee(employeeId, clientId) {
-  return fetchAPI(`/api/org-flow/employees/${employeeId}?clientId=${clientId}`, {
+  return fetchAPI(`/api/org-flow/employees/${encodeURIComponent(employeeId)}?clientId=${encodeURIComponent(clientId)}`, {
     method: 'DELETE',
   });
 }
@@ -467,7 +467,7 @@ export function updateTicketStatus(id, data) {
 }
 
 export function getKnownIssues(status) {
-  return fetchAPI(`/api/support/known-issues${status ? `?status=${status}` : ''}`);
+  return fetchAPI(`/api/support/known-issues${status ? `?status=${encodeURIComponent(status)}` : ''}`);
 }
 
 export function createKnownIssue(data) {

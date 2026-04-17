@@ -9,9 +9,21 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.2.6';
+export const APP_VERSION = '3.2.7';
 
 export const CHANGELOG = [
+  {
+    version: '3.2.7',
+    date: '2026-04-15',
+    title: 'Security Hardening (Round 4)',
+    changes: [
+      { type: 'patch', text: 'Operations tab now enforces admin-only access at both the server and client route level (previously UI-only via sidebar)' },
+      { type: 'patch', text: 'Added React Error Boundary — graceful fallback instead of white screen if a component crashes' },
+      { type: 'patch', text: 'URL-encoded query parameters in API calls for defense-in-depth' },
+      { type: 'patch', text: 'Excel exports now escape values starting with =, +, -, @ to prevent formula injection' },
+      { type: 'patch', text: 'Removed production MCP URL from committed documentation' },
+    ],
+  },
   {
     version: '3.2.6',
     date: '2026-04-16',

@@ -2,6 +2,7 @@ const express = require('express');
 const ExcelJS = require('exceljs');
 const { getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getSubmissions, addNoteToJob, updateJobField, updateOpportunityField, updateSubmissionField, getCorporateUsers, getOpenOpportunitiesFull, getClientSubmissions } = require('../lib/bullhorn');
 const { getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote } = require('../lib/db');
+const { sanitizeRow } = require('../lib/excelSafe');
 
 const router = express.Router();
 
@@ -67,7 +68,7 @@ router.get('/export', async (req, res, next) => {
     for (const job of jobs) {
       const d = job.dateAdded ? new Date(job.dateAdded) : null;
       const dateStr = d ? `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}/${String(d.getFullYear()).slice(-2)}` : '';
-      sheet.addRow({
+      sheet.addRow(sanitizeRow({
         priority: job.priority || '',
         id: job.id,
         dateAdded: dateStr,
@@ -88,7 +89,7 @@ router.get('/export', async (req, res, next) => {
         remote: job.remote || '',
         numOpenings: job.numOpenings || 0,
         clientSubs: job.clientSubs || 0,
-      });
+      }));
     }
 
     // Format currency columns

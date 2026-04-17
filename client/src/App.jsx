@@ -21,6 +21,7 @@ import HelpDocs from './modules/support/HelpDocs';
 import FeedbackForm from './modules/support/FeedbackForm';
 import SystemStatus from './modules/support/SystemStatus';
 import ComingSoon from './components/ComingSoon';
+import ErrorBoundary from './components/ErrorBoundary';
 
 const DEV_BYPASS = import.meta.env.DEV && import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
 
@@ -59,11 +60,15 @@ function AppRoutes() {
 
 export default function App() {
   if (DEV_BYPASS) {
-    return <AppRoutes />;
+    return (
+      <ErrorBoundary>
+        <AppRoutes />
+      </ErrorBoundary>
+    );
   }
 
   return (
-    <>
+    <ErrorBoundary>
       <UnauthenticatedTemplate>
         <Routes>
           <Route path="*" element={<LoginPage />} />
@@ -72,6 +77,6 @@ export default function App() {
       <AuthenticatedTemplate>
         <AppRoutes />
       </AuthenticatedTemplate>
-    </>
+    </ErrorBoundary>
   );
 }

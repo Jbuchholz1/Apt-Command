@@ -25,7 +25,7 @@ Railway Service B: API Server (Node.js/Express)
         │
         ▼
 Bullhorn MCP Server (already running on Railway)
-URL: https://bullhorn-mcp-production.up.railway.app/mcp
+URL: https://your-mcp-server.up.railway.app/mcp
         │
         ▼
 Bullhorn REST API (rest42.bullhornstaffing.com)
@@ -37,7 +37,7 @@ Bullhorn REST API (rest42.bullhornstaffing.com)
 
 ## Bullhorn MCP Server
 
-- **URL:** `https://bullhorn-mcp-production.up.railway.app/mcp`
+- **URL:** `https://your-mcp-server.up.railway.app/mcp`
 - **Protocol:** MCP (Model Context Protocol) over SSE or HTTP
 - **Auth:** Check `.env` for `BULLHORN_MCP_API_KEY` or existing Railway env vars
 
@@ -135,69 +135,6 @@ Never manually calculate from raw ms values.
 
 ---
 
-## Frontend UI Requirements
-
-### Layout
-- **Header:** "APT Req Board" branding, last-refreshed timestamp, manual refresh button
-- **Filter bar:** Filter by Status, Employment Type, Owner/Recruiter, Remote (Yes/No/Hybrid)
-- **Stats strip:** Count of open reqs | Active contractors | Offers out | Covered
-- **Main table:** Sortable columns, color-coded status badges
-- **Auto-refresh:** Every 5 minutes
-
-### Req Board Table Columns (in order)
-1. Priority (A/B/C badge from `type` field)
-2. Job Title (`title`)
-3. Client (`clientCorporation.name`)
-4. Status (color-coded badge)
-5. Type (`employmentType`)
-6. Owner (`owner.firstName + lastName`)
-7. # Open (`numOpenings`)
-8. # Filled (`customText2`)
-9. Remote (`customText1`)
-10. City/State (`address.city`, `address.state`)
-11. Date Added (`dateAdded` → formatted)
-12. Start Date (`startDate` → formatted)
-
-### Status Color Coding
-| Status | Color |
-|--------|-------|
-| Accepting Candidates | Green |
-| Covered | Blue |
-| Offer Out | Orange |
-| Placed | Purple |
-| Filled | Teal |
-| Lost | Red |
-| Wash | Gray |
-| Archive | Dark Gray |
-
-### Row Click → Detail Panel
-Clicking a row should expand or slide open a detail panel showing:
-- Full job details
-- Submissions count (call `get_submissions(jobOrderId)`)
-- Notes/activity (if available)
-
-### Design Direction
-- Clean, data-dense, professional — this is an internal ops tool
-- Dark sidebar or header with a light table body works well
-- Monospace or tabular number font for rates/counts
-- NOT a consumer app — prioritize information density over whitespace
-- APT company colors: navy and gold (if brand colors are needed)
-
----
-
-## API Server Endpoints to Build
-
-```
-GET /api/jobs          — All open job orders (isOpen=true)
-GET /api/jobs/all      — All jobs including closed (for history)
-GET /api/jobs/:id      — Single job detail + submissions
-GET /api/placements    — Active placements (active contractors)
-GET /api/stats         — Summary counts for stats strip
-GET /api/health        — Health check for Railway
-```
-
----
-
 ## Project File Structure (Recommended)
 
 ```
@@ -208,6 +145,7 @@ digital-req-board/
 ├── .gitignore
 │
 ├── server/                    ← Railway Service 1: API
+│   ├── CLAUDE.md              ← Server-specific instructions
 │   ├── package.json
 │   ├── index.js               ← Express server
 │   ├── routes/
@@ -218,6 +156,7 @@ digital-req-board/
 │       └── bullhorn.js        ← MCP client wrapper
 │
 └── client/                    ← Railway Service 2: React app
+    ├── CLAUDE.md              ← Client-specific instructions
     ├── package.json
     ├── vite.config.js
     ├── index.html
@@ -241,7 +180,7 @@ digital-req-board/
 ### Server `.env`
 ```
 PORT=3001
-BULLHORN_MCP_URL=https://bullhorn-mcp-production.up.railway.app/mcp
+BULLHORN_MCP_URL=https://your-mcp-server.up.railway.app/mcp
 BULLHORN_MCP_API_KEY=           # from Railway env vars on existing MCP service
 NODE_ENV=production
 ```
@@ -304,6 +243,6 @@ VITE_API_BASE_URL=https://your-api-server.railway.app
 
 ## Questions to Resolve Early
 
-1. **MCP auth method** — Does the existing Bullhorn MCP server use bearer token, API key header, or something else? Check the Railway env vars on `bullhorn-mcp-production` to confirm.
+1. **MCP auth method** — Does the existing Bullhorn MCP server use bearer token, API key header, or something else? Check the Railway env vars on your MCP server to confirm.
 2. **Office/branch field** — Confirm if jobs are tagged by office (Birmingham/Dallas/Nashville) via `branchCode` or another field — may want to add office filter.
 3. **"Called shots"** — This was a concept from the old req board (a manually-flagged high-priority req). Discuss whether to replicate via `type` (Priority A/B/C) or a custom field.
