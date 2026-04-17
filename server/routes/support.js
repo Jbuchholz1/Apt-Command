@@ -69,7 +69,7 @@ async function notifyTeams(ticket) {
       issue: 'Issue',
       bug: 'Issue',
       feature: 'Feature Request',
-      feedback: 'General Feedback',
+      feedback: 'General Question',
     }[ticket.category] || ticket.category;
 
     const time = ticket.created_at

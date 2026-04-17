@@ -8,15 +8,21 @@ import { showToast } from '../../lib/toast';
 const CATEGORY_OPTIONS = [
   { value: 'issue', label: 'Issue' },
   { value: 'feature', label: 'Feature Request' },
-  { value: 'feedback', label: 'General Feedback' },
+  { value: 'feedback', label: 'General Question' },
 ];
 
 const ALL_CATEGORIES = [
   { value: '', label: 'All Categories' },
   { value: 'issue', label: 'Issue' },
   { value: 'feature', label: 'Feature Request' },
-  { value: 'feedback', label: 'General Feedback' },
+  { value: 'feedback', label: 'General Question' },
 ];
+
+const CATEGORY_DISPLAY = {
+  issue: 'Issue',
+  feature: 'Feature',
+  feedback: 'General Questions',
+};
 
 const STATUS_OPTIONS = ['open', 'in_progress', 'resolved', 'closed'];
 
@@ -235,7 +241,7 @@ export default function FeedbackForm() {
                       <div className="ticket-kpi-body">
                         <div className="ticket-kpi-label">
                           <span className="ticket-kpi-cat-dot" style={{ background: CATEGORY_COLORS[kpi.category] }} />
-                          {kpi.category.charAt(0).toUpperCase() + kpi.category.slice(1)}
+                          {CATEGORY_DISPLAY[kpi.category] || kpi.category}
                         </div>
                         <div className="ticket-kpi-value">
                           {kpi.avg != null ? formatDuration(kpi.avg) : '—'}
