@@ -9,9 +9,28 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.2.7';
+export const APP_VERSION = '3.3.0';
 
 export const CHANGELOG = [
+  {
+    version: '3.3.0',
+    date: '2026-04-16',
+    title: 'Support Center — Ticket Numbers, Queue, Comments & Tool Tracking',
+    changes: [
+      { type: 'minor', text: 'Sequential ticket numbers — every ticket now has an Apt000001-style reference shown across ticket cards, performance dashboard, and Teams notifications' },
+      { type: 'minor', text: 'Threaded comments on tickets — click any ticket to expand inline and exchange notes; admin + submitter only' },
+      { type: 'minor', text: 'Ticket queue system — new My Queue tab (admin-only) between My Tickets and All Tickets showing tickets assigned to you' },
+      { type: 'minor', text: 'Admins can assign tickets to other admins from the expanded ticket view; assignee badge visible in header' },
+      { type: 'minor', text: 'Assignee filter on All Tickets with KPI scoping — pick an admin to see their personal avg time-to-close per category' },
+      { type: 'minor', text: 'Tool sub-dropdown on Issue tickets — Alex, FullyRamped, CloudCall, BullHorn, Apt Command, ZoomInfo, Align, Sharepoint, Outlook, Other' },
+      { type: 'minor', text: 'My Tickets section added to the bottom of every Performance dashboard — track your open tickets without leaving your report' },
+      { type: 'minor', text: 'Managers viewing another team member\'s Performance dashboard now see that user\'s tickets (same permission pattern as the rest)' },
+      { type: 'minor', text: 'New Playbooks section in Help & Docs with Sales, Delivery, and Operations links (placeholders until SharePoint URLs are added)' },
+      { type: 'minor', text: 'Renamed General Feedback category to General Question; KPI label updated to General Questions' },
+      { type: 'patch', text: 'Centered the Change Log card beneath Help & Docs and Support & Requests on the Support home' },
+      { type: 'patch', text: 'Ticket status changes update inline without refreshing the whole list' },
+    ],
+  },
   {
     version: '3.2.7',
     date: '2026-04-15',
