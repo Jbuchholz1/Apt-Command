@@ -67,6 +67,7 @@ export default function FeedbackForm() {
   const [tickets, setTickets] = useState([]);
   const [ticketsLoading, setTicketsLoading] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [assigneeFilter, setAssigneeFilter] = useState(''); // '' = all, '__unassigned__' = unassigned, else email
   const [expandedId, setExpandedId] = useState(null);
   const [admins, setAdmins] = useState([]);
 
@@ -103,20 +104,31 @@ export default function FeedbackForm() {
     }
   };
 
-  const scopedTickets = view === 'queue'
-    ? tickets.filter(t => t.assigned_to === currentEmail)
-    : tickets;
+  // Apply assignee scoping first — this feeds KPIs so they can be tracked per-person
+  const assigneeScopedTickets = useMemo(() => {
+    if (view === 'queue') {
+      return tickets.filter(t => t.assigned_to === currentEmail);
+    }
+    if (assigneeFilter === '__unassigned__') {
+      return tickets.filter(t => !t.assigned_to);
+    }
+    if (assigneeFilter) {
+      return tickets.filter(t => t.assigned_to === assigneeFilter);
+    }
+    return tickets;
+  }, [tickets, view, currentEmail, assigneeFilter]);
 
+  // Apply category filter on top for the visible ticket list
   const filteredTickets = categoryFilter
-    ? scopedTickets.filter(t => t.category === categoryFilter)
-    : scopedTickets;
+    ? assigneeScopedTickets.filter(t => t.category === categoryFilter)
+    : assigneeScopedTickets;
 
   const closeTimeKPIs = useMemo(() => {
     const categories = ['issue', 'feature', 'feedback'];
     return categories.map(cat => {
       // Include legacy 'bug' tickets under 'issue'
       const matchCats = cat === 'issue' ? ['issue', 'bug', 'it_support'] : [cat];
-      const closed = tickets.filter(t =>
+      const closed = assigneeScopedTickets.filter(t =>
         matchCats.includes(t.category) && t.resolved_at && t.created_at
       );
       if (closed.length === 0) return { category: cat, avg: null, count: 0 };
@@ -125,7 +137,7 @@ export default function FeedbackForm() {
       }, 0);
       return { category: cat, avg: totalMs / closed.length, count: closed.length };
     });
-  }, [tickets]);
+  }, [assigneeScopedTickets]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -281,27 +293,39 @@ export default function FeedbackForm() {
           <div className="ticket-list-section">
             {/* KPI Cards (All Tickets tab only) */}
             {view === 'all' && (
-              <div className="ticket-kpi-row">
-                {closeTimeKPIs.map(kpi => (
-                  <div key={kpi.category} className="ticket-kpi-card">
-                    <Clock size={16} className="ticket-kpi-icon" />
-                    <div className="ticket-kpi-body">
-                      <div className="ticket-kpi-label">
-                        <span className="ticket-kpi-cat-dot" style={{ background: CATEGORY_COLORS[kpi.category] }} />
-                        {CATEGORY_DISPLAY[kpi.category] || kpi.category}
-                      </div>
-                      <div className="ticket-kpi-value">
-                        {kpi.avg != null ? formatDuration(kpi.avg) : '—'}
-                      </div>
-                      <div className="ticket-kpi-sub">
-                        Avg Time to Close {kpi.count > 0 ? `(${kpi.count} resolved)` : '— No data'}
+              <>
+                {assigneeFilter && (
+                  <div className="ticket-kpi-scope">
+                    Showing metrics for{' '}
+                    <strong>
+                      {assigneeFilter === '__unassigned__'
+                        ? 'Unassigned tickets'
+                        : (admins.find(a => a.email === assigneeFilter)?.full_name || assigneeFilter)}
+                    </strong>
+                  </div>
+                )}
+                <div className="ticket-kpi-row">
+                  {closeTimeKPIs.map(kpi => (
+                    <div key={kpi.category} className="ticket-kpi-card">
+                      <Clock size={16} className="ticket-kpi-icon" />
+                      <div className="ticket-kpi-body">
+                        <div className="ticket-kpi-label">
+                          <span className="ticket-kpi-cat-dot" style={{ background: CATEGORY_COLORS[kpi.category] }} />
+                          {CATEGORY_DISPLAY[kpi.category] || kpi.category}
+                        </div>
+                        <div className="ticket-kpi-value">
+                          {kpi.avg != null ? formatDuration(kpi.avg) : '—'}
+                        </div>
+                        <div className="ticket-kpi-sub">
+                          Avg Time to Close {kpi.count > 0 ? `(${kpi.count} resolved)` : '— No data'}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </>
             )}
-            {/* Category Filter (All Tickets + Queue tabs) */}
+            {/* Filters (All Tickets + Queue tabs) */}
             {(view === 'all' || view === 'queue') && (
               <div className="ticket-filter-bar">
                 <select
@@ -313,6 +337,21 @@ export default function FeedbackForm() {
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
+                {view === 'all' && (
+                  <select
+                    className="ticket-filter-select"
+                    value={assigneeFilter}
+                    onChange={e => setAssigneeFilter(e.target.value)}
+                  >
+                    <option value="">All Assignees</option>
+                    <option value="__unassigned__">Unassigned</option>
+                    {admins.map(admin => (
+                      <option key={admin.email} value={admin.email}>
+                        {admin.full_name || admin.email}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <span className="ticket-count">{filteredTickets.length} ticket{filteredTickets.length !== 1 ? 's' : ''}</span>
               </div>
             )}

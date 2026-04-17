@@ -892,6 +892,16 @@
 .feedback-submit-btn:hover { opacity: 0.85; }
 .feedback-submit-btn:disabled { opacity: 0.5; cursor: default; }
 
+/* ---- KPI Scope Label ---- */
+.ticket-kpi-scope {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.ticket-kpi-scope strong {
+  color: var(--navy);
+}
+
 /* ---- Ticket KPI Cards ---- */
 .ticket-kpi-row {
   display: grid;
