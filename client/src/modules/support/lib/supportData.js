@@ -33,6 +33,10 @@ export const FAQ_SECTIONS = [
         question: 'How do I export the Req Board to Excel?',
         answer: 'Click the Excel export button in the toolbar. It exports the currently visible (filtered) jobs to an .xlsx file.',
       },
+      {
+        question: 'Why am I red boxed?',
+        answer: 'A cell turns red when the job needs immediate attention. There are three ways this can happen:\n\n1. Follow Up is missed — the Follow Up field is blank, says "no follow up", or the date has passed. Set a future follow-up date to clear it.\n\n2. Deadline is missed — the Deadline field is blank, says "no deadline", or the date has passed. Update to a future deadline to clear it.\n\n3. TR 48hr clock expired — the recruiter was assigned 48+ hours ago and no client submission has been made since the assignment. Submit a candidate (or reassign the TR) to clear it.\n\nIf a job is red boxed for any of these reasons, it also appears when you toggle the "Red Boxes" filter in the filter bar.',
+      },
     ],
   },
   {
