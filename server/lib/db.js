@@ -622,11 +622,11 @@ async function pingSupabase() {
 // Support — Tickets
 // =============================================
 
-async function createSupportTicket({ category, title, description, screenshot_url, submitted_by, submitted_by_name }) {
+async function createSupportTicket({ category, tool, title, description, screenshot_url, submitted_by, submitted_by_name }) {
   if (!supabase) return null;
   const { data, error } = await supabase
     .from('support_tickets')
-    .insert({ category, title, description, screenshot_url, submitted_by, submitted_by_name })
+    .insert({ category, tool: tool || null, title, description, screenshot_url, submitted_by, submitted_by_name })
     .select()
     .single();
   if (error) { console.error('[db] createSupportTicket error:', error.message); throw error; }

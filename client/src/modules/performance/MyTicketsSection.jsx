@@ -130,12 +130,17 @@ export default function MyTicketsSection({ email }) {
                         <span className="my-tickets-title-link">{ticket.title}</span>
                       </td>
                       <td>
-                        <span
-                          className="my-tickets-badge"
-                          style={{ background: CATEGORY_COLORS[ticket.category] || '#6b7280' }}
-                        >
-                          {CATEGORY_LABELS[ticket.category] || ticket.category}
-                        </span>
+                        <div className="my-tickets-category-cell">
+                          <span
+                            className="my-tickets-badge"
+                            style={{ background: CATEGORY_COLORS[ticket.category] || '#6b7280' }}
+                          >
+                            {CATEGORY_LABELS[ticket.category] || ticket.category}
+                          </span>
+                          {ticket.tool && (
+                            <span className="my-tickets-tool">{ticket.tool}</span>
+                          )}
+                        </div>
                       </td>
                       <td>
                         <span

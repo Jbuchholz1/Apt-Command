@@ -254,6 +254,22 @@
   text-overflow: ellipsis;
 }
 
+.my-tickets-category-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+}
+
+.my-tickets-tool {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .my-tickets-thread-row {
   background: #fafbfc;
 }

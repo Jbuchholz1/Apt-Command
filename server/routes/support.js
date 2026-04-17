@@ -110,6 +110,7 @@ async function notifyTeams(ticket) {
           facts: [
             ...(ticketRef ? [{ title: 'Ticket #', value: ticketRef }] : []),
             { title: 'Category', value: categoryLabel },
+            ...(ticket.tool ? [{ title: 'Tool', value: ticket.tool }] : []),
             { title: 'Submitted by', value: ticket.submitted_by_name || ticket.submitted_by },
             { title: 'Time', value: time },
           ],
@@ -156,12 +157,16 @@ async function notifyTeams(ticket) {
 // =============================================
 
 const VALID_CATEGORIES = ['issue', 'feature', 'feedback', 'bug', 'it_support'];
+const VALID_TOOLS = [
+  'Alex', 'FullyRamped', 'CloudCall', 'BullHorn', 'Apt Command',
+  'ZoomInfo', 'Align', 'Sharepoint', 'Outlook', 'Other — Please List in Description',
+];
 const VALID_STATUSES = ['open', 'in_progress', 'resolved', 'closed'];
 
 // POST /api/support/tickets — submit a new ticket (all users)
 router.post('/tickets', upload.single('screenshot'), async (req, res, next) => {
   try {
-    const { category, title, description } = req.body;
+    const { category, title, description, tool } = req.body;
 
     if (!category || !VALID_CATEGORIES.includes(category)) {
       return res.status(400).json({ error: `Invalid category. Must be one of: ${VALID_CATEGORIES.join(', ')}` });
@@ -173,6 +178,19 @@ router.post('/tickets', upload.single('screenshot'), async (req, res, next) => {
       return res.status(400).json({ error: 'Description is required' });
     }
 
+    // Tool is required for Issue category and must be from the allowed list.
+    // For other categories, tool is ignored (forced to null).
+    let ticketTool = null;
+    if (category === 'issue') {
+      if (!tool || !tool.trim()) {
+        return res.status(400).json({ error: 'Tool is required for Issue tickets' });
+      }
+      if (!VALID_TOOLS.includes(tool.trim())) {
+        return res.status(400).json({ error: `Invalid tool. Must be one of: ${VALID_TOOLS.join(', ')}` });
+      }
+      ticketTool = tool.trim();
+    }
+
     let screenshotUrl = null;
     if (req.file) {
       screenshotUrl = await db.uploadSupportScreenshot(req.file.buffer, req.file.originalname, req.file.mimetype);
@@ -180,6 +198,7 @@ router.post('/tickets', upload.single('screenshot'), async (req, res, next) => {
 
     const ticket = await db.createSupportTicket({
       category: category.trim(),
+      tool: ticketTool,
       title: title.trim(),
       description: description.trim(),
       screenshot_url: screenshotUrl,

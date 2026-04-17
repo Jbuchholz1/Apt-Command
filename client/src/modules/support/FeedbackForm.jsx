@@ -17,6 +17,11 @@ const CATEGORY_OPTIONS = [
   { value: 'feedback', label: 'General Question' },
 ];
 
+const TOOL_OPTIONS = [
+  'Alex', 'FullyRamped', 'CloudCall', 'BullHorn', 'Apt Command',
+  'ZoomInfo', 'Align', 'Sharepoint', 'Outlook', 'Other — Please List in Description',
+];
+
 const ALL_CATEGORIES = [
   { value: '', label: 'All Categories' },
   { value: 'issue', label: 'Issue' },
@@ -61,7 +66,7 @@ function formatDate(dateStr) {
 export default function FeedbackForm() {
   const { isAdmin, email: currentEmail } = useUserRole();
   const [view, setView] = useState('submit'); // 'submit' | 'my' | 'queue' | 'all'
-  const [form, setForm] = useState({ category: 'issue', title: '', description: '' });
+  const [form, setForm] = useState({ category: 'issue', tool: '', title: '', description: '' });
   const [screenshot, setScreenshot] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [tickets, setTickets] = useState([]);
@@ -142,17 +147,24 @@ export default function FeedbackForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title.trim() || !form.description.trim()) return;
+    if (form.category === 'issue' && !form.tool) {
+      showToast('Please select a tool for this issue', 'error');
+      return;
+    }
     setSubmitting(true);
     try {
       const formData = new FormData();
       formData.append('category', form.category);
+      if (form.category === 'issue' && form.tool) {
+        formData.append('tool', form.tool);
+      }
       formData.append('title', form.title.trim());
       formData.append('description', form.description.trim());
       if (screenshot) formData.append('screenshot', screenshot);
 
       await submitSupportTicket(formData);
       showToast('Ticket submitted!');
-      setForm({ category: 'issue', title: '', description: '' });
+      setForm({ category: 'issue', tool: '', title: '', description: '' });
       setScreenshot(null);
     } catch (err) {
       showToast(err.message, 'error');
@@ -231,13 +243,34 @@ export default function FeedbackForm() {
               <label className="form-label">Category</label>
               <select
                 value={form.category}
-                onChange={e => setForm(prev => ({ ...prev, category: e.target.value }))}
+                onChange={e => setForm(prev => ({
+                  ...prev,
+                  category: e.target.value,
+                  // Clear tool if switching away from Issue
+                  tool: e.target.value === 'issue' ? prev.tool : '',
+                }))}
               >
                 {CATEGORY_OPTIONS.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
             </div>
+
+            {form.category === 'issue' && (
+              <div className="form-group">
+                <label className="form-label">Tool</label>
+                <select
+                  value={form.tool}
+                  onChange={e => setForm(prev => ({ ...prev, tool: e.target.value }))}
+                  required
+                >
+                  <option value="">-- Select Tool --</option>
+                  {TOOL_OPTIONS.map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div className="form-group">
               <label className="form-label">Title</label>
@@ -389,6 +422,9 @@ export default function FeedbackForm() {
                             <span className="ticket-category-badge" style={{ background: CATEGORY_COLORS[ticket.category] || '#6b7280' }}>
                               {ticket.category.replace('_', ' ')}
                             </span>
+                            {ticket.tool && (
+                              <span className="ticket-tool-label" title={ticket.tool}>· {ticket.tool}</span>
+                            )}
                           </div>
                           <div className="ticket-card-top-right">
                             {ticket.assigned_to && (
