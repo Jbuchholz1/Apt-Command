@@ -9,9 +9,19 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.3.3';
+export const APP_VERSION = '3.3.4';
 
 export const CHANGELOG = [
+  {
+    version: '3.3.4',
+    date: '2026-04-17',
+    title: 'Clickable Support Reporting',
+    changes: [
+      { type: 'minor', text: 'Every chart and KPI card on the Support Reporting tab is now clickable — open a modal showing the underlying ticket data' },
+      { type: 'minor', text: 'Modal displays ticket number, title, category, tool, status, submitter, assignee, and open/resolved dates' },
+      { type: 'minor', text: 'Click a bar, pie slice, or line point to drill into that segment; click a KPI card to see its full data set' },
+    ],
+  },
   {
     version: '3.3.3',
     date: '2026-04-17',
