@@ -1199,6 +1199,47 @@
   color: var(--text-light);
 }
 
+/* ---- Ticket Search Bar ---- */
+.ticket-search-bar {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.ticket-search-input {
+  width: 100%;
+  padding: 8px 32px 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: var(--sans);
+  background: var(--surface);
+  transition: border-color 0.15s;
+}
+.ticket-search-input:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+
+.ticket-search-clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ticket-search-clear:hover {
+  background: #f1f5f9;
+  color: var(--navy);
+}
+
 /* ---- Ticket Filter Bar ---- */
 .ticket-filter-bar {
   display: flex;

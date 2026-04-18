@@ -9,9 +9,19 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.3.4';
+export const APP_VERSION = '3.3.5';
 
 export const CHANGELOG = [
+  {
+    version: '3.3.5',
+    date: '2026-04-17',
+    title: 'Ticket Search by Number',
+    changes: [
+      { type: 'minor', text: 'Search box on all ticket list tabs (My Tickets, My Queue, All Tickets) — filter by ticket number' },
+      { type: 'minor', text: 'Flexible matching — type Apt000007, 7, or any substring; results filter as you type' },
+      { type: 'patch', text: 'Search clears automatically when switching tabs so you never carry stale filters between views' },
+    ],
+  },
   {
     version: '3.3.4',
     date: '2026-04-17',

@@ -74,6 +74,7 @@ export default function FeedbackForm() {
   const [ticketsLoading, setTicketsLoading] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState('');
   const [assigneeFilter, setAssigneeFilter] = useState(''); // '' = all, '__unassigned__' = unassigned, else email
+  const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState(null);
   const [admins, setAdmins] = useState([]);
   const [unread, setUnread] = useState({ my_tickets: 0, my_queue: 0 });
@@ -97,6 +98,7 @@ export default function FeedbackForm() {
 
   useEffect(() => {
     if (view === 'my' || view === 'all' || view === 'queue' || view === 'reporting') loadTickets();
+    setSearchQuery('');  // clear search when switching tabs
   }, [view]);
 
   useEffect(() => {
@@ -178,9 +180,22 @@ export default function FeedbackForm() {
   }, [tickets, view, currentEmail, assigneeFilter]);
 
   // Apply category filter on top for the visible ticket list
-  const filteredTickets = categoryFilter
+  const categoryScopedTickets = categoryFilter
     ? assigneeScopedTickets.filter(t => t.category === categoryFilter)
     : assigneeScopedTickets;
+
+  const filteredTickets = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return categoryScopedTickets;
+    // Normalize search: strip "Apt" prefix, strip leading zeros for flexible matching
+    const normalized = q.replace(/^apt/i, '').replace(/^0+/, '') || '0';
+    return categoryScopedTickets.filter(t => {
+      if (t.ticket_number == null) return false;
+      const formatted = `Apt${String(t.ticket_number).padStart(6, '0')}`.toLowerCase();
+      const asString = String(t.ticket_number);
+      return formatted.includes(q) || asString === normalized || asString.includes(normalized);
+    });
+  }, [categoryScopedTickets, searchQuery]);
 
   const closeTimeKPIs = useMemo(() => {
     const categories = ['issue', 'feature', 'feedback'];
@@ -419,6 +434,27 @@ export default function FeedbackForm() {
                 </div>
               </>
             )}
+            {/* Search bar (all ticket list tabs) */}
+            <div className="ticket-search-bar">
+              <input
+                type="text"
+                className="ticket-search-input"
+                placeholder="Search by ticket # (e.g. Apt000007 or 7)"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  className="ticket-search-clear"
+                  onClick={() => setSearchQuery('')}
+                  aria-label="Clear search"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
             {/* Filters (All Tickets + Queue tabs) */}
             {(view === 'all' || view === 'queue') && (
               <div className="ticket-filter-bar">
@@ -449,14 +485,23 @@ export default function FeedbackForm() {
                 <span className="ticket-count">{filteredTickets.length} ticket{filteredTickets.length !== 1 ? 's' : ''}</span>
               </div>
             )}
+            {view === 'my' && searchQuery && (
+              <div className="ticket-filter-bar">
+                <span className="ticket-count">{filteredTickets.length} match{filteredTickets.length !== 1 ? 'es' : ''}</span>
+              </div>
+            )}
 
             {ticketsLoading ? (
               <p className="support-muted">Loading tickets...</p>
             ) : filteredTickets.length === 0 ? (
               <p className="support-muted">
-                {view === 'my' && "You haven't submitted any tickets yet."}
-                {view === 'queue' && 'No tickets assigned to you.'}
-                {view === 'all' && 'No tickets found.'}
+                {searchQuery ? `No tickets matching "${searchQuery}".` : (
+                  <>
+                    {view === 'my' && "You haven't submitted any tickets yet."}
+                    {view === 'queue' && 'No tickets assigned to you.'}
+                    {view === 'all' && 'No tickets found.'}
+                  </>
+                )}
               </p>
             ) : (
               <div className="ticket-list">
