@@ -9,9 +9,21 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.3.1';
+export const APP_VERSION = '3.3.2';
 
 export const CHANGELOG = [
+  {
+    version: '3.3.2',
+    date: '2026-04-17',
+    title: 'Unread Ticket Badges',
+    changes: [
+      { type: 'minor', text: 'Red notification badges on My Tickets and My Queue tabs show unread count — like iPhone notifications' },
+      { type: 'minor', text: 'My Tickets badge counts tickets with new comments from someone else' },
+      { type: 'minor', text: 'My Queue badge counts tickets newly assigned to you OR with new comments' },
+      { type: 'minor', text: 'Expanding a ticket marks it as viewed; badge updates automatically' },
+      { type: 'minor', text: 'Counts refresh every 60 seconds so new activity appears without a page reload' },
+    ],
+  },
   {
     version: '3.3.1',
     date: '2026-04-17',

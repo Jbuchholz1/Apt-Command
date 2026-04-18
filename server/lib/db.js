@@ -729,6 +729,89 @@ async function addTicketComment({ ticketId, authorEmail, authorName, comment }) 
   return data;
 }
 
+async function markTicketViewed({ ticketId, userEmail }) {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from('ticket_read_state')
+    .upsert(
+      { user_email: userEmail, ticket_id: ticketId, last_viewed_at: new Date().toISOString() },
+      { onConflict: 'user_email,ticket_id' },
+    )
+    .select()
+    .single();
+  if (error) { console.error('[db] markTicketViewed error:', error.message); throw error; }
+  return data;
+}
+
+/**
+ * Returns unread counts for a user:
+ *   - my_tickets: tickets they submitted with unseen activity from someone else
+ *   - my_queue:   tickets assigned to them that are either never-viewed OR
+ *                 have unseen comments from someone else
+ *
+ * "Unseen activity" = a comment authored by someone else with created_at > last_viewed_at
+ * "Never viewed"    = no ticket_read_state row for (user, ticket) AND ticket exists
+ */
+async function getUnreadCounts(userEmail) {
+  if (!supabase) return { my_tickets: 0, my_queue: 0 };
+
+  // Load tickets where user is submitter or assignee
+  const { data: tickets, error: tErr } = await supabase
+    .from('support_tickets')
+    .select('id, submitted_by, assigned_to, updated_at, created_at')
+    .or(`submitted_by.eq.${userEmail},assigned_to.eq.${userEmail}`);
+  if (tErr) { console.error('[db] getUnreadCounts tickets:', tErr.message); return { my_tickets: 0, my_queue: 0 }; }
+  if (!tickets || tickets.length === 0) return { my_tickets: 0, my_queue: 0 };
+
+  const ticketIds = tickets.map(t => t.id);
+
+  // Load comments not authored by me
+  const { data: comments, error: cErr } = await supabase
+    .from('support_ticket_comments')
+    .select('ticket_id, author_email, created_at')
+    .in('ticket_id', ticketIds)
+    .neq('author_email', userEmail);
+  if (cErr) { console.error('[db] getUnreadCounts comments:', cErr.message); return { my_tickets: 0, my_queue: 0 }; }
+
+  // Load my read state
+  const { data: reads, error: rErr } = await supabase
+    .from('ticket_read_state')
+    .select('ticket_id, last_viewed_at')
+    .eq('user_email', userEmail)
+    .in('ticket_id', ticketIds);
+  if (rErr) { console.error('[db] getUnreadCounts reads:', rErr.message); return { my_tickets: 0, my_queue: 0 }; }
+
+  const lastViewedByTicket = {};
+  for (const r of (reads || [])) lastViewedByTicket[r.ticket_id] = new Date(r.last_viewed_at).getTime();
+
+  const latestExternalCommentByTicket = {};
+  for (const c of (comments || [])) {
+    const ts = new Date(c.created_at).getTime();
+    if (!latestExternalCommentByTicket[c.ticket_id] || ts > latestExternalCommentByTicket[c.ticket_id]) {
+      latestExternalCommentByTicket[c.ticket_id] = ts;
+    }
+  }
+
+  let myTicketsUnread = 0;
+  let myQueueUnread = 0;
+
+  for (const t of tickets) {
+    const lastViewed = lastViewedByTicket[t.id] ?? 0;
+    const latestComment = latestExternalCommentByTicket[t.id] ?? 0;
+    const hasUnreadComment = latestComment > lastViewed;
+    const neverViewed = !(t.id in lastViewedByTicket);
+
+    if (t.submitted_by === userEmail && hasUnreadComment) {
+      myTicketsUnread += 1;
+    }
+    if (t.assigned_to === userEmail && (neverViewed || hasUnreadComment)) {
+      myQueueUnread += 1;
+    }
+  }
+
+  return { my_tickets: myTicketsUnread, my_queue: myQueueUnread };
+}
+
 async function updateTicketAssignee(id, { assigned_to, assigned_to_name, updated_by }) {
   if (!supabase) return null;
   const updates = {
@@ -841,5 +924,6 @@ module.exports = {
   pingSupabase,
   createSupportTicket, getSupportTickets, getSupportTicketById, updateSupportTicket, uploadSupportScreenshot,
   getTicketComments, addTicketComment, updateTicketAssignee,
+  markTicketViewed, getUnreadCounts,
   getKnownIssues, createKnownIssue, updateKnownIssue,
 };

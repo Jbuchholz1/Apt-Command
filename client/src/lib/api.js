@@ -469,6 +469,17 @@ export function updateTicketAssignee(id, data) {
   });
 }
 
+export function getSupportUnreadCounts() {
+  return fetchAPI(`/api/support/unread-counts?_t=${Date.now()}`);
+}
+
+export function markTicketViewed(ticketId) {
+  return fetchAPI(`/api/support/tickets/${ticketId}/view`, {
+    method: 'POST',
+    body: {},
+  });
+}
+
 export function getTicketComments(ticketId) {
   return fetchAPI(`/api/support/tickets/${ticketId}/comments?_t=${Date.now()}`);
 }

@@ -342,6 +342,29 @@ router.post('/tickets/:id/comments', async (req, res, next) => {
 });
 
 // =============================================
+// Unread indicators
+// =============================================
+
+// GET /api/support/unread-counts — returns { my_tickets, my_queue } for the caller
+router.get('/unread-counts', async (req, res, next) => {
+  try {
+    const counts = await db.getUnreadCounts(req.user.email);
+    res.json(counts);
+  } catch (err) { next(err); }
+});
+
+// POST /api/support/tickets/:id/view — mark a ticket as viewed by the caller
+// (admin or submitter, same as comment access)
+router.post('/tickets/:id/view', async (req, res, next) => {
+  try {
+    const ctx = await loadTicketForComment(req, res);
+    if (!ctx) return;
+    await db.markTicketViewed({ ticketId: req.params.id, userEmail: req.user.email });
+    res.status(204).end();
+  } catch (err) { next(err); }
+});
+
+// =============================================
 // Phase 3: Known Issues
 // =============================================
 

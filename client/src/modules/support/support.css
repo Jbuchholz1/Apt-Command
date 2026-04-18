@@ -795,6 +795,23 @@
   border-bottom-color: var(--gold);
 }
 
+.tab-unread-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-left: 6px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--sans);
+  border-radius: 10px;
+  line-height: 1;
+}
+
 .feedback-form {
   display: flex;
   flex-direction: column;

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Send, Image, X, Calendar, CheckCircle, Clock, ChevronDown, ChevronRight } from 'lucide-react';
-import { getSupportTickets, submitSupportTicket, updateTicketStatus, updateTicketAssignee, getAdminUsers } from '../../lib/api';
+import { getSupportTickets, submitSupportTicket, updateTicketStatus, updateTicketAssignee, getAdminUsers, getSupportUnreadCounts, markTicketViewed } from '../../lib/api';
 import { useUserRole } from '../../lib/UserRoleContext';
 import { showToast } from '../../lib/toast';
 import TicketThread from './TicketThread';
@@ -76,8 +76,24 @@ export default function FeedbackForm() {
   const [assigneeFilter, setAssigneeFilter] = useState(''); // '' = all, '__unassigned__' = unassigned, else email
   const [expandedId, setExpandedId] = useState(null);
   const [admins, setAdmins] = useState([]);
+  const [unread, setUnread] = useState({ my_tickets: 0, my_queue: 0 });
 
-  const toggleExpand = (id) => setExpandedId(prev => (prev === id ? null : id));
+  const refreshUnread = async () => {
+    try {
+      const counts = await getSupportUnreadCounts();
+      setUnread(counts);
+    } catch { /* ignore */ }
+  };
+
+  const toggleExpand = async (id) => {
+    setExpandedId(prev => {
+      // If opening a ticket, mark it viewed (fire-and-forget) and refresh counts
+      if (prev !== id) {
+        markTicketViewed(id).then(refreshUnread).catch(() => {});
+      }
+      return prev === id ? null : id;
+    });
+  };
 
   useEffect(() => {
     if (view === 'my' || view === 'all' || view === 'queue' || view === 'reporting') loadTickets();
@@ -93,6 +109,13 @@ export default function FeedbackForm() {
         .catch(() => setAdmins([]));
     }
   }, [isAdmin]);
+
+  // Poll unread counts on mount + every 60s
+  useEffect(() => {
+    refreshUnread();
+    const id = setInterval(refreshUnread, 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const loadTickets = async () => {
     setTicketsLoading(true);
@@ -224,10 +247,12 @@ export default function FeedbackForm() {
           </button>
           <button className={`feedback-tab ${view === 'my' ? 'active' : ''}`} onClick={() => setView('my')}>
             My Tickets
+            {unread.my_tickets > 0 && <span className="tab-unread-badge">{unread.my_tickets}</span>}
           </button>
           {isAdmin && (
             <button className={`feedback-tab ${view === 'queue' ? 'active' : ''}`} onClick={() => setView('queue')}>
               My Queue
+              {unread.my_queue > 0 && <span className="tab-unread-badge">{unread.my_queue}</span>}
             </button>
           )}
           {isAdmin && (
