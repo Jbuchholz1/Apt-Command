@@ -122,6 +122,35 @@ export const FAQ_SECTIONS = [
     ],
   },
   {
+    module: 'Support Center',
+    items: [
+      {
+        question: 'How do ticket notifications work?',
+        answer: 'Red notification badges appear on the "My Tickets" and "My Queue" tabs when there is new activity you have not seen. The count is the number of tickets with unread activity (not the number of messages).',
+      },
+      {
+        question: 'What triggers a notification on "My Tickets"?',
+        answer: 'A new comment from someone else on a ticket you submitted. Your own comments never trigger your own badge.\n\nThe badge counts distinct tickets with unread activity — three replies on one ticket is still "1".',
+      },
+      {
+        question: 'What triggers a notification on "My Queue"?',
+        answer: 'Two things count as unread on the admin Queue tab:\n\n1. A ticket has been assigned to you that you have never opened (new assignment)\n\n2. A ticket assigned to you has a new comment from someone else since you last opened it\n\nStatus changes, title/tool edits, and your own comments do not trigger the badge.',
+      },
+      {
+        question: 'How do I clear a notification?',
+        answer: 'Click the ticket to expand it inline. That marks it as viewed for you, and the badge count updates on the next refresh (within 2 minutes, or instantly when you switch back to the Support tab).',
+      },
+      {
+        question: 'How often do the notification counts refresh?',
+        answer: 'Every 2 minutes while the Support tab is active. When the tab is hidden or the window is in the background, polling pauses to save resources. When you return to the tab, counts refresh immediately.',
+      },
+      {
+        question: 'Why did I not get a notification for a ticket I was just reassigned?',
+        answer: 'If you were previously assigned to or viewed the ticket in the past, your "last viewed" timestamp is still on record, so the reassignment alone will not trigger a new badge. You will get a new badge as soon as anyone adds a comment. This is a rare edge case — if it becomes a pain point, the behavior can be adjusted.',
+      },
+    ],
+  },
+  {
     module: 'General',
     items: [
       {

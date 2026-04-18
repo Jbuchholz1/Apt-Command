@@ -9,9 +9,20 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.3.2';
+export const APP_VERSION = '3.3.3';
 
 export const CHANGELOG = [
+  {
+    version: '3.3.3',
+    date: '2026-04-17',
+    title: 'Smarter Notification Polling',
+    changes: [
+      { type: 'patch', text: 'Unread notification polling now pauses when the Support tab is hidden — no wasted requests in background tabs' },
+      { type: 'patch', text: 'Counts refetch immediately when you switch back to the tab or refocus the window' },
+      { type: 'patch', text: 'Polling interval raised from 60s to 120s — roughly 70% fewer requests in steady state' },
+      { type: 'patch', text: 'New FAQ under Support Center explaining notification triggers and how to clear them' },
+    ],
+  },
   {
     version: '3.3.2',
     date: '2026-04-17',
