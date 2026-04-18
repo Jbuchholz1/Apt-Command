@@ -110,11 +110,41 @@ export default function FeedbackForm() {
     }
   }, [isAdmin]);
 
-  // Poll unread counts on mount + every 60s
+  // Poll unread counts on mount, every 120s while tab is visible, and refresh on tab focus
   useEffect(() => {
+    let intervalId = null;
+
+    const startPolling = () => {
+      if (intervalId) return;
+      intervalId = setInterval(refreshUnread, 120 * 1000);
+    };
+
+    const stopPolling = () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        refreshUnread();   // immediate refresh when returning to tab
+        startPolling();
+      } else {
+        stopPolling();     // pause when tab is hidden
+      }
+    };
+
     refreshUnread();
-    const id = setInterval(refreshUnread, 60 * 1000);
-    return () => clearInterval(id);
+    if (document.visibilityState === 'visible') startPolling();
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', refreshUnread);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', refreshUnread);
+    };
   }, []);
 
   const loadTickets = async () => {
