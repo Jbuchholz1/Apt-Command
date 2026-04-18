@@ -931,6 +931,16 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 6px;
+  transition: all 0.15s;
+}
+
+.support-kpi-card.clickable {
+  cursor: pointer;
+}
+.support-kpi-card.clickable:hover {
+  border-color: var(--gold);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(4, 20, 79, 0.08);
 }
 
 .support-kpi-icon {
@@ -1000,6 +1010,123 @@
   .support-chart-wide {
     grid-column: span 1;
   }
+}
+
+/* ---- Reporting Detail Modal ---- */
+.reporting-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: modalFadeIn 0.15s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.reporting-modal {
+  background: #fff;
+  border-radius: 8px;
+  max-height: 85vh;
+  width: 100%;
+  max-width: 1200px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.reporting-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--navy);
+  color: #fff;
+}
+
+.reporting-modal-header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+.reporting-modal-count {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-light);
+  margin-left: 6px;
+}
+
+.reporting-modal-close {
+  background: none;
+  border: none;
+  color: var(--text-light);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  border-radius: 3px;
+  transition: all 0.15s;
+}
+.reporting-modal-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.reporting-modal-body {
+  padding: 16px 20px;
+  overflow: auto;
+  flex: 1;
+}
+
+.reporting-modal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  background: var(--surface);
+}
+
+.reporting-modal-table thead {
+  background: #f0f4f8;
+  position: sticky;
+  top: 0;
+}
+
+.reporting-modal-table th {
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  border-bottom: 2px solid var(--border);
+}
+
+.reporting-modal-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.reporting-modal-table tbody tr:hover {
+  background: #fafbfc;
+}
+
+.reporting-modal-ref {
+  font-family: var(--mono);
+  font-weight: 700;
+  color: var(--navy);
 }
 
 /* ---- KPI Scope Label ---- */
