@@ -5,6 +5,7 @@ import { getSupportTickets, submitSupportTicket, updateTicketStatus, updateTicke
 import { useUserRole } from '../../lib/UserRoleContext';
 import { showToast } from '../../lib/toast';
 import TicketThread from './TicketThread';
+import SupportReporting from './SupportReporting';
 
 function formatTicketNumber(n) {
   if (n == null) return '';
@@ -65,7 +66,7 @@ function formatDate(dateStr) {
 
 export default function FeedbackForm() {
   const { isAdmin, email: currentEmail } = useUserRole();
-  const [view, setView] = useState('submit'); // 'submit' | 'my' | 'queue' | 'all'
+  const [view, setView] = useState('submit'); // 'submit' | 'my' | 'queue' | 'all' | 'reporting'
   const [form, setForm] = useState({ category: 'issue', tool: '', title: '', description: '' });
   const [screenshot, setScreenshot] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -79,7 +80,7 @@ export default function FeedbackForm() {
   const toggleExpand = (id) => setExpandedId(prev => (prev === id ? null : id));
 
   useEffect(() => {
-    if (view === 'my' || view === 'all' || view === 'queue') loadTickets();
+    if (view === 'my' || view === 'all' || view === 'queue' || view === 'reporting') loadTickets();
   }, [view]);
 
   useEffect(() => {
@@ -232,6 +233,11 @@ export default function FeedbackForm() {
           {isAdmin && (
             <button className={`feedback-tab ${view === 'all' ? 'active' : ''}`} onClick={() => setView('all')}>
               All Tickets
+            </button>
+          )}
+          {isAdmin && (
+            <button className={`feedback-tab ${view === 'reporting' ? 'active' : ''}`} onClick={() => setView('reporting')}>
+              Reporting
             </button>
           )}
         </div>
@@ -519,6 +525,13 @@ export default function FeedbackForm() {
               </div>
             )}
           </div>
+        )}
+
+        {/* Reporting View */}
+        {view === 'reporting' && (
+          ticketsLoading
+            ? <p className="support-muted">Loading reporting data...</p>
+            : <SupportReporting tickets={tickets} />
         )}
       </div>
     </div>

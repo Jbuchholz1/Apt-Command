@@ -9,9 +9,20 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.3.0';
+export const APP_VERSION = '3.3.1';
 
 export const CHANGELOG = [
+  {
+    version: '3.3.1',
+    date: '2026-04-17',
+    title: 'Support Reporting Dashboard + Playbook Links',
+    changes: [
+      { type: 'minor', text: 'New Reporting tab (admin-only) in Support & Requests with ticket analytics: volume by tool, top submitters, status donut, avg time-to-close by category and tool, open workload by assignee, and 12-week volume trend' },
+      { type: 'minor', text: 'Four KPI cards at the top of Reporting — Total, Open, Avg Time to Close, This Month' },
+      { type: 'minor', text: 'Sales, Delivery, and Operations playbook links wired to live SharePoint documents in Help & Docs' },
+      { type: 'minor', text: 'New "Why am I red boxed?" FAQ under Req Board explaining the three conditions (missed follow up, missed deadline, 48hr TR clock)' },
+    ],
+  },
   {
     version: '3.3.0',
     date: '2026-04-16',
