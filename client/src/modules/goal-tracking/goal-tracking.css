@@ -190,9 +190,9 @@
 
 .gt-row {
   display: grid;
-  grid-template-columns: 20px 28px 28px 1fr 80px minmax(220px, 320px) 28px;
+  grid-template-columns: 20px 28px 32px minmax(0, 1fr) auto 280px 28px;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   background: #fff;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -239,6 +239,9 @@
   font-weight: 700;
   border-radius: 4px;
 }
+.gt-sub-count.is-empty {
+  background: transparent;
+}
 
 .gt-avatar {
   width: 28px;
@@ -257,8 +260,9 @@
 .gt-row-main {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
+  overflow: hidden;
 }
 .gt-row-name {
   font-size: 13px;

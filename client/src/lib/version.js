@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.4.1';
+export const APP_VERSION = '3.4.2';
 
 export const CHANGELOG = [
+  {
+    version: '3.4.2',
+    date: '2026-04-18',
+    title: 'Goal Tracking — Row Layout Fix',
+    changes: [
+      { type: 'fix', text: 'Goals with no sub-goals no longer render the type badge as a giant bar — grid now always reserves the sub-count column so the type pill, progress bar, and percentage line up consistently' },
+      { type: 'patch', text: 'Tightened row grid so long goal names ellipsize cleanly instead of wrapping' },
+    ],
+  },
   {
     version: '3.4.1',
     date: '2026-04-18',

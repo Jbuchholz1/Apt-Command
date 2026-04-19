@@ -66,7 +66,9 @@ export default function GoalRow({
         )}
         {!hasChildren && <span className="gt-expand-spacer" />}
 
-        {subCount > 0 && <span className="gt-sub-count" title={`${subCount} sub-goals`}>{subCount}</span>}
+        <span className={`gt-sub-count ${subCount > 0 ? '' : 'is-empty'}`} title={subCount > 0 ? `${subCount} sub-goals` : ''}>
+          {subCount > 0 ? subCount : ''}
+        </span>
 
         <div className="gt-avatar" title={node.owner_name || node.owner_email}>
           {initials(node.owner_name || node.owner_email)}
