@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Pencil, Trash2 } from 'lucide-react';
-import { getGoal, updateGoal, deleteGoal, pinGoalPriority, unpinGoalPriority } from '../../../lib/api';
+import { getGoal, updateGoal, pinGoalPriority, unpinGoalPriority } from '../../../lib/api';
 import StatusDot from './StatusDot';
 import TagChip from './TagChip';
 import TaskList from './TaskList';
@@ -24,6 +24,7 @@ export default function GoalDetail({
   canManage,
   onClose,
   onChanged,
+  onDelete,
 }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -65,10 +66,9 @@ export default function GoalDetail({
   };
 
   const handleDelete = async () => {
-    if (!window.confirm(`Delete "${goal.name}"? This will archive it.`)) return;
-    await deleteGoal(goalId);
-    onChanged?.();
+    if (!onDelete) return;
     onClose?.();
+    onDelete(goal);
   };
 
   const handleEditSave = async (payload) => {
@@ -143,17 +143,6 @@ export default function GoalDetail({
                       <div><span>Start</span><strong>{goal.start_value ?? 0}{goal.unit || ''}</strong></div>
                       <div><span>Current</span><strong>{goal.current_value ?? 0}{goal.unit || ''}</strong></div>
                       <div><span>Target</span><strong>{goal.target_value ?? 0}{goal.unit || ''}</strong></div>
-                    </div>
-                  )}
-
-                  {goal.goal_type === 'rollup' && data.children.length > 0 && (
-                    <div className="gt-children-summary">
-                      <div className="gt-section-title">Children ({data.children.length})</div>
-                      <ul className="gt-children-list">
-                        {data.children.map(c => (
-                          <li key={c.id}>{c.name}</li>
-                        ))}
-                      </ul>
                     </div>
                   )}
 

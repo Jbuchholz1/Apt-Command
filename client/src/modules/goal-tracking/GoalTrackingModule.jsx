@@ -108,9 +108,35 @@ export default function GoalTrackingModule() {
 
   const handleDelete = useCallback(async (goal) => {
     if (!window.confirm(`Delete "${goal.name}"? This will archive it.`)) return;
-    await deleteGoal(goal.id);
+
+    // Optimistic: remove the goal (and any descendants) from local state so the row
+    // disappears immediately, even before the server responds.
+    const descendantIds = new Set([goal.id]);
+    let added = true;
+    while (added) {
+      added = false;
+      for (const g of data.goals) {
+        if (g.parent_id && descendantIds.has(g.parent_id) && !descendantIds.has(g.id)) {
+          descendantIds.add(g.id);
+          added = true;
+        }
+      }
+    }
+    setData(d => ({
+      ...d,
+      goals: d.goals.filter(g => !descendantIds.has(g.id)),
+      tasks: d.tasks.filter(t => !descendantIds.has(t.goal_id)),
+      myPriorityIds: d.myPriorityIds.filter(id => !descendantIds.has(id)),
+    }));
+    setSelectedGoalId(sid => (descendantIds.has(sid) ? null : sid));
+
+    try {
+      await deleteGoal(goal.id);
+    } catch (err) {
+      alert(`Delete failed: ${err.message}`);
+    }
     await load();
-  }, [load]);
+  }, [load, data.goals]);
 
   const handleFormSave = useCallback(async (payload) => {
     if (formConfig?.goal) {
@@ -178,6 +204,7 @@ export default function GoalTrackingModule() {
           canManage={isManager}
           onClose={() => setSelectedGoalId(null)}
           onChanged={load}
+          onDelete={handleDelete}
         />
       )}
 

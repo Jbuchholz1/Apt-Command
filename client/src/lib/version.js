@@ -9,9 +9,19 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.5.0';
+export const APP_VERSION = '3.5.1';
 
 export const CHANGELOG = [
+  {
+    version: '3.5.1',
+    date: '2026-04-18',
+    title: 'Goal Tracking — Delete Fixes',
+    changes: [
+      { type: 'fix', text: 'Deleted goals (parent or sub) now disappear from the list immediately — optimistic removal before the server round-trip, with automatic rollback if the delete fails' },
+      { type: 'fix', text: 'Deleting a parent now also removes its descendants from the view so the tree stays consistent' },
+      { type: 'patch', text: 'Rollup goal detail panel no longer shows a Children list — children are already visible in the tree' },
+    ],
+  },
   {
     version: '3.5.0',
     date: '2026-04-18',
