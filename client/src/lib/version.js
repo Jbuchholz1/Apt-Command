@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.4.0';
+export const APP_VERSION = '3.4.1';
 
 export const CHANGELOG = [
+  {
+    version: '3.4.1',
+    date: '2026-04-18',
+    title: 'Goal Tracking — Cache Fix',
+    changes: [
+      { type: 'fix', text: 'Newly created goals and check-ins now appear immediately — global 5-minute browser cache was masking updates until it expired' },
+    ],
+  },
   {
     version: '3.4.0',
     date: '2026-04-18',
