@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.6.0';
+export const APP_VERSION = '3.6.1';
 
 export const CHANGELOG = [
+  {
+    version: '3.6.1',
+    date: '2026-04-18',
+    title: 'Goal Tracking — Owner Picker Cleanup',
+    changes: [
+      { type: 'patch', text: 'Owner dropdown now shows only first + last name (dropped the role suffix)' },
+      { type: 'patch', text: 'Filtered "Unassigned User" and "Webdeveloper API" out of the owner dropdown — not real people you would assign a goal to' },
+    ],
+  },
   {
     version: '3.6.0',
     date: '2026-04-18',

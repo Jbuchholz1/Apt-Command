@@ -24,7 +24,10 @@ export default function GoalForm({
   useEffect(() => {
     if (!isManager) return;
     getPerformanceUsers()
-      .then(res => setUsers(res.users || []))
+      .then(res => {
+        const EXCLUDED = new Set(['unassigned user', 'webdeveloper api']);
+        setUsers((res.users || []).filter(u => !EXCLUDED.has((u.name || '').toLowerCase().trim())));
+      })
       .catch(() => setUsers([]));
   }, [isManager]);
   const isEdit = !!goal;
@@ -142,7 +145,7 @@ export default function GoalForm({
                 )}
                 {users.map(u => (
                   <option key={u.email} value={u.email.toLowerCase()}>
-                    {u.name}{u.role ? ` — ${u.role}` : ''}
+                    {u.name}
                   </option>
                 ))}
               </select>
