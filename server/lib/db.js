@@ -954,17 +954,12 @@ async function computeGoalProgress(goalId) {
   if (goal.goal_type === 'rollup') {
     const { data: children } = await supabase
       .from('goals')
-      .select('id, weight')
+      .select('id')
       .eq('parent_id', goalId)
       .is('archived_at', null);
     if (!children || children.length === 0) return 0;
-    const pieces = await Promise.all(children.map(async c => ({
-      pct: await computeGoalProgress(c.id),
-      weight: Number(c.weight ?? 1),
-    })));
-    const totalWeight = pieces.reduce((s, p) => s + p.weight, 0);
-    if (totalWeight === 0) return 0;
-    return clampPct(pieces.reduce((s, p) => s + p.pct * p.weight, 0) / totalWeight);
+    const pcts = await Promise.all(children.map(c => computeGoalProgress(c.id)));
+    return clampPct(pcts.reduce((s, p) => s + p, 0) / pcts.length);
   }
 
   return 0;

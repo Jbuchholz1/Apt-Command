@@ -9,9 +9,19 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.5.3';
+export const APP_VERSION = '3.5.4';
 
 export const CHANGELOG = [
+  {
+    version: '3.5.4',
+    date: '2026-04-18',
+    title: 'Goal Tracking — Simpler Form',
+    changes: [
+      { type: 'minor', text: 'Rollup goals always use a simple average of their children — removed the Weighted option from the create/edit form' },
+      { type: 'minor', text: 'Color status is always Calculated (green/yellow/red from progress vs time elapsed) — removed the User Driven toggle' },
+      { type: 'patch', text: 'Required-field asterisks now sit inline with the label text instead of dropping to their own line' },
+    ],
+  },
   {
     version: '3.5.3',
     date: '2026-04-18',

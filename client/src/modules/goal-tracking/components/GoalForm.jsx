@@ -33,8 +33,6 @@ export default function GoalForm({
     current_value: goal?.current_value ?? 0,
     target_value: goal?.target_value ?? 100,
     unit: goal?.unit || '',
-    rollup_method: goal?.rollup_method || 'average',
-    status_mode: goal?.status_mode || 'calculated',
     is_company_priority: !!goal?.is_company_priority,
   }));
 
@@ -60,7 +58,7 @@ export default function GoalForm({
         owner_name: form.owner_name.trim() || null,
         parent_id: form.parent_id || null,
         period,
-        status_mode: form.status_mode,
+        status_mode: 'calculated',
         is_company_priority: !form.parent_id && !!form.is_company_priority,
       };
       if (form.goal_type === 'number') {
@@ -68,9 +66,6 @@ export default function GoalForm({
         payload.current_value = Number(form.current_value) || 0;
         payload.target_value = Number(form.target_value) || 0;
         payload.unit = form.unit.trim() || null;
-      }
-      if (form.goal_type === 'rollup') {
-        payload.rollup_method = form.rollup_method;
       }
       await onSave?.(payload);
     } catch (err) {
@@ -93,7 +88,7 @@ export default function GoalForm({
 
         <div className="gt-modal-body">
           <label className="gt-label">
-            Priority Name <span className="gt-required">*</span>
+            <span>Priority Name <span className="gt-required">*</span></span>
             <input
               className="gt-input"
               type="text"
@@ -117,7 +112,7 @@ export default function GoalForm({
 
           <div className="gt-form-grid">
             <label className="gt-label">
-              Owner Email <span className="gt-required">*</span>
+              <span>Owner Email <span className="gt-required">*</span></span>
               <input
                 className="gt-input"
                 type="email"
@@ -197,7 +192,7 @@ export default function GoalForm({
                   />
                 </label>
                 <label className="gt-label">
-                  Target <span className="gt-required">*</span>
+                  <span>Target <span className="gt-required">*</span></span>
                   <input
                     className="gt-input"
                     type="number"
@@ -219,24 +214,9 @@ export default function GoalForm({
             )}
 
             {form.goal_type === 'rollup' && (
-              <>
-                <label className="gt-label">
-                  Rollup Method
-                  <select
-                    className="gt-input"
-                    value={form.rollup_method}
-                    onChange={e => update('rollup_method', e.target.value)}
-                  >
-                    <option value="average">Average of children</option>
-                    <option value="weighted">Weighted average</option>
-                  </select>
-                </label>
-                <p className="gt-form-hint">
-                  {form.rollup_method === 'weighted'
-                    ? 'Weighted: each child carries its own weight — higher weights pull the parent\u2019s progress more.'
-                    : 'Average: every child contributes equally to the parent\u2019s progress.'}
-                </p>
-              </>
+              <p className="gt-form-hint">
+                Progress is the simple average of this goal's direct children.
+              </p>
             )}
 
             {form.goal_type === 'task' && (
@@ -244,30 +224,6 @@ export default function GoalForm({
                 You'll add tasks after creating the goal.
               </p>
             )}
-          </div>
-
-          <div className="gt-fieldset">
-            <div className="gt-fieldset-label">Color Status</div>
-            <div className="gt-radio-row">
-              <label className="gt-radio">
-                <input
-                  type="radio"
-                  name="status_mode"
-                  checked={form.status_mode === 'calculated'}
-                  onChange={() => update('status_mode', 'calculated')}
-                />
-                <span>Calculated</span>
-              </label>
-              <label className="gt-radio">
-                <input
-                  type="radio"
-                  name="status_mode"
-                  checked={form.status_mode === 'user_driven'}
-                  onChange={() => update('status_mode', 'user_driven')}
-                />
-                <span>User Driven</span>
-              </label>
-            </div>
           </div>
 
           {error && <div className="gt-form-error">{error}</div>}

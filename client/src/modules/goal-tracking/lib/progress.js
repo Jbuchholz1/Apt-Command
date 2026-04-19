@@ -19,10 +19,8 @@ export function taskProgress(tasks) {
 
 export function rollupProgress(children, childPcts) {
   if (!children || children.length === 0) return 0;
-  const totalWeight = children.reduce((s, c) => s + Number(c.weight ?? 1), 0);
-  if (totalWeight === 0) return 0;
-  const weighted = children.reduce((s, c) => s + (childPcts[c.id] ?? 0) * Number(c.weight ?? 1), 0);
-  return clamp(weighted / totalWeight);
+  const sum = children.reduce((s, c) => s + (childPcts[c.id] ?? 0), 0);
+  return clamp(sum / children.length);
 }
 
 // Compute progress for every goal in the list, returning a map by id.

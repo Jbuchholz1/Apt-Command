@@ -20,8 +20,5 @@ export function calculatedStatus(progressPct, period, now = new Date()) {
 }
 
 export function resolveStatus(goal, progressPct, period, now = new Date()) {
-  if (goal?.status_mode === 'user_driven' && goal.status_override) {
-    return goal.status_override;
-  }
   return calculatedStatus(progressPct, period, now);
 }
