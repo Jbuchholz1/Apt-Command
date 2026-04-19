@@ -522,16 +522,16 @@ export function getGoals(period, view) {
   const params = new URLSearchParams();
   if (period) params.set('period', period);
   if (view) params.set('view', view);
-  const qs = params.toString();
-  return fetchAPI(`/api/goals${qs ? `?${qs}` : ''}`);
+  params.set('_t', Date.now().toString());
+  return fetchAPI(`/api/goals?${params}`);
 }
 
 export function getGoal(id) {
-  return fetchAPI(`/api/goals/${id}`);
+  return fetchAPI(`/api/goals/${id}?_t=${Date.now()}`);
 }
 
 export function getGoalHistory(id) {
-  return fetchAPI(`/api/goals/${id}/history`);
+  return fetchAPI(`/api/goals/${id}/history?_t=${Date.now()}`);
 }
 
 export function createGoal(fields) {
@@ -551,7 +551,7 @@ export function checkinGoal(id, fields) {
 }
 
 export function getGoalTasks(id) {
-  return fetchAPI(`/api/goals/${id}/tasks`);
+  return fetchAPI(`/api/goals/${id}/tasks?_t=${Date.now()}`);
 }
 
 export function addGoalTask(id, fields) {

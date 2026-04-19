@@ -16,6 +16,14 @@ const db = require('../lib/db');
 const { resolveRole } = require('../lib/roles');
 const { getCurrentPeriod } = require('../lib/period');
 
+// Goal data is mutation-heavy (create, check-in, task toggle) and the UI
+// expects the list to reflect changes immediately. Override the global
+// Cache-Control: max-age=300 from index.js so the browser always revalidates.
+router.use((req, res, next) => {
+  if (req.method === 'GET') res.set('Cache-Control', 'no-store');
+  next();
+});
+
 function userEmail(req) {
   return (req.user?.email || '').toLowerCase().trim();
 }
