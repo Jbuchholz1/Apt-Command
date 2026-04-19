@@ -9,9 +9,20 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.5.4';
+export const APP_VERSION = '3.6.0';
 
 export const CHANGELOG = [
+  {
+    version: '3.6.0',
+    date: '2026-04-18',
+    title: 'Goal Tracking — Owner Picker & Task Alerts',
+    changes: [
+      { type: 'minor', text: 'Admins and managers now pick the goal owner from a dropdown of active Bullhorn users when creating or editing a goal' },
+      { type: 'minor', text: 'Basic users can only create goals owned by themselves — the owner is auto-assigned and not shown in the form' },
+      { type: 'minor', text: 'Overdue and upcoming goal tasks (assigned to you with a due date within 7 days or past due) now appear in the "Tasks Needing Attention" alert on your Individual Performance report alongside follow-ups, deadlines, and check-ins' },
+      { type: 'patch', text: 'Renamed that alert from "Overdue Tasks" to "Tasks Needing Attention" since it now includes upcoming items' },
+    ],
+  },
   {
     version: '3.5.4',
     date: '2026-04-18',

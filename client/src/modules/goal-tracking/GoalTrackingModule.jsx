@@ -215,6 +215,7 @@ export default function GoalTrackingModule() {
           period={period}
           allGoals={data.goals}
           canSetCompanyPriority={isManager}
+          isManager={isManager}
           defaultOwnerEmail={currentEmail}
           defaultOwnerName={currentName}
           onSave={handleFormSave}

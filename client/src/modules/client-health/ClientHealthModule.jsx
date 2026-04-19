@@ -61,7 +61,9 @@ export default function ClientHealthModule() {
   const [gaugeModal, setGaugeModal] = useState(null);
   const [checkinSort, setCheckinSort] = useState({ key: 'daysSinceStart', dir: 'desc' });
   const [checkinOwnerFilter, setCheckinOwnerFilter] = useState('');
+  const [gaugeSort, setGaugeSort] = useState({ key: null, dir: 'asc' });
   const [placementModal, setPlacementModal] = useState(null);
+  const [placementSort, setPlacementSort] = useState({ key: 'startDate', dir: 'desc' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({ clients: [], owners: [] });
@@ -294,7 +296,27 @@ export default function ClientHealthModule() {
         );
         const cSortIcon = (key) => !isCheckin ? '' : checkinSort.key !== key ? ' ↕' : checkinSort.dir === 'asc' ? ' ↑' : ' ↓';
 
+        // Generic gauge sorting (non-checkin views)
+        const toggleGaugeSort = (key) => setGaugeSort(prev =>
+          prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }
+        );
+        const gSortIcon = (key) => gaugeSort.key !== key ? ' ↕' : gaugeSort.dir === 'asc' ? ' ↑' : ' ↓';
+
         const ownerOptions = isCheckin ? [...new Set(gaugeModal.details.map(r => r[ownerKey]).filter(Boolean))].sort() : [];
+
+        const sortedNonCheckinDetails = !isCheckin && gaugeSort.key
+          ? [...gaugeModal.details].sort((a, b) => {
+              const av = a[gaugeSort.key], bv = b[gaugeSort.key];
+              if (av == null && bv == null) return 0;
+              if (av == null) return 1;
+              if (bv == null) return -1;
+              if (typeof av === 'number' && typeof bv === 'number') {
+                return gaugeSort.dir === 'asc' ? av - bv : bv - av;
+              }
+              const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true });
+              return gaugeSort.dir === 'asc' ? cmp : -cmp;
+            })
+          : gaugeModal.details;
 
         const filteredDetails = isCheckin
           ? gaugeModal.details
@@ -306,14 +328,14 @@ export default function ClientHealthModule() {
                 const cmp = typeof av === 'number' ? av - bv : String(av).localeCompare(String(bv));
                 return checkinSort.dir === 'asc' ? cmp : -cmp;
               })
-          : gaugeModal.details;
+          : sortedNonCheckinDetails;
 
         return (
-          <div className="gauge-modal-overlay" onClick={() => { setGaugeModal(null); setCheckinOwnerFilter(''); }}>
+          <div className="gauge-modal-overlay" onClick={() => { setGaugeModal(null); setCheckinOwnerFilter(''); setGaugeSort({ key: null, dir: 'asc' }); }}>
             <div className="gauge-modal" onClick={e => e.stopPropagation()}>
               <div className="gauge-modal-header">
                 <h3>{gaugeModal.label}</h3>
-                <button className="modal-close" onClick={() => { setGaugeModal(null); setCheckinOwnerFilter(''); }}>&times;</button>
+                <button className="modal-close" onClick={() => { setGaugeModal(null); setCheckinOwnerFilter(''); setGaugeSort({ key: null, dir: 'asc' }); }}>&times;</button>
               </div>
               <div className="gauge-modal-body">
                 {isCheckin && (
@@ -328,10 +350,29 @@ export default function ClientHealthModule() {
                 <table className="gauge-modal-table">
                   <thead>
                     <tr>
-                      {gaugeModal.label === 'MAR Total' && <><th>Person</th><th>Role</th><th>MAR</th></>}
-                      {gaugeModal.label === 'Input' && <><th>Job</th><th>Client</th><th>Type</th><th>AM</th><th>Input</th></>}
-                      {gaugeModal.label.includes('Fill Ratio') && <><th>Job</th><th>Priority</th><th>Openings</th><th>Fills</th></>}
-                      {gaugeModal.label === 'Backout %' && <><th>Candidate ID</th><th>Candidate</th><th>Comment</th></>}
+                      {gaugeModal.label === 'MAR Total' && <>
+                        <th className="sortable" style={{ cursor: 'pointer' }} onClick={() => toggleGaugeSort('name')}>Person{gSortIcon('name')}</th>
+                        <th className="sortable" style={{ cursor: 'pointer' }} onClick={() => toggleGaugeSort('role')}>Role{gSortIcon('role')}</th>
+                        <th className="sortable" style={{ cursor: 'pointer' }} onClick={() => toggleGaugeSort('mar')}>MAR{gSortIcon('mar')}</th>
+                      </>}
+                      {gaugeModal.label === 'Input' && <>
+                        <th className="sortable" style={{ cursor: 'pointer' }} onClick={() => toggleGaugeSort('jobTitle')}>Job{gSortIcon('jobTitle')}</th>
+                        <th className="sortable" style={{ cursor: 'pointer' }} onClick={() => toggleGaugeSort('client')}>Client{gSortIcon('client')}</th>
+                        <th className="sortable" style={{ cursor: 'pointer' }} onClick={() => toggleGaugeSort('empType')}>Type{gSortIcon('empType')}</th>
+                        <th className="sortable" style={{ cursor: 'pointer' }} onClick={() => toggleGaugeSort('am')}>AM{gSortIcon('am')}</th>
+                        <th className="sortable" style={{ cursor: 'pointer' }} onClick={() => toggleGaugeSort('input')}>Input{gSortIcon('input')}</th>
+                      </>}
+                      {gaugeModal.label.includes('Fill Ratio') && <>
+                        <th className="sortable" style={{ cursor: 'pointer' }} onClick={() => toggleGaugeSort('title')}>Job{gSortIcon('title')}</th>
+                        <th className="sortable" style={{ cursor: 'pointer' }} onClick={() => toggleGaugeSort('priority')}>Priority{gSortIcon('priority')}</th>
+                        <th className="sortable" style={{ cursor: 'pointer' }} onClick={() => toggleGaugeSort('openings')}>Openings{gSortIcon('openings')}</th>
+                        <th className="sortable" style={{ cursor: 'pointer' }} onClick={() => toggleGaugeSort('fills')}>Fills{gSortIcon('fills')}</th>
+                      </>}
+                      {gaugeModal.label === 'Backout %' && <>
+                        <th className="sortable" style={{ cursor: 'pointer' }} onClick={() => toggleGaugeSort('candidateId')}>Candidate ID{gSortIcon('candidateId')}</th>
+                        <th className="sortable" style={{ cursor: 'pointer' }} onClick={() => toggleGaugeSort('candidateName')}>Candidate{gSortIcon('candidateName')}</th>
+                        <th className="sortable" style={{ cursor: 'pointer' }} onClick={() => toggleGaugeSort('comment')}>Comment{gSortIcon('comment')}</th>
+                      </>}
                       {isCheckin && <>
                         <th className="sortable" onClick={() => toggleCheckinSort(ownerKey)}>{ownerLabel}{cSortIcon(ownerKey)}</th>
                         <th className="sortable" onClick={() => toggleCheckinSort('candidateId')}>Candidate #{cSortIcon('candidateId')}</th>
@@ -345,7 +386,7 @@ export default function ClientHealthModule() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(isCheckin ? filteredDetails : gaugeModal.details).map((r, i) => (
+                    {(isCheckin ? filteredDetails : sortedNonCheckinDetails).map((r, i) => (
                       <tr key={i}>
                         {gaugeModal.label === 'MAR Total' && <><td>{r.name}</td><td>{r.role}</td><td className="ch-num">{r.mar}</td></>}
                         {gaugeModal.label === 'Input' && <><td>{r.jobTitle}</td><td>{r.client}</td><td>{r.empType}</td><td>{r.am}</td><td className="ch-num">${Number(r.input).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td></>}
@@ -365,7 +406,7 @@ export default function ClientHealthModule() {
                     ))}
                   </tbody>
                 </table>
-                <p className="gauge-modal-count">{(isCheckin ? filteredDetails : gaugeModal.details).length} record{(isCheckin ? filteredDetails : gaugeModal.details).length !== 1 ? 's' : ''}</p>
+                <p className="gauge-modal-count">{(isCheckin ? filteredDetails : sortedNonCheckinDetails).length} record{(isCheckin ? filteredDetails : sortedNonCheckinDetails).length !== 1 ? 's' : ''}</p>
               </div>
             </div>
           </div>
@@ -373,7 +414,23 @@ export default function ClientHealthModule() {
       })()}
 
       {/* Placement Detail Modal */}
-      {placementModal && (
+      {placementModal && (() => {
+        const togglePlacementSort = (key) => setPlacementSort(prev =>
+          prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }
+        );
+        const pSortIcon = (key) => placementSort.key !== key ? ' ↕' : placementSort.dir === 'asc' ? ' ↑' : ' ↓';
+        const sortedPlacements = [...placementModal.details].sort((a, b) => {
+          const av = a[placementSort.key], bv = b[placementSort.key];
+          if (av == null && bv == null) return 0;
+          if (av == null) return 1;
+          if (bv == null) return -1;
+          if (typeof av === 'number' && typeof bv === 'number') {
+            return placementSort.dir === 'asc' ? av - bv : bv - av;
+          }
+          const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true });
+          return placementSort.dir === 'asc' ? cmp : -cmp;
+        });
+        return (
         <div className="gauge-modal-overlay" onClick={() => setPlacementModal(null)}>
           <div className="gauge-modal" onClick={e => e.stopPropagation()}>
             <div className="gauge-modal-header">
@@ -384,16 +441,22 @@ export default function ClientHealthModule() {
               <table className="gauge-modal-table">
                 <thead>
                   <tr>
-                    <th>Placement</th>
-                    <th>Candidate</th>
-                    <th>Manager</th>
-                    <th>Start Date</th>
-                    <th>End Date</th>
-                    <th>Spread</th>
+                    {[
+                      { key: 'placementId', label: 'Placement' },
+                      { key: 'candidate', label: 'Candidate' },
+                      { key: 'manager', label: 'Manager' },
+                      { key: 'startDate', label: 'Start Date' },
+                      { key: 'endDate', label: 'End Date' },
+                      { key: 'spread', label: 'Spread' },
+                    ].map(col => (
+                      <th key={col.key} className="sortable" style={{ cursor: 'pointer' }} onClick={() => togglePlacementSort(col.key)}>
+                        {col.label}{pSortIcon(col.key)}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {placementModal.details.map((r, i) => (
+                  {sortedPlacements.map((r, i) => (
                     <tr key={i}>
                       <td><a href={r.link} target="_blank" rel="noopener noreferrer" className="bh-detail-link">{r.placementId}</a></td>
                       <td>{r.candidate}</td>
@@ -405,11 +468,12 @@ export default function ClientHealthModule() {
                   ))}
                 </tbody>
               </table>
-              <p className="gauge-modal-count">{placementModal.details.length} placement{placementModal.details.length !== 1 ? 's' : ''}</p>
+              <p className="gauge-modal-count">{sortedPlacements.length} placement{sortedPlacements.length !== 1 ? 's' : ''}</p>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

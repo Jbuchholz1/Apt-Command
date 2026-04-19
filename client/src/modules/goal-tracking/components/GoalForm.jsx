@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { formatPeriod } from '../lib/period';
+import { getPerformanceUsers } from '../../../lib/api';
 
 const TYPE_OPTIONS = [
   { value: 'number', label: 'Number' },
@@ -13,11 +14,19 @@ export default function GoalForm({
   period,
   allGoals = [],
   canSetCompanyPriority,
+  isManager,
   onSave,
   onCancel,
   defaultOwnerName,
   defaultOwnerEmail,
 }) {
+  const [users, setUsers] = useState([]);
+  useEffect(() => {
+    if (!isManager) return;
+    getPerformanceUsers()
+      .then(res => setUsers(res.users || []))
+      .catch(() => setUsers([]));
+  }, [isManager]);
   const isEdit = !!goal;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -110,26 +119,39 @@ export default function GoalForm({
             />
           </label>
 
-          <div className="gt-form-grid">
+          {isManager ? (
             <label className="gt-label">
-              <span>Owner Email <span className="gt-required">*</span></span>
-              <input
+              <span>Owner <span className="gt-required">*</span></span>
+              <select
                 className="gt-input"
-                type="email"
-                value={form.owner_email}
-                onChange={e => update('owner_email', e.target.value)}
-              />
+                value={form.owner_email.toLowerCase()}
+                onChange={e => {
+                  const email = e.target.value.toLowerCase();
+                  const u = users.find(x => (x.email || '').toLowerCase() === email);
+                  setForm(f => ({
+                    ...f,
+                    owner_email: email,
+                    owner_name: u?.name || f.owner_name,
+                  }));
+                }}
+              >
+                {!users.some(u => (u.email || '').toLowerCase() === form.owner_email.toLowerCase()) && (
+                  <option value={form.owner_email.toLowerCase()}>
+                    {form.owner_name || form.owner_email || '—'}
+                  </option>
+                )}
+                {users.map(u => (
+                  <option key={u.email} value={u.email.toLowerCase()}>
+                    {u.name}{u.role ? ` — ${u.role}` : ''}
+                  </option>
+                ))}
+              </select>
             </label>
-            <label className="gt-label">
-              Owner Name
-              <input
-                className="gt-input"
-                type="text"
-                value={form.owner_name}
-                onChange={e => update('owner_name', e.target.value)}
-              />
-            </label>
-          </div>
+          ) : (
+            <p className="gt-form-hint">
+              This goal will be owned by you ({defaultOwnerName || defaultOwnerEmail}).
+            </p>
+          )}
 
           <label className="gt-label">
             Parent Goal

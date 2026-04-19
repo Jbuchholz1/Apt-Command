@@ -83,9 +83,9 @@ router.get('/my-dashboard', async (req, res, next) => {
     const weeks = Math.max(1, Math.ceil((endMs - startMs) / (7 * 24 * 60 * 60 * 1000)));
 
     if (role === 'Recruiter') {
-      return await handleRecruiter(req, res, { userId, fullName, tier, spreadGoal, weeks, startMs, endMs });
+      return await handleRecruiter(req, res, { userId, fullName, tier, spreadGoal, weeks, startMs, endMs, email });
     } else if (role === 'Account Manager') {
-      return await handleAM(req, res, { userId, fullName, tier, spreadGoal, weeks, startMs, endMs });
+      return await handleAM(req, res, { userId, fullName, tier, spreadGoal, weeks, startMs, endMs, email });
     } else {
       return res.json({ role: role || 'unknown', name: fullName, message: 'Role not recognized for performance tracking' });
     }
@@ -95,7 +95,7 @@ router.get('/my-dashboard', async (req, res, next) => {
 });
 
 // --- Recruiter performance ---
-async function handleRecruiter(req, res, { userId, fullName, tier, spreadGoal, weeks, startMs, endMs }) {
+async function handleRecruiter(req, res, { userId, fullName, tier, spreadGoal, weeks, startMs, endMs, email }) {
   const marGoal = weeks * POINTS.WEEKLY_TARGET; // 26/week
 
   // Parallel data fetch
@@ -241,7 +241,7 @@ async function handleRecruiter(req, res, { userId, fullName, tier, spreadGoal, w
   const followUps = buildFollowUps(activePlacementsRes?.data || [], trCheckinRes, userId, 'candidate');
 
   // --- Overdue tasks alert ---
-  const overdueTasks = await buildOverdueTasks(userId, followUps);
+  const overdueTasks = await buildOverdueTasks(userId, email, followUps);
 
   res.json({
     role: 'Recruiter',
@@ -269,7 +269,7 @@ async function handleRecruiter(req, res, { userId, fullName, tier, spreadGoal, w
 }
 
 // --- Account Manager performance ---
-async function handleAM(req, res, { userId, fullName, tier, spreadGoal, weeks, startMs, endMs }) {
+async function handleAM(req, res, { userId, fullName, tier, spreadGoal, weeks, startMs, endMs, email }) {
   const marGoal = weeks * 30; // AM weekly target = 30
 
   const [apptRes, newJobsRes, closedJobsRes, placementsRes, activePlacementsRes, amCheckinRes] = await Promise.all([
@@ -427,7 +427,7 @@ async function handleAM(req, res, { userId, fullName, tier, spreadGoal, weeks, s
   const followUps = buildFollowUps(activePlacementsRes?.data || [], amCheckinRes, userId, 'jobOrder');
 
   // --- Overdue tasks alert ---
-  const overdueTasks = await buildOverdueTasks(userId, followUps);
+  const overdueTasks = await buildOverdueTasks(userId, email, followUps);
 
   res.json({
     role: 'Account Manager',
@@ -479,7 +479,7 @@ function isDeadlineOverdue(str) { return isOverdue(str, 'no deadline'); }
 
 // --- Build overdue tasks for a user ---
 
-async function buildOverdueTasks(userId, followUps) {
+async function buildOverdueTasks(userId, email, followUps) {
   // Fetch open jobs + overrides
   const [jobsRes, overrides] = await Promise.all([getOpenJobs(), getAllOverrides()]);
   const jobs = jobsRes?.data || [];
@@ -544,11 +544,38 @@ async function buildOverdueTasks(userId, followUps) {
     }
   }
 
+  // Goal-task alerts: tasks assigned to this user that are overdue or due within 7 days
+  const goalTasksOverdue = [];
+  const goalTasksUpcoming = [];
+  try {
+    const db = require('../lib/db');
+    const tasks = await db.listGoalTasksForUser(email);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const in7Days = new Date(today.getTime() + 7 * 86400 * 1000);
+    for (const t of tasks) {
+      const due = new Date(t.due_date + 'T00:00:00');
+      const row = {
+        taskId: t.id,
+        goalId: t.goal_id,
+        goalName: t.goals?.name || '',
+        title: t.title,
+        dueDate: t.due_date,
+      };
+      if (due < today) goalTasksOverdue.push(row);
+      else if (due <= in7Days) goalTasksUpcoming.push(row);
+    }
+  } catch (err) {
+    console.error('[performance] goal tasks fetch failed:', err.message);
+  }
+
   return {
-    total: overdueFollowUps.length + missedDeadlines.length + overdueCheckins.length,
+    total: overdueFollowUps.length + missedDeadlines.length + overdueCheckins.length
+      + goalTasksOverdue.length + goalTasksUpcoming.length,
     overdueFollowUps,
     missedDeadlines,
     overdueCheckins,
+    goalTasksOverdue,
+    goalTasksUpcoming,
   };
 }
 

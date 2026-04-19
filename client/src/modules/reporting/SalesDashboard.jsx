@@ -36,6 +36,27 @@ export default function SalesDashboard() {
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({ recruiters: [], clients: [] });
   const [modal, setModal] = useState(null); // { amName, activityType, records }
+  const [modalSort, setModalSort] = useState({ key: null, dir: 'asc' });
+
+  const toggleModalSort = (key) => setModalSort(prev =>
+    prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }
+  );
+  const mSortIcon = (key) => modalSort.key !== key ? ' ↕' : modalSort.dir === 'asc' ? ' ↑' : ' ↓';
+  const sortedRecords = useMemo(() => {
+    if (!modal || !modalSort.key) return modal?.records || [];
+    return [...modal.records].sort((a, b) => {
+      const av = a[modalSort.key], bv = b[modalSort.key];
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      if (typeof av === 'number' && typeof bv === 'number') {
+        return modalSort.dir === 'asc' ? av - bv : bv - av;
+      }
+      const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true });
+      return modalSort.dir === 'asc' ? cmp : -cmp;
+    });
+  }, [modal, modalSort]);
+  const isPlacement = modal?.isJob && modal?.records[0]?.placementId !== undefined;
 
   const fetchData = useCallback(async () => {
     try {
@@ -364,29 +385,45 @@ export default function SalesDashboard() {
 
       {/* Activity Detail Modal */}
       {modal && (
-        <div className="activity-modal-overlay" onClick={() => setModal(null)}>
+        <div className="activity-modal-overlay" onClick={() => { setModal(null); setModalSort({ key: null, dir: 'asc' }); }}>
           <div className="activity-modal" onClick={e => e.stopPropagation()}>
             <div className="activity-modal-header">
               <h3>{modal.amName} — {modal.activityType}</h3>
-              <button className="modal-close" onClick={() => setModal(null)}>&times;</button>
+              <button className="modal-close" onClick={() => { setModal(null); setModalSort({ key: null, dir: 'asc' }); }}>&times;</button>
             </div>
             <div className="activity-modal-body">
               <table className="activity-modal-table">
                 <thead>
                   <tr>
                     {modal.isJob ? (
-                      modal.records[0]?.placementId !== undefined ? (
-                        <><th>ID</th><th>Job</th><th>Client</th><th>Candidate</th></>
+                      isPlacement ? (
+                        <>
+                          <th className="sortable" style={{ cursor: 'pointer' }} onClick={() => toggleModalSort('placementId')}>ID{mSortIcon('placementId')}</th>
+                          <th className="sortable" style={{ cursor: 'pointer' }} onClick={() => toggleModalSort('jobTitle')}>Job{mSortIcon('jobTitle')}</th>
+                          <th className="sortable" style={{ cursor: 'pointer' }} onClick={() => toggleModalSort('client')}>Client{mSortIcon('client')}</th>
+                          <th className="sortable" style={{ cursor: 'pointer' }} onClick={() => toggleModalSort('candidate')}>Candidate{mSortIcon('candidate')}</th>
+                        </>
                       ) : (
-                        <><th>ID</th><th>Job Title</th><th>Client</th><th>Status</th><th>Openings</th></>
+                        <>
+                          <th className="sortable" style={{ cursor: 'pointer' }} onClick={() => toggleModalSort('jobId')}>ID{mSortIcon('jobId')}</th>
+                          <th className="sortable" style={{ cursor: 'pointer' }} onClick={() => toggleModalSort('title')}>Job Title{mSortIcon('title')}</th>
+                          <th className="sortable" style={{ cursor: 'pointer' }} onClick={() => toggleModalSort('client')}>Client{mSortIcon('client')}</th>
+                          <th className="sortable" style={{ cursor: 'pointer' }} onClick={() => toggleModalSort('status')}>Status{mSortIcon('status')}</th>
+                          <th className="sortable" style={{ cursor: 'pointer' }} onClick={() => toggleModalSort('openings')}>Openings{mSortIcon('openings')}</th>
+                        </>
                       )
                     ) : (
-                      <><th>Date</th><th>Type</th><th>Client</th><th>Subject</th></>
+                      <>
+                        <th className="sortable" style={{ cursor: 'pointer' }} onClick={() => toggleModalSort('date')}>Date{mSortIcon('date')}</th>
+                        <th className="sortable" style={{ cursor: 'pointer' }} onClick={() => toggleModalSort('type')}>Type{mSortIcon('type')}</th>
+                        <th className="sortable" style={{ cursor: 'pointer' }} onClick={() => toggleModalSort('client')}>Client{mSortIcon('client')}</th>
+                        <th className="sortable" style={{ cursor: 'pointer' }} onClick={() => toggleModalSort('subject')}>Subject{mSortIcon('subject')}</th>
+                      </>
                     )}
                   </tr>
                 </thead>
                 <tbody>
-                  {modal.records.map((r, i) => (
+                  {sortedRecords.map((r, i) => (
                     <tr key={i}>
                       {modal.isJob ? (
                         r.placementId !== undefined ? (
@@ -417,7 +454,7 @@ export default function SalesDashboard() {
                   ))}
                 </tbody>
               </table>
-              <p className="activity-modal-count">{modal.records.length} record{modal.records.length !== 1 ? 's' : ''}</p>
+              <p className="activity-modal-count">{sortedRecords.length} record{sortedRecords.length !== 1 ? 's' : ''}</p>
             </div>
           </div>
         </div>

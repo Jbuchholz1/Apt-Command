@@ -97,6 +97,10 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   const [cOwnerFilter, setCOwnerFilter] = useState('');
   const [cSort, setCSort] = useState({ key: 'id', dir: 'desc' });
   const [filledOwnerFilter, setFilledOwnerFilter] = useState('');
+  const [filledSort, setFilledSort] = useState({ key: 'id', dir: 'desc' });
+  const [ceSort, setCeSort] = useState({ key: 'id', dir: 'desc' });
+  const [permSort, setPermSort] = useState({ key: 'id', dir: 'desc' });
+  const [missedSort, setMissedSort] = useState({ key: 'id', dir: 'desc' });
 
   useEffect(() => {
     getRecruiters().then(res => setRecruiters(res.data || [])).catch(() => {});
@@ -398,10 +402,132 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
     return [...set].sort();
   }, [filledJobs]);
 
+  const handleFilledSort = (key) => {
+    setFilledSort(prev =>
+      prev.key === key
+        ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
+        : { key, dir: 'asc' }
+    );
+  };
+
+  const filledSortIcon = (key) => {
+    if (filledSort.key !== key) return ' ↕';
+    return filledSort.dir === 'asc' ? ' ↑' : ' ↓';
+  };
+
   const filteredFilled = useMemo(() => {
-    if (!filledOwnerFilter) return filledJobs;
-    return filledJobs.filter(j => j.owner === filledOwnerFilter);
-  }, [filledJobs, filledOwnerFilter]);
+    let result = filledJobs;
+    if (filledOwnerFilter) {
+      result = result.filter(j => j.owner === filledOwnerFilter);
+    }
+    const arr = [...result];
+    arr.sort((a, b) => {
+      let av = filledSort.key === 'candidate' ? filledCandidateMap[a.id] : a[filledSort.key];
+      let bv = filledSort.key === 'candidate' ? filledCandidateMap[b.id] : b[filledSort.key];
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      if (typeof av === 'number' && typeof bv === 'number') {
+        return filledSort.dir === 'asc' ? av - bv : bv - av;
+      }
+      const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true });
+      return filledSort.dir === 'asc' ? cmp : -cmp;
+    });
+    return arr;
+  }, [filledJobs, filledOwnerFilter, filledSort, filledCandidateMap]);
+
+  // CE Spread sorting
+  const handleCeSort = (key) => {
+    setCeSort(prev =>
+      prev.key === key
+        ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
+        : { key, dir: 'asc' }
+    );
+  };
+
+  const ceSortIcon = (key) => {
+    if (ceSort.key !== key) return ' ↕';
+    return ceSort.dir === 'asc' ? ' ↑' : ' ↓';
+  };
+
+  const sortedCeJobs = useMemo(() => {
+    const arr = [...ceJobs];
+    arr.sort((a, b) => {
+      let av = a[ceSort.key];
+      let bv = b[ceSort.key];
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      if (typeof av === 'number' && typeof bv === 'number') {
+        return ceSort.dir === 'asc' ? av - bv : bv - av;
+      }
+      const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true });
+      return ceSort.dir === 'asc' ? cmp : -cmp;
+    });
+    return arr;
+  }, [ceJobs, ceSort]);
+
+  // Perm Spread sorting
+  const handlePermSort = (key) => {
+    setPermSort(prev =>
+      prev.key === key
+        ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
+        : { key, dir: 'asc' }
+    );
+  };
+
+  const permSortIcon = (key) => {
+    if (permSort.key !== key) return ' ↕';
+    return permSort.dir === 'asc' ? ' ↑' : ' ↓';
+  };
+
+  const sortedPermJobs = useMemo(() => {
+    const arr = [...permJobs];
+    arr.sort((a, b) => {
+      let av = a[permSort.key];
+      let bv = b[permSort.key];
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      if (typeof av === 'number' && typeof bv === 'number') {
+        return permSort.dir === 'asc' ? av - bv : bv - av;
+      }
+      const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true });
+      return permSort.dir === 'asc' ? cmp : -cmp;
+    });
+    return arr;
+  }, [permJobs, permSort]);
+
+  // Missed Follow Ups sorting
+  const handleMissedSort = (key) => {
+    setMissedSort(prev =>
+      prev.key === key
+        ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
+        : { key, dir: 'asc' }
+    );
+  };
+
+  const missedSortIcon = (key) => {
+    if (missedSort.key !== key) return ' ↕';
+    return missedSort.dir === 'asc' ? ' ↑' : ' ↓';
+  };
+
+  const sortedMissedFollowUps = useMemo(() => {
+    const arr = [...missedFollowUpJobs];
+    arr.sort((a, b) => {
+      let av = a[missedSort.key];
+      let bv = b[missedSort.key];
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      if (typeof av === 'number' && typeof bv === 'number') {
+        return missedSort.dir === 'asc' ? av - bv : bv - av;
+      }
+      const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true });
+      return missedSort.dir === 'asc' ? cmp : -cmp;
+    });
+    return arr;
+  }, [missedFollowUpJobs, missedSort]);
 
   const handleContractorsClick = async () => {
     setShowContractors(true);
@@ -760,17 +886,23 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
             <table className="contractors-table">
               <thead>
                 <tr>
-                  <th>Req#</th>
-                  <th>Job Title</th>
-                  <th>Client</th>
-                  <th>Owner</th>
-                  <th>Pay Rate</th>
-                  <th>Bill Rate</th>
-                  <th>CE $</th>
+                  {[
+                    { key: 'id', label: 'Req#' },
+                    { key: 'title', label: 'Job Title' },
+                    { key: 'client', label: 'Client' },
+                    { key: 'owner', label: 'Owner' },
+                    { key: 'payRate', label: 'Pay Rate' },
+                    { key: 'billRate', label: 'Bill Rate' },
+                    { key: 'ceSpread', label: 'CE $' },
+                  ].map(col => (
+                    <th key={col.key} className="sortable" style={{ cursor: 'pointer' }} onClick={() => handleCeSort(col.key)}>
+                      {col.label}<span className="sort-icon">{ceSortIcon(col.key)}</span>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {ceJobs.map(j => (
+                {sortedCeJobs.map(j => (
                   <tr key={j.id}>
                     <td>
                       <a
@@ -811,17 +943,23 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
             <table className="contractors-table">
               <thead>
                 <tr>
-                  <th>Req#</th>
-                  <th>Job Title</th>
-                  <th>Client</th>
-                  <th>Owner</th>
-                  <th>Salary</th>
-                  <th>Fee %</th>
-                  <th>Perm $</th>
+                  {[
+                    { key: 'id', label: 'Req#' },
+                    { key: 'title', label: 'Job Title' },
+                    { key: 'client', label: 'Client' },
+                    { key: 'owner', label: 'Owner' },
+                    { key: 'salary', label: 'Salary' },
+                    { key: 'feePercent', label: 'Fee %' },
+                    { key: 'permFee', label: 'Perm $' },
+                  ].map(col => (
+                    <th key={col.key} className="sortable" style={{ cursor: 'pointer' }} onClick={() => handlePermSort(col.key)}>
+                      {col.label}<span className="sort-icon">{permSortIcon(col.key)}</span>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {permJobs.map(j => (
+                {sortedPermJobs.map(j => (
                   <tr key={j.id}>
                     <td>
                       <a
@@ -964,17 +1102,23 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
             <table className="contractors-table">
               <thead>
                 <tr>
-                  <th>Req#</th>
-                  <th>Job Title</th>
-                  <th>Client</th>
-                  <th>Status</th>
-                  <th>Owner</th>
-                  <th>TR</th>
-                  <th>Follow Up</th>
+                  {[
+                    { key: 'id', label: 'Req#' },
+                    { key: 'title', label: 'Job Title' },
+                    { key: 'client', label: 'Client' },
+                    { key: 'status', label: 'Status' },
+                    { key: 'owner', label: 'Owner' },
+                    { key: 'recruiter', label: 'TR' },
+                    { key: 'followUp', label: 'Follow Up' },
+                  ].map(col => (
+                    <th key={col.key} className="sortable" style={{ cursor: 'pointer' }} onClick={() => handleMissedSort(col.key)}>
+                      {col.label}<span className="sort-icon">{missedSortIcon(col.key)}</span>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {missedFollowUpJobs.map(j => (
+                {sortedMissedFollowUps.map(j => (
                   <tr key={j.id}>
                     <td>
                       <a
@@ -1032,15 +1176,21 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
             <table className="contractors-table">
               <thead>
                 <tr>
-                  <th>Req#</th>
-                  <th>Job Title</th>
-                  <th>Client</th>
-                  <th>Candidate</th>
-                  <th>Owner</th>
-                  <th>Status</th>
-                  <th>TR</th>
-                  <th>Type</th>
-                  <th>Start</th>
+                  {[
+                    { key: 'id', label: 'Req#' },
+                    { key: 'title', label: 'Job Title' },
+                    { key: 'client', label: 'Client' },
+                    { key: 'candidate', label: 'Candidate' },
+                    { key: 'owner', label: 'Owner' },
+                    { key: 'status', label: 'Status' },
+                    { key: 'recruiter', label: 'TR' },
+                    { key: 'employmentType', label: 'Type' },
+                    { key: 'startDate', label: 'Start' },
+                  ].map(col => (
+                    <th key={col.key} className="sortable" style={{ cursor: 'pointer' }} onClick={() => handleFilledSort(col.key)}>
+                      {col.label}<span className="sort-icon">{filledSortIcon(col.key)}</span>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>

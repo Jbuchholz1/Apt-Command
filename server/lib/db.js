@@ -1161,6 +1161,19 @@ async function unpinPriority(userEmail, goalId) {
   if (error) { console.error('[db] unpinPriority error:', error.message); throw error; }
 }
 
+async function listGoalTasksForUser(email) {
+  if (!supabase || !email) return [];
+  const lower = email.toLowerCase();
+  const { data, error } = await supabase
+    .from('goal_tasks')
+    .select('id, title, due_date, completed, goal_id, goals!inner(name, period, archived_at)')
+    .eq('assignee_email', lower)
+    .eq('completed', false)
+    .not('due_date', 'is', null);
+  if (error) { console.error('[db] listGoalTasksForUser:', error.message); return []; }
+  return (data || []).filter(r => !r.goals?.archived_at);
+}
+
 async function listMyPriorityIds(userEmail, period) {
   if (!supabase) return [];
   let query = supabase
@@ -1198,4 +1211,5 @@ module.exports = {
   insertCheckin, listCheckins,
   listTasksForGoal, createTask, updateTask, deleteTask,
   pinPriority, unpinPriority, listMyPriorityIds,
+  listGoalTasksForUser,
 };
