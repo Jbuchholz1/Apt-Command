@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.5.1';
+export const APP_VERSION = '3.5.2';
 
 export const CHANGELOG = [
+  {
+    version: '3.5.2',
+    date: '2026-04-18',
+    title: 'Goal Tracking — Tree Connectors',
+    changes: [
+      { type: 'minor', text: 'Expanded parent goals now show dotted connector lines to their children so the hierarchy reads at a glance' },
+    ],
+  },
   {
     version: '3.5.1',
     date: '2026-04-18',

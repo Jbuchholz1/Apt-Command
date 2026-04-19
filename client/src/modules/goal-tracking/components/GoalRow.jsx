@@ -143,23 +143,27 @@ export default function GoalRow({
         </div>
       </div>
 
-      {hasChildren && expanded && node.children.map(child => (
-        <GoalRow
-          key={child.id}
-          node={child}
-          depth={depth + 1}
-          progressMap={progressMap}
-          pinnedIds={pinnedIds}
-          period={period}
-          currentEmail={currentEmail}
-          isManager={isManager}
-          onSelect={onSelect}
-          onTogglePin={onTogglePin}
-          onEdit={onEdit}
-          onAddSubGoal={onAddSubGoal}
-          onDelete={onDelete}
-        />
-      ))}
+      {hasChildren && expanded && (
+        <div className="gt-row-children">
+          {node.children.map(child => (
+            <GoalRow
+              key={child.id}
+              node={child}
+              depth={depth + 1}
+              progressMap={progressMap}
+              pinnedIds={pinnedIds}
+              period={period}
+              currentEmail={currentEmail}
+              isManager={isManager}
+              onSelect={onSelect}
+              onTogglePin={onTogglePin}
+              onEdit={onEdit}
+              onAddSubGoal={onAddSubGoal}
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
+      )}
     </>
   );
 }
