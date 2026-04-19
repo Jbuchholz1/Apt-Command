@@ -32,6 +32,7 @@ function numberValueStrip(goal) {
 export default function GoalRow({
   node,           // tree node { ...goal, children: [] }
   depth = 0,
+  isLastSibling = false,
   progressMap,
   pinnedIds,
   period,
@@ -57,7 +58,7 @@ export default function GoalRow({
   return (
     <>
       <div
-        className={`gt-row gt-row-depth-${Math.min(depth, 5)}`}
+        className={`gt-row gt-row-depth-${Math.min(depth, 5)}${isLastSibling ? ' gt-row-last-sibling' : ''}`}
         onClick={() => onSelect?.(node)}
       >
         {hasChildren && (
@@ -145,11 +146,12 @@ export default function GoalRow({
 
       {hasChildren && expanded && (
         <div className="gt-row-children">
-          {node.children.map(child => (
+          {node.children.map((child, idx) => (
             <GoalRow
               key={child.id}
               node={child}
               depth={depth + 1}
+              isLastSibling={idx === node.children.length - 1}
               progressMap={progressMap}
               pinnedIds={pinnedIds}
               period={period}

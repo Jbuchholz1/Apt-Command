@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.5.2';
+export const APP_VERSION = '3.5.3';
 
 export const CHANGELOG = [
+  {
+    version: '3.5.3',
+    date: '2026-04-18',
+    title: 'Goal Tracking — Delete + Connector Fixes',
+    changes: [
+      { type: 'fix', text: 'Delete now actually works — the server\u2019s CORS allow-list was missing DELETE so the browser was cancelling the request before it reached the API' },
+      { type: 'fix', text: 'Dotted connector line stops at the last sibling\u2019s center instead of running down to the next root goal below, so sibling goals are no longer visually confused with sub-goals' },
+    ],
+  },
   {
     version: '3.5.2',
     date: '2026-04-18',

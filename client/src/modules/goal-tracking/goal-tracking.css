@@ -206,27 +206,34 @@
   box-shadow: 0 2px 6px rgba(4,20,79,0.08);
 }
 
-/* Children wrapper — draws a dotted vertical line and horizontal branches */
+/* Children wrapper — dotted vertical + horizontal connectors drawn per-row so
+   the line caps at the LAST sibling's center (not the wrapper's bottom, which
+   would extend past into grandchildren or into the next root sibling). */
 .gt-row-children {
   display: flex;
   flex-direction: column;
   gap: 6px;
   margin: 6px 0 0 18px;
   padding-left: 22px;
-  position: relative;
-}
-.gt-row-children::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: -6px;
-  bottom: 0;
-  border-left: 2px dotted #94a3b8;
 }
 .gt-row-children > .gt-row {
   position: relative;
 }
+/* Vertical segment: from -6 (into the gap above) to this row's bottom */
 .gt-row-children > .gt-row::before {
+  content: '';
+  position: absolute;
+  left: -22px;
+  top: -6px;
+  bottom: 0;
+  border-left: 2px dotted #94a3b8;
+}
+/* Last sibling caps the line at its own center */
+.gt-row-children > .gt-row.gt-row-last-sibling::before {
+  bottom: 50%;
+}
+/* Horizontal branch at the row's vertical center */
+.gt-row-children > .gt-row::after {
   content: '';
   position: absolute;
   left: -22px;
