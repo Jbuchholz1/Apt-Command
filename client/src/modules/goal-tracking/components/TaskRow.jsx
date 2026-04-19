@@ -7,6 +7,18 @@ function formatDue(iso) {
   return d.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
 }
 
+function taskStatus(task) {
+  if (task.completed) return 'done';
+  if (!task.due_date) return 'normal';
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(task.due_date + 'T00:00:00');
+  const daysUntil = Math.floor((due.getTime() - today.getTime()) / 86400000);
+  if (daysUntil < 0) return 'overdue';
+  if (daysUntil <= 7) return 'due-soon';
+  return 'normal';
+}
+
 export default function TaskRow({ task, onToggle, onDelete }) {
   const [saving, setSaving] = useState(false);
 
@@ -17,7 +29,7 @@ export default function TaskRow({ task, onToggle, onDelete }) {
   };
 
   return (
-    <div className={`gt-task-row ${task.completed ? 'gt-task-done' : ''}`}>
+    <div className={`gt-task-row gt-task-${taskStatus(task)}`}>
       <button
         className={`gt-task-check ${task.completed ? 'checked' : ''}`}
         onClick={toggle}

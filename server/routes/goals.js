@@ -125,7 +125,27 @@ router.patch('/:id', async (req, res, next) => {
     if (typeof req.body.is_company_priority === 'boolean' && !(await isManager(req))) {
       return res.status(403).json({ error: 'Only managers/admins can change company-priority flag' });
     }
+
+    const oldCurrent = row.goal.current_value;
+    const oldStatusOverride = row.goal.status_override;
     const updated = await db.updateGoal(req.params.id, req.body);
+
+    // Record a check-in when the tracked state changes — keeps the Graph populated
+    // now that the standalone Check-In panel is gone.
+    const currentChanged = updated.goal_type === 'number'
+      && req.body.current_value !== undefined
+      && Number(updated.current_value) !== Number(oldCurrent);
+    const statusChanged = req.body.status_override !== undefined
+      && updated.status_override !== oldStatusOverride;
+    if (currentChanged || statusChanged) {
+      await db.insertCheckin(req.params.id, {
+        value: currentChanged ? updated.current_value : null,
+        status: updated.status_override || null,
+        source: 'manual',
+        createdBy: email,
+      });
+    }
+
     res.json({ goal: updated });
   } catch (err) { next(err); }
 });

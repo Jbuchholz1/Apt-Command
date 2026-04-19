@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Plus } from 'lucide-react';
 import './goal-tracking.css';
-import { getGoals, pinGoalPriority, unpinGoalPriority, deleteGoal } from '../../lib/api';
+import { getGoals, pinGoalPriority, unpinGoalPriority, deleteGoal, createGoal, updateGoal } from '../../lib/api';
 import { useUserRole } from '../../lib/UserRoleContext';
 import { getCurrentPeriod } from './lib/period';
 import { computeAllProgress, buildTree } from './lib/progress';
 import QuarterNavigator from './components/QuarterNavigator';
 import GoalFilters from './components/GoalFilters';
-import CreateGoalButton from './components/CreateGoalButton';
+import GoalForm from './components/GoalForm';
 import GoalTree from './components/GoalTree';
 import GoalDetail from './components/GoalDetail';
 
@@ -56,6 +57,7 @@ export default function GoalTrackingModule() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedGoalId, setSelectedGoalId] = useState(null);
+  const [formConfig, setFormConfig] = useState(null); // null | { goal? } | { parent? }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -110,20 +112,26 @@ export default function GoalTrackingModule() {
     await load();
   }, [load]);
 
+  const handleFormSave = useCallback(async (payload) => {
+    if (formConfig?.goal) {
+      await updateGoal(formConfig.goal.id, payload);
+    } else {
+      await createGoal(payload);
+    }
+    setFormConfig(null);
+    await load();
+  }, [formConfig, load]);
+
   if (userLoading) return <div className="gt-empty">Loading…</div>;
 
   return (
     <div className="gt-module">
       <div className="gt-toolbar">
         <QuarterNavigator period={period} onChange={setPeriod} />
-        <CreateGoalButton
-          period={period}
-          allGoals={data.goals}
-          canSetCompanyPriority={isManager}
-          defaultOwnerEmail={currentEmail}
-          defaultOwnerName={currentName}
-          onCreated={load}
-        />
+        <button className="gt-btn-primary gt-btn-create" onClick={() => setFormConfig({})}>
+          <Plus size={14} />
+          <span>New Goal</span>
+        </button>
       </div>
 
       <GoalFilters
@@ -150,10 +158,13 @@ export default function GoalTrackingModule() {
           progressMap={progressMap}
           pinnedIds={data.myPriorityIds}
           period={period}
+          currentEmail={currentEmail}
+          isManager={isManager}
           onSelect={(g) => setSelectedGoalId(g.id)}
           onTogglePin={togglePin}
+          onEdit={(g) => setFormConfig({ goal: g })}
+          onAddSubGoal={(g) => setFormConfig({ parent: g })}
           onDelete={handleDelete}
-          canDelete={isManager}
         />
       )}
 
@@ -167,6 +178,20 @@ export default function GoalTrackingModule() {
           canManage={isManager}
           onClose={() => setSelectedGoalId(null)}
           onChanged={load}
+        />
+      )}
+
+      {formConfig && (
+        <GoalForm
+          goal={formConfig.goal}
+          parent={formConfig.parent}
+          period={period}
+          allGoals={data.goals}
+          canSetCompanyPriority={isManager}
+          defaultOwnerEmail={currentEmail}
+          defaultOwnerName={currentName}
+          onSave={handleFormSave}
+          onCancel={() => setFormConfig(null)}
         />
       )}
     </div>

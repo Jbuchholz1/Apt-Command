@@ -9,9 +9,21 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.4.2';
+export const APP_VERSION = '3.5.0';
 
 export const CHANGELOG = [
+  {
+    version: '3.5.0',
+    date: '2026-04-18',
+    title: 'Goal Tracking — Inline Editing & Smarter Tasks',
+    changes: [
+      { type: 'minor', text: 'Goal row menu now has Edit and Add Sub-Goal — no need to open the detail panel to make changes or nest a new goal' },
+      { type: 'minor', text: 'Rollup Method dropdown shows an inline description of what Average vs Weighted actually do, updating with your selection' },
+      { type: 'minor', text: 'Task rows color-code by due date: green when done, yellow within 7 days of due date, red when overdue' },
+      { type: 'minor', text: 'Task add form now explicitly labels the Due Date field so it\'s not mistaken for a start date' },
+      { type: 'patch', text: 'Removed the standalone "Record Check-In" panel — editing current value via the Edit form now records a check-in automatically, keeping the Graph tab populated with less clutter' },
+    ],
+  },
   {
     version: '3.4.2',
     date: '2026-04-18',

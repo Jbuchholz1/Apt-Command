@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronRight, ChevronDown, MoreHorizontal, Pin, PinOff, Trash2 } from 'lucide-react';
+import { ChevronRight, ChevronDown, MoreHorizontal, Pin, PinOff, Trash2, Pencil, Plus } from 'lucide-react';
 import ProgressBar from './ProgressBar';
 import StatusDot from './StatusDot';
 import TagChip from './TagChip';
@@ -35,11 +35,16 @@ export default function GoalRow({
   progressMap,
   pinnedIds,
   period,
+  currentEmail,
+  isManager,
   onSelect,
   onTogglePin,
+  onEdit,
+  onAddSubGoal,
   onDelete,
-  canDelete,
 }) {
+  const canEdit = isManager || (node.owner_email || '').toLowerCase() === (currentEmail || '').toLowerCase();
+  const canDelete = isManager || (node.owner_email || '').toLowerCase() === (currentEmail || '').toLowerCase();
   const [expanded, setExpanded] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -105,6 +110,20 @@ export default function GoalRow({
           </button>
           {menuOpen && (
             <div className="gt-menu-popover" onMouseLeave={() => setMenuOpen(false)}>
+              {canEdit && (
+                <button
+                  className="gt-menu-item"
+                  onClick={() => { onEdit?.(node); setMenuOpen(false); }}
+                >
+                  <Pencil size={13} /> Edit
+                </button>
+              )}
+              <button
+                className="gt-menu-item"
+                onClick={() => { onAddSubGoal?.(node); setMenuOpen(false); }}
+              >
+                <Plus size={13} /> Add Sub-Goal
+              </button>
               <button
                 className="gt-menu-item"
                 onClick={() => { onTogglePin?.(node, !pinned); setMenuOpen(false); }}
@@ -132,10 +151,13 @@ export default function GoalRow({
           progressMap={progressMap}
           pinnedIds={pinnedIds}
           period={period}
+          currentEmail={currentEmail}
+          isManager={isManager}
           onSelect={onSelect}
           onTogglePin={onTogglePin}
+          onEdit={onEdit}
+          onAddSubGoal={onAddSubGoal}
           onDelete={onDelete}
-          canDelete={canDelete}
         />
       ))}
     </>

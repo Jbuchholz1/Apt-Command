@@ -814,6 +814,18 @@
 .gt-task-done .gt-task-title { text-decoration: line-through; color: var(--text-muted); }
 .gt-task-done .gt-task-due { text-decoration: line-through; color: var(--text-light); }
 
+.gt-task-due-soon {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+.gt-task-due-soon .gt-task-due { color: #92400e; font-weight: 600; }
+
+.gt-task-overdue {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+.gt-task-overdue .gt-task-due { color: #b91c1c; font-weight: 700; }
+
 .gt-task-check {
   width: 18px;
   height: 18px;
@@ -868,8 +880,20 @@
 }
 .gt-task-add-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 160px;
+  grid-template-columns: 1fr 1fr 180px;
   gap: 8px;
+}
+.gt-label-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.gt-field-caption {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
 }
 .gt-task-add-actions {
   display: flex;

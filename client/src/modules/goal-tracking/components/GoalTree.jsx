@@ -5,10 +5,13 @@ export default function GoalTree({
   progressMap,
   pinnedIds,
   period,
+  currentEmail,
+  isManager,
   onSelect,
   onTogglePin,
+  onEdit,
+  onAddSubGoal,
   onDelete,
-  canDelete,
 }) {
   if (!tree || tree.length === 0) return null;
   return (
@@ -21,10 +24,13 @@ export default function GoalTree({
           progressMap={progressMap}
           pinnedIds={pinnedIds}
           period={period}
+          currentEmail={currentEmail}
+          isManager={isManager}
           onSelect={onSelect}
           onTogglePin={onTogglePin}
+          onEdit={onEdit}
+          onAddSubGoal={onAddSubGoal}
           onDelete={onDelete}
-          canDelete={canDelete}
         />
       ))}
     </div>

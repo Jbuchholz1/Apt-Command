@@ -60,25 +60,32 @@ export default function TaskList({ goalId, tasks, onChange }) {
             autoFocus
           />
           <div className="gt-task-add-grid">
-            <input
-              className="gt-input"
-              placeholder="Assignee name"
-              value={assigneeName}
-              onChange={e => setAssigneeName(e.target.value)}
-            />
-            <input
-              className="gt-input"
-              placeholder="Assignee email"
-              type="email"
-              value={assigneeEmail}
-              onChange={e => setAssigneeEmail(e.target.value)}
-            />
-            <input
-              className="gt-input"
-              type="date"
-              value={dueDate}
-              onChange={e => setDueDate(e.target.value)}
-            />
+            <label className="gt-label-stack">
+              <span className="gt-field-caption">Assignee name</span>
+              <input
+                className="gt-input"
+                value={assigneeName}
+                onChange={e => setAssigneeName(e.target.value)}
+              />
+            </label>
+            <label className="gt-label-stack">
+              <span className="gt-field-caption">Assignee email</span>
+              <input
+                className="gt-input"
+                type="email"
+                value={assigneeEmail}
+                onChange={e => setAssigneeEmail(e.target.value)}
+              />
+            </label>
+            <label className="gt-label-stack">
+              <span className="gt-field-caption">Due date</span>
+              <input
+                className="gt-input"
+                type="date"
+                value={dueDate}
+                onChange={e => setDueDate(e.target.value)}
+              />
+            </label>
           </div>
           <div className="gt-task-add-actions">
             <button className="gt-btn-secondary" onClick={() => { setAdding(false); setTitle(''); }}>Cancel</button>

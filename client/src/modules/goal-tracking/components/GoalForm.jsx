@@ -219,17 +219,24 @@ export default function GoalForm({
             )}
 
             {form.goal_type === 'rollup' && (
-              <label className="gt-label">
-                Rollup Method
-                <select
-                  className="gt-input"
-                  value={form.rollup_method}
-                  onChange={e => update('rollup_method', e.target.value)}
-                >
-                  <option value="average">Average of children</option>
-                  <option value="weighted">Weighted average</option>
-                </select>
-              </label>
+              <>
+                <label className="gt-label">
+                  Rollup Method
+                  <select
+                    className="gt-input"
+                    value={form.rollup_method}
+                    onChange={e => update('rollup_method', e.target.value)}
+                  >
+                    <option value="average">Average of children</option>
+                    <option value="weighted">Weighted average</option>
+                  </select>
+                </label>
+                <p className="gt-form-hint">
+                  {form.rollup_method === 'weighted'
+                    ? 'Weighted: each child carries its own weight — higher weights pull the parent\u2019s progress more.'
+                    : 'Average: every child contributes equally to the parent\u2019s progress.'}
+                </p>
+              </>
             )}
 
             {form.goal_type === 'task' && (

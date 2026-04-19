@@ -4,7 +4,6 @@ import { getGoal, updateGoal, deleteGoal, pinGoalPriority, unpinGoalPriority } f
 import StatusDot from './StatusDot';
 import TagChip from './TagChip';
 import TaskList from './TaskList';
-import CheckinPanel from './CheckinPanel';
 import ProgressGraph from './ProgressGraph';
 import GoalForm from './GoalForm';
 import { resolveStatus } from '../lib/status';
@@ -158,7 +157,6 @@ export default function GoalDetail({
                     </div>
                   )}
 
-                  {canEdit && <CheckinPanel goal={goal} onSubmitted={() => { load(); onChanged?.(); }} />}
                 </div>
               )}
 
