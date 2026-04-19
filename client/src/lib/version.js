@@ -9,9 +9,24 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.3.5';
+export const APP_VERSION = '3.4.0';
 
 export const CHANGELOG = [
+  {
+    version: '3.4.0',
+    date: '2026-04-18',
+    title: 'Goal Tracking — Quarterly OKRs',
+    changes: [
+      { type: 'major', text: 'New Goal Tracking tab replaces the disabled Huddles stub — hierarchical quarterly OKRs with three goal types: Rollup (auto-averages children), Number (start/current/target), and Task (checklist with due dates and assignees)' },
+      { type: 'minor', text: 'Quarter navigator auto-defaults to the current quarter with a progress-through-quarter bar; arrows move prev/next and a Today button jumps back' },
+      { type: 'minor', text: 'Fiscal-year configurable — flip FISCAL_YEAR_START_MONTH in server/lib/period.js to shift the quarter boundaries' },
+      { type: 'minor', text: 'Per-goal detail slide-out with Overview, Tasks, and Graph tabs — progress history line chart plots every check-in against the quarter pacing line' },
+      { type: 'minor', text: 'Update Progress panel records a check-in (manual entry only in this release); task toggles also write check-ins and cascade rollup recompute to ancestor goals' },
+      { type: 'minor', text: 'Company Priority flag (manager/admin only) and My Priority pin (per-user) with All / My Goals / Company Priorities view filters' },
+      { type: 'minor', text: 'Calculated or User Driven status colors — green if progress ≥ time elapsed, yellow within 15pp, red beyond' },
+      { type: 'patch', text: 'Schema reserves metric_key / metric_params / metric_last_synced_at columns for a Phase 2 "Connect a Metric" that auto-pulls from existing /api/reporting, /api/performance, and /api/req-board/stats endpoints' },
+    ],
+  },
   {
     version: '3.3.5',
     date: '2026-04-17',

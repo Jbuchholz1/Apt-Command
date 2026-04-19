@@ -909,6 +909,277 @@ async function removeClientLogo(clientId) {
   await updateClient(clientId, { logo_url: null });
 }
 
+// =============================================
+// Goal Tracking
+// =============================================
+
+const GOAL_UPDATABLE = new Set([
+  'name', 'description', 'goal_type', 'owner_email', 'owner_name',
+  'rollup_method', 'start_value', 'current_value', 'target_value', 'unit',
+  'status_mode', 'status_override', 'is_company_priority',
+  'weight', 'sort_order', 'parent_id', 'period',
+]);
+const TASK_UPDATABLE = new Set(['title', 'assignee_email', 'assignee_name', 'due_date', 'sort_order']);
+
+function clampPct(n) {
+  if (!Number.isFinite(n)) return 0;
+  return Math.min(100, Math.max(0, n));
+}
+
+async function computeGoalProgress(goalId) {
+  if (!supabase) return 0;
+  const { data: goal } = await supabase
+    .from('goals')
+    .select('id, goal_type, start_value, current_value, target_value')
+    .eq('id', goalId)
+    .maybeSingle();
+  if (!goal) return 0;
+
+  if (goal.goal_type === 'number') {
+    const s = Number(goal.start_value ?? 0);
+    const c = Number(goal.current_value ?? s);
+    const t = Number(goal.target_value ?? s);
+    if (t === s) return c >= t ? 100 : 0;
+    return clampPct(((c - s) / (t - s)) * 100);
+  }
+
+  if (goal.goal_type === 'task') {
+    const { data: tasks } = await supabase
+      .from('goal_tasks').select('completed').eq('goal_id', goalId);
+    if (!tasks || tasks.length === 0) return 0;
+    const done = tasks.filter(t => t.completed).length;
+    return clampPct((done / tasks.length) * 100);
+  }
+
+  if (goal.goal_type === 'rollup') {
+    const { data: children } = await supabase
+      .from('goals')
+      .select('id, weight')
+      .eq('parent_id', goalId)
+      .is('archived_at', null);
+    if (!children || children.length === 0) return 0;
+    const pieces = await Promise.all(children.map(async c => ({
+      pct: await computeGoalProgress(c.id),
+      weight: Number(c.weight ?? 1),
+    })));
+    const totalWeight = pieces.reduce((s, p) => s + p.weight, 0);
+    if (totalWeight === 0) return 0;
+    return clampPct(pieces.reduce((s, p) => s + p.pct * p.weight, 0) / totalWeight);
+  }
+
+  return 0;
+}
+
+async function cascadeCheckinToAncestors(goalId, createdBy) {
+  if (!supabase) return;
+  const { data: goal } = await supabase
+    .from('goals').select('parent_id').eq('id', goalId).maybeSingle();
+  if (!goal?.parent_id) return;
+  const parentPct = await computeGoalProgress(goal.parent_id);
+  await supabase.from('goal_checkins').insert({
+    goal_id: goal.parent_id,
+    progress_pct: parentPct,
+    source: 'rollup',
+    created_by: createdBy || 'system',
+  });
+  await cascadeCheckinToAncestors(goal.parent_id, createdBy);
+}
+
+async function listGoals(period) {
+  if (!supabase) return { goals: [], tasks: [] };
+  const { data: goals, error } = await supabase
+    .from('goals')
+    .select('*')
+    .eq('period', period)
+    .is('archived_at', null)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true });
+  if (error) { console.error('[db] listGoals error:', error.message); return { goals: [], tasks: [] }; }
+  const goalIds = (goals || []).map(g => g.id);
+  let tasks = [];
+  if (goalIds.length > 0) {
+    const { data } = await supabase
+      .from('goal_tasks').select('*').in('goal_id', goalIds)
+      .order('sort_order', { ascending: true }).order('created_at', { ascending: true });
+    tasks = data || [];
+  }
+  const withProgress = await Promise.all((goals || []).map(async g => ({
+    ...g,
+    live_progress_pct: await computeGoalProgress(g.id),
+  })));
+  return { goals: withProgress, tasks };
+}
+
+async function getGoal(id) {
+  if (!supabase) return null;
+  const { data: goal, error } = await supabase
+    .from('goals').select('*').eq('id', id).maybeSingle();
+  if (error) { console.error('[db] getGoal error:', error.message); return null; }
+  if (!goal) return null;
+  const [{ data: children }, { data: tasks }, { data: checkins }] = await Promise.all([
+    supabase.from('goals').select('*').eq('parent_id', id).is('archived_at', null)
+      .order('sort_order', { ascending: true }),
+    supabase.from('goal_tasks').select('*').eq('goal_id', id)
+      .order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
+    supabase.from('goal_checkins').select('*').eq('goal_id', id)
+      .order('created_at', { ascending: true }),
+  ]);
+  const live_progress_pct = await computeGoalProgress(id);
+  return {
+    goal: { ...goal, live_progress_pct },
+    children: children || [],
+    tasks: tasks || [],
+    checkins: checkins || [],
+  };
+}
+
+async function createGoal(fields) {
+  if (!supabase) return null;
+  const row = {};
+  for (const [k, v] of Object.entries(fields)) {
+    if (GOAL_UPDATABLE.has(k) || k === 'created_by') row[k] = v;
+  }
+  const { data, error } = await supabase.from('goals').insert(row).select().single();
+  if (error) { console.error('[db] createGoal error:', error.message); throw error; }
+  return data;
+}
+
+async function updateGoal(id, fields) {
+  if (!supabase) return null;
+  const updates = { updated_at: new Date().toISOString() };
+  for (const [k, v] of Object.entries(fields)) {
+    if (GOAL_UPDATABLE.has(k)) updates[k] = v;
+  }
+  const { data, error } = await supabase
+    .from('goals').update(updates).eq('id', id).select().single();
+  if (error) { console.error('[db] updateGoal error:', error.message); throw error; }
+  return data;
+}
+
+async function archiveGoal(id) {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from('goals')
+    .update({ archived_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .eq('id', id).select().single();
+  if (error) { console.error('[db] archiveGoal error:', error.message); throw error; }
+  return data;
+}
+
+async function reorderGoals(ordering) {
+  if (!supabase) return;
+  for (const item of ordering) {
+    await supabase.from('goals')
+      .update({ sort_order: item.sort_order, parent_id: item.parent_id ?? null })
+      .eq('id', item.id);
+  }
+}
+
+async function insertCheckin(goalId, { value, note, status, source, createdBy }) {
+  if (!supabase) return null;
+  const progress_pct = await computeGoalProgress(goalId);
+  const { data, error } = await supabase.from('goal_checkins').insert({
+    goal_id: goalId,
+    progress_pct,
+    value: value ?? null,
+    note: note || null,
+    status: status || null,
+    source: source || 'manual',
+    created_by: createdBy || 'system',
+  }).select().single();
+  if (error) { console.error('[db] insertCheckin error:', error.message); throw error; }
+  await cascadeCheckinToAncestors(goalId, createdBy);
+  return data;
+}
+
+async function listCheckins(goalId, { from, to } = {}) {
+  if (!supabase) return [];
+  let query = supabase.from('goal_checkins').select('*').eq('goal_id', goalId)
+    .order('created_at', { ascending: true });
+  if (from) query = query.gte('created_at', from);
+  if (to) query = query.lte('created_at', to);
+  const { data, error } = await query;
+  if (error) { console.error('[db] listCheckins error:', error.message); return []; }
+  return data || [];
+}
+
+async function listTasksForGoal(goalId) {
+  if (!supabase) return [];
+  const { data, error } = await supabase.from('goal_tasks').select('*').eq('goal_id', goalId)
+    .order('sort_order', { ascending: true }).order('created_at', { ascending: true });
+  if (error) { console.error('[db] listTasksForGoal error:', error.message); return []; }
+  return data || [];
+}
+
+async function createTask(goalId, fields) {
+  if (!supabase) return null;
+  const row = { goal_id: goalId, created_by: fields.created_by || null };
+  for (const [k, v] of Object.entries(fields)) {
+    if (TASK_UPDATABLE.has(k)) row[k] = v;
+  }
+  const { data, error } = await supabase.from('goal_tasks').insert(row).select().single();
+  if (error) { console.error('[db] createTask error:', error.message); throw error; }
+  return data;
+}
+
+async function updateTask(taskId, fields) {
+  if (!supabase) return null;
+  const updates = {};
+  for (const [k, v] of Object.entries(fields)) {
+    if (TASK_UPDATABLE.has(k)) updates[k] = v;
+  }
+  if (fields.completed !== undefined) {
+    updates.completed = !!fields.completed;
+    if (fields.completed) {
+      updates.completed_at = new Date().toISOString();
+      updates.completed_by = fields.completed_by || null;
+    } else {
+      updates.completed_at = null;
+      updates.completed_by = null;
+    }
+  }
+  const { data, error } = await supabase
+    .from('goal_tasks').update(updates).eq('id', taskId).select().single();
+  if (error) { console.error('[db] updateTask error:', error.message); throw error; }
+  return data;
+}
+
+async function deleteTask(taskId) {
+  if (!supabase) return;
+  const { error } = await supabase.from('goal_tasks').delete().eq('id', taskId);
+  if (error) { console.error('[db] deleteTask error:', error.message); throw error; }
+}
+
+async function pinPriority(userEmail, goalId) {
+  if (!supabase) return null;
+  const { data, error } = await supabase.from('goal_priorities')
+    .upsert({ user_email: userEmail, goal_id: goalId }, { onConflict: 'user_email,goal_id' })
+    .select().single();
+  if (error) { console.error('[db] pinPriority error:', error.message); throw error; }
+  return data;
+}
+
+async function unpinPriority(userEmail, goalId) {
+  if (!supabase) return;
+  const { error } = await supabase.from('goal_priorities').delete()
+    .eq('user_email', userEmail).eq('goal_id', goalId);
+  if (error) { console.error('[db] unpinPriority error:', error.message); throw error; }
+}
+
+async function listMyPriorityIds(userEmail, period) {
+  if (!supabase) return [];
+  let query = supabase
+    .from('goal_priorities')
+    .select('goal_id, goals!inner(period, archived_at)')
+    .eq('user_email', userEmail);
+  if (period) query = query.eq('goals.period', period);
+  const { data, error } = await query;
+  if (error) { console.error('[db] listMyPriorityIds error:', error.message); return []; }
+  return (data || [])
+    .filter(r => !r.goals?.archived_at)
+    .map(r => r.goal_id);
+}
+
 module.exports = {
   supabase, // Shared client — import this instead of creating your own
   getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote,
@@ -926,4 +1197,10 @@ module.exports = {
   getTicketComments, addTicketComment, updateTicketAssignee,
   markTicketViewed, getUnreadCounts,
   getKnownIssues, createKnownIssue, updateKnownIssue,
+  // Goal Tracking
+  computeGoalProgress,
+  listGoals, getGoal, createGoal, updateGoal, archiveGoal, reorderGoals,
+  insertCheckin, listCheckins,
+  listTasksForGoal, createTask, updateTask, deleteTask,
+  pinPriority, unpinPriority, listMyPriorityIds,
 };

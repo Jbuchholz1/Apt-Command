@@ -516,6 +516,64 @@ export function updateKnownIssue(id, data) {
   });
 }
 
+// --- Goal Tracking ---
+
+export function getGoals(period, view) {
+  const params = new URLSearchParams();
+  if (period) params.set('period', period);
+  if (view) params.set('view', view);
+  const qs = params.toString();
+  return fetchAPI(`/api/goals${qs ? `?${qs}` : ''}`);
+}
+
+export function getGoal(id) {
+  return fetchAPI(`/api/goals/${id}`);
+}
+
+export function getGoalHistory(id) {
+  return fetchAPI(`/api/goals/${id}/history`);
+}
+
+export function createGoal(fields) {
+  return fetchAPI('/api/goals', { method: 'POST', body: fields });
+}
+
+export function updateGoal(id, fields) {
+  return fetchAPI(`/api/goals/${id}`, { method: 'PATCH', body: fields });
+}
+
+export function deleteGoal(id) {
+  return fetchAPI(`/api/goals/${id}`, { method: 'DELETE' });
+}
+
+export function checkinGoal(id, fields) {
+  return fetchAPI(`/api/goals/${id}/checkin`, { method: 'POST', body: fields });
+}
+
+export function getGoalTasks(id) {
+  return fetchAPI(`/api/goals/${id}/tasks`);
+}
+
+export function addGoalTask(id, fields) {
+  return fetchAPI(`/api/goals/${id}/tasks`, { method: 'POST', body: fields });
+}
+
+export function updateGoalTask(goalId, taskId, fields) {
+  return fetchAPI(`/api/goals/${goalId}/tasks/${taskId}`, { method: 'PATCH', body: fields });
+}
+
+export function deleteGoalTask(goalId, taskId) {
+  return fetchAPI(`/api/goals/${goalId}/tasks/${taskId}`, { method: 'DELETE' });
+}
+
+export function pinGoalPriority(id) {
+  return fetchAPI(`/api/goals/${id}/priority`, { method: 'POST', body: {} });
+}
+
+export function unpinGoalPriority(id) {
+  return fetchAPI(`/api/goals/${id}/priority`, { method: 'DELETE' });
+}
+
 export async function exportJobs() {
   const token = await getToken();
   const headers = {};

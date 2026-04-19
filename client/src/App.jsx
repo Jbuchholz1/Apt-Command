@@ -4,6 +4,7 @@ import AppShell from './components/AppShell';
 import LoginPage from './components/LoginPage';
 import HomePage from './components/HomePage';
 import ReqBoardModule from './modules/req-board/ReqBoardModule';
+import GoalTrackingModule from './modules/goal-tracking/GoalTrackingModule';
 import ReportingModule from './modules/reporting/ReportingModule';
 import ReportingHome from './modules/reporting/ReportingHome';
 import RecruiterDashboard from './modules/reporting/RecruiterDashboard';
@@ -43,6 +44,7 @@ function AppRoutes() {
           <Route path="performance" element={<MyDashboard />} />
         </Route>
         <Route path="performance" element={<Navigate to="/reporting/performance" replace />} />
+        <Route path="goal-tracking" element={<GoalTrackingModule />} />
         <Route path="support" element={<SupportModule />}>
           <Route index element={<SupportHome />} />
           <Route path="help" element={<HelpDocs />} />
