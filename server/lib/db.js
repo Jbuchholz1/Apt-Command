@@ -188,6 +188,7 @@ async function upsertPlacementChecklist(placementId, fields) {
     'healthcare_effective_date', 'healthcare_payroll_deduction_date',
     'enrolled_in_healthcare', 'added_to_payroll',
     'four01k_opt_in', 'four01k_forms_received', 'added_to_census',
+    'background_drug_status',
   ]);
 
   const updates = { updated_at: new Date().toISOString() };

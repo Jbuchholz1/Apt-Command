@@ -4,6 +4,8 @@ import { getOperationsPlacements, updatePlacementChecklist, updatePlacementBullh
 const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 const BH_BASE = 'https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm';
 
+const BG_DRUG_OPTIONS = ['N/A', 'Complete', 'Submitted', 'Launched'];
+
 const CHECKBOX_FIELDS = [
   { key: 'ob_paperwork_complete', label: 'OB Paperwork' },
   { key: 'new_hire_filed', label: 'New Hire Filed' },
@@ -107,6 +109,22 @@ export default function PlacementsTracker() {
     }
   };
 
+  const handleSelectChange = async (placementId, field, newValue, oldValue) => {
+    // Optimistic update
+    setPlacements(prev =>
+      prev.map(p => p.id === placementId ? { ...p, [field]: newValue } : p)
+    );
+
+    try {
+      await updatePlacementChecklist(placementId, { [field]: newValue });
+    } catch (err) {
+      console.error('[PlacementsTracker] select error:', err);
+      setPlacements(prev =>
+        prev.map(p => p.id === placementId ? { ...p, [field]: oldValue } : p)
+      );
+    }
+  };
+
   const handleStartDateChange = async (placementId, newValue) => {
     // Convert YYYY-MM-DD to Unix ms for Bullhorn
     const ts = newValue ? new Date(newValue + 'T12:00:00').getTime() : null;
@@ -158,6 +176,7 @@ export default function PlacementsTracker() {
               <th>Placement Name</th>
               <th>Start Date</th>
               <th>Client</th>
+              <th>Background &amp; Drug Status</th>
               {CHECKBOX_FIELDS.map(f => (
                 <th key={f.key} className="ops-check-col">{f.label}</th>
               ))}
@@ -201,6 +220,17 @@ export default function PlacementsTracker() {
                     />
                   </td>
                   <td>{p.client || '—'}</td>
+                  <td>
+                    <select
+                      className="ops-select"
+                      value={p.background_drug_status || 'N/A'}
+                      onChange={(e) => handleSelectChange(p.id, 'background_drug_status', e.target.value, p.background_drug_status)}
+                    >
+                      {BG_DRUG_OPTIONS.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  </td>
                   {CHECKBOX_FIELDS.map(f => (
                     <td key={f.key} className="ops-check-cell">
                       <input

@@ -194,6 +194,23 @@
   box-shadow: 0 0 0 2px rgba(4, 20, 79, 0.15);
 }
 
+/* ---- Select dropdown ---- */
+.ops-select {
+  font-size: 12px;
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: #fff;
+  color: var(--text);
+  cursor: pointer;
+  min-width: 110px;
+}
+.ops-select:focus {
+  outline: none;
+  border-color: var(--navy);
+  box-shadow: 0 0 0 2px rgba(4, 20, 79, 0.15);
+}
+
 /* ---- Employment type badge ---- */
 .ops-type-badge {
   display: inline-block;

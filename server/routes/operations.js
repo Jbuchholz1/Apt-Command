@@ -49,6 +49,7 @@ router.get('/placements', async (req, res, next) => {
           .filter(Boolean)
           .join(', ') || '*',
         // Checklist fields (default false / null)
+        background_drug_status: checklist.background_drug_status || 'N/A',
         ob_paperwork_complete: checklist.ob_paperwork_complete || false,
         new_hire_filed: checklist.new_hire_filed || false,
         healthcare_effective_date: checklist.healthcare_effective_date || null,
@@ -138,6 +139,7 @@ router.get('/placements/export', async (req, res, next) => {
         candidate: p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '',
         startDate: fmtDate(p.dateBegin),
         client: p.jobOrder?.clientCorporation?.name || '',
+        bgDrugStatus: cl.background_drug_status || 'N/A',
         obPaperwork: cl.ob_paperwork_complete ? 'Yes' : '',
         newHireFiled: cl.new_hire_filed ? 'Yes' : '',
         hcEffective: fmtDate(cl.healthcare_effective_date),
@@ -160,6 +162,7 @@ router.get('/placements/export', async (req, res, next) => {
       { header: 'Placement Name', key: 'candidate', width: 22 },
       { header: 'Start Date', key: 'startDate', width: 12 },
       { header: 'Client', key: 'client', width: 22 },
+      { header: 'Background & Drug Status', key: 'bgDrugStatus', width: 22 },
       { header: 'OB Paperwork', key: 'obPaperwork', width: 13 },
       { header: 'New Hire Filed', key: 'newHireFiled', width: 14 },
       { header: 'HC Effective Date', key: 'hcEffective', width: 16 },
@@ -183,7 +186,7 @@ router.get('/placements/export', async (req, res, next) => {
     }
 
     // Auto-filter & freeze header
-    sheet.autoFilter = { from: 'A1', to: `O${placements.length + 1}` };
+    sheet.autoFilter = { from: 'A1', to: `P${placements.length + 1}` };
     sheet.views = [{ state: 'frozen', ySplit: 1 }];
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
