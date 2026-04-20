@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import './reporting.css';
 import { getSalesDashboard, exportSalesDashboard } from '../../lib/api';
 import DateRangePicker from './components/DateRangePicker';
@@ -6,6 +6,7 @@ import DashboardFilters from './components/DashboardFilters';
 import TeamAlerts from './components/TeamAlerts';
 import { BarChart, Bar, Line, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { CHART_COLORS } from './lib/constants';
+import { exportNodeToPdf } from './lib/pdfExport';
 
 const JOB_METRIC_ROWS = [
   { key: 'newReqs', label: 'New Reqs', detailKey: 'newReqs' },
@@ -37,6 +38,25 @@ export default function SalesDashboard() {
   const [filters, setFilters] = useState({ recruiters: [], clients: [] });
   const [modal, setModal] = useState(null); // { amName, activityType, records }
   const [modalSort, setModalSort] = useState({ key: null, dir: 'asc' });
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const exportRef = useRef(null);
+
+  const handleExportPdf = async () => {
+    if (!exportRef.current) return;
+    try {
+      setExportingPdf(true);
+      const fname = `Sales_Dashboard_${startDate}_${endDate}.pdf`;
+      await exportNodeToPdf(exportRef.current, fname, {
+        title: 'Sales Dashboard',
+        subtitle: formatRange(),
+      });
+    } catch (err) {
+      console.error('PDF export failed:', err);
+      alert('Failed to export PDF: ' + err.message);
+    } finally {
+      setExportingPdf(false);
+    }
+  };
 
   const toggleModalSort = (key) => setModalSort(prev =>
     prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }
@@ -183,9 +203,13 @@ export default function SalesDashboard() {
             onEndChange={setEndDate}
           />
           <button className="export-btn" onClick={() => exportSalesDashboard(startDate, endDate)}>Export Excel</button>
+          <button className="export-btn" onClick={handleExportPdf} disabled={exportingPdf || !data}>
+            {exportingPdf ? 'Exporting…' : 'Export PDF'}
+          </button>
         </div>
       </div>
 
+      <div ref={exportRef}>
       {data && (
         <DashboardFilters
           filters={filters}
@@ -382,6 +406,7 @@ export default function SalesDashboard() {
           <TeamAlerts team="sales" />
         </>
       )}
+      </div>
 
       {/* Activity Detail Modal */}
       {modal && (

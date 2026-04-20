@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.6.1';
+export const APP_VERSION = '3.6.2';
 
 export const CHANGELOG = [
+  {
+    version: '3.6.2',
+    date: '2026-04-20',
+    title: 'Sales Dashboard — PDF Export',
+    changes: [
+      { type: 'minor', text: 'Added "Export PDF" button to Sales Dashboard alongside existing Excel export — captures the full dashboard (charts, metrics table, team alerts) as a multi-page landscape PDF' },
+      { type: 'minor', text: 'PDF respects the currently-applied AM filter and date range' },
+    ],
+  },
   {
     version: '3.6.1',
     date: '2026-04-18',
