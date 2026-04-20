@@ -42,6 +42,7 @@ function AppRoutes() {
           <Route path="recruiting" element={<RecruiterDashboard />} />
           <Route path="sales" element={<SalesDashboard />} />
           <Route path="performance" element={<MyDashboard />} />
+          <Route path="executive" element={<ComingSoon title="Executive Reporting" />} />
         </Route>
         <Route path="performance" element={<Navigate to="/reporting/performance" replace />} />
         <Route path="goal-tracking" element={<GoalTrackingModule />} />

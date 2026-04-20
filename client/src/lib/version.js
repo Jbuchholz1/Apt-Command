@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.6.3';
+export const APP_VERSION = '3.6.4';
 
 export const CHANGELOG = [
+  {
+    version: '3.6.4',
+    date: '2026-04-20',
+    title: 'Reporting — Executive Reporting Section (Admin)',
+    changes: [
+      { type: 'minor', text: 'Added "Executive Reporting" card to the Reporting home — visible to admin users only, placed after Individual Performance' },
+      { type: 'patch', text: 'Non-admin layout unchanged (Recruiting, Sales, Individual Performance centered below)' },
+    ],
+  },
   {
     version: '3.6.3',
     date: '2026-04-20',

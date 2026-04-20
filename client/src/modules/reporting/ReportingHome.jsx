@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useUserRole } from '../../lib/UserRoleContext';
 
 const dashboards = [
   {
@@ -25,15 +26,27 @@ const dashboards = [
     path: '/reporting/performance',
     active: true,
   },
+  {
+    id: 'executive',
+    title: 'Executive Reporting',
+    description: 'High-level company performance, cross-team rollups, and leadership insights.',
+    icon: '\u{1F4CA}',
+    path: '/reporting/executive',
+    active: true,
+    adminOnly: true,
+  },
 ];
 
 export default function ReportingHome() {
+  const { isAdmin } = useUserRole();
+  const visibleDashboards = dashboards.filter(d => !d.adminOnly || isAdmin);
+
   return (
     <div className="reporting-home">
       <h2 className="reporting-home-title">Reporting & Analytics</h2>
       <p className="reporting-home-subtitle">Select a dashboard.</p>
       <div className="reporting-card-grid">
-        {dashboards.map(d => (
+        {visibleDashboards.map(d => (
           <Link
             key={d.id}
             to={d.path}
