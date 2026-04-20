@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.6.2';
+export const APP_VERSION = '3.6.3';
 
 export const CHANGELOG = [
+  {
+    version: '3.6.3',
+    date: '2026-04-20',
+    title: 'Recruiter Dashboard — PDF Export',
+    changes: [
+      { type: 'minor', text: 'Added "Export PDF" button to Recruiter Dashboard alongside existing Excel export — captures the full dashboard (metrics, charts, detail tables) as a multi-page landscape PDF' },
+      { type: 'minor', text: 'PDF respects the currently-applied recruiter/client filter and date range' },
+    ],
+  },
   {
     version: '3.6.2',
     date: '2026-04-20',

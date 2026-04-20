@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import './reporting.css';
 import { getRecruiterDashboard, exportRecruiterDashboard } from '../../lib/api';
 import DateRangePicker from './components/DateRangePicker';
@@ -9,6 +9,7 @@ import InputVsGoalsChart from './components/InputVsGoalsChart';
 import GoalPointsChart from './components/GoalPointsChart';
 import LeadsSubmittedChart from './components/LeadsSubmittedChart';
 import DetailTable from './components/DetailTable';
+import { exportNodeToPdf } from './lib/pdfExport';
 
 function getDefaultDates() {
   const today = new Date();
@@ -69,6 +70,25 @@ export default function RecruiterDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({ recruiters: [], clients: [] });
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const exportRef = useRef(null);
+
+  const handleExportPdf = async () => {
+    if (!exportRef.current) return;
+    try {
+      setExportingPdf(true);
+      const fname = `Recruiter_Dashboard_${startDate}_${endDate}.pdf`;
+      await exportNodeToPdf(exportRef.current, fname, {
+        title: 'Recruiter Dashboard',
+        subtitle: formatRange(),
+      });
+    } catch (err) {
+      console.error('PDF export failed:', err);
+      alert('Failed to export PDF: ' + err.message);
+    } finally {
+      setExportingPdf(false);
+    }
+  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -170,9 +190,13 @@ export default function RecruiterDashboard() {
             onEndChange={setEndDate}
           />
           <button className="export-btn" onClick={() => exportRecruiterDashboard(startDate, endDate)}>Export Excel</button>
+          <button className="export-btn" onClick={handleExportPdf} disabled={exportingPdf || !data}>
+            {exportingPdf ? 'Exporting…' : 'Export PDF'}
+          </button>
         </div>
       </div>
 
+      <div ref={exportRef}>
       {data && (
         <DashboardFilters
           filters={filters}
@@ -217,6 +241,7 @@ export default function RecruiterDashboard() {
           <TeamAlerts team="recruiting" />
         </>
       )}
+      </div>
     </div>
   );
 }
