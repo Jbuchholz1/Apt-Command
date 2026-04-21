@@ -208,6 +208,18 @@ async function getClientSubmissions() {
   });
 }
 
+// Submissions currently in "Offer Extended" status (corresponds to JobOrder "Offer Out" stage).
+// Used by the On The Board modal to show which candidate is on the board per filled job.
+async function getOfferExtendedSubmissions() {
+  return callTool('query_entity', {
+    entityType: 'JobSubmission',
+    where: "status = 'Offer Extended' AND isDeleted = false",
+    fields: 'id,candidate,jobOrder,status,dateAdded',
+    orderBy: '-dateAdded',
+    count: 500,
+  });
+}
+
 async function getOpenOpportunities() {
   return callTool('query_entity', {
     entityType: 'Opportunity',
@@ -602,6 +614,7 @@ module.exports = {
   getSubmissions,
   getActivePlacements,
   getClientSubmissions,
+  getOfferExtendedSubmissions,
   getOpenOpportunities,
   getOpenOpportunitiesFull,
   searchJobs,

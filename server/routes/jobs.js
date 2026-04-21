@@ -1,6 +1,6 @@
 const express = require('express');
 const ExcelJS = require('exceljs');
-const { getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getSubmissions, addNoteToJob, updateJobField, updateOpportunityField, updateSubmissionField, getCorporateUsers, getOpenOpportunitiesFull, getClientSubmissions } = require('../lib/bullhorn');
+const { getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getSubmissions, addNoteToJob, updateJobField, updateOpportunityField, updateSubmissionField, getCorporateUsers, getOpenOpportunitiesFull, getClientSubmissions, getOfferExtendedSubmissions } = require('../lib/bullhorn');
 const { getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote } = require('../lib/db');
 const { sanitizeRow } = require('../lib/excelSafe');
 
@@ -297,6 +297,30 @@ router.post('/submissions/:id/update', async (req, res, next) => {
 
     const result = await updateSubmissionField(subId, sanitized);
     res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/jobs/offer-out-candidates — Map of jobOrderId → candidate name(s) for subs in Offer Extended
+router.get('/offer-out-candidates', async (req, res, next) => {
+  try {
+    const result = await getOfferExtendedSubmissions();
+    const map = {};
+    for (const sub of (result?.data || [])) {
+      const jobId = sub.jobOrder?.id;
+      const c = sub.candidate;
+      if (!jobId || !c) continue;
+      const name = `${c.firstName || ''} ${c.lastName || ''}`.trim();
+      if (!name) continue;
+      if (map[jobId]) {
+        // avoid duplicate names
+        if (!map[jobId].split(', ').includes(name)) map[jobId] += ', ' + name;
+      } else {
+        map[jobId] = name;
+      }
+    }
+    res.json({ data: map });
   } catch (err) {
     next(err);
   }

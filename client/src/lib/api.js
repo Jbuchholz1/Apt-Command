@@ -75,6 +75,10 @@ export function getPlacements() {
   return fetchAPI('/api/req-board/placements');
 }
 
+export function getOfferOutCandidates() {
+  return fetchAPI('/api/req-board/jobs/offer-out-candidates');
+}
+
 export function getStats() {
   return fetchAPI('/api/req-board/stats');
 }
@@ -130,6 +134,10 @@ export function getSalesDashboard(startDate, endDate) {
 
 export function getTeamAlerts(team) {
   return fetchAPI(`/api/reporting/team-alerts?team=${encodeURIComponent(team)}`);
+}
+
+export function getExecutiveDashboard(startDate, endDate) {
+  return fetchAPI(`/api/reporting/executive-dashboard?start=${startDate}&end=${endDate}`);
 }
 
 // --- Individual Performance ---

@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.7.4';
+export const APP_VERSION = '3.7.5';
 
 export const CHANGELOG = [
+  {
+    version: '3.7.5',
+    date: '2026-04-21',
+    title: 'On The Board — Candidate from Offer Out',
+    changes: [
+      { type: 'minor', text: 'On The Board modal now shows the candidate whose submission is in "Offer Extended" (Offer Out) status, instead of pulling from placements. Reliable from the moment an offer is extended, not just after hiring paperwork is finalized.' },
+    ],
+  },
   {
     version: '3.7.4',
     date: '2026-04-21',

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { getPlacements, updateJobInBullhorn, updateJobOverrides, getRecruiters, getOpportunities, updateOpportunityInBullhorn } from '../../lib/api';
+import { getPlacements, getOfferOutCandidates, updateJobInBullhorn, updateJobOverrides, getRecruiters, getOpportunities, updateOpportunityInBullhorn } from '../../lib/api';
 import { getFollowUpUrgency } from './lib/urgency';
 import EditableDate from './EditableDate';
 import EditableSelect from './EditableSelect';
@@ -379,20 +379,12 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
     setFilledOwnerFilter('');
     setShowFilled(true);
     try {
-      const res = await getPlacements();
-      const map = {};
-      (res.data || []).forEach(p => {
-        if (p.jobOrderId && p.candidate) {
-          if (map[p.jobOrderId]) {
-            map[p.jobOrderId] += ', ' + p.candidate;
-          } else {
-            map[p.jobOrderId] = p.candidate;
-          }
-        }
-      });
-      setFilledCandidateMap(map);
+      // On The Board candidate = whoever is in "Offer Extended" (aka "Offer Out") for that job.
+      // Server returns a { jobOrderId: "First Last[, First Last]" } map.
+      const res = await getOfferOutCandidates();
+      setFilledCandidateMap(res.data || {});
     } catch (err) {
-      console.error('Failed to load placements for filled:', err);
+      console.error('Failed to load offer-out candidates:', err);
     }
   };
 
