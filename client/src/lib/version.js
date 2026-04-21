@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.7.1';
+export const APP_VERSION = '3.7.2';
 
 export const CHANGELOG = [
+  {
+    version: '3.7.2',
+    date: '2026-04-21',
+    title: 'Job Detail — Client Submissions Fix',
+    changes: [
+      { type: 'fix', text: 'Job detail panel now reliably shows all Client Submissions. Previously, jobs with many New Leads would push real Client Submissions out of the result window, causing the detail panel to show 0 submissions even when the inline count said otherwise.' },
+    ],
+  },
   {
     version: '3.7.1',
     date: '2026-04-21',

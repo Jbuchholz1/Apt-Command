@@ -331,7 +331,9 @@ router.get('/:id', async (req, res, next) => {
 
     const notes = await getNotesForJob(jobId);
 
-    const validStatuses = new Set(['Client Submission']);
+    // Status filtering already happens in getSubmissions() at the Bullhorn query level —
+    // this is a defensive safety net matching the same list so behavior stays consistent.
+    const validStatuses = new Set(['Client Submission', 'Internally Submitted']);
     const filteredSubs = (subsResult?.data || [])
       .filter(s => validStatuses.has(s.status))
       .map(formatSubmission);

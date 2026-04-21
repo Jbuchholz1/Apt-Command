@@ -151,11 +151,19 @@ async function getJobById(id) {
   });
 }
 
+// Statuses that count as "submitted to client" (filter applied at Bullhorn query level
+// so that jobs with hundreds of New Leads don't push the real Client Submissions out
+// of any result window).
+const CLIENT_SUB_STATUSES = ['Client Submission', 'Internally Submitted'];
+
 async function getSubmissions(jobOrderId) {
-  return callTool('get_submissions', {
-    jobOrderId: parseInt(jobOrderId, 10),
+  const statusList = CLIENT_SUB_STATUSES.map(s => `'${s}'`).join(',');
+  return callTool('query_entity', {
+    entityType: 'JobSubmission',
+    where: `jobOrder.id = ${parseInt(jobOrderId, 10)} AND status IN (${statusList}) AND isDeleted = false`,
     fields: 'id,candidate,status,dateAdded,source,sendingUser',
-    count: 50,
+    orderBy: '-dateAdded',
+    count: 500,
   });
 }
 
