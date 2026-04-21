@@ -81,7 +81,16 @@ export default function EditableCell({ value, onSave, placeholder, className, ce
       title={multiline ? 'Click to edit — Shift+Enter for new line, Enter to save' : 'Click to edit'}
     >
       {value
-        ? value
+        ? (multiline
+            // Render manual newlines as <br> so the td's normal wrapping behavior
+            // (max-width + word-wrap: break-word) keeps working unchanged.
+            ? value.split('\n').map((line, i, arr) => (
+                <span key={i}>
+                  {line}
+                  {i < arr.length - 1 && <br />}
+                </span>
+              ))
+            : value)
         : <span className={isEmpty && defaultText ? 'editable-default-text' : 'editable-placeholder'}>{defaultText || placeholder || '—'}</span>}
     </td>
   );

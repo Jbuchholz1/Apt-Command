@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.7.8';
+export const APP_VERSION = '3.7.9';
 
 export const CHANGELOG = [
+  {
+    version: '3.7.9',
+    date: '2026-04-21',
+    title: 'Notes — Wrap + Page Breaks',
+    changes: [
+      { type: 'fix', text: 'Notes cell now wraps long text at 175px AND preserves Shift+Enter line breaks. Manual line breaks render as explicit <br> elements so the column\'s native wrapping behavior is untouched.' },
+    ],
+  },
   {
     version: '3.7.8',
     date: '2026-04-21',
