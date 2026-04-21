@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.7.5';
+export const APP_VERSION = '3.7.6';
 
 export const CHANGELOG = [
+  {
+    version: '3.7.6',
+    date: '2026-04-21',
+    title: 'Notes — Multi-line Support',
+    changes: [
+      { type: 'minor', text: 'Notes cell on the Req Board now supports multi-line entries. Press Shift+Enter to add a new line, Enter to save. Existing newlines are preserved on display.' },
+    ],
+  },
   {
     version: '3.7.5',
     date: '2026-04-21',

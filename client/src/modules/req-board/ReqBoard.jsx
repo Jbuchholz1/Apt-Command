@@ -290,6 +290,7 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
           className={`cell-editable${extraClass}`}
           cellStyle={cellStyle}
           defaultText={defaultTexts[col.key]}
+          multiline={col.key === 'notes'}
         />
       );
     }

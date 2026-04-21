@@ -558,6 +558,13 @@
   max-width: 175px;
 }
 
+/* Notes: preserve newlines entered by the user */
+.editable-multiline-value {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  display: block;
+}
+
 /* ---- Status Badge ---- */
 .status-badge {
   display: inline-block;
@@ -790,6 +797,13 @@
   background: #fff;
   outline: none;
   box-sizing: border-box;
+}
+
+.editable-textarea {
+  resize: vertical;
+  min-height: 48px;
+  line-height: 1.3;
+  white-space: pre-wrap;
 }
 
 .editable-placeholder {
