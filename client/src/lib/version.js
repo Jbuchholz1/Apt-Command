@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.7.9';
+export const APP_VERSION = '3.7.10';
 
 export const CHANGELOG = [
+  {
+    version: '3.7.10',
+    date: '2026-04-21',
+    title: 'Called Shots — Show Total Spread',
+    changes: [
+      { type: 'minor', text: 'Called Shots counter now shows the combined CE + Perm spread across all Called Shot jobs instead of the count. Hover shows the number of jobs; click still opens the list.' },
+    ],
+  },
   {
     version: '3.7.9',
     date: '2026-04-21',
