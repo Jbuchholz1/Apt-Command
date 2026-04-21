@@ -142,6 +142,18 @@ async function getAllJobs() {
   });
 }
 
+// Fetch a set of jobs by ID (used for Called Shots that may be outside the open/closed windows).
+async function getJobsByIds(ids) {
+  const numeric = (ids || []).map(i => parseInt(i, 10)).filter(i => !Number.isNaN(i));
+  if (numeric.length === 0) return { data: [] };
+  return callTool('query_entity', {
+    entityType: 'JobOrder',
+    where: `id IN (${numeric.join(',')}) AND isDeleted = false`,
+    fields: JOB_FIELDS,
+    count: 500,
+  });
+}
+
 async function getJobById(id) {
   return callTool('query_entity', {
     entityType: 'JobOrder',
@@ -611,6 +623,7 @@ module.exports = {
   getRecentlyClosedJobs,
   getAllJobs,
   getJobById,
+  getJobsByIds,
   getSubmissions,
   getActivePlacements,
   getClientSubmissions,

@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.7.10';
+export const APP_VERSION = '3.7.11';
 
 export const CHANGELOG = [
+  {
+    version: '3.7.11',
+    date: '2026-04-21',
+    title: 'Called Shots Persist on Board',
+    changes: [
+      { type: 'minor', text: 'Called Shot jobs now stay on the Req Board regardless of status (Archive, Placed, Lost, Wash). They persist until the Called Shot box is unchecked, then fall off under the normal 12-hour rules.' },
+    ],
+  },
   {
     version: '3.7.10',
     date: '2026-04-21',

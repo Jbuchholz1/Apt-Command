@@ -1,6 +1,6 @@
 const express = require('express');
 const ExcelJS = require('exceljs');
-const { getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getSubmissions, addNoteToJob, updateJobField, updateOpportunityField, updateSubmissionField, getCorporateUsers, getOpenOpportunitiesFull, getClientSubmissions, getOfferExtendedSubmissions } = require('../lib/bullhorn');
+const { getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getJobsByIds, getSubmissions, addNoteToJob, updateJobField, updateOpportunityField, updateSubmissionField, getCorporateUsers, getOpenOpportunitiesFull, getClientSubmissions, getOfferExtendedSubmissions } = require('../lib/bullhorn');
 const { getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote } = require('../lib/db');
 const { sanitizeRow } = require('../lib/excelSafe');
 
@@ -121,6 +121,21 @@ router.get('/', async (req, res, next) => {
     ]);
     const overrides = await getAllOverrides();
 
+    // Called Shots persist on the board regardless of status or time window.
+    // Pull any flagged jobs that aren't already in the open/closed result sets.
+    const calledShotIds = Object.entries(overrides)
+      .filter(([, ov]) => ov.called_shot === true || ov.called_shot === 'true')
+      .map(([jobId]) => parseInt(jobId, 10))
+      .filter(id => !Number.isNaN(id));
+    const existingIds = new Set([
+      ...(openResult?.data || []).map(j => j.id),
+      ...(closedResult?.data || []).map(j => j.id),
+    ]);
+    const missingCalledShotIds = calledShotIds.filter(id => !existingIds.has(id));
+    const missingCalledShotResult = missingCalledShotIds.length
+      ? await getJobsByIds(missingCalledShotIds)
+      : { data: [] };
+
     // Build client submission count and latest date maps by jobOrder ID
     const clientSubCounts = {};
     const latestClientSubDate = {};
@@ -139,18 +154,24 @@ router.get('/', async (req, res, next) => {
     const FALLOFF_STATUSES = ['Archive', 'Placed', 'Lost', 'Wash'];
     const cutoffMs = Date.now() - (12 * 60 * 60 * 1000); // 12 hours ago
 
-    // Merge open + recently closed, deduplicate by ID
+    // Merge open + recently closed + called-shot-only jobs, deduplicate by ID
     const seen = new Set();
     const allJobs = [];
-    for (const j of [...(openResult?.data || []), ...(closedResult?.data || [])]) {
+    for (const j of [
+      ...(openResult?.data || []),
+      ...(closedResult?.data || []),
+      ...(missingCalledShotResult?.data || []),
+    ]) {
       if (!seen.has(j.id)) {
         seen.add(j.id);
         const status = Array.isArray(j.status) ? j.status[0] : j.status;
+        const ov = overrides[j.id];
+        const isCalledShot = ov?.called_shot === true || ov?.called_shot === 'true';
 
         // For fall-off statuses, use our tracked status_changed_at (precise),
-        // falling back to Bullhorn dateLastModified (less reliable — any edit resets it)
-        if (FALLOFF_STATUSES.includes(status)) {
-          const ov = overrides[j.id];
+        // falling back to Bullhorn dateLastModified (less reliable — any edit resets it).
+        // Called Shots bypass the fall-off window entirely.
+        if (FALLOFF_STATUSES.includes(status) && !isCalledShot) {
           const changedAt = ov?.status_changed_at ? new Date(ov.status_changed_at).getTime() : null;
           const falloffTime = changedAt || (j.dateLastModified || 0);
           if (falloffTime < cutoffMs) continue; // older than 12 hours — drop it
@@ -161,8 +182,9 @@ router.get('/', async (req, res, next) => {
         formatted.latestClientSubDate = latestClientSubDate[j.id]
           ? new Date(latestClientSubDate[j.id]).toISOString()
           : null;
-        // Mark fall-off status jobs so the frontend can style them
-        if (FALLOFF_STATUSES.includes(status)) {
+        // Mark fall-off status jobs so the frontend can style them.
+        // Called Shots stay visible indefinitely, so don't flag them as falling off.
+        if (FALLOFF_STATUSES.includes(status) && !isCalledShot) {
           formatted.fallingOff = true;
         }
         allJobs.push(mergeOverrides(formatted, overrides));
