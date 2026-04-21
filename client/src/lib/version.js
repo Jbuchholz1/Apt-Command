@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.7.3';
+export const APP_VERSION = '3.7.4';
 
 export const CHANGELOG = [
+  {
+    version: '3.7.4',
+    date: '2026-04-21',
+    title: 'Client Submissions — Exclude Internally Submitted',
+    changes: [
+      { type: 'fix', text: 'Client Submissions inline count no longer includes "Internally Submitted" candidates (that status is an internal pre-client review, not a client submission). Counts now match Bullhorn exactly.' },
+    ],
+  },
   {
     version: '3.7.3',
     date: '2026-04-21',

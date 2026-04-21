@@ -155,10 +155,10 @@ async function getJobById(id) {
 // Includes the initial Client Submission plus every downstream stage, so candidates
 // that progressed past Client Submission (Interview Scheduled, Offer Extended, Placed, etc.)
 // still appear in counts and detail views.
-// Upstream-only statuses (New Lead, Candidate Interested) are intentionally excluded.
+// Upstream-only statuses (New Lead, Candidate Interested, Internally Submitted —
+// the last being the recruiter's internal pre-client review) are intentionally excluded.
 const CLIENT_SUB_STATUSES = [
   'Client Submission',
-  'Internally Submitted',
   'Interview Scheduled',
   'Interview Feedback',
   'Client Feedback',
