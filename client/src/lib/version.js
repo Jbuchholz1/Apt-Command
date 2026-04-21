@@ -9,9 +9,24 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.7.12';
+export const APP_VERSION = '3.8.0';
 
 export const CHANGELOG = [
+  {
+    version: '3.8.0',
+    date: '2026-04-21',
+    title: 'Concurrency Safety & Reliability',
+    changes: [
+      { type: 'minor', text: 'Save failures now surface as toasts with one automatic retry on transient errors (429 / 5xx / network). Silent console-only failures across the Req Board, Job Detail panel, compensation fields, submission statuses, and notes are gone — you\'ll always know if a save didn\'t land.' },
+      { type: 'minor', text: 'Auto-refresh pauses while you\'re editing a cell or have the detail panel open, so the 5-minute poll never clobbers an in-flight edit. Toolbar now shows "Updated Xs ago" (refreshes at a glance) with a "paused" indicator when applicable.' },
+      { type: 'minor', text: 'Concurrent-edit protection — when two users edit the same req\'s overrides at the same time, the loser sees a "Someone else edited this req" dialog and can reload to pick up the other user\'s changes before reapplying their own. No more silently-lost edits.' },
+      { type: 'minor', text: 'Bullhorn ↔ local split-brain is now captured. If Bullhorn accepts a write but the local sync fails, the event is queued for admin reconciliation and you see a yellow warning toast instead of believing the change went through cleanly.' },
+      { type: 'patch', text: 'Per-user API rate limits — the 200 reads / 30 writes per minute budget is now keyed to each Entra user rather than shared across everyone behind one office IP. Large teams no longer rate-limit each other.' },
+      { type: 'patch', text: 'In-memory 30-second cache on the hot Bullhorn read paths and on local overrides. 30 users loading the board in the same minute now trigger roughly one upstream call instead of 30. Cache is busted on every mutation.' },
+      { type: 'patch', text: 'Circuit breaker around Bullhorn MCP — after five consecutive failures the server fails fast for ten seconds instead of letting every request hang for its 30-second timeout. Half-open probes detect recovery automatically.' },
+      { type: 'patch', text: 'Removed unused better-sqlite3 dependency and the vestigial local SQLite database. All persistence lives in Supabase; nothing is lost on Railway redeploy.' },
+    ],
+  },
   {
     version: '3.7.12',
     date: '2026-04-21',

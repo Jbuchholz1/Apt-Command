@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { getJobDetail, addJobNote, updateSubmissionInBullhorn, updateJobInBullhorn } from '../../lib/api';
+import { saveWithToast } from '../../lib/saveWithToast';
+import { useEditingSignal } from './EditingContext';
 import StatusBadge from './StatusBadge';
 import EditableSelect from './EditableSelect';
 
@@ -49,31 +51,38 @@ export default function JobDetail({ jobId, onClose }) {
       console.error(`Invalid number for ${bullhornField}:`, rawValue);
       return;
     }
-    try {
-      await updateJobInBullhorn(jobId, { [bullhornField]: payload });
+    const { ok } = await saveWithToast(
+      () => updateJobInBullhorn(jobId, { [bullhornField]: payload }),
+      { failureMessage: `Could not save ${bullhornField}` },
+    );
+    if (ok) {
       setData(prev => ({ ...prev, job: { ...prev.job, [displayKey]: payload } }));
-    } catch (err) {
-      console.error(`Failed to update ${bullhornField}:`, err);
     }
+    // On failure, EditableNumberRow's value-prop sync reverts the displayed number.
   };
 
   const handleAddNote = async () => {
     if (!noteText.trim() || noteSaving) return;
     setNoteSaving(true);
     setNoteSuccess(false);
-    try {
-      await addJobNote(jobId, noteText.trim());
+    const { ok } = await saveWithToast(
+      () => addJobNote(jobId, noteText.trim()),
+      { failureMessage: 'Could not add note' },
+    );
+    if (ok) {
       setNoteText('');
       setNoteSuccess(true);
       // Reload to show new note
-      const refreshed = await getJobDetail(jobId);
-      setData(refreshed);
+      try {
+        const refreshed = await getJobDetail(jobId);
+        setData(refreshed);
+      } catch (err) {
+        // Note was saved; only the refresh failed — surface but don't clobber success.
+        console.error('Note saved but refresh failed:', err);
+      }
       setTimeout(() => setNoteSuccess(false), 3000);
-    } catch (err) {
-      setError(`Note failed: ${err.message}`);
-    } finally {
-      setNoteSaving(false);
     }
+    setNoteSaving(false);
   };
 
   if (!jobId) return null;
@@ -182,8 +191,11 @@ export default function JobDetail({ jobId, onClose }) {
                           displayValue={sub.status || '—'}
                           options={SUBMISSION_STATUS_OPTIONS}
                           onSave={async (val) => {
-                            try {
-                              await updateSubmissionInBullhorn(sub.id, { status: val });
+                            const { ok } = await saveWithToast(
+                              () => updateSubmissionInBullhorn(sub.id, { status: val }),
+                              { failureMessage: 'Could not update submission status' },
+                            );
+                            if (ok) {
                               setData(prev => ({
                                 ...prev,
                                 submissions: {
@@ -193,8 +205,6 @@ export default function JobDetail({ jobId, onClose }) {
                                   ),
                                 },
                               }));
-                            } catch (err) {
-                              console.error('Failed to update submission status:', err);
                             }
                           }}
                           className="cell-editable"
@@ -267,6 +277,7 @@ function EditableNumberRow({ label, value, suffix, onSave }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value == null ? '' : String(value));
   const inputRef = useRef(null);
+  useEditingSignal(editing);
 
   useEffect(() => {
     setDraft(value == null ? '' : String(value));

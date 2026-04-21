@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { supabase } = require('../lib/db');
+const { supabase, listReconciliationQueue, getSchemaFeatures } = require('../lib/db');
 const { requireAdmin, requireManager } = require('../middleware/adminAuth');
 const { VALID_ROLES } = require('../lib/roles');
 
@@ -112,6 +112,25 @@ router.put('/reminder', async (req, res, next) => {
     if (error) throw error;
 
     res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/admin/reconciliation-queue — list pending split-brain rows.
+// Visible to managers+ so ops can see when Bullhorn/local writes diverged.
+router.get('/reconciliation-queue', async (req, res, next) => {
+  try {
+    if (!supabase) return res.status(503).json({ error: 'Database not configured' });
+    const features = getSchemaFeatures();
+    if (!features.reconciliationQueue) {
+      return res.json({ enabled: false, rows: [] });
+    }
+    const status = ['pending', 'resolved', 'ignored'].includes(req.query.status)
+      ? req.query.status
+      : 'pending';
+    const rows = await listReconciliationQueue({ status, limit: 200 });
+    res.json({ enabled: true, rows });
   } catch (err) {
     next(err);
   }

@@ -1,4 +1,11 @@
 const { createClient: createSupabaseClient } = require('@supabase/supabase-js');
+const cache = require('./cache');
+
+// getAllOverrides() is called on every board load. A 30s TTL with explicit
+// bust-on-write lets 30 concurrent users share one Supabase round-trip
+// without introducing staleness the user could notice.
+const OVERRIDES_TTL_MS = 30 * 1000;
+const PLACEMENT_CHECKLIST_TTL_MS = 30 * 1000;
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
@@ -15,11 +22,27 @@ const supabase = supabaseUrl && supabaseKey
   ? createSupabaseClient(supabaseUrl, supabaseKey)
   : null;
 
-// Auto-migrate: ensure status_changed_at column exists on job_overrides
+// Track which optional schema features are present. The server degrades
+// gracefully if migrations haven't been applied yet:
+//   - Without the `version` column, optimistic locking is skipped.
+//   - Without the `reconciliation_queue` table, split-brain events are logged
+//     to stderr instead.
+const schemaFeatures = {
+  statusChangedAt: false,
+  jobOverridesVersion: false,
+  reconciliationQueue: false,
+};
+
+function getSchemaFeatures() {
+  return { ...schemaFeatures };
+}
+
+// Auto-migrate: ensure status_changed_at column exists on job_overrides,
+// and detect the optional optimistic-locking + reconciliation features.
 async function ensureSchema() {
   if (!supabase) return;
   try {
-    // Try reading the column — if it fails, add it via RPC or ignore gracefully
+    // status_changed_at: auto-add if missing (legacy behavior).
     const { error } = await supabase.from('job_overrides').select('status_changed_at').limit(1);
     if (error && error.message.includes('status_changed_at')) {
       console.log('[db] Adding status_changed_at column to job_overrides...');
@@ -30,7 +53,26 @@ async function ensureSchema() {
         console.warn('[db] Could not auto-add status_changed_at — add manually:', rpcErr.message);
       } else {
         console.log('[db] status_changed_at column added successfully');
+        schemaFeatures.statusChangedAt = true;
       }
+    } else if (!error) {
+      schemaFeatures.statusChangedAt = true;
+    }
+
+    // version: probe only — migration 002 must be applied manually.
+    const { error: vErr } = await supabase.from('job_overrides').select('version').limit(1);
+    if (!vErr) {
+      schemaFeatures.jobOverridesVersion = true;
+    } else if (vErr.message.includes('version')) {
+      console.log('[db] Optimistic-locking disabled — apply migration 002_concurrency_safety.sql to enable');
+    }
+
+    // reconciliation_queue: probe only.
+    const { error: rErr } = await supabase.from('reconciliation_queue').select('id').limit(1);
+    if (!rErr) {
+      schemaFeatures.reconciliationQueue = true;
+    } else {
+      console.log('[db] Reconciliation queue disabled — apply migration 002_concurrency_safety.sql to enable');
     }
   } catch (err) {
     console.warn('[db] Schema check failed:', err.message);
@@ -40,23 +82,26 @@ ensureSchema();
 
 /**
  * Get all overrides as a map keyed by job_id.
+ * Cached briefly to absorb load spikes; busted on every override write.
  */
 async function getAllOverrides() {
   if (!supabase) return {};
-  const { data, error } = await supabase
-    .from('job_overrides')
-    .select('*');
+  return cache.cached('overrides:all', OVERRIDES_TTL_MS, async () => {
+    const { data, error } = await supabase
+      .from('job_overrides')
+      .select('*');
 
-  if (error) {
-    console.error('[db] getAllOverrides error:', error.message);
-    return {};
-  }
+    if (error) {
+      console.error('[db] getAllOverrides error:', error.message);
+      return {};
+    }
 
-  const map = {};
-  for (const row of (data || [])) {
-    map[row.job_id] = row;
-  }
-  return map;
+    const map = {};
+    for (const row of (data || [])) {
+      map[row.job_id] = row;
+    }
+    return map;
+  });
 }
 
 /**
@@ -78,10 +123,39 @@ async function getOverrides(jobId) {
 }
 
 /**
- * Upsert overrides for a job. Only updates fields that are provided.
+ * Custom error thrown by upsertOverrides when a versioned write loses a
+ * conflict race. Routes translate this into an HTTP 409 carrying the
+ * current row so the client can show the user what changed.
  */
-async function upsertOverrides(jobId, { recruiter, follow_up, deadline, notes, coverage_needed, tr_reassigned, tr_assigned_at, called_shot, forty_eight_hr, status_changed_at, updated_by }) {
+class OverrideConflictError extends Error {
+  constructor(message, current) {
+    super(message);
+    this.name = 'OverrideConflictError';
+    this.code = 'OVERRIDE_CONFLICT';
+    this.current = current;
+  }
+}
+
+/**
+ * Upsert overrides for a job. Only updates fields that are provided.
+ *
+ * Concurrency modes:
+ *   - If `expectedVersion` is passed AND the `version` column exists, this
+ *     performs an atomic UPDATE ... WHERE job_id=? AND version=expectedVersion
+ *     and throws OverrideConflictError if no row matched. The version column
+ *     is incremented on every successful write.
+ *   - Otherwise (no expectedVersion, or column absent pre-migration), falls
+ *     back to the legacy field-level last-write-wins upsert for backward
+ *     compatibility.
+ */
+async function upsertOverrides(jobId, updatesInput, options = {}) {
   if (!supabase) return null;
+  const {
+    recruiter, follow_up, deadline, notes, coverage_needed,
+    tr_reassigned, tr_assigned_at, called_shot, forty_eight_hr,
+    status_changed_at, updated_by,
+  } = updatesInput || {};
+  const { expectedVersion } = options;
 
   const updates = { updated_at: new Date().toISOString() };
   if (recruiter !== undefined) updates.recruiter = recruiter;
@@ -96,12 +170,81 @@ async function upsertOverrides(jobId, { recruiter, follow_up, deadline, notes, c
   if (status_changed_at !== undefined) updates.status_changed_at = status_changed_at;
   if (updated_by) updates.updated_by = updated_by;
 
+  const useVersionedPath = (
+    expectedVersion !== undefined &&
+    expectedVersion !== null &&
+    schemaFeatures.jobOverridesVersion
+  );
+
+  if (useVersionedPath) {
+    const nextVersion = Number(expectedVersion) + 1;
+    // Atomic: only update if the version still matches what the client saw.
+    const { data, error } = await supabase
+      .from('job_overrides')
+      .update({ ...updates, version: nextVersion })
+      .eq('job_id', jobId)
+      .eq('version', expectedVersion)
+      .select()
+      .maybeSingle();
+
+    if (error) {
+      console.error('[db] upsertOverrides (versioned) error:', error.message);
+      throw error;
+    }
+
+    if (!data) {
+      // Two possibilities: (a) row doesn't exist yet — safe to insert fresh
+      // with version 1; (b) row exists but version mismatched — conflict.
+      const { data: current } = await supabase
+        .from('job_overrides')
+        .select('*')
+        .eq('job_id', jobId)
+        .maybeSingle();
+
+      if (!current) {
+        // First write for this job. Insert at version 1.
+        const { data: inserted, error: insErr } = await supabase
+          .from('job_overrides')
+          .insert({ job_id: jobId, version: 1, ...updates })
+          .select()
+          .single();
+        if (insErr) {
+          // Could lose the race against another concurrent insert — surface
+          // as conflict so the client retries with a fresh version.
+          const { data: afterRace } = await supabase
+            .from('job_overrides')
+            .select('*')
+            .eq('job_id', jobId)
+            .maybeSingle();
+          throw new OverrideConflictError(
+            'Override was created by another user simultaneously',
+            afterRace || null,
+          );
+        }
+        cache.bust('overrides:all');
+        return inserted;
+      }
+
+      throw new OverrideConflictError(
+        'Override was modified by another user',
+        current,
+      );
+    }
+
+    cache.bust('overrides:all');
+    return data;
+  }
+
+  // Legacy path: no optimistic locking. Field-level last-write-wins.
+  const row = { job_id: jobId, ...updates };
+  if (schemaFeatures.jobOverridesVersion) {
+    // When the column exists but the caller didn't opt in, still bump so
+    // a concurrent versioned writer can detect our write.
+    row.version = (typeof expectedVersion === 'number' ? expectedVersion : 0) + 1;
+  }
   const { data, error } = await supabase
     .from('job_overrides')
-    .upsert({
-      job_id: jobId,
-      ...updates,
-    }, { onConflict: 'job_id' })
+    .upsert(row, { onConflict: 'job_id' })
     .select()
     .single();
 
@@ -109,7 +252,60 @@ async function upsertOverrides(jobId, { recruiter, follow_up, deadline, notes, c
     console.error('[db] upsertOverrides error:', error.message);
     return null;
   }
+  cache.bust('overrides:all');
   return data;
+}
+
+/**
+ * Enqueue a row for manual reconciliation after a Bullhorn/Supabase split-brain.
+ * Returns the inserted row, or null if the queue table doesn't exist (pre-migration)
+ * or the write itself failed. Never throws — this is best-effort auditing.
+ */
+async function enqueueReconciliation({ jobId, kind, attemptedPayload, errorMessage, createdBy }) {
+  if (!supabase) return null;
+  if (!schemaFeatures.reconciliationQueue) {
+    console.warn(
+      `[db] Reconciliation split-brain for job ${jobId} (${kind}) — queue table absent, ` +
+      `logging only. Error: ${errorMessage}`,
+    );
+    return null;
+  }
+  try {
+    const { data, error } = await supabase
+      .from('reconciliation_queue')
+      .insert({
+        job_id: jobId,
+        kind,
+        attempted_payload: attemptedPayload || null,
+        error: errorMessage || null,
+        created_by: createdBy || null,
+      })
+      .select()
+      .single();
+    if (error) {
+      console.error('[db] enqueueReconciliation error:', error.message);
+      return null;
+    }
+    return data;
+  } catch (err) {
+    console.error('[db] enqueueReconciliation threw:', err.message);
+    return null;
+  }
+}
+
+async function listReconciliationQueue({ status = 'pending', limit = 100 } = {}) {
+  if (!supabase || !schemaFeatures.reconciliationQueue) return [];
+  const { data, error } = await supabase
+    .from('reconciliation_queue')
+    .select('*')
+    .eq('status', status)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) {
+    console.error('[db] listReconciliationQueue error:', error.message);
+    return [];
+  }
+  return data || [];
 }
 
 // --- Notes ---
@@ -149,20 +345,22 @@ async function addNote(jobId, comment, createdBy) {
 
 async function getAllPlacementChecklist() {
   if (!supabase) return {};
-  const { data, error } = await supabase
-    .from('placement_checklist')
-    .select('*');
+  return cache.cached('placementChecklist:all', PLACEMENT_CHECKLIST_TTL_MS, async () => {
+    const { data, error } = await supabase
+      .from('placement_checklist')
+      .select('*');
 
-  if (error) {
-    console.error('[db] getAllPlacementChecklist error:', error.message);
-    return {};
-  }
+    if (error) {
+      console.error('[db] getAllPlacementChecklist error:', error.message);
+      return {};
+    }
 
-  const map = {};
-  for (const row of (data || [])) {
-    map[row.placement_id] = row;
-  }
-  return map;
+    const map = {};
+    for (const row of (data || [])) {
+      map[row.placement_id] = row;
+    }
+    return map;
+  });
 }
 
 async function getPlacementChecklist(placementId) {
@@ -212,6 +410,7 @@ async function upsertPlacementChecklist(placementId, fields) {
     console.error('[db] upsertPlacementChecklist error:', error.message);
     return null;
   }
+  cache.bust('placementChecklist:all');
   return data;
 }
 
@@ -1191,6 +1390,9 @@ async function listMyPriorityIds(userEmail, period) {
 
 module.exports = {
   supabase, // Shared client — import this instead of creating your own
+  getSchemaFeatures,
+  OverrideConflictError,
+  enqueueReconciliation, listReconciliationQueue,
   getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote,
   getAllPlacementChecklist, getPlacementChecklist, upsertPlacementChecklist,
   // Org Flow

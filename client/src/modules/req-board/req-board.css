@@ -45,6 +45,14 @@
   color: var(--text-light);
 }
 
+.last-refresh-paused {
+  color: var(--gold-light, #d3bf30);
+}
+
+.refresh-paused-dot {
+  font-weight: 600;
+}
+
 .refresh-btn {
   background: var(--gold);
   color: var(--navy-dark);

@@ -29,6 +29,22 @@ async function getToken() {
   }
 }
 
+// Errors thrown from fetchAPI carry a `.status` property so callers (and the
+// shared saveWithToast helper) can branch on it — 409 for version conflicts,
+// 429/5xx for retryable transient failures, etc. For 409 in particular we
+// also attach the parsed body so the conflict dialog can show the
+// current-state fields from the server.
+function apiError(message, status, body) {
+  const err = new Error(message);
+  err.status = status;
+  if (body && typeof body === 'object') {
+    err.body = body;
+    if (body.current !== undefined) err.current = body.current;
+    if (body.code) err.code = body.code;
+  }
+  return err;
+}
+
 async function fetchAPI(path, options = {}) {
   const token = await getToken();
   const headers = { ...options.headers };
@@ -44,15 +60,31 @@ async function fetchAPI(path, options = {}) {
 
   if (res.status === 401) {
     if (msalInstance) msalInstance.acquireTokenRedirect(loginRequest);
-    throw new Error('Session expired — redirecting to login');
+    throw apiError('Session expired — redirecting to login', 401);
   }
 
   if (res.status === 429) {
-    throw new Error('Too many requests — please wait a moment and try again');
+    throw apiError('Too many requests — please wait a moment and try again', 429);
   }
 
   if (!res.ok) {
-    throw new Error(`API error: ${res.status} ${res.statusText}`);
+    // Try to surface the server's error message; fall back to a generic one.
+    let message = `API error: ${res.status} ${res.statusText}`;
+    let parsedBody = null;
+    try {
+      const text = await res.text();
+      if (text) {
+        try {
+          parsedBody = JSON.parse(text);
+          if (parsedBody && parsedBody.error) message = parsedBody.error;
+        } catch {
+          // Non-JSON response — keep the generic message.
+        }
+      }
+    } catch {
+      // Body already consumed or unreadable — ignore.
+    }
+    throw apiError(message, res.status, parsedBody);
   }
   return res.json();
 }
@@ -85,10 +117,15 @@ export function getStats() {
 
 // --- Write operations ---
 
-export function updateJobOverrides(id, data) {
+export function updateJobOverrides(id, data, { expectedVersion } = {}) {
+  const headers = {};
+  if (expectedVersion !== undefined && expectedVersion !== null) {
+    headers['If-Match'] = String(expectedVersion);
+  }
   return fetchAPI(`/api/req-board/jobs/${id}/overrides`, {
     method: 'PATCH',
     body: data,
+    headers,
   });
 }
 

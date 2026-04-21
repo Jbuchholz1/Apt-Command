@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useEditingSignal } from './EditingContext';
 
 /**
  * Inline-editable table cell. Click to edit, blur/Enter to save.
@@ -9,6 +10,8 @@ export default function EditableCell({ value, onSave, placeholder, className, ce
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value || '');
   const inputRef = useRef(null);
+  // Tell the board-wide editing context we're live, so auto-refresh pauses.
+  useEditingSignal(editing);
 
   useEffect(() => {
     setDraft(value || '');

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useEditingSignal } from './EditingContext';
 
 /**
  * Inline-editable table cell with a dropdown select.
@@ -7,6 +8,7 @@ import { useState, useRef, useEffect } from 'react';
 export default function EditableSelect({ value, displayValue, options, onSave, className, cellStyle }) {
   const [editing, setEditing] = useState(false);
   const selectRef = useRef(null);
+  useEditingSignal(editing);
 
   useEffect(() => {
     if (editing && selectRef.current) {

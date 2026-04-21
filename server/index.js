@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
+const { ipKeyGenerator } = require('express-rate-limit');
 const { requireAuth } = require('./middleware/auth');
 
 const jobsRouter = require('./routes/jobs');
@@ -43,29 +44,50 @@ app.use(helmet({ contentSecurityPolicy: false }));
 app.use(compression());
 
 // --- Rate limiting ---
-const generalLimiter = rateLimit({
-  windowMs: 60 * 1000,   // 1 minute
-  max: 200,              // 200 requests per minute per IP
-  standardHeaders: true, // Return rate limit info in RateLimit-* headers
+//
+// Two layers so a shared office NAT doesn't penalize individual users:
+//   1. Coarse per-IP flood limiter BEFORE auth — protects the auth path
+//      from unauthenticated abuse.
+//   2. Real per-user budget AFTER auth — keyed by the Entra oid (req.user.id),
+//      falling back to IP when auth is skipped in dev mode.
+//
+// Per-user thresholds match the previous per-IP numbers, so a single user's
+// experience is unchanged; what changes is that 30 colleagues behind one
+// office IP no longer share a single 200-req/min budget.
+const ipFloodLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 1000,
+  standardHeaders: true,
   legacyHeaders: false,
+  message: { error: 'Too many requests from this network — please try again shortly' },
+});
+
+// Fall back to the library's IPv6-safe IP keying when we don't have an authed user
+// (dev mode or unauthenticated routes that still hit this limiter).
+const userKey = (req, res) => {
+  if (req.user && req.user.id) return `u:${req.user.id}`;
+  return `ip:${ipKeyGenerator(req, res)}`;
+};
+
+const userGeneralLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: userKey,
   message: { error: 'Too many requests — please try again shortly' },
 });
 
-const writeLimiter = rateLimit({
+const userWriteLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 30,               // 30 writes per minute per IP
+  max: 30,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: userKey,
   message: { error: 'Too many updates — please try again shortly' },
 });
 
-app.use('/api', generalLimiter);
-app.use('/api', (req, res, next) => {
-  if (['POST', 'PATCH', 'PUT'].includes(req.method)) {
-    return writeLimiter(req, res, next);
-  }
-  next();
-});
+app.use('/api', ipFloodLimiter);
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -100,6 +122,15 @@ app.get('/api/health', (req, res) => {
 
 // --- Auth middleware: all /api/* routes below require a valid Microsoft token ---
 app.use('/api', requireAuth);
+
+// Per-user rate limits — applied after auth so they key off req.user.id.
+app.use('/api', userGeneralLimiter);
+app.use('/api', (req, res, next) => {
+  if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(req.method)) {
+    return userWriteLimiter(req, res, next);
+  }
+  next();
+});
 
 // --- Routes (all authenticated) ---
 // Namespaced routes (new — used by APT Command shell)
