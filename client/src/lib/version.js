@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.7.11';
+export const APP_VERSION = '3.7.12';
 
 export const CHANGELOG = [
+  {
+    version: '3.7.12',
+    date: '2026-04-21',
+    title: 'Pipeline — Opportunity Status Edit Fix',
+    changes: [
+      { type: 'fix', text: 'Inline Status edits on the Pipeline tab now persist to Bullhorn. The server-side whitelist was silently dropping status updates, so edits appeared to save but reverted on refresh.' },
+    ],
+  },
   {
     version: '3.7.11',
     date: '2026-04-21',

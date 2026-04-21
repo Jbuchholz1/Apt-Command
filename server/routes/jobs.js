@@ -1,7 +1,10 @@
 const express = require('express');
 const ExcelJS = require('exceljs');
 const { getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getJobsByIds, getSubmissions, addNoteToJob, updateJobField, updateOpportunityField, updateSubmissionField, getCorporateUsers, getOpenOpportunitiesFull, getClientSubmissions, getOfferExtendedSubmissions } = require('../lib/bullhorn');
-const { getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote } = require('../lib/db');
+const {
+  getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote,
+  enqueueReconciliation, OverrideConflictError,
+} = require('../lib/db');
 const { sanitizeRow } = require('../lib/excelSafe');
 
 const router = express.Router();
@@ -278,7 +281,7 @@ router.post('/opportunities/:id/update', async (req, res, next) => {
     }
 
     // Whitelist: only allow safe fields
-    const ALLOWED = new Set(['expectedCloseDate']);
+    const ALLOWED = new Set(['status', 'expectedCloseDate']);
     const sanitized = {};
     for (const [key, val] of Object.entries(fields)) {
       if (ALLOWED.has(key)) sanitized[key] = val;
@@ -373,6 +376,13 @@ router.get('/:id', async (req, res, next) => {
       formatted.followUp = overrides.follow_up || '';
       formatted.deadline = overrides.deadline || '';
       formatted.notes = overrides.notes || '';
+      formatted.overrideVersion = typeof overrides.version === 'number' ? overrides.version : null;
+      formatted.overrideUpdatedBy = overrides.updated_by || null;
+      formatted.overrideUpdatedAt = overrides.updated_at || null;
+    } else {
+      formatted.overrideVersion = null;
+      formatted.overrideUpdatedBy = null;
+      formatted.overrideUpdatedAt = null;
     }
 
     const notes = await getNotesForJob(jobId);
@@ -446,16 +456,39 @@ router.post('/:id/bullhorn-update', async (req, res, next) => {
 
     const result = await updateJobField(jobId, sanitized);
 
-    // Track when status changes to a fall-off status
+    // Track when status changes to a fall-off status.
+    //
+    // Compensate pattern: the Bullhorn write just succeeded. If the companion
+    // local write fails, we enqueue a reconciliation row instead of silently
+    // swallowing the error — the two stores would otherwise drift.
+    let warning = null;
     if (sanitized.status) {
       const FALLOFF_STATUSES = ['Archive', 'Placed', 'Lost', 'Wash'];
       const statusChangedAt = FALLOFF_STATUSES.includes(sanitized.status)
         ? new Date().toISOString()
         : null; // clear it when moving back to an active status
-      await upsertOverrides(jobId, { status_changed_at: statusChangedAt });
+      try {
+        await upsertOverrides(jobId, { status_changed_at: statusChangedAt });
+      } catch (localErr) {
+        console.error(
+          `[bullhorn-update] Bullhorn succeeded but local status_changed_at ` +
+          `write failed for job ${jobId}:`, localErr && localErr.message,
+        );
+        await enqueueReconciliation({
+          jobId,
+          kind: 'status_changed_at',
+          attemptedPayload: { status_changed_at: statusChangedAt, bullhornStatus: sanitized.status },
+          errorMessage: (localErr && localErr.message) || 'unknown error',
+          createdBy: req.user?.email || req.user?.name || 'unknown',
+        });
+        warning = {
+          code: 'LOCAL_SYNC_DEFERRED',
+          message: 'Saved to Bullhorn. Local sync deferred — our team will reconcile.',
+        };
+      }
     }
 
-    res.json({ success: true, data: result });
+    res.json({ success: true, data: result, warning });
   } catch (err) {
     next(err);
   }
@@ -472,26 +505,49 @@ router.patch('/:id/overrides', async (req, res, next) => {
     const { recruiter, notes, follow_up, deadline, coverage_needed, tr_reassigned, tr_assigned_at, called_shot, forty_eight_hr } = req.body;
     const updatedBy = req.user?.email || req.user?.name || 'unknown';
 
-    const result = await upsertOverrides(jobId, {
-      recruiter: sanitize(recruiter),
-      notes: sanitize(notes),
-      follow_up: sanitize(follow_up),
-      deadline: sanitize(deadline),
-      coverage_needed,
-      tr_reassigned,
-      tr_assigned_at,
-      called_shot,
-      forty_eight_hr: sanitize(forty_eight_hr),
-      updated_by: updatedBy,
-    });
+    // Optimistic locking: clients that have been updated can send If-Match
+    // with the `version` value they last read. Unversioned clients (older
+    // deploys, curl, etc.) fall through to the legacy last-write-wins path
+    // for backward compatibility.
+    let expectedVersion;
+    const ifMatch = req.header('If-Match');
+    if (ifMatch !== undefined && ifMatch !== '' && ifMatch !== '*') {
+      const parsed = parseInt(ifMatch.replace(/["W\/]/g, ''), 10);
+      if (Number.isFinite(parsed)) expectedVersion = parsed;
+    }
 
-    // Push notes to Bullhorn as a Note entity on the JobOrder
+    let result;
+    try {
+      result = await upsertOverrides(jobId, {
+        recruiter: sanitize(recruiter),
+        notes: sanitize(notes),
+        follow_up: sanitize(follow_up),
+        deadline: sanitize(deadline),
+        coverage_needed,
+        tr_reassigned,
+        tr_assigned_at,
+        called_shot,
+        forty_eight_hr: sanitize(forty_eight_hr),
+        updated_by: updatedBy,
+      }, { expectedVersion });
+    } catch (err) {
+      if (err instanceof OverrideConflictError) {
+        return res.status(409).json({
+          error: err.message,
+          code: 'OVERRIDE_CONFLICT',
+          current: err.current,
+        });
+      }
+      throw err;
+    }
+
+    // Push notes to Bullhorn as a Note entity on the JobOrder.
+    // Best-effort: if Bullhorn rejects, the local override already saved.
     if (notes !== undefined && notes.trim()) {
       try {
         await addNoteToJob(jobId, notes.trim());
       } catch (err) {
         console.error(`Failed to push note to Bullhorn for job ${jobId}:`, err.message);
-        // Don't fail the request — local save succeeded
       }
     }
 
@@ -543,6 +599,11 @@ function mergeOverrides(job, overridesMap) {
     job.calledShot = ov.called_shot === true || ov.called_shot === 'true';
     job.fortyEightHr = ov.forty_eight_hr || '';
     job.statusChangedAt = ov.status_changed_at || null;
+    // Expose the override row's version (if the column exists) so the client
+    // can send it back as If-Match for optimistic locking.
+    job.overrideVersion = typeof ov.version === 'number' ? ov.version : null;
+    job.overrideUpdatedBy = ov.updated_by || null;
+    job.overrideUpdatedAt = ov.updated_at || null;
   } else {
     job.recruiter = job.recruiter || '*';
     job.trReassigned = false;
@@ -554,6 +615,10 @@ function mergeOverrides(job, overridesMap) {
     job.calledShot = false;
     job.fortyEightHr = '';
     job.statusChangedAt = null;
+    // No override row yet — client sends no If-Match so we insert at v1.
+    job.overrideVersion = null;
+    job.overrideUpdatedBy = null;
+    job.overrideUpdatedAt = null;
   }
   return job;
 }
