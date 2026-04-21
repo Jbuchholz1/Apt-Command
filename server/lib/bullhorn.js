@@ -151,10 +151,21 @@ async function getJobById(id) {
   });
 }
 
-// Statuses that count as "submitted to client" (filter applied at Bullhorn query level
-// so that jobs with hundreds of New Leads don't push the real Client Submissions out
-// of any result window).
-const CLIENT_SUB_STATUSES = ['Client Submission', 'Internally Submitted'];
+// Statuses that count as "was submitted to the client at some point".
+// Includes the initial Client Submission plus every downstream stage, so candidates
+// that progressed past Client Submission (Interview Scheduled, Offer Extended, Placed, etc.)
+// still appear in counts and detail views.
+// Upstream-only statuses (New Lead, Candidate Interested) are intentionally excluded.
+const CLIENT_SUB_STATUSES = [
+  'Client Submission',
+  'Internally Submitted',
+  'Interview Scheduled',
+  'Interview Feedback',
+  'Client Feedback',
+  'Offer Extended',
+  'Backout',
+  'Placed',
+];
 
 async function getSubmissions(jobOrderId) {
   const statusList = CLIENT_SUB_STATUSES.map(s => `'${s}'`).join(',');
@@ -188,9 +199,10 @@ async function getPendingApprovedPlacements() {
 }
 
 async function getClientSubmissions() {
+  const statusList = CLIENT_SUB_STATUSES.map(s => `'${s}'`).join(',');
   return callTool('query_entity', {
     entityType: 'JobSubmission',
-    where: "(status = 'Client Submission' OR status = 'Internally Submitted') AND isDeleted = false",
+    where: `status IN (${statusList}) AND isDeleted = false`,
     fields: 'id,jobOrder,dateAdded,status',
     count: 500,
   });

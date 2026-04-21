@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.7.2';
+export const APP_VERSION = '3.7.3';
 
 export const CHANGELOG = [
+  {
+    version: '3.7.3',
+    date: '2026-04-21',
+    title: 'Client Submissions — Full Lifecycle Count',
+    changes: [
+      { type: 'fix', text: 'Client Submissions count (inline and detail panel) now includes candidates that progressed past Client Submission — Interview Scheduled, Interview Feedback, Client Feedback, Offer Extended, Backout, Placed. Counts now match what Bullhorn shows on the job.' },
+    ],
+  },
   {
     version: '3.7.2',
     date: '2026-04-21',
