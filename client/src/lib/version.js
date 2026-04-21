@@ -9,9 +9,27 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.6.4';
+export const APP_VERSION = '3.7.1';
 
 export const CHANGELOG = [
+  {
+    version: '3.7.1',
+    date: '2026-04-21',
+    title: 'PDF Export — Expanded Team Alerts',
+    changes: [
+      { type: 'patch', text: 'PDF exports (Sales & Recruiter dashboards) now auto-expand every person\'s Team Alerts section so the specific alerts per person are visible in the PDF' },
+    ],
+  },
+  {
+    version: '3.7.0',
+    date: '2026-04-20',
+    title: 'Executive Reporting — Current & Potential New Input',
+    changes: [
+      { type: 'minor', text: 'Executive Reporting dashboard now live (admin only) — two KPI tiles: Current New Input (same calc as APT Health Input gauge) and Potential New Input (open reqs × ((Bill−Pay)×1.25)×2080 × # Openings)' },
+      { type: 'minor', text: 'Click either KPI for a per-placement or per-req breakdown modal' },
+      { type: 'minor', text: 'Date range picker drives Current New Input; Potential is a live snapshot of all open reqs with bill and pay set' },
+    ],
+  },
   {
     version: '3.6.4',
     date: '2026-04-20',

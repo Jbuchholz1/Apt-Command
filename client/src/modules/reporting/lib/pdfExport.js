@@ -21,6 +21,10 @@ import html2canvas from 'html2canvas';
 export async function exportNodeToPdf(node, filename, opts = {}) {
   if (!node) throw new Error('exportNodeToPdf: node is required');
 
+  // Give React a tick to commit any state changes (e.g. force-expanding alerts)
+  // before we rasterize the DOM.
+  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
   // Capture at 2x for crisper output
   const canvas = await html2canvas(node, {
     scale: 2,

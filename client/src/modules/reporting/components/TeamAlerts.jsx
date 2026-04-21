@@ -4,7 +4,7 @@ import { AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
 
 const BH_BASE = 'https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm';
 
-export default function TeamAlerts({ team }) {
+export default function TeamAlerts({ team, forceExpanded = false }) {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState({});
@@ -49,7 +49,7 @@ export default function TeamAlerts({ team }) {
       </h3>
       <div className="team-alerts-list">
         {alerts.map((user) => {
-          const isOpen = expanded[user.name];
+          const isOpen = forceExpanded || expanded[user.name];
           return (
             <div key={user.name} className="team-alert-card">
               <button className="team-alert-header" onClick={() => toggleUser(user.name)}>

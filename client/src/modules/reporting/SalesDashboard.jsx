@@ -403,7 +403,7 @@ export default function SalesDashboard() {
               </tbody>
             </table>
           </div>
-          <TeamAlerts team="sales" />
+          <TeamAlerts team="sales" forceExpanded={exportingPdf} />
         </>
       )}
       </div>

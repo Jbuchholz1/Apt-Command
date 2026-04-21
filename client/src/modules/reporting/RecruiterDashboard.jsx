@@ -238,7 +238,7 @@ export default function RecruiterDashboard() {
           <DetailTable title="Client Submissions" columns={CLIENT_SUBS_COLS} data={filtered.details.clientSubs} />
           <DetailTable title="Starts" columns={STARTS_COLS} data={filtered.details.starts} />
           <DetailTable title="New Input" columns={NEW_INPUT_COLS} data={filtered.details.newInput} />
-          <TeamAlerts team="recruiting" />
+          <TeamAlerts team="recruiting" forceExpanded={exportingPdf} />
         </>
       )}
       </div>
