@@ -711,6 +711,33 @@
   font-weight: 500;
 }
 
+.detail-editable {
+  cursor: pointer;
+  border-bottom: 1px dashed var(--text-muted);
+  padding-bottom: 1px;
+  display: inline-block;
+  width: fit-content;
+}
+
+.detail-editable:hover {
+  color: var(--navy);
+  border-bottom-color: var(--gold);
+}
+
+.detail-edit-input {
+  font-size: 13px;
+  font-weight: 500;
+  padding: 3px 5px;
+  border: 2px solid var(--gold);
+  border-radius: 3px;
+  outline: none;
+  width: 140px;
+  font-family: var(--sans);
+  color: var(--text);
+  background: #fff;
+  box-sizing: border-box;
+}
+
 .detail-error {
   background: #fef2f2;
   color: #991b1b;

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { getJobDetail, addJobNote, updateSubmissionInBullhorn } from '../../lib/api';
+import { useState, useEffect, useRef } from 'react';
+import { getJobDetail, addJobNote, updateSubmissionInBullhorn, updateJobInBullhorn } from '../../lib/api';
 import StatusBadge from './StatusBadge';
 import EditableSelect from './EditableSelect';
 
@@ -39,6 +39,23 @@ export default function JobDetail({ jobId, onClose }) {
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
   }, [jobId]);
+
+  // Save a numeric compensation field back to Bullhorn and update local display
+  const handleCompSave = async (bullhornField, displayKey, rawValue) => {
+    // Accept "" or "—" as clear-to-null; otherwise coerce
+    const trimmed = (rawValue ?? '').toString().trim();
+    const payload = trimmed === '' ? null : Number(trimmed.replace(/[$,]/g, ''));
+    if (payload !== null && Number.isNaN(payload)) {
+      console.error(`Invalid number for ${bullhornField}:`, rawValue);
+      return;
+    }
+    try {
+      await updateJobInBullhorn(jobId, { [bullhornField]: payload });
+      setData(prev => ({ ...prev, job: { ...prev.job, [displayKey]: payload } }));
+    } catch (err) {
+      console.error(`Failed to update ${bullhornField}:`, err);
+    }
+  };
 
   const handleAddNote = async () => {
     if (!noteText.trim() || noteSaving) return;
@@ -105,10 +122,28 @@ export default function JobDetail({ jobId, onClose }) {
             <div className="detail-section">
               <h3>Compensation</h3>
               <div className="detail-grid">
-                <DetailRow label="Pay Rate" value={data.job.payRate ? `${formatCurrency(data.job.payRate)}/hr` : null} />
-                <DetailRow label="Bill Rate" value={data.job.billRate ? `${formatCurrency(data.job.billRate)}/hr` : null} />
-                <DetailRow label="Salary Low" value={formatCurrency(data.job.salary)} />
-                <DetailRow label="Salary High" value={formatCurrency(data.job.salaryHigh)} />
+                <EditableNumberRow
+                  label="Pay Rate"
+                  value={data.job.payRate}
+                  suffix="/hr"
+                  onSave={(v) => handleCompSave('payRate', 'payRate', v)}
+                />
+                <EditableNumberRow
+                  label="Bill Rate"
+                  value={data.job.billRate}
+                  suffix="/hr"
+                  onSave={(v) => handleCompSave('clientBillRate', 'billRate', v)}
+                />
+                <EditableNumberRow
+                  label="Salary Low"
+                  value={data.job.salary}
+                  onSave={(v) => handleCompSave('salary', 'salary', v)}
+                />
+                <EditableNumberRow
+                  label="Salary High"
+                  value={data.job.salaryHigh}
+                  onSave={(v) => handleCompSave('customFloat1', 'salaryHigh', v)}
+                />
                 <DetailRow label="CE $ (Weekly)" value={data.job.ceSpread ? formatCurrency(data.job.ceSpread) : null} />
                 <DetailRow label="Perm Fee" value={data.job.permFee ? formatCurrency(data.job.permFee) : null} />
                 <DetailRow label="Fee %" value={data.job.feePercent ? `${(data.job.feePercent * 100).toFixed(0)}%` : null} />
@@ -219,6 +254,69 @@ function DetailRow({ label, value }) {
     <div className="detail-row">
       <span className="detail-label">{label}</span>
       <span className="detail-value">{value ?? '—'}</span>
+    </div>
+  );
+}
+
+/**
+ * Click-to-edit numeric row for compensation fields (pay rate, bill rate, salaries).
+ * Displays formatted currency in view mode; shows a plain-number input in edit mode.
+ * Enter or blur saves; Escape cancels.
+ */
+function EditableNumberRow({ label, value, suffix, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value == null ? '' : String(value));
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    setDraft(value == null ? '' : String(value));
+  }, [value]);
+
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editing]);
+
+  const commit = () => {
+    setEditing(false);
+    const originalStr = value == null ? '' : String(value);
+    if (draft !== originalStr) onSave(draft);
+  };
+
+  const handleKey = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    else if (e.key === 'Escape') { setDraft(value == null ? '' : String(value)); setEditing(false); }
+  };
+
+  const display = value != null
+    ? `${formatCurrency(value)}${suffix || ''}`
+    : '—';
+
+  return (
+    <div className="detail-row">
+      <span className="detail-label">{label}</span>
+      {editing ? (
+        <input
+          ref={inputRef}
+          type="number"
+          step="any"
+          className="detail-edit-input"
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={handleKey}
+        />
+      ) : (
+        <span
+          className="detail-value detail-editable"
+          title="Click to edit"
+          onClick={() => setEditing(true)}
+        >
+          {display}
+        </span>
+      )}
     </div>
   );
 }

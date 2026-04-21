@@ -395,14 +395,31 @@ router.post('/:id/bullhorn-update', async (req, res, next) => {
     const ALLOWED_FIELDS = new Set([
       'status', 'owner', 'employmentType', 'customText1',
       'startDate', 'estimatedEndDate', 'assignedUsers',
+      // PrBr/Salary LH compensation fields
+      'payRate', 'clientBillRate', 'salary', 'customFloat1',
     ]);
+
+    // Numeric fields — coerce string input to number or null
+    const NUMERIC_FIELDS = new Set(['payRate', 'clientBillRate', 'salary', 'customFloat1']);
 
     const sanitized = {};
     for (const [key, value] of Object.entries(fields)) {
       if (!ALLOWED_FIELDS.has(key)) {
         return res.status(400).json({ error: `Field "${key}" is not allowed` });
       }
-      sanitized[key] = value;
+      if (NUMERIC_FIELDS.has(key)) {
+        if (value === '' || value === null || value === undefined) {
+          sanitized[key] = null;
+        } else {
+          const num = Number(value);
+          if (Number.isNaN(num)) {
+            return res.status(400).json({ error: `Field "${key}" must be numeric` });
+          }
+          sanitized[key] = num;
+        }
+      } else {
+        sanitized[key] = value;
+      }
     }
 
     const result = await updateJobField(jobId, sanitized);

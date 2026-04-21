@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.7.6';
+export const APP_VERSION = '3.7.7';
 
 export const CHANGELOG = [
+  {
+    version: '3.7.7',
+    date: '2026-04-21',
+    title: 'Job Detail — Editable Compensation',
+    changes: [
+      { type: 'minor', text: 'Pay Rate, Bill Rate, Salary Low, and Salary High are now editable inline in the job detail panel. Click the value to edit, Enter or click away to save to Bullhorn.' },
+    ],
+  },
   {
     version: '3.7.6',
     date: '2026-04-21',
