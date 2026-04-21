@@ -81,7 +81,7 @@ export default function EditableCell({ value, onSave, placeholder, className, ce
       title={multiline ? 'Click to edit — Shift+Enter for new line, Enter to save' : 'Click to edit'}
     >
       {value
-        ? (multiline ? <span className="editable-multiline-value">{value}</span> : value)
+        ? value
         : <span className={isEmpty && defaultText ? 'editable-default-text' : 'editable-placeholder'}>{defaultText || placeholder || '—'}</span>}
     </td>
   );

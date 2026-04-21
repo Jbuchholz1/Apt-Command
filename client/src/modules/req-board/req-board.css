@@ -553,16 +553,12 @@
 }
 
 .cell-notes-wrap {
-  white-space: normal !important;
+  white-space: pre-wrap !important; /* preserves newlines AND wraps long text */
+  overflow: visible !important;      /* let the row grow vertically */
   word-wrap: break-word;
+  overflow-wrap: break-word;
   max-width: 175px;
-}
-
-/* Notes: preserve newlines entered by the user */
-.editable-multiline-value {
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  display: block;
+  vertical-align: top;
 }
 
 /* ---- Status Badge ---- */

@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.7.7';
+export const APP_VERSION = '3.7.8';
 
 export const CHANGELOG = [
+  {
+    version: '3.7.8',
+    date: '2026-04-21',
+    title: 'Notes — Restore Row Expansion',
+    changes: [
+      { type: 'fix', text: 'Notes cell now expands vertically again for long entries, while still honoring Shift+Enter line breaks. Row wraps long text and grows as needed, matching the previous behavior.' },
+    ],
+  },
   {
     version: '3.7.7',
     date: '2026-04-21',
