@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.9.1';
+export const APP_VERSION = '3.9.2';
 
 export const CHANGELOG = [
+  {
+    version: '3.9.2',
+    date: '2026-04-22',
+    title: 'Faster Auto-Refresh',
+    changes: [
+      { type: 'patch', text: 'Auto-refresh cadence on the Req Board and Operations Placements tracker dropped from 5 minutes to 2 minutes. Edits by colleagues now show up more than twice as fast. Server-side 30-second cache + in-flight request de-duplication absorb the extra polls, so upstream load on Bullhorn barely changes.' },
+    ],
+  },
   {
     version: '3.9.1',
     date: '2026-04-22',

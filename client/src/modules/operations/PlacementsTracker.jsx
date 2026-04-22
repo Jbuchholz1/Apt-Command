@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getOperationsPlacements, updatePlacementChecklist, updatePlacementBullhorn } from '../../lib/api';
 
-const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const REFRESH_INTERVAL = 2 * 60 * 1000; // 2 minutes
 const BH_BASE = 'https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm';
 
 const BG_DRUG_OPTIONS = ['N/A', 'Complete', 'Submitted', 'Launched'];

@@ -10,7 +10,7 @@ import SplashScreen from './SplashScreen';
 import { EditingContext, useEditingState } from './EditingContext';
 import ConflictDialog from './ConflictDialog';
 
-const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const REFRESH_INTERVAL = 2 * 60 * 1000; // 2 minutes
 const REFRESH_TICK_MS = 15 * 1000;       // how often the "updated Xs ago" label ticks
 
 function formatRelative(lastRefreshMs, nowMs) {
