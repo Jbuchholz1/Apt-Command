@@ -9,9 +9,25 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.8.0';
+export const APP_VERSION = '3.9.1';
 
 export const CHANGELOG = [
+  {
+    version: '3.9.1',
+    date: '2026-04-22',
+    title: 'Org Flow — Import Cache Fix',
+    changes: [
+      { type: 'fix', text: 'Newly imported clients and employees (and reporting-relationship updates) now appear immediately after a successful upload. The global 5-minute browser cache was masking updates so the UI looked unchanged until the cache expired — GETs on Org Flow routes now send Cache-Control: no-store so the browser always revalidates.' },
+    ],
+  },
+  {
+    version: '3.9.0',
+    date: '2026-04-21',
+    title: 'Pipeline — Convert Opportunity to Job',
+    changes: [
+      { type: 'minor', text: 'New "Convert → Job" button on every Pipeline row. Opens a modal prefilled with the Opportunity\'s title, client, owner, deal value, and close date; AM fills in employment type, # openings, remote, pay/bill rate, salary range, and client contact. On save, creates a new JobOrder in Bullhorn, marks the Opportunity Closed-Won, and drops a Bullhorn Note on the Opportunity linking to the new req. The new req appears on the Req Board at the next refresh.' },
+    ],
+  },
   {
     version: '3.8.0',
     date: '2026-04-21',

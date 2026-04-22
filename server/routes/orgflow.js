@@ -14,6 +14,14 @@ const upload = multer({
   },
 });
 
+// Org Flow is mutation-heavy (client imports, employee edits, position saves)
+// and the UI expects changes to appear immediately. Override the global
+// Cache-Control: max-age=300 from index.js so the browser always revalidates.
+router.use((req, res, next) => {
+  if (req.method === 'GET') res.set('Cache-Control', 'no-store');
+  next();
+});
+
 // =============================================
 // Users
 // =============================================
