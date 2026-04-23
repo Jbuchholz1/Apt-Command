@@ -419,6 +419,8 @@ function StatCardGrid({ items, loading }) {
             className="db-glance-stat"
             key={item.label}
             onClick={item.onClick}
+            title={item.tooltip}
+            aria-label={item.tooltip ? `${item.label}. ${item.tooltip}` : item.label}
           >
             {content}
             <div className="db-glance-label">{item.label}</div>
@@ -468,6 +470,10 @@ function AmStats({ jobs, fullName, onOpenFlaggedDrawer }) {
       label: 'Missed / missing follow-ups & deadlines',
       value: derived?.flaggedCount,
       format: 'number',
+      tooltip:
+        'Count of your active reqs where the Deadline or Follow-up field is either blank or already in the past. ' +
+        'Active = status is not Archive, Placed, Lost, Wash, or Filled. ' +
+        'Click to open an inline-editable list.',
       onClick: () => {
         // If there's nothing flagged, fall through to the board — no empty
         // drawer surprises.
@@ -479,18 +485,28 @@ function AmStats({ jobs, fullName, onOpenFlaggedDrawer }) {
       label: 'Stale client contacts',
       value: staleError ? null : staleCount,
       format: 'number',
+      tooltip:
+        'Count of Bullhorn ClientContacts you own that have had no MAR-driving appointment ' +
+        'logged by you in the last 14 days. Same activity types the AM Sales Dashboard uses for MAR.',
       onClick: () => navigate('/clients'),
     },
     {
       label: 'Potential input',
       value: derived?.potentialInput,
       format: 'currency-k',
+      tooltip:
+        'Sum of Deal Value (Bullhorn customFloat2) across your active owned jobs. ' +
+        'Represents the potential input you stand to earn if every one of your reqs fills. ' +
+        'Jobs without a Deal Value contribute $0.',
       onClick: () => navigate('/req-board'),
     },
     {
       label: 'Open A & B reqs',
       value: derived?.abReqs,
       format: 'number',
+      tooltip:
+        'Count of your active owned jobs where Priority is A or B (type = 1 or 2 in Bullhorn). ' +
+        'C reqs and closed reqs are excluded.',
       onClick: () => navigate('/req-board'),
     },
   ];
@@ -566,24 +582,37 @@ function RecruiterStats({ jobs, bullhornUserId }) {
       label: 'Candidates in play',
       value: inPlayError ? null : inPlayCount,
       format: 'number',
+      tooltip:
+        'Count of your Bullhorn JobSubmissions currently in Interview Scheduled, Interview Feedback, ' +
+        'Client Feedback, or Offer Extended. Only submissions you sent (sendingUser = you) are counted.',
       onClick: () => navigate('/req-board'),
     },
     {
       label: 'Assigned reqs w/o client sub',
       value: derived?.reqsNoSub,
       format: 'number',
+      tooltip:
+        'Count of active jobs where you are in assignedUsers and zero client submissions have ' +
+        'been sent yet. Closed reqs (Archive / Placed / Lost / Wash / Filled) are excluded.',
       onClick: () => navigate('/req-board'),
     },
     {
       label: 'Pending 30 / 90 check-ins',
       value: checkinError ? null : checkinCount,
       format: 'number',
+      tooltip:
+        'Count of your placements where either the 30-day or 90-day check-in is Overdue. ' +
+        'Matches the Overdue rows in the Follow-ups table on your Performance page.',
       onClick: () => navigate('/reporting/performance'),
     },
     {
       label: 'Pending input',
       value: derived?.pendingInput,
       format: 'currency-k',
+      tooltip:
+        'Sum of Deal Value (Bullhorn customFloat2) across active jobs where you are in assignedUsers. ' +
+        'Represents the potential spread you stand to earn if your assigned reqs fill. ' +
+        'Jobs without a Deal Value contribute $0.',
       onClick: () => navigate('/req-board'),
     },
   ];

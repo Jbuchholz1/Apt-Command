@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.15.0';
+export const APP_VERSION = '3.15.1';
 
 export const CHANGELOG = [
+  {
+    version: '3.15.1',
+    date: '2026-04-23',
+    title: 'Daily Brief — Tile Tooltips',
+    changes: [
+      { type: 'patch', text: 'Hover (or keyboard-focus) any of the four "Today at a glance" tiles to see a tooltip explaining how the number is calculated — which Bullhorn fields and filters feed it, and which closed statuses are excluded. Screen readers announce the tooltip alongside the label via aria-label.' },
+    ],
+  },
   {
     version: '3.15.0',
     date: '2026-04-23',
