@@ -9,9 +9,19 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.15.6';
+export const APP_VERSION = '3.15.7';
 
 export const CHANGELOG = [
+  {
+    version: '3.15.7',
+    date: '2026-04-23',
+    title: 'Near Real-Time Req Board',
+    changes: [
+      { type: 'minor', text: 'Auto-refresh cadence dropped from 2 minutes to 20 seconds on the Req Board and Operations Placements tracker. Colleagues\' edits now show up within 20 seconds instead of two minutes. The server-side 30-second cache and in-flight request de-duplication absorb the extra polls — upstream Bullhorn load stays flat.' },
+      { type: 'fix', text: 'Inline text cells (Notes, Deadline, Follow Up, 48hr) now update the displayed value from a local safety-net state the instant you commit, so there is zero frame where the old value is still visible while the parent\'s optimistic update propagates. Previously React\'s batching handled this in most cases, but under load or on slower devices a sub-frame flicker could appear.' },
+      { type: 'patch', text: '"Updated Xs ago" pill now ticks every 5 seconds instead of 15 so the freshness indicator keeps up with the faster refresh cadence.' },
+    ],
+  },
   {
     version: '3.15.6',
     date: '2026-04-23',
