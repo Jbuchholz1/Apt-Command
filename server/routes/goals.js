@@ -16,6 +16,16 @@ const db = require('../lib/db');
 const { resolveRole } = require('../lib/roles');
 const { getCurrentPeriod } = require('../lib/period');
 
+// Shift a period string (e.g. "2026-Q2") by delta quarters. Negative = earlier.
+function shiftPeriod(period, delta) {
+  const m = /^(\d{4})-Q([1-4])$/.exec(period);
+  if (!m) return period;
+  const fy = parseInt(m[1], 10);
+  const q = parseInt(m[2], 10);
+  const total = fy * 4 + (q - 1) + delta;
+  return `${Math.floor(total / 4)}-Q${(total % 4) + 1}`;
+}
+
 // Goal data is mutation-heavy (create, check-in, task toggle) and the UI
 // expects the list to reflect changes immediately. Override the global
 // Cache-Control: max-age=300 from index.js so the browser always revalidates.
@@ -57,7 +67,9 @@ router.get('/', async (req, res, next) => {
       ? await db.listArchivedGoals(period)
       : await db.listGoals(period);
     const myPriorityIds = await db.listMyPriorityIds(userEmail(req), period);
-    const archivedCount = archived ? 0 : await db.countArchivedGoals(period);
+    // Footer reads "Plus N archived goals from {prevPeriod}", so the count must
+    // be scoped to the previous period — not the one currently being viewed.
+    const archivedCount = archived ? 0 : await db.countArchivedGoals(shiftPeriod(period, -1));
     res.json({ period, goals, tasks, myPriorityIds, archivedCount, archived });
   } catch (err) { next(err); }
 });

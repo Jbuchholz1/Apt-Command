@@ -33,7 +33,10 @@
   z-index: 0;
 }
 
-.ql-module > *:not(.ql-watermark) { position: relative; z-index: 1; }
+.ql-module > *:not(.ql-watermark):not(.gt-detail-overlay):not(.gt-modal-overlay) {
+  position: relative;
+  z-index: 1;
+}
 
 .ql-loading,
 .ql-list-loading,
