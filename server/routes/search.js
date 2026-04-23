@@ -154,8 +154,13 @@ async function searchGraph(accessToken, query) {
   }
 
   if (!res.ok) {
-    const statusText = `${res.status} ${res.statusText}`;
-    throw new Error(`Graph Search request failed: ${statusText}`);
+    let bodyText = '';
+    try { bodyText = await res.text(); } catch { /* ignore */ }
+    const snippet = bodyText.slice(0, 400);
+    const err = new Error(`Graph Search request failed: ${res.status} ${res.statusText} ${snippet}`);
+    err.graphStatus = res.status;
+    err.graphBody = snippet;
+    throw err;
   }
 
   const data = await res.json();
