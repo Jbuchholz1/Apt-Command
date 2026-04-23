@@ -51,14 +51,18 @@ export default function JobDetail({ jobId, onClose }) {
       console.error(`Invalid number for ${bullhornField}:`, rawValue);
       return;
     }
-    const { ok } = await saveWithToast(
+    // Optimistic: show the new value immediately. If the save fails, revert.
+    const previousValue = data?.job ? data.job[displayKey] : null;
+    setData(prev => ({ ...prev, job: { ...prev.job, [displayKey]: payload } }));
+    await saveWithToast(
       () => updateJobInBullhorn(jobId, { [bullhornField]: payload }),
-      { failureMessage: `Could not save ${bullhornField}` },
+      {
+        failureMessage: `Could not save ${bullhornField}`,
+        onRollback: () => {
+          setData(prev => ({ ...prev, job: { ...prev.job, [displayKey]: previousValue } }));
+        },
+      },
     );
-    if (ok) {
-      setData(prev => ({ ...prev, job: { ...prev.job, [displayKey]: payload } }));
-    }
-    // On failure, EditableNumberRow's value-prop sync reverts the displayed number.
   };
 
   const handleAddNote = async () => {
@@ -191,21 +195,35 @@ export default function JobDetail({ jobId, onClose }) {
                           displayValue={sub.status || '—'}
                           options={SUBMISSION_STATUS_OPTIONS}
                           onSave={async (val) => {
-                            const { ok } = await saveWithToast(
+                            // Optimistic: update the row right away so the
+                            // dropdown snaps to the chosen value without lag.
+                            const previousStatus = sub.status;
+                            setData(prev => ({
+                              ...prev,
+                              submissions: {
+                                ...prev.submissions,
+                                data: prev.submissions.data.map(s =>
+                                  s.id === sub.id ? { ...s, status: val } : s
+                                ),
+                              },
+                            }));
+                            await saveWithToast(
                               () => updateSubmissionInBullhorn(sub.id, { status: val }),
-                              { failureMessage: 'Could not update submission status' },
-                            );
-                            if (ok) {
-                              setData(prev => ({
-                                ...prev,
-                                submissions: {
-                                  ...prev.submissions,
-                                  data: prev.submissions.data.map(s =>
-                                    s.id === sub.id ? { ...s, status: val } : s
-                                  ),
+                              {
+                                failureMessage: 'Could not update submission status',
+                                onRollback: () => {
+                                  setData(prev => ({
+                                    ...prev,
+                                    submissions: {
+                                      ...prev.submissions,
+                                      data: prev.submissions.data.map(s =>
+                                        s.id === sub.id ? { ...s, status: previousStatus } : s
+                                      ),
+                                    },
+                                  }));
                                 },
-                              }));
-                            }
+                              },
+                            );
                           }}
                           className="cell-editable"
                         />

@@ -9,9 +9,27 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.15.1';
+export const APP_VERSION = '3.15.3';
 
 export const CHANGELOG = [
+  {
+    version: '3.15.3',
+    date: '2026-04-23',
+    title: 'Instant Edits on the Req Board',
+    changes: [
+      { type: 'minor', text: 'Edits on the Req Board and Job Detail panel now update the UI immediately — no more waiting for the round-trip before you see your change. The save happens in the background; if it fails, the cell reverts and you see a toast.' },
+      { type: 'fix', text: 'Rapid back-to-back edits on the same req no longer trigger a spurious "Someone else edited this" conflict dialog. Saves now chain per job so each one reads the latest version from the previous save\'s response.' },
+      { type: 'patch', text: 'Auto-refresh stays paused until every in-flight save on the board has completed, so a background poll can\'t overwrite an edit that\'s still being written.' },
+    ],
+  },
+  {
+    version: '3.15.2',
+    date: '2026-04-23',
+    title: 'Req Board — Accurate Client Submission Counts',
+    changes: [
+      { type: 'patch', text: 'Fixed the inline # CS count undercounting on some jobs (e.g. job 2031 showing 2 when Bullhorn had 4). The JobSubmission query used to pull the 500 most recent client-stage submissions across all of Bullhorn; once older Placed/Interview records piled past that cap, submissions for newer jobs were silently dropped. The query is now scoped to just the jobs currently on the board, so the cap can no longer truncate results.' },
+    ],
+  },
   {
     version: '3.15.1',
     date: '2026-04-23',

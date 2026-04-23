@@ -1,10 +1,11 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import StatusBadge from './StatusBadge';
 import EditableCell from './EditableCell';
 import EditableSelect from './EditableSelect';
 import EditableDate from './EditableDate';
 import { updateJobOverrides, updateJobInBullhorn, getUsers, getRecruiters, getAccountManagers } from '../../lib/api';
 import { saveWithToast } from '../../lib/saveWithToast';
+import { useEditing } from './EditingContext';
 import { getDeadlineUrgency, getFollowUpUrgency, getTrUrgency } from './lib/urgency';
 
 const PRIORITY_COLORS = {
@@ -114,6 +115,61 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
   const [recruiters, setRecruiters] = useState([]);
   const [accountManagers, setAccountManagers] = useState([]);
 
+  const { startEditing, stopEditing } = useEditing();
+
+  // --- Optimistic save infrastructure ---
+  //
+  // Two problems we're solving:
+  //   (a) Waiting for the round-trip before showing the user's edit makes
+  //       every save feel laggy (~500ms–2s per save).
+  //   (b) Two rapid same-user edits to the same job send the same
+  //       If-Match version (React state hasn't caught up with save #1's
+  //       response when save #2 fires), so the server returns a spurious
+  //       409 on save #2 — the user collides with themselves.
+  //
+  // Solutions:
+  //   1. Update the local jobs array IMMEDIATELY on commit (optimistic),
+  //      then save in the background. On failure, revert.
+  //   2. Chain saves per-job: each queued save awaits the previous one's
+  //      response and reads the latest version from a ref that tracks
+  //      the most recent server-known version for that job.
+  //   3. Signal the EditingContext while saves are in flight so the
+  //      auto-refresh interval pauses until the chain drains.
+  const latestVersionRef = useRef({});      // jobId -> most recent server version
+  const saveChainsRef = useRef(new Map());  // jobId -> tail Promise of the chain
+  const inFlightCountRef = useRef(0);
+
+  // Keep latestVersionRef in sync with incoming props, but monotonic: a
+  // background refresh that briefly returns an older cached version must
+  // not regress the ref past what our own saves have already bumped to.
+  useEffect(() => {
+    for (const j of (jobs || [])) {
+      if (typeof j.overrideVersion === 'number') {
+        const existing = latestVersionRef.current[j.id];
+        if (existing === undefined || j.overrideVersion > existing) {
+          latestVersionRef.current[j.id] = j.overrideVersion;
+        }
+      }
+    }
+  }, [jobs]);
+
+  // Queue work per-job so same-row edits serialize naturally. Different
+  // jobs still save in parallel. We also flag the board-wide EditingContext
+  // so the auto-refresh skips ticks while saves are draining.
+  const chainPerJob = (jobId, fn) => {
+    inFlightCountRef.current += 1;
+    if (inFlightCountRef.current === 1) startEditing();
+    const prev = saveChainsRef.current.get(jobId) || Promise.resolve();
+    const next = prev.catch(() => {}).then(fn).finally(() => {
+      inFlightCountRef.current = Math.max(0, inFlightCountRef.current - 1);
+      if (inFlightCountRef.current === 0) stopEditing();
+      if (saveChainsRef.current.get(jobId) === next) {
+        saveChainsRef.current.delete(jobId);
+      }
+    });
+    saveChainsRef.current.set(jobId, next);
+  };
+
   useEffect(() => {
     getUsers().then(res => setUsers(res.data || [])).catch(() => {});
     getRecruiters().then(res => setRecruiters(res.data || [])).catch(() => {});
@@ -128,65 +184,115 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
     );
   };
 
-  const handleOverrideSave = async (jobId, field, value) => {
+  const handleOverrideSave = (jobId, field, value) => {
     const apiField = OVERRIDE_FIELD_MAP[field];
     if (!apiField) return;
-    // Look up the current version (if the row has one) so the server can
-    // detect concurrent edits via If-Match. Jobs with no override row yet
-    // send no header and insert at version 1 on the server.
-    const job = (jobs || []).find(j => j.id === jobId);
-    const expectedVersion = job && typeof job.overrideVersion === 'number' ? job.overrideVersion : undefined;
 
-    const { ok, data, error } = await saveWithToast(
-      () => updateJobOverrides(jobId, { [apiField]: value }, { expectedVersion }),
-      {
-        failureMessage: `Could not save ${field}`,
-        onConflict: (err) => {
-          if (onConflict) onConflict({ jobId, field, current: err?.current || null });
+    const job = (jobs || []).find(j => j.id === jobId);
+    const previousValue = job ? job[field] : undefined;
+
+    // 1. Optimistic: show the edit right now so rapid typing feels instant.
+    if (onJobUpdated) onJobUpdated(jobId, field, value);
+
+    chainPerJob(jobId, async () => {
+      // Read the latest known version AFTER any prior chained save for this
+      // job has settled and updated the ref.
+      const expectedVersion = latestVersionRef.current[jobId];
+
+      const { ok, data, error } = await saveWithToast(
+        () => updateJobOverrides(jobId, { [apiField]: value }, { expectedVersion }),
+        {
+          failureMessage: `Could not save ${field}`,
+          onRollback: () => {
+            // Revert the optimistic change so the UI matches the server.
+            if (onJobUpdated) onJobUpdated(jobId, field, previousValue);
+          },
+          onConflict: (err) => {
+            if (onConflict) onConflict({ jobId, field, current: err?.current || null });
+          },
         },
-      },
-    );
-    if (ok) {
-      if (onJobUpdated) onJobUpdated(jobId, field, value);
-      if (onOverrideVersionUpdated && data && data.data) onOverrideVersionUpdated(jobId, data.data);
-    } else if (error && error.status === 409 && error.current) {
-      // The version state in our local jobs array is stale. Bump it to match
-      // the server's current row so the user's next save attempts don't
-      // instantly 409 again for the same reason.
-      if (onOverrideVersionUpdated) onOverrideVersionUpdated(jobId, error.current);
-    }
+      );
+
+      if (ok && data?.data?.version !== undefined) {
+        latestVersionRef.current[jobId] = data.data.version;
+        // Reassert the optimistic value in case a prior chained save failed
+        // and its rollback clobbered our field.
+        if (onJobUpdated) onJobUpdated(jobId, field, value);
+        if (onOverrideVersionUpdated) onOverrideVersionUpdated(jobId, data.data);
+      } else if (!ok && error?.status === 409 && error.current?.version !== undefined) {
+        // Real conflict from another user — accept the server's version as
+        // the new baseline so the user can retry without hitting 409 again
+        // for the same stale-version reason.
+        latestVersionRef.current[jobId] = error.current.version;
+        if (onOverrideVersionUpdated) onOverrideVersionUpdated(jobId, error.current);
+      }
+    });
   };
 
-  const handleBullhornSave = async (job, col, rawValue) => {
+  const handleBullhornSave = (job, col, rawValue) => {
     const bhField = col.bullhornField;
     if (!bhField) return;
 
-    let bullhornValue = rawValue;
-    let displayUpdates = {};
+    const now = new Date().toISOString();
 
-    if (bhField === 'assignedUsers') {
+    // Special case: ZZ / * recruiter — writes to overrides, not Bullhorn.
+    if (bhField === 'assignedUsers' && (rawValue === 'ZZ' || rawValue === '*')) {
       const hadPreviousRecruiter = !!(job.recruiter && job.recruiter.trim() && job.recruiter !== 'ZZ');
+      const previousRecruiter = job.recruiter;
+      const previousTrAssignedAt = job.trAssignedAt;
+      const previousTrReassigned = job.trReassigned;
 
-      const now = new Date().toISOString();
+      if (onJobUpdated) {
+        onJobUpdated(job.id, 'recruiter', rawValue);
+        onJobUpdated(job.id, 'trAssignedAt', now);
+        if (hadPreviousRecruiter) onJobUpdated(job.id, 'trReassigned', true);
+      }
 
-      if (rawValue === 'ZZ' || rawValue === '*') {
-        // ZZ / *: save locally only, don't touch Bullhorn
-        const { ok } = await saveWithToast(
+      chainPerJob(job.id, async () => {
+        const expectedVersion = latestVersionRef.current[job.id];
+        const { ok, data, error } = await saveWithToast(
           () => updateJobOverrides(job.id, {
             recruiter: rawValue,
             tr_reassigned: hadPreviousRecruiter ? '1' : undefined,
             tr_assigned_at: now,
-          }),
-          { failureMessage: 'Could not reassign recruiter' },
+          }, { expectedVersion }),
+          {
+            failureMessage: 'Could not reassign recruiter',
+            onRollback: () => {
+              if (onJobUpdated) {
+                onJobUpdated(job.id, 'recruiter', previousRecruiter);
+                onJobUpdated(job.id, 'trAssignedAt', previousTrAssignedAt);
+                onJobUpdated(job.id, 'trReassigned', previousTrReassigned);
+              }
+            },
+            onConflict: (err) => {
+              if (onConflict) onConflict({ jobId: job.id, field: 'recruiter', current: err?.current || null });
+            },
+          },
         );
-        if (ok && onJobUpdated) {
-          onJobUpdated(job.id, 'recruiter', rawValue);
-          onJobUpdated(job.id, 'trAssignedAt', now);
-          if (hadPreviousRecruiter) onJobUpdated(job.id, 'trReassigned', true);
+        if (ok && data?.data?.version !== undefined) {
+          latestVersionRef.current[job.id] = data.data.version;
+          if (onJobUpdated) {
+            onJobUpdated(job.id, 'recruiter', rawValue);
+            onJobUpdated(job.id, 'trAssignedAt', now);
+            if (hadPreviousRecruiter) onJobUpdated(job.id, 'trReassigned', true);
+          }
+          if (onOverrideVersionUpdated) onOverrideVersionUpdated(job.id, data.data);
+        } else if (!ok && error?.status === 409 && error.current?.version !== undefined) {
+          latestVersionRef.current[job.id] = error.current.version;
+          if (onOverrideVersionUpdated) onOverrideVersionUpdated(job.id, error.current);
         }
-        return;
-      }
+      });
+      return;
+    }
 
+    // Build bullhornValue + displayUpdates for the non-ZZ paths.
+    let bullhornValue = rawValue;
+    let displayUpdates = {};
+    let secondaryOverridePayload = null; // for assignedUsers TR tracking
+
+    if (bhField === 'assignedUsers') {
+      const hadPreviousRecruiter = !!(job.recruiter && job.recruiter.trim() && job.recruiter !== 'ZZ');
       const userId = parseInt(rawValue, 10);
       const user = recruiters.find(u => u.id === userId);
       bullhornValue = { replaceAll: [userId] };
@@ -195,22 +301,10 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
         assignedUserIds: [userId],
         trAssignedAt: now,
       };
-
-      // Track reassignment and assignment time. This secondary override write
-      // runs in parallel with the Bullhorn update below; if it fails we show
-      // a toast but don't block the primary save.
-      if (hadPreviousRecruiter) {
-        displayUpdates.trReassigned = true;
-        saveWithToast(
-          () => updateJobOverrides(job.id, { recruiter: '', tr_reassigned: '1', tr_assigned_at: now }),
-          { failureMessage: 'Could not record recruiter reassignment' },
-        );
-      } else {
-        saveWithToast(
-          () => updateJobOverrides(job.id, { recruiter: '', tr_reassigned: '', tr_assigned_at: now }),
-          { failureMessage: 'Could not record recruiter assignment' },
-        );
-      }
+      if (hadPreviousRecruiter) displayUpdates.trReassigned = true;
+      secondaryOverridePayload = hadPreviousRecruiter
+        ? { recruiter: '', tr_reassigned: '1', tr_assigned_at: now }
+        : { recruiter: '', tr_reassigned: '', tr_assigned_at: now };
     } else if (bhField === 'owner') {
       const userId = parseInt(rawValue, 10);
       const user = users.find(u => u.id === userId);
@@ -221,26 +315,63 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
         ownerId: userId,
       };
     } else if (bhField === 'startDate' || bhField === 'estimatedEndDate') {
-      // rawValue is a Unix ms timestamp or null
       bullhornValue = rawValue;
-      displayUpdates = {
-        [col.key]: rawValue ? new Date(rawValue).toISOString() : null,
-      };
+      displayUpdates = { [col.key]: rawValue ? new Date(rawValue).toISOString() : null };
     } else {
       // Simple string fields: status, employmentType, customText1
       displayUpdates = { [col.key]: rawValue };
     }
 
-    const { ok } = await saveWithToast(
-      () => updateJobInBullhorn(job.id, { [bhField]: bullhornValue }),
-      { failureMessage: `Could not update ${bhField}` },
-    );
-    // Only propagate display updates on success — on failure the jobs array
-    // keeps the old value and the cell reverts naturally.
-    if (ok) {
-      for (const [field, value] of Object.entries(displayUpdates)) {
-        if (onJobUpdated) onJobUpdated(job.id, field, value);
+    // Capture previous values so we can revert each field on failure.
+    const previousDisplay = {};
+    for (const key of Object.keys(displayUpdates)) {
+      previousDisplay[key] = job[key];
+    }
+
+    // Optimistic: apply display updates now.
+    if (onJobUpdated) {
+      for (const [field, val] of Object.entries(displayUpdates)) {
+        onJobUpdated(job.id, field, val);
       }
+    }
+
+    chainPerJob(job.id, async () => {
+      const { ok } = await saveWithToast(
+        () => updateJobInBullhorn(job.id, { [bhField]: bullhornValue }),
+        {
+          failureMessage: `Could not update ${bhField}`,
+          onRollback: () => {
+            if (onJobUpdated) {
+              for (const [field, prevVal] of Object.entries(previousDisplay)) {
+                onJobUpdated(job.id, field, prevVal);
+              }
+            }
+          },
+        },
+      );
+      if (ok && onJobUpdated) {
+        // Reassert optimistic values (may have been rolled back by a prior
+        // failing save in the chain).
+        for (const [field, val] of Object.entries(displayUpdates)) {
+          onJobUpdated(job.id, field, val);
+        }
+      }
+    });
+
+    // Secondary override write (TR reassignment tracking) — chain after the
+    // Bullhorn write so its version handshake uses the latest ref value.
+    if (secondaryOverridePayload) {
+      chainPerJob(job.id, async () => {
+        const expectedVersion = latestVersionRef.current[job.id];
+        const { ok, data } = await saveWithToast(
+          () => updateJobOverrides(job.id, secondaryOverridePayload, { expectedVersion }),
+          { failureMessage: 'Could not record recruiter assignment' },
+        );
+        if (ok && data?.data?.version !== undefined) {
+          latestVersionRef.current[job.id] = data.data.version;
+          if (onOverrideVersionUpdated) onOverrideVersionUpdated(job.id, data.data);
+        }
+      });
     }
   };
 
