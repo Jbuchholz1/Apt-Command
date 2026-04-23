@@ -259,6 +259,7 @@ function SideRail({ fullName }) {
 }
 
 function TodayAtAGlance({ fullName }) {
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -298,10 +299,10 @@ function TodayAtAGlance({ fullName }) {
 
   const items = useMemo(
     () => [
-      { value: stats?.active, label: 'Active jobs assigned to you', format: 'number' },
-      { value: stats?.newInput, label: 'New Input QTD', format: 'currency-k' },
-      { value: stats?.placements, label: 'Placements QTD', format: 'number' },
-      { value: stats?.clientSubs, label: 'Client submissions', format: 'number' },
+      { value: stats?.active, label: 'Active jobs assigned to you', format: 'number', href: '/req-board' },
+      { value: stats?.newInput, label: 'New Input QTD', format: 'currency-k', href: '/reporting/performance' },
+      { value: stats?.placements, label: 'Placements QTD', format: 'number', href: '/reporting/performance' },
+      { value: stats?.clientSubs, label: 'Client submissions', format: 'number', href: '/reporting/performance' },
     ],
     [stats],
   );
@@ -311,7 +312,12 @@ function TodayAtAGlance({ fullName }) {
       <div className="db-block-eyebrow">TODAY · AT · A · GLANCE</div>
       <div className="db-glance-grid">
         {items.map((item) => (
-          <div className="db-glance-stat" key={item.label}>
+          <button
+            type="button"
+            className="db-glance-stat"
+            key={item.label}
+            onClick={() => navigate(item.href)}
+          >
             {loading ? (
               <div className="skeleton-shimmer db-glance-skeleton" />
             ) : (
@@ -324,7 +330,7 @@ function TodayAtAGlance({ fullName }) {
               </div>
             )}
             <div className="db-glance-label">{item.label}</div>
-          </div>
+          </button>
         ))}
       </div>
     </section>

@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.11.2';
+export const APP_VERSION = '3.11.3';
 
 export const CHANGELOG = [
+  {
+    version: '3.11.3',
+    date: '2026-04-23',
+    title: 'Daily Brief — Clickable Stats',
+    changes: [
+      { type: 'minor', text: 'All four "Today at a glance" stats are now click-through. Active jobs opens the Req Board; New Input QTD, Placements QTD, and Client Submissions each open your Individual Performance dashboard where the detail rows live.' },
+      { type: 'patch', text: 'Hover state darkens the top border and stat value to signal the interaction.' },
+    ],
+  },
   {
     version: '3.11.2',
     date: '2026-04-23',

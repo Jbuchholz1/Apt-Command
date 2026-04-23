@@ -312,8 +312,24 @@
 }
 
 .db-glance-stat {
-  padding-top: 18px;
+  padding: 18px 0 4px;
+  border: none;
   border-top: 1px solid var(--apt-fog);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  font-family: inherit;
+  transition: border-top-color 200ms ease-out;
+}
+.db-glance-stat:hover {
+  border-top-color: var(--apt-navy-600);
+}
+.db-glance-stat:hover .db-glance-value {
+  color: var(--apt-navy-600);
+}
+.db-glance-stat:hover .db-glance-label {
+  color: var(--apt-slate);
 }
 
 .db-glance-value {
@@ -323,6 +339,7 @@
   color: var(--apt-navy);
   line-height: 1;
   font-variant-numeric: tabular-nums;
+  transition: color 200ms ease-out;
 }
 
 .db-glance-label {
