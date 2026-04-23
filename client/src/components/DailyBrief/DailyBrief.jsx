@@ -4,10 +4,71 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { getAnnouncement, getMyDashboard, getJobs } from '../../lib/api';
 import { getCalendarAccessToken, fetchTodaysEvents } from '../../lib/graphClient';
-import { DEFAULT_PRIORITIES } from './priorities.data';
 import './daily-brief.css';
 
-const PILL_LABELS = { urgent: 'URGENT', interview: 'INTERVIEW', offer: 'OFFER' };
+/**
+ * @typedef {Object} Priority
+ * @property {string} id
+ * @property {'urgent' | 'interview' | 'offer'} kind
+ * @property {string} pillLabel
+ * @property {string} clientLabel
+ * @property {string} headline
+ * @property {string} context
+ * @property {{ label: string, href: string }} action
+ */
+
+function jobToPriority(job) {
+  const letter = job.priority; // 'A' or 'B'
+  const kind = letter === 'A' ? 'urgent' : 'interview';
+  const addedMs = job.dateAdded ? new Date(job.dateAdded).getTime() : Date.now();
+  const daysOpen = Math.max(0, Math.floor((Date.now() - addedMs) / 86400000));
+  const loc = [job.city, job.state].filter(Boolean).join(', ');
+  const parts = [
+    `${daysOpen} day${daysOpen === 1 ? '' : 's'} in Accepting Candidates`,
+    job.employmentType,
+    loc,
+  ].filter(Boolean);
+  return {
+    id: `job-${job.id}`,
+    kind,
+    pillLabel: `${letter}-REQ`,
+    clientLabel: job.client || 'Unknown client',
+    headline: job.title || '(Untitled req)',
+    context: `${parts.join(' · ')}.`,
+    action: { label: 'Open req', href: '/req-board' },
+  };
+}
+
+function extractMyPriorities(jobs, fullName) {
+  if (!Array.isArray(jobs) || !fullName) return [];
+  const me = fullName.toLowerCase();
+  return jobs
+    .filter(
+      (j) =>
+        j.status === 'Accepting Candidates'
+        && (j.priority === 'A' || j.priority === 'B')
+        && (j.owner || '').toLowerCase() === me,
+    )
+    .sort((a, b) => {
+      const aMs = a.dateAdded ? new Date(a.dateAdded).getTime() : Infinity;
+      const bMs = b.dateAdded ? new Date(b.dateAdded).getTime() : Infinity;
+      return aMs - bMs;
+    })
+    .slice(0, 3)
+    .map(jobToPriority);
+}
+
+function formatCurrencyCompact(n) {
+  if (typeof n !== 'number' || Number.isNaN(n)) return '—';
+  if (Math.abs(n) < 1000) return `$${n}`;
+  return `$${Math.round(n / 1000).toLocaleString()}K`;
+}
+
+const CLOSED_STATUSES = new Set(['Archive', 'Placed', 'Lost', 'Wash', 'Filled']);
+
+function isActiveJob(job) {
+  return !CLOSED_STATUSES.has(job.status);
+}
 
 function getDateEyebrow(d = new Date()) {
   const weekday = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
@@ -21,14 +82,6 @@ function getVolumeIssue(d = new Date()) {
   const dayOfYear = Math.floor((d - start) / 86400000) + 1;
   const vol = String(Math.max(1, year - 2023)).padStart(2, '0');
   return `Vol. ${vol} / Issue ${dayOfYear}`;
-}
-
-function getWeekStart(d = new Date()) {
-  const copy = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const day = copy.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  copy.setDate(copy.getDate() + diff);
-  return copy;
 }
 
 function getQuarterStart(d = new Date()) {
@@ -84,7 +137,7 @@ export default function DailyBrief() {
     <div className="daily-brief">
       <Masthead firstName={firstName} dateEyebrow={dateEyebrow} volumeIssue={volumeIssue} />
       <div className="db-columns">
-        <PrioritiesColumn />
+        <PrioritiesColumn fullName={fullName} />
         <SideRail fullName={fullName} />
       </div>
     </div>
@@ -108,19 +161,57 @@ function Masthead({ firstName, dateEyebrow, volumeIssue }) {
   );
 }
 
-function PrioritiesColumn() {
+function PrioritiesColumn({ fullName }) {
   const navigate = useNavigate();
+  const [priorities, setPriorities] = useState(null);
+  const [totalMine, setTotalMine] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getJobs()
+      .then((jobs) => {
+        if (cancelled) return;
+        setPriorities(extractMyPriorities(jobs, fullName));
+        if (Array.isArray(jobs) && fullName) {
+          const me = fullName.toLowerCase();
+          setTotalMine(jobs.filter((j) => isActiveJob(j) && (j.owner || '').toLowerCase() === me).length);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setPriorities([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [fullName]);
+
+  const remainingCount = totalMine != null && priorities ? Math.max(0, totalMine - priorities.length) : null;
+
   return (
     <section className="db-priorities">
       <div className="db-block-eyebrow db-priorities-eyebrow">PRIORITIES — IN ORDER</div>
       <div className="db-priority-stack">
-        {DEFAULT_PRIORITIES.map((p, i) => (
-          <PriorityCard key={p.id} priority={p} index={i} />
-        ))}
+        {priorities === null ? (
+          <>
+            <div className="skeleton-shimmer db-priority-skeleton" />
+            <div className="skeleton-shimmer db-priority-skeleton" />
+            <div className="skeleton-shimmer db-priority-skeleton" />
+          </>
+        ) : priorities.length === 0 ? (
+          <div className="db-priorities-empty">
+            No A or B reqs accepting candidates on your board right now.
+          </div>
+        ) : (
+          priorities.map((p, i) => <PriorityCard key={p.id} priority={p} index={i} />)
+        )}
       </div>
       <div className="db-priorities-footer">
         <span className="db-priorities-footer-text">
-          Plus 14 more active items in your Req Board.
+          {remainingCount == null
+            ? 'Open active items in your Req Board.'
+            : remainingCount === 0
+              ? 'Nothing else open on your Req Board.'
+              : `Plus ${remainingCount} more active item${remainingCount === 1 ? '' : 's'} in your Req Board.`}
         </span>
         <button
           type="button"
@@ -135,14 +226,14 @@ function PrioritiesColumn() {
 }
 
 function PriorityCard({ priority, index }) {
-  const { kind, clientLabel, headline, context, action } = priority;
+  const { kind, pillLabel, clientLabel, headline, context, action } = priority;
   const indexLabel = String(index + 1).padStart(2, '0');
   return (
     <article className={`db-priority-card ${index === 0 ? 'is-first' : ''}`}>
       <div className="db-priority-index">{indexLabel}</div>
       <div className="db-priority-body">
         <div className="db-priority-meta">
-          <span className={`db-pill db-pill-${kind}`}>{PILL_LABELS[kind]}</span>
+          <span className={`db-pill db-pill-${kind}`}>{pillLabel}</span>
           <span className="db-priority-client">{clientLabel.toUpperCase()}</span>
         </div>
         <h2 className="db-priority-headline">{headline}</h2>
@@ -175,28 +266,25 @@ function TodayAtAGlance({ fullName }) {
     let cancelled = false;
     const today = new Date();
     const todayISO = toISODate(today);
-    const weekStartISO = toISODate(getWeekStart(today));
     const qtrStartISO = toISODate(getQuarterStart(today));
 
     Promise.allSettled([
-      getMyDashboard(weekStartISO, todayISO),
       getMyDashboard(qtrStartISO, todayISO),
       getJobs(),
-    ]).then(([weekRes, qtdRes, jobsRes]) => {
+    ]).then(([qtdRes, jobsRes]) => {
       if (cancelled) return;
-      const week = weekRes.status === 'fulfilled' ? weekRes.value : null;
       const qtd = qtdRes.status === 'fulfilled' ? qtdRes.value : null;
       const jobs = jobsRes.status === 'fulfilled' && Array.isArray(jobsRes.value)
         ? jobsRes.value
         : null;
 
       const active = jobs
-        ? jobs.filter((j) => j.isOpen && (j.owner || '').toLowerCase() === fullName.toLowerCase()).length
+        ? jobs.filter((j) => isActiveJob(j) && (j.owner || '').toLowerCase() === fullName.toLowerCase()).length
         : null;
 
       setStats({
         active,
-        subsWeek: week?.clientSubs ?? week?.metrics?.clientSubs ?? null,
+        newInput: qtd?.newInput ?? qtd?.metrics?.newInput ?? null,
         placements: qtd?.placements ?? qtd?.metrics?.placements ?? null,
         clientSubs: qtd?.clientSubs ?? qtd?.metrics?.clientSubs ?? null,
       });
@@ -210,10 +298,10 @@ function TodayAtAGlance({ fullName }) {
 
   const items = useMemo(
     () => [
-      { value: stats?.active, label: 'Active jobs assigned to you' },
-      { value: stats?.subsWeek, label: 'Submittals this week' },
-      { value: stats?.placements, label: 'Placements QTD' },
-      { value: stats?.clientSubs, label: 'Client submissions' },
+      { value: stats?.active, label: 'Active jobs assigned to you', format: 'number' },
+      { value: stats?.newInput, label: 'New Input QTD', format: 'currency-k' },
+      { value: stats?.placements, label: 'Placements QTD', format: 'number' },
+      { value: stats?.clientSubs, label: 'Client submissions', format: 'number' },
     ],
     [stats],
   );
@@ -228,7 +316,11 @@ function TodayAtAGlance({ fullName }) {
               <div className="skeleton-shimmer db-glance-skeleton" />
             ) : (
               <div className="db-glance-value">
-                {item.value == null ? '—' : item.value}
+                {item.value == null
+                  ? '—'
+                  : item.format === 'currency-k'
+                    ? formatCurrencyCompact(item.value)
+                    : item.value}
               </div>
             )}
             <div className="db-glance-label">{item.label}</div>

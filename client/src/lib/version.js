@@ -9,9 +9,20 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.11.0';
+export const APP_VERSION = '3.11.1';
 
 export const CHANGELOG = [
+  {
+    version: '3.11.1',
+    date: '2026-04-23',
+    title: 'Daily Brief — Live Priorities & New Input Stat',
+    changes: [
+      { type: 'minor', text: 'The three priority cards now pull live from your Req Board — the three oldest A or B reqs in "Accepting Candidates" assigned to you, with the oldest at the top. Cards auto-populate with the client, the title, days open, employment type, and location.' },
+      { type: 'minor', text: 'Swapped "Submittals this week" for "New Input QTD" in the side-rail stat grid, formatted as compact currency (e.g. $87K) from the same source as your Recruiter Dashboard.' },
+      { type: 'patch', text: 'If you have no A or B Accepting Candidates reqs, the priorities section shows a friendly italic "No A or B reqs..." empty state instead of placeholder cards.' },
+      { type: 'patch', text: 'Retired the placeholder demo data — every card on the dashboard is now wired to real Req Board and Performance data.' },
+    ],
+  },
   {
     version: '3.11.0',
     date: '2026-04-23',

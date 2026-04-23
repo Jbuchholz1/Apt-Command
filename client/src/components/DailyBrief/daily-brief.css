@@ -210,6 +210,22 @@
   align-self: center;
 }
 
+.db-priority-skeleton {
+  height: 96px;
+  border-radius: 6px;
+  margin: 14px 0;
+}
+
+.db-priorities-empty {
+  padding: 32px 0;
+  border-top: 2px solid var(--apt-navy);
+  font-family: var(--apt-serif);
+  font-size: 20px;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--apt-slate);
+}
+
 /* ---- Buttons ---- */
 .db-btn-secondary {
   display: inline-flex;
