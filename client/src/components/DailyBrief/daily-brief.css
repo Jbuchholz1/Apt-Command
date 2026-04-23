@@ -118,6 +118,27 @@
 .db-priority-stack {
   display: flex;
   flex-direction: column;
+  max-height: 560px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--apt-fog) transparent;
+  border-top: 2px solid var(--apt-navy);
+  padding-right: 4px;
+}
+.db-priority-stack::-webkit-scrollbar {
+  width: 6px;
+}
+.db-priority-stack::-webkit-scrollbar-track {
+  background: transparent;
+}
+.db-priority-stack::-webkit-scrollbar-thumb {
+  background: var(--apt-fog);
+  border-radius: 3px;
+}
+.db-priority-stack::-webkit-scrollbar-thumb:hover {
+  background: var(--apt-steel);
 }
 
 .db-priority-card {
@@ -129,8 +150,8 @@
   border-top: 1px solid var(--apt-fog);
 }
 
-.db-priority-card.is-first {
-  border-top: 2px solid var(--apt-navy);
+.db-priority-card:first-child {
+  border-top: none;
 }
 
 .db-priority-index {

@@ -98,7 +98,7 @@ function extractMyPriorities(jobs, fullName) {
     return aMs - bMs;
   });
 
-  return scored.slice(0, 3).map(({ job, reasons }) => jobToPriority(job, reasons));
+  return scored.map(({ job, reasons }) => jobToPriority(job, reasons));
 }
 
 function formatCurrencyCompact(n) {

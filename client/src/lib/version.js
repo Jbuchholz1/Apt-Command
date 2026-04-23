@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.14.0';
+export const APP_VERSION = '3.14.1';
 
 export const CHANGELOG = [
+  {
+    version: '3.14.1',
+    date: '2026-04-23',
+    title: 'Daily Brief — Scrollable Priority Stack',
+    changes: [
+      { type: 'patch', text: 'The Priorities section now shows every flagged req instead of capping at the top 3. The visible size is locked (~560px, roughly three cards tall) and the list scrolls inside that window so the rest of the dashboard stays in place.' },
+      { type: 'patch', text: 'Framing moved from the first card to the container — the 2px navy top rule now anchors the whole scroll region even when you scroll past the top card.' },
+    ],
+  },
   {
     version: '3.14.0',
     date: '2026-04-23',
