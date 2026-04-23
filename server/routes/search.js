@@ -263,8 +263,18 @@ async function doSearch({ query, accessToken }) {
     results.event = g.event || [];
     results.person = g.person || [];
   } else {
-    errors.push('Graph Search unavailable');
-    console.error('[search] graph error:', graphSettled.reason?.message || graphSettled.reason);
+    const reason = graphSettled.reason;
+    const status = reason?.graphStatus;
+    const rawBody = reason?.graphBody || '';
+    // Parse a tidy message out of the Graph error body if it's JSON.
+    let friendly = '';
+    try {
+      const parsed = rawBody ? JSON.parse(rawBody) : null;
+      friendly = parsed?.error?.message || parsed?.error?.code || '';
+    } catch { /* not JSON */ }
+    const detail = status ? `HTTP ${status}${friendly ? ` — ${friendly}` : ''}` : (reason?.message || 'unknown error');
+    errors.push(`Graph Search unavailable: ${detail}`);
+    console.error('[search] graph error:', reason?.message, '| body:', rawBody);
   }
 
   if (jobsSettled.status === 'fulfilled') {
