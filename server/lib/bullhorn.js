@@ -26,6 +26,7 @@ const ALLOWED_TOOLS = new Set([
   'get_entity_fields',
   'add_note',
   'update_entity',
+  'create_entity',
 ]);
 
 /**
@@ -332,10 +333,48 @@ async function getOpenOpportunitiesFull() {
   });
 }
 
+async function getOpportunityById(opportunityId) {
+  return callTool('query_entity', {
+    entityType: 'Opportunity',
+    where: `id = ${parseInt(opportunityId, 10)} AND isDeleted = false`,
+    fields: 'id,title,status,owner,clientCorporation,dateAdded,expectedCloseDate,dealValue,weightedDealValue',
+    count: 1,
+  });
+}
+
+async function getClientContactsForCorp(clientCorpId) {
+  return callTool('query_entity', {
+    entityType: 'ClientContact',
+    where: `clientCorporation.id = ${parseInt(clientCorpId, 10)} AND isDeleted = false`,
+    fields: 'id,firstName,lastName,email',
+    orderBy: 'lastName',
+    count: 200,
+  });
+}
+
+async function createJob(fields) {
+  const result = await callTool('create_entity', {
+    entityType: 'JobOrder',
+    fields,
+  });
+  cache.bust('bh:openJobs');
+  cache.bust('bh:recentlyClosedJobs');
+  return result;
+}
+
 async function addNoteToJob(jobOrderId, comments) {
   return callTool('add_note', {
     entityType: 'JobOrder',
     entityId: parseInt(jobOrderId, 10),
+    comments,
+    action: 'General Note',
+  });
+}
+
+async function addNoteToOpportunity(opportunityId, comments) {
+  return callTool('add_note', {
+    entityType: 'Opportunity',
+    entityId: parseInt(opportunityId, 10),
     comments,
     action: 'General Note',
   });
@@ -650,6 +689,39 @@ async function getCorporateUserByEmail(email) {
   return match || null;
 }
 
+// --- Daily Brief: role-aware tile queries ---
+
+// Submissions currently in "in-play" stages (Interview Scheduled → Offer Extended),
+// scoped to a single recruiter. Powers the Recruiter "Candidates In Play" tile.
+const IN_PLAY_STATUSES = [
+  'Interview Scheduled',
+  'Interview Feedback',
+  'Client Feedback',
+  'Offer Extended',
+];
+
+async function getInPlaySubmissionsForUser(userId) {
+  const statusList = IN_PLAY_STATUSES.map(s => `'${s}'`).join(',');
+  return callTool('query_entity', {
+    entityType: 'JobSubmission',
+    where: `sendingUser.id = ${parseInt(userId, 10)} AND status IN (${statusList}) AND isDeleted = false`,
+    fields: 'id,status,dateAdded,candidate(id,firstName,lastName),jobOrder(id,title,clientCorporation(id,name))',
+    orderBy: '-dateAdded',
+    count: 500,
+  });
+}
+
+// ClientContacts owned by the given user. Powers the AM "Stale Client Contacts" tile.
+async function getClientContactsOwnedBy(userId) {
+  return callTool('query_entity', {
+    entityType: 'ClientContact',
+    where: `owners.id = ${parseInt(userId, 10)} AND isDeleted = false`,
+    fields: 'id,firstName,lastName,email,clientCorporation(id,name)',
+    orderBy: 'lastName',
+    count: 500,
+  });
+}
+
 module.exports = {
   getOpenJobs,
   getRecentlyClosedJobs,
@@ -662,8 +734,12 @@ module.exports = {
   getOfferExtendedSubmissions,
   getOpenOpportunities,
   getOpenOpportunitiesFull,
+  getOpportunityById,
+  getClientContactsForCorp,
+  createJob,
   searchJobs,
   addNoteToJob,
+  addNoteToOpportunity,
   updateJobField,
   updatePlacementField,
   updateOpportunityField,
@@ -690,5 +766,7 @@ module.exports = {
   getCheckinNotesForType,
   getLeadsInRange,
   getCorporateUserByEmail,
+  getInPlaySubmissionsForUser,
+  getClientContactsOwnedBy,
   callTool,
 };

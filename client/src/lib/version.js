@@ -9,9 +9,29 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.14.1';
+export const APP_VERSION = '3.15.0';
 
 export const CHANGELOG = [
+  {
+    version: '3.15.0',
+    date: '2026-04-23',
+    title: 'Daily Brief — Role-Aware Stats',
+    changes: [
+      { type: 'minor', text: 'The four "Today at a glance" tiles now split by Bullhorn role. Account Managers see Missed / Missing Follow-ups & Deadlines, Stale Client Contacts, Potential Input (sum of deal value on owned open jobs), and Open A & B Reqs. Recruiters see Candidates In Play (interview/offer stages), Assigned Reqs without a Client Submission, Pending 30 / 90 Check-ins, and Pending Input (sum of deal value on assigned open jobs).' },
+      { type: 'minor', text: 'Clicking an AM\u2019s Missed / Missing tile opens an inline-editable drawer listing every flagged req \u2014 type or paste a date in the Deadline or Follow-up field, tab out to save, and close to refresh the tile count. Saves flow through the same optimistic-locking path the Req Board uses.' },
+      { type: 'minor', text: 'Each tile is clickable and deep-links to the underlying page \u2014 Potential Input / A&B Reqs / Assigned Reqs / Pending Input jump to the Req Board, Stale Contacts to Client Health, and Pending 30 / 90 Check-ins to your Performance dashboard.' },
+      { type: 'patch', text: 'Admin users default to the AM (sales) view for now. A dedicated Executive view is planned for a follow-up release.' },
+      { type: 'patch', text: 'The Priorities section is unchanged \u2014 same scoring, same scroll behavior.' },
+    ],
+  },
+  {
+    version: '3.14.2',
+    date: '2026-04-23',
+    title: 'Req Board — Job Title Link Color',
+    changes: [
+      { type: 'patch', text: 'Job Title links on the Req Board now render in dark blue instead of gold, making them easier to read against the row background.' },
+    ],
+  },
   {
     version: '3.14.1',
     date: '2026-04-23',

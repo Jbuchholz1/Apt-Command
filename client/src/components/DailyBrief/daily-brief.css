@@ -581,3 +581,219 @@
     display: none;
   }
 }
+
+/* ================================================
+   Flagged Reqs Drawer — inline-editable modal
+   Opens when an AM clicks the "Missed / missing
+   follow-ups & deadlines" glance tile.
+   ================================================ */
+
+.db-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 20, 81, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 40px 20px;
+  animation: dbDrawerFade 160ms ease-out;
+}
+
+@keyframes dbDrawerFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.db-drawer {
+  background: var(--apt-paper);
+  color: var(--apt-ink);
+  width: min(880px, 100%);
+  max-height: 100%;
+  border-radius: var(--radius-md);
+  box-shadow: 0 24px 60px rgba(5, 20, 81, 0.22);
+  display: flex;
+  flex-direction: column;
+  font-family: 'Inter', sans-serif;
+  overflow: hidden;
+}
+
+.db-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 28px 16px;
+  border-bottom: 1px solid var(--apt-fog);
+}
+
+.db-drawer-title {
+  font-family: var(--apt-serif);
+  font-weight: 500;
+  font-size: 24px;
+  letter-spacing: -0.005em;
+  color: var(--apt-navy);
+  margin: 0;
+}
+
+.db-drawer-close {
+  background: none;
+  border: 0;
+  font-size: 24px;
+  line-height: 1;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: var(--apt-steel);
+  cursor: pointer;
+  transition: background-color 180ms ease-out, color 180ms ease-out;
+}
+
+.db-drawer-close:hover {
+  background: var(--apt-fog);
+  color: var(--apt-ink);
+}
+
+.db-drawer-empty {
+  padding: 44px 28px;
+  text-align: center;
+  color: var(--apt-steel);
+  font-size: 14px;
+}
+
+.db-drawer-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  overflow-y: auto;
+  display: block;
+  flex: 1 1 auto;
+}
+
+.db-drawer-table thead,
+.db-drawer-table tbody {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.db-drawer-table th,
+.db-drawer-table td {
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--apt-fog);
+  vertical-align: middle;
+}
+
+.db-drawer-table th {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  color: var(--apt-steel);
+  background: var(--apt-paper);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.db-drawer-table th:first-child,
+.db-drawer-table td:first-child {
+  padding-left: 28px;
+  width: 72px;
+}
+
+.db-drawer-table th:last-child,
+.db-drawer-table td:last-child {
+  padding-right: 28px;
+}
+
+.db-drawer-id {
+  font-family: var(--apt-mono);
+  font-size: 12px;
+  color: var(--apt-graphite);
+}
+
+.db-drawer-title-cell {
+  font-weight: 500;
+  color: var(--apt-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.db-drawer-client {
+  color: var(--apt-slate);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 160px;
+}
+
+.db-drawer-input {
+  width: 100%;
+  max-width: 120px;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--apt-ink);
+  background: var(--apt-paper);
+  border: 1px solid var(--apt-fog);
+  border-radius: 4px;
+  transition: border-color 180ms ease-out, background-color 180ms ease-out;
+}
+
+.db-drawer-input:hover {
+  border-color: var(--apt-navy-600);
+}
+
+.db-drawer-input:focus {
+  outline: none;
+  border-color: var(--apt-navy);
+  background: #fff;
+}
+
+.db-drawer-input:disabled {
+  background: var(--apt-fog);
+  color: var(--apt-steel);
+  cursor: wait;
+}
+
+.db-drawer-row-error td {
+  background: var(--apt-danger-bg);
+}
+
+.db-drawer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 28px 22px;
+  border-top: 1px solid var(--apt-fog);
+  gap: 16px;
+}
+
+.db-drawer-hint {
+  font-size: 12px;
+  color: var(--apt-steel);
+}
+
+@media (max-width: 720px) {
+  .db-drawer {
+    max-height: 100%;
+    border-radius: 0;
+  }
+  .db-drawer-header,
+  .db-drawer-footer {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+  .db-drawer-table th:first-child,
+  .db-drawer-table td:first-child { padding-left: 18px; }
+  .db-drawer-table th:last-child,
+  .db-drawer-table td:last-child { padding-right: 18px; }
+  .db-drawer-client { display: none; }
+  .db-drawer-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

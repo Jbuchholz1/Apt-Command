@@ -19,6 +19,7 @@ const operationsRouter = require('./routes/operations');
 const supportRouter = require('./routes/support');
 const goalsRouter = require('./routes/goals');
 const searchRouter = require('./routes/search');
+const dashboardRouter = require('./routes/dashboard');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -154,6 +155,8 @@ app.use('/api/support', supportRouter);
 app.use('/api/goals', goalsRouter);
 // Universal Search
 app.use('/api/search', searchRouter);
+// Daily Brief role-aware tiles
+app.use('/api/dashboard', dashboardRouter);
 // User management
 app.use('/api/users', usersRouter);
 app.use('/api/admin', adminRouter);

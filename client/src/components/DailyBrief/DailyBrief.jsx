@@ -1,9 +1,17 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useMsal } from '@azure/msal-react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
-import { getAnnouncement, getMyDashboard, getJobs } from '../../lib/api';
+import {
+  getAnnouncement,
+  getMyDashboard,
+  getJobs,
+  getCandidatesInPlay,
+  getStaleContacts,
+  updateJobOverrides,
+} from '../../lib/api';
 import { getCalendarAccessToken, fetchTodaysEvents } from '../../lib/graphClient';
+import { useUserRole } from '../../lib/UserRoleContext';
 import './daily-brief.css';
 
 /**
@@ -113,6 +121,35 @@ function isActiveJob(job) {
   return !CLOSED_STATUSES.has(job.status);
 }
 
+// The server returns `{ total, data: [...] }`; accept either that shape or a
+// bare array so a future server change doesn't break the page.
+function toJobArray(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (raw && Array.isArray(raw.data)) return raw.data;
+  return [];
+}
+
+// AM tile #1: jobs owned by the AM that either have a missed/missing deadline
+// or a missed/missing follow-up. "Missing" = blank on a job that's still
+// actively being worked (so we don't badger the user about reqs that are
+// Archive / Placed / Lost / Wash / Filled).
+function extractFlaggedForAm(jobs, ownerName) {
+  if (!Array.isArray(jobs) || !ownerName) return [];
+  const me = ownerName.toLowerCase();
+  const nowMs = Date.now();
+  return jobs.filter((j) => {
+    if (!isActiveJob(j)) return false;
+    if ((j.owner || '').toLowerCase() !== me) return false;
+    const deadline = (j.deadline || '').trim();
+    const followUp = (j.followUp || '').trim();
+    const deadlineMs = parseDateFlexible(deadline);
+    const followUpMs = parseDateFlexible(followUp);
+    const deadlineFlagged = !deadline || (deadlineMs != null && deadlineMs < nowMs);
+    const followUpFlagged = !followUp || (followUpMs != null && followUpMs < nowMs);
+    return deadlineFlagged || followUpFlagged;
+  });
+}
+
 function getDateEyebrow(d = new Date()) {
   const weekday = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
   const monthDay = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
@@ -169,8 +206,44 @@ function formatAnnouncementTime(iso) {
 export default function DailyBrief() {
   const { accounts } = useMsal();
   const account = accounts[0];
-  const fullName = account?.name || '';
-  const firstName = fullName.split(' ')[0] || 'there';
+  const msalName = account?.name || '';
+  const firstName = msalName.split(' ')[0] || 'there';
+
+  const { isAdmin, bullhornRole, bullhornUserId, bullhornName } = useUserRole();
+
+  // Prefer the Bullhorn CorporateUser's display name for filtering jobs by
+  // owner — that's the exact string `formatJob()` emits on the server (see
+  // server/routes/jobs.js `formatJob`). Fall back to the MSAL display name
+  // while the /api/users/me fetch is in-flight or when Bullhorn has no match.
+  const matchName = bullhornName || msalName;
+
+  // Admins and anyone without a "Recruiter" Bullhorn role land on the AM
+  // ("sales") view per the current product decision. A dedicated Exec view
+  // will replace the admin branch in a follow-up.
+  const view = isAdmin || bullhornRole !== 'Recruiter' ? 'am' : 'recruiter';
+
+  // Hoist jobs state so Priorities and the glance tiles share one fetch,
+  // and so the FlaggedReqsDrawer can refresh the tile count after edits.
+  const [jobs, setJobs] = useState(null);
+  const [jobsError, setJobsError] = useState(false);
+
+  const refetchJobs = useCallback(() => {
+    getJobs()
+      .then((raw) => {
+        setJobs(toJobArray(raw));
+        setJobsError(false);
+      })
+      .catch(() => {
+        setJobs([]);
+        setJobsError(true);
+      });
+  }, []);
+
+  useEffect(() => {
+    refetchJobs();
+  }, [refetchJobs]);
+
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const now = new Date();
   const dateEyebrow = getDateEyebrow(now);
@@ -180,9 +253,25 @@ export default function DailyBrief() {
     <div className="daily-brief">
       <Masthead firstName={firstName} dateEyebrow={dateEyebrow} volumeIssue={volumeIssue} />
       <div className="db-columns">
-        <PrioritiesColumn fullName={fullName} />
-        <SideRail fullName={fullName} />
+        <PrioritiesColumn jobs={jobs} jobsError={jobsError} fullName={matchName} />
+        <SideRail
+          jobs={jobs}
+          view={view}
+          fullName={matchName}
+          bullhornUserId={bullhornUserId}
+          onOpenFlaggedDrawer={() => setDrawerOpen(true)}
+        />
       </div>
+      {drawerOpen && (
+        <FlaggedReqsDrawer
+          jobs={jobs || []}
+          fullName={matchName}
+          onClose={() => {
+            setDrawerOpen(false);
+            refetchJobs();
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -204,48 +293,46 @@ function Masthead({ firstName, dateEyebrow, volumeIssue }) {
   );
 }
 
-function PrioritiesColumn({ fullName }) {
+function PrioritiesColumn({ jobs, jobsError, fullName }) {
   const navigate = useNavigate();
-  const [priorities, setPriorities] = useState(null);
-  const [totalMine, setTotalMine] = useState(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    getJobs()
-      .then((jobs) => {
-        if (cancelled) return;
-        setPriorities(extractMyPriorities(jobs, fullName));
-        if (Array.isArray(jobs) && fullName) {
-          const me = fullName.toLowerCase();
-          setTotalMine(jobs.filter((j) => isActiveJob(j) && (j.owner || '').toLowerCase() === me).length);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setPriorities([]);
-      });
-    return () => {
-      cancelled = true;
+  // Derive priorities + totalMine synchronously from the hoisted jobs prop.
+  // `jobs === null` = still loading; `jobs === []` + jobsError = failed.
+  const { priorities, totalMine } = useMemo(() => {
+    if (!Array.isArray(jobs) || !fullName) {
+      return { priorities: null, totalMine: null };
+    }
+    const me = fullName.toLowerCase();
+    return {
+      priorities: extractMyPriorities(jobs, fullName),
+      totalMine: jobs.filter((j) => isActiveJob(j) && (j.owner || '').toLowerCase() === me).length,
     };
-  }, [fullName]);
+  }, [jobs, fullName]);
 
-  const remainingCount = totalMine != null && priorities ? Math.max(0, totalMine - priorities.length) : null;
+  // If the jobs fetch failed, render an empty priorities list rather than
+  // leaving the skeleton spinning forever.
+  const resolvedPriorities = jobsError ? [] : priorities;
+
+  const remainingCount = totalMine != null && resolvedPriorities
+    ? Math.max(0, totalMine - resolvedPriorities.length)
+    : null;
 
   return (
     <section className="db-priorities">
       <div className="db-block-eyebrow db-priorities-eyebrow">PRIORITIES — IN ORDER</div>
       <div className="db-priority-stack">
-        {priorities === null ? (
+        {resolvedPriorities === null ? (
           <>
             <div className="skeleton-shimmer db-priority-skeleton" />
             <div className="skeleton-shimmer db-priority-skeleton" />
             <div className="skeleton-shimmer db-priority-skeleton" />
           </>
-        ) : priorities.length === 0 ? (
+        ) : resolvedPriorities.length === 0 ? (
           <div className="db-priorities-empty">
             Nothing flagged on your board right now — no stale reqs, missed deadlines, or overdue follow-ups.
           </div>
         ) : (
-          priorities.map((p, i) => <PriorityCard key={p.id} priority={p} index={i} />)
+          resolvedPriorities.map((p, i) => <PriorityCard key={p.id} priority={p} index={i} />)
         )}
       </div>
       <div className="db-priorities-footer">
@@ -291,91 +378,220 @@ function PriorityCard({ priority, index }) {
   );
 }
 
-function SideRail({ fullName }) {
+function SideRail({ jobs, view, fullName, bullhornUserId, onOpenFlaggedDrawer }) {
   return (
     <aside className="db-side-rail">
-      <TodayAtAGlance fullName={fullName} />
+      {view === 'recruiter' ? (
+        <RecruiterStats jobs={jobs} bullhornUserId={bullhornUserId} />
+      ) : (
+        <AmStats
+          jobs={jobs}
+          fullName={fullName}
+          onOpenFlaggedDrawer={onOpenFlaggedDrawer}
+        />
+      )}
       <YourDay />
       <AnnouncementCard />
     </aside>
   );
 }
 
-function TodayAtAGlance({ fullName }) {
-  const navigate = useNavigate();
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
+// --- Stat cards: shared presentation ---
 
+function StatCardGrid({ items, loading }) {
+  return (
+    <div className="db-glance-grid">
+      {items.map((item) => {
+        const content = loading ? (
+          <div className="skeleton-shimmer db-glance-skeleton" />
+        ) : (
+          <div className="db-glance-value">
+            {item.value == null
+              ? '—'
+              : item.format === 'currency-k'
+                ? formatCurrencyCompact(item.value)
+                : item.value}
+          </div>
+        );
+        return (
+          <button
+            type="button"
+            className="db-glance-stat"
+            key={item.label}
+            onClick={item.onClick}
+          >
+            {content}
+            <div className="db-glance-label">{item.label}</div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// --- AM tiles ---
+
+function AmStats({ jobs, fullName, onOpenFlaggedDrawer }) {
+  const navigate = useNavigate();
+  const [staleCount, setStaleCount] = useState(null);
+  const [staleError, setStaleError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    getStaleContacts()
+      .then((res) => {
+        if (cancelled) return;
+        setStaleCount(typeof res?.total === 'number' ? res.total : (res?.data?.length ?? 0));
+      })
+      .catch(() => {
+        if (!cancelled) setStaleError(true);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Everything AM-specific derives from the hoisted jobs list. Guard with
+  // Array.isArray so a null prop (still loading) keeps the skeletons up.
+  const derived = useMemo(() => {
+    if (!Array.isArray(jobs) || !fullName) return null;
+    const me = fullName.toLowerCase();
+    const mine = jobs.filter((j) => isActiveJob(j) && (j.owner || '').toLowerCase() === me);
+    const flaggedCount = extractFlaggedForAm(jobs, fullName).length;
+    const potentialInput = mine.reduce((sum, j) => sum + (Number(j.dealValue) || 0), 0);
+    const abReqs = mine.filter((j) => j.priority === 'A' || j.priority === 'B').length;
+    return { flaggedCount, potentialInput, abReqs };
+  }, [jobs, fullName]);
+
+  const loading = derived === null;
+
+  const items = [
+    {
+      label: 'Missed / missing follow-ups & deadlines',
+      value: derived?.flaggedCount,
+      format: 'number',
+      onClick: () => {
+        // If there's nothing flagged, fall through to the board — no empty
+        // drawer surprises.
+        if (derived?.flaggedCount > 0) onOpenFlaggedDrawer();
+        else navigate('/req-board');
+      },
+    },
+    {
+      label: 'Stale client contacts',
+      value: staleError ? null : staleCount,
+      format: 'number',
+      onClick: () => navigate('/clients'),
+    },
+    {
+      label: 'Potential input',
+      value: derived?.potentialInput,
+      format: 'currency-k',
+      onClick: () => navigate('/req-board'),
+    },
+    {
+      label: 'Open A & B reqs',
+      value: derived?.abReqs,
+      format: 'number',
+      onClick: () => navigate('/req-board'),
+    },
+  ];
+
+  return (
+    <section className="db-block db-glance">
+      <div className="db-block-eyebrow">TODAY · AT · A · GLANCE</div>
+      <StatCardGrid items={items} loading={loading} />
+    </section>
+  );
+}
+
+// --- Recruiter tiles ---
+
+function RecruiterStats({ jobs, bullhornUserId }) {
+  const navigate = useNavigate();
+  const [inPlayCount, setInPlayCount] = useState(null);
+  const [inPlayError, setInPlayError] = useState(false);
+  const [checkinCount, setCheckinCount] = useState(null);
+  const [checkinError, setCheckinError] = useState(false);
+
+  // Candidates In Play — new endpoint
+  useEffect(() => {
+    let cancelled = false;
+    getCandidatesInPlay()
+      .then((res) => {
+        if (cancelled) return;
+        setInPlayCount(typeof res?.total === 'number' ? res.total : (res?.data?.length ?? 0));
+      })
+      .catch(() => {
+        if (!cancelled) setInPlayError(true);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Pending 30/90 — reuse the existing performance endpoint and count
+  // follow-up rows whose 30 OR 90 day window is currently Overdue. Matches
+  // what `/performance`'s "Follow-ups" table shows today.
   useEffect(() => {
     let cancelled = false;
     const today = new Date();
     const todayISO = toISODate(today);
     const qtrStartISO = toISODate(getQuarterStart(today));
-
-    Promise.allSettled([
-      getMyDashboard(qtrStartISO, todayISO),
-      getJobs(),
-    ]).then(([qtdRes, jobsRes]) => {
-      if (cancelled) return;
-      const qtd = qtdRes.status === 'fulfilled' ? qtdRes.value : null;
-      const jobs = jobsRes.status === 'fulfilled' && Array.isArray(jobsRes.value)
-        ? jobsRes.value
-        : null;
-
-      const active = jobs
-        ? jobs.filter((j) => isActiveJob(j) && (j.owner || '').toLowerCase() === fullName.toLowerCase()).length
-        : null;
-
-      setStats({
-        active,
-        newInput: qtd?.newInput ?? qtd?.metrics?.newInput ?? null,
-        placements: qtd?.placements ?? qtd?.metrics?.placements ?? null,
-        clientSubs: qtd?.clientSubs ?? qtd?.metrics?.clientSubs ?? null,
+    getMyDashboard(qtrStartISO, todayISO)
+      .then((data) => {
+        if (cancelled) return;
+        const overdue = (data?.followUps || []).filter(
+          (f) => f.thirtyDay === 'Overdue' || f.ninetyDay === 'Overdue',
+        ).length;
+        setCheckinCount(overdue);
+      })
+      .catch(() => {
+        if (!cancelled) setCheckinError(true);
       });
-      setLoading(false);
-    });
+    return () => { cancelled = true; };
+  }, []);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [fullName]);
+  const derived = useMemo(() => {
+    if (!Array.isArray(jobs) || !bullhornUserId) return null;
+    const mine = jobs.filter(
+      (j) => isActiveJob(j) && Array.isArray(j.assignedUserIds)
+        && j.assignedUserIds.includes(bullhornUserId),
+    );
+    const reqsNoSub = mine.filter((j) => (j.clientSubs ?? 0) === 0).length;
+    const pendingInput = mine.reduce((sum, j) => sum + (Number(j.dealValue) || 0), 0);
+    return { reqsNoSub, pendingInput };
+  }, [jobs, bullhornUserId]);
 
-  const items = useMemo(
-    () => [
-      { value: stats?.active, label: 'Active jobs assigned to you', format: 'number', href: '/req-board' },
-      { value: stats?.newInput, label: 'New Input QTD', format: 'currency-k', href: '/reporting/performance' },
-      { value: stats?.placements, label: 'Placements QTD', format: 'number', href: '/reporting/performance' },
-      { value: stats?.clientSubs, label: 'Client submissions', format: 'number', href: '/reporting/performance' },
-    ],
-    [stats],
-  );
+  const loading = derived === null;
+
+  const items = [
+    {
+      label: 'Candidates in play',
+      value: inPlayError ? null : inPlayCount,
+      format: 'number',
+      onClick: () => navigate('/req-board'),
+    },
+    {
+      label: 'Assigned reqs w/o client sub',
+      value: derived?.reqsNoSub,
+      format: 'number',
+      onClick: () => navigate('/req-board'),
+    },
+    {
+      label: 'Pending 30 / 90 check-ins',
+      value: checkinError ? null : checkinCount,
+      format: 'number',
+      onClick: () => navigate('/reporting/performance'),
+    },
+    {
+      label: 'Pending input',
+      value: derived?.pendingInput,
+      format: 'currency-k',
+      onClick: () => navigate('/req-board'),
+    },
+  ];
 
   return (
     <section className="db-block db-glance">
       <div className="db-block-eyebrow">TODAY · AT · A · GLANCE</div>
-      <div className="db-glance-grid">
-        {items.map((item) => (
-          <button
-            type="button"
-            className="db-glance-stat"
-            key={item.label}
-            onClick={() => navigate(item.href)}
-          >
-            {loading ? (
-              <div className="skeleton-shimmer db-glance-skeleton" />
-            ) : (
-              <div className="db-glance-value">
-                {item.value == null
-                  ? '—'
-                  : item.format === 'currency-k'
-                    ? formatCurrencyCompact(item.value)
-                    : item.value}
-              </div>
-            )}
-            <div className="db-glance-label">{item.label}</div>
-          </button>
-        ))}
-      </div>
+      <StatCardGrid items={items} loading={loading} />
     </section>
   );
 }
@@ -503,5 +719,140 @@ function AnnouncementCard() {
         </div>
       )}
     </section>
+  );
+}
+
+// --- Flagged Reqs Drawer ---
+// Centered modal that lists the AM's missed/missing FU + deadline reqs with
+// inline-editable deadline and follow-up inputs. Saves via the same
+// /api/req-board/jobs/:id/overrides endpoint the ReqBoard uses for inline
+// edits, including the If-Match optimistic-locking header. On close, the
+// parent refetches jobs so the tile count picks up any changes.
+
+function FlaggedReqsDrawer({ jobs, fullName, onClose }) {
+  // Snapshot the flagged list when the drawer opens. Editing a row shouldn't
+  // make it vanish from the list while the modal is open — we re-filter on
+  // close via the parent's refetch instead.
+  const [rows, setRows] = useState(() =>
+    extractFlaggedForAm(jobs, fullName).map((j) => ({
+      id: j.id,
+      title: j.title || '',
+      client: j.client || '',
+      deadline: j.deadline || '',
+      followUp: j.followUp || '',
+      overrideVersion: j.overrideVersion ?? null,
+      saving: false,
+      error: null,
+    })),
+  );
+
+  // ESC key closes the drawer.
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const updateField = (id, field, value) => {
+    setRows((rs) => rs.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
+  };
+
+  const saveRow = async (id, field) => {
+    const row = rows.find((r) => r.id === id);
+    if (!row) return;
+    const payload = field === 'deadline'
+      ? { deadline: row.deadline }
+      : { follow_up: row.followUp };
+    setRows((rs) => rs.map((r) => (r.id === id ? { ...r, saving: true, error: null } : r)));
+    try {
+      const res = await updateJobOverrides(id, payload, {
+        expectedVersion: row.overrideVersion,
+      });
+      // The PATCH response includes the new override row; grab the updated
+      // version so the next save on this row still hits the locking path.
+      const nextVersion = res?.data?.version ?? row.overrideVersion;
+      setRows((rs) => rs.map((r) => (
+        r.id === id ? { ...r, saving: false, overrideVersion: nextVersion } : r
+      )));
+    } catch (err) {
+      setRows((rs) => rs.map((r) => (
+        r.id === id ? { ...r, saving: false, error: err?.message || 'Save failed' } : r
+      )));
+    }
+  };
+
+  const backdropClick = (e) => {
+    if (e.target === e.currentTarget) onClose();
+  };
+
+  return (
+    <div
+      className="db-drawer-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Missed follow-ups and deadlines"
+      onClick={backdropClick}
+    >
+      <div className="db-drawer">
+        <header className="db-drawer-header">
+          <h2 className="db-drawer-title">Missed / missing follow-ups &amp; deadlines</h2>
+          <button type="button" className="db-drawer-close" onClick={onClose} aria-label="Close">
+            ×
+          </button>
+        </header>
+        {rows.length === 0 ? (
+          <div className="db-drawer-empty">Nothing flagged right now.</div>
+        ) : (
+          <table className="db-drawer-table">
+            <thead>
+              <tr>
+                <th>Req #</th>
+                <th>Title</th>
+                <th>Client</th>
+                <th>Deadline</th>
+                <th>Follow-up</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id} className={r.error ? 'db-drawer-row-error' : ''}>
+                  <td className="db-drawer-id">{r.id}</td>
+                  <td className="db-drawer-title-cell">{r.title}</td>
+                  <td className="db-drawer-client">{r.client}</td>
+                  <td>
+                    <input
+                      type="text"
+                      className="db-drawer-input"
+                      value={r.deadline}
+                      placeholder="MM/DD"
+                      onChange={(e) => updateField(r.id, 'deadline', e.target.value)}
+                      onBlur={() => saveRow(r.id, 'deadline')}
+                      disabled={r.saving}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="text"
+                      className="db-drawer-input"
+                      value={r.followUp}
+                      placeholder="MM/DD"
+                      onChange={(e) => updateField(r.id, 'followUp', e.target.value)}
+                      onBlur={() => saveRow(r.id, 'followUp')}
+                      disabled={r.saving}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <footer className="db-drawer-footer">
+          <span className="db-drawer-hint">Changes save automatically when you leave a field.</span>
+          <button type="button" className="db-btn-primary" onClick={onClose}>
+            Done
+          </button>
+        </footer>
+      </div>
+    </div>
   );
 }

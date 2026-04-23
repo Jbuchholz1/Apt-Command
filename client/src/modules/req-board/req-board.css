@@ -533,6 +533,17 @@
   color: var(--gold-light);
 }
 
+/* Job title links (column 'Job Title') — dark blue, inherit cell font */
+.cell-title .bh-link {
+  color: #1e3a8a;
+  font-family: inherit;
+  font-size: inherit;
+}
+.cell-title .bh-link:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
 .cell-date {
   font-family: var(--mono);
   font-size: 11px;

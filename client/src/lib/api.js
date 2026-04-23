@@ -244,6 +244,16 @@ export function getClientHealthStats() {
   return fetchAPI('/api/org-flow/client-health');
 }
 
+// --- Daily Brief (role-aware tiles) ---
+
+export function getCandidatesInPlay() {
+  return fetchAPI('/api/dashboard/candidates-in-play');
+}
+
+export function getStaleContacts() {
+  return fetchAPI('/api/dashboard/am-stale-contacts');
+}
+
 // --- User Management ---
 
 export function getCurrentUser() {
