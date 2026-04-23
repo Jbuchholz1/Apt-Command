@@ -100,33 +100,6 @@ export default function LedgerRow({
           )}
         </div>
 
-        <div className="ql-row-status">
-          <span
-            className="ql-status-dot"
-            style={{ background: statusColor, boxShadow: `0 0 0 3px ${statusColor}22` }}
-            aria-hidden
-          />
-          <span className="ql-status-label">{statusCopy}</span>
-        </div>
-
-        <div className="ql-row-progress">
-          <span className="ql-progress-rule">
-            <span
-              className="ql-progress-fill"
-              style={{ width: `${pct}%`, background: statusColor }}
-            />
-            <span
-              className="ql-progress-dot"
-              style={{ left: `${pct}%`, background: statusColor }}
-              aria-hidden
-            />
-          </span>
-          <span className="ql-progress-readout">
-            {pct}
-            <sup>%</sup>
-          </span>
-        </div>
-
         <div className="ql-row-actions" onClick={(e) => e.stopPropagation()}>
           {!readOnly && (
             <button
@@ -176,6 +149,35 @@ export default function LedgerRow({
               )}
             </div>
           )}
+        </div>
+
+        <div className="ql-row-meta">
+          <div className="ql-row-status">
+            <span
+              className="ql-status-dot"
+              style={{ background: statusColor, boxShadow: `0 0 0 3px ${statusColor}22` }}
+              aria-hidden
+            />
+            <span className="ql-status-label">{statusCopy}</span>
+          </div>
+
+          <div className="ql-row-progress">
+            <span className="ql-progress-rule">
+              <span
+                className="ql-progress-fill"
+                style={{ width: `${pct}%`, background: statusColor }}
+              />
+              <span
+                className="ql-progress-dot"
+                style={{ left: `${pct}%`, background: statusColor }}
+                aria-hidden
+              />
+            </span>
+            <span className="ql-progress-readout">
+              {pct}
+              <sup>%</sup>
+            </span>
+          </div>
         </div>
       </div>
 

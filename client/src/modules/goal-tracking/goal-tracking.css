@@ -422,16 +422,25 @@
 /* ---- Ledger row ---- */
 .ql-row {
   display: grid;
-  grid-template-columns: 20px 48px 30px 1fr 140px 280px 40px;
-  gap: 20px;
-  align-items: center;
-  padding: 20px 0;
+  grid-template-columns: 20px 48px 30px minmax(0, 1fr) 40px;
+  grid-template-rows: auto auto;
+  column-gap: 20px;
+  row-gap: 12px;
+  align-items: start;
+  padding: 22px 0;
   border-top: 1px solid var(--apt-fog);
   position: relative;
   cursor: pointer;
   transition: background-color 150ms ease-out;
 }
 .ql-row:first-child { border-top: 0; }
+
+.ql-row > .ql-row-chevron { grid-column: 1; grid-row: 1; align-self: center; }
+.ql-row > .ql-row-index   { grid-column: 2; grid-row: 1; align-self: baseline; }
+.ql-row > .ql-row-avatar  { grid-column: 3; grid-row: 1; align-self: start; margin-top: 2px; }
+.ql-row > .ql-row-title-col { grid-column: 4; grid-row: 1; align-self: center; }
+.ql-row > .ql-row-actions { grid-column: 5; grid-row: 1; align-self: start; }
+.ql-row > .ql-row-meta    { grid-column: 4 / 6; grid-row: 2; }
 
 .ql-row.is-nested {
   /* Negate the list gutter so the tint reaches the list border */
@@ -524,7 +533,7 @@
 .ql-row-title {
   color: var(--apt-navy);
   line-height: 1.25;
-  text-wrap: balance;
+  overflow-wrap: break-word;
 }
 .ql-row-title.is-serif {
   font-family: var(--apt-serif);
@@ -557,11 +566,19 @@
   background: var(--apt-gold);
 }
 
+.ql-row-meta {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  min-width: 0;
+}
+
 .ql-row-status {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-width: 0;
+  min-width: 140px;
+  flex-shrink: 0;
 }
 .ql-status-dot {
   width: 6px;
@@ -583,6 +600,7 @@
   display: flex;
   align-items: center;
   gap: 14px;
+  flex: 1;
   min-width: 0;
 }
 .ql-progress-rule {
@@ -782,10 +800,8 @@
 @media (max-width: 900px) {
   .ql-module { padding: 32px 28px 48px; }
   .ql-headline { font-size: 44px; }
-  .ql-row {
-    grid-template-columns: 20px 40px 28px 1fr 20px 200px 32px;
-    gap: 14px;
-  }
+  .ql-row-meta { gap: 16px; }
+  .ql-row-status { min-width: 18px; }
   .ql-status-label { display: none; }
   .ql-watermark { display: none; }
 }
@@ -800,20 +816,17 @@
 
   .ql-list { padding: 0 16px; }
   .ql-row {
-    grid-template-columns: 20px 28px 1fr 30px;
-    grid-template-rows: auto auto;
+    grid-template-columns: 20px 34px minmax(0, 1fr) 32px;
     column-gap: 10px;
     row-gap: 10px;
-    align-items: center;
     padding: 16px 0;
   }
-  .ql-row-index { display: none; }
-  .ql-row-chevron { grid-column: 1; grid-row: 1; }
-  .ql-row-avatar { grid-column: 2; grid-row: 1; }
-  .ql-row-title-col { grid-column: 3 / span 1; grid-row: 1; }
-  .ql-row-status { grid-column: 1 / 3; grid-row: 2; }
-  .ql-row-progress { grid-column: 3; grid-row: 2; }
-  .ql-row-actions { grid-column: 4; grid-row: 1; }
+  .ql-row > .ql-row-index { display: none; }
+  .ql-row > .ql-row-chevron { grid-column: 1; grid-row: 1; }
+  .ql-row > .ql-row-avatar  { grid-column: 2; grid-row: 1; }
+  .ql-row > .ql-row-title-col { grid-column: 3; grid-row: 1; }
+  .ql-row > .ql-row-actions { grid-column: 4; grid-row: 1; }
+  .ql-row > .ql-row-meta    { grid-column: 1 / -1; grid-row: 2; }
 
   .ql-row.is-nested { margin: 0 -16px; padding: 16px 16px 16px calc(16px + var(--ql-indent, 0px)); }
   .ql-row.is-nested .ql-tree-rail { left: calc(16px + var(--ql-indent, 0px) - 18px); }
