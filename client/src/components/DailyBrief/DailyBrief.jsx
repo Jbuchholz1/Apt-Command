@@ -80,7 +80,7 @@ function getVolumeIssue(d = new Date()) {
   const year = d.getFullYear();
   const start = new Date(year, 0, 1);
   const dayOfYear = Math.floor((d - start) / 86400000) + 1;
-  const vol = String(Math.max(1, year - 2023)).padStart(2, '0');
+  const vol = String(year).slice(-2); // 2026 → "26"
   return `Vol. ${vol} / Issue ${dayOfYear}`;
 }
 
@@ -448,10 +448,9 @@ function AnnouncementCard() {
           ))}
         </ul>
       )}
-      {(announcement.author || announcement.postedAt) && (
+      {announcement.postedAt && (
         <div className="db-announcement-footer">
-          {announcement.author}
-          {announcement.postedAt && ` · ${announcement.postedAt}`}
+          Last Updated: {announcement.postedAt}
         </div>
       )}
     </section>

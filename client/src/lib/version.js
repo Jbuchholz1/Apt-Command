@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.11.1';
+export const APP_VERSION = '3.11.2';
 
 export const CHANGELOG = [
+  {
+    version: '3.11.2',
+    date: '2026-04-23',
+    title: 'Daily Brief — Masthead & Announcement Polish',
+    changes: [
+      { type: 'patch', text: 'Masthead volume number now shows the short-form year (e.g. Vol. 26 for 2026) instead of a years-since-2023 counter.' },
+      { type: 'patch', text: 'Announcement card footer now reads "Last Updated: MON 3:28 PM" — the author email is no longer shown.' },
+    ],
+  },
   {
     version: '3.11.1',
     date: '2026-04-23',
