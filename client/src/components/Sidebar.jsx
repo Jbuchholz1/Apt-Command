@@ -29,7 +29,7 @@ const NAV_ITEMS = [
   { label: 'APT Health', icon: Building2, path: '/clients' },
   { label: 'Reporting', icon: BarChart3, path: '/reporting' },
 
-  { label: 'Goal Tracking', icon: Target, path: '/goal-tracking' },
+  { label: 'Goal Tracking', icon: Target, path: '/goals' },
   { label: 'Support', icon: LifeBuoy, path: '/support' },
   { label: 'Operations', icon: Settings, path: '/operations', adminOnly: true },
 ];

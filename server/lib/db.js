@@ -1205,6 +1205,36 @@ async function listGoals(period) {
   return { goals: withProgress, tasks };
 }
 
+async function listArchivedGoals(period) {
+  if (!supabase) return { goals: [], tasks: [] };
+  const { data: goals, error } = await supabase
+    .from('goals')
+    .select('*')
+    .eq('period', period)
+    .not('archived_at', 'is', null)
+    .order('archived_at', { ascending: false });
+  if (error) { console.error('[db] listArchivedGoals error:', error.message); return { goals: [], tasks: [] }; }
+  const goalIds = (goals || []).map(g => g.id);
+  let tasks = [];
+  if (goalIds.length > 0) {
+    const { data } = await supabase
+      .from('goal_tasks').select('*').in('goal_id', goalIds);
+    tasks = data || [];
+  }
+  return { goals: goals || [], tasks };
+}
+
+async function countArchivedGoals(period) {
+  if (!supabase) return 0;
+  const { count, error } = await supabase
+    .from('goals')
+    .select('id', { count: 'exact', head: true })
+    .eq('period', period)
+    .not('archived_at', 'is', null);
+  if (error) { console.error('[db] countArchivedGoals error:', error.message); return 0; }
+  return count || 0;
+}
+
 async function getGoal(id) {
   if (!supabase) return null;
   const { data: goal, error } = await supabase
@@ -1410,7 +1440,8 @@ module.exports = {
   getKnownIssues, createKnownIssue, updateKnownIssue,
   // Goal Tracking
   computeGoalProgress,
-  listGoals, getGoal, createGoal, updateGoal, archiveGoal, reorderGoals,
+  listGoals, listArchivedGoals, countArchivedGoals,
+  getGoal, createGoal, updateGoal, archiveGoal, reorderGoals,
   insertCheckin, listCheckins,
   listTasksForGoal, createTask, updateTask, deleteTask,
   pinPriority, unpinPriority, listMyPriorityIds,

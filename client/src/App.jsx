@@ -45,7 +45,8 @@ function AppRoutes() {
           <Route path="executive" element={<ComingSoon title="Executive Reporting" />} />
         </Route>
         <Route path="performance" element={<Navigate to="/reporting/performance" replace />} />
-        <Route path="goal-tracking" element={<GoalTrackingModule />} />
+        <Route path="goals" element={<GoalTrackingModule />} />
+        <Route path="goal-tracking" element={<Navigate to="/goals" replace />} />
         <Route path="support" element={<SupportModule />}>
           <Route index element={<SupportHome />} />
           <Route path="help" element={<HelpDocs />} />

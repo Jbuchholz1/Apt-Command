@@ -563,10 +563,15 @@ export function updateKnownIssue(id, data) {
 
 // --- Goal Tracking ---
 
-export function getGoals(period, view) {
+export function getGoals(period, viewOrOptions) {
   const params = new URLSearchParams();
   if (period) params.set('period', period);
-  if (view) params.set('view', view);
+  if (typeof viewOrOptions === 'string') {
+    if (viewOrOptions) params.set('view', viewOrOptions);
+  } else if (viewOrOptions && typeof viewOrOptions === 'object') {
+    if (viewOrOptions.view) params.set('view', viewOrOptions.view);
+    if (viewOrOptions.archived) params.set('archived', 'true');
+  }
   params.set('_t', Date.now().toString());
   return fetchAPI(`/api/goals?${params}`);
 }

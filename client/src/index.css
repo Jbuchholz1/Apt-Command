@@ -28,10 +28,11 @@
   --sidebar-active-bg: rgba(211, 191, 48, 0.12);
   --sidebar-active-border: var(--gold);
 
-  /* ---- Daily Brief editorial tokens (used by DailyBrief.jsx only) ---- */
+  /* ---- Editorial tokens (Daily Brief + Quarterly Ledger) ---- */
   --apt-navy:       #051451;
   --apt-navy-600:   #1A3091;
   --apt-navy-100:   #E6EAF8;
+  --apt-navy-50:    #F3F5FC;
   --apt-navy-900:   #030B33;
   --apt-gold:       #D1BE14;
   --apt-gold-700:   #9E8E0B;
@@ -44,6 +45,8 @@
   --apt-paper:      #F7F8FB;
   --apt-success:    #0F8A5F;
   --apt-success-bg: #E3F5EC;
+  --apt-warning:    #B8851A;
+  --apt-warning-bg: #FDF6E3;
   --apt-danger:     #B42C2C;
   --apt-danger-bg:  #FBE6E6;
   --tracking-widest: 0.28em;

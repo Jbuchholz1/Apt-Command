@@ -1,15 +1,29 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Plus } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import './goal-tracking.css';
-import { getGoals, pinGoalPriority, unpinGoalPriority, deleteGoal, createGoal, updateGoal } from '../../lib/api';
+import {
+  getGoals,
+  pinGoalPriority,
+  unpinGoalPriority,
+  deleteGoal,
+  createGoal,
+  updateGoal,
+} from '../../lib/api';
 import { useUserRole } from '../../lib/UserRoleContext';
-import { getCurrentPeriod } from './lib/period';
+import { getCurrentPeriod, formatPeriod } from './lib/period';
 import { computeAllProgress, buildTree } from './lib/progress';
-import QuarterNavigator from './components/QuarterNavigator';
-import GoalFilters from './components/GoalFilters';
+import { resolveStatus, statusLabel } from './lib/status';
+
 import GoalForm from './components/GoalForm';
-import GoalTree from './components/GoalTree';
 import GoalDetail from './components/GoalDetail';
+import LedgerMasthead from './components/LedgerMasthead';
+import QuarterSwitcher from './components/QuarterSwitcher';
+import LedgerFilterBar from './components/LedgerFilterBar';
+import LedgerList from './components/LedgerList';
+import QuarterAtAGlance from './components/QuarterAtAGlance';
+import Distribution from './components/Distribution';
+import WatermarkCorner from './components/WatermarkCorner';
 
 function uniqueOwners(goals) {
   const map = new Map();
@@ -48,48 +62,123 @@ function filterGoals({ goals, view, ownerEmail, currentUserEmail, pinnedIds }) {
   return goals;
 }
 
+function computeAggregates(visibleGoals, tree, progressMap, period) {
+  const active = tree.length;
+  const priorities = visibleGoals.filter(g => g.is_company_priority).length;
+
+  let onTrack = 0;
+  const dist = { on: 0, atRisk: 0, off: 0 };
+  for (const g of visibleGoals) {
+    const pct = progressMap[g.id] ?? 0;
+    const color = resolveStatus(g, pct, period);
+    const lbl = statusLabel(color, pct);
+    if (lbl === 'on' || lbl === 'complete') onTrack += 1;
+    if (lbl === 'on' || lbl === 'complete') dist.on += 1;
+    else if (lbl === 'at-risk') dist.atRisk += 1;
+    else dist.off += 1;
+  }
+
+  let wSum = 0;
+  let wTot = 0;
+  for (const root of tree) {
+    const w = Number(root.weight ?? 1) || 1;
+    wSum += (progressMap[root.id] ?? 0) * w;
+    wTot += w;
+  }
+  const aggregatePct = wTot > 0 ? wSum / wTot : 0;
+
+  return { active, priorities, onTrack, aggregatePct, distribution: dist };
+}
+
 export default function GoalTrackingModule() {
   const { email: currentEmail, name: currentName, isManager, loading: userLoading } = useUserRole();
-  const [period, setPeriod] = useState(getCurrentPeriod());
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const archivedParam = searchParams.get('archived');
+  const archiveMode = !!archivedParam;
+
+  const qParam = searchParams.get('q');
+  const [period, setPeriodState] = useState(qParam || getCurrentPeriod());
   const [view, setView] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('any');
   const [ownerFilter, setOwnerFilter] = useState(null);
-  const [data, setData] = useState({ goals: [], tasks: [], myPriorityIds: [] });
+  const [data, setData] = useState({ goals: [], tasks: [], myPriorityIds: [], archivedCount: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedGoalId, setSelectedGoalId] = useState(null);
-  const [formConfig, setFormConfig] = useState(null); // null | { goal? } | { parent? }
+  const [formConfig, setFormConfig] = useState(null);
+
+  const setPeriod = useCallback((p) => {
+    setPeriodState(p);
+    const next = new URLSearchParams(searchParams);
+    if (p === getCurrentPeriod()) next.delete('q'); else next.set('q', p);
+    next.delete('archived');
+    setSearchParams(next, { replace: false });
+  }, [searchParams, setSearchParams]);
+
+  const enterArchive = useCallback((archivePeriod) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('archived', archivePeriod);
+    next.delete('q');
+    setSearchParams(next, { replace: false });
+  }, [searchParams, setSearchParams]);
+
+  const exitArchive = useCallback(() => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('archived');
+    setSearchParams(next, { replace: false });
+  }, [searchParams, setSearchParams]);
+
+  const effectivePeriod = archiveMode ? archivedParam : period;
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await getGoals(period);
+      const res = await getGoals(effectivePeriod, archiveMode ? { archived: true } : undefined);
       setData({
         goals: res.goals || [],
         tasks: res.tasks || [],
         myPriorityIds: res.myPriorityIds || [],
+        archivedCount: res.archivedCount || 0,
       });
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [period]);
+  }, [effectivePeriod, archiveMode]);
 
   useEffect(() => { load(); }, [load]);
 
-  const progressMap = useMemo(() => computeAllProgress(data.goals, data.tasks), [data.goals, data.tasks]);
+  const progressMap = useMemo(
+    () => computeAllProgress(data.goals, data.tasks),
+    [data.goals, data.tasks],
+  );
   const owners = useMemo(() => uniqueOwners(data.goals), [data.goals]);
 
-  const visibleGoals = useMemo(() => filterGoals({
-    goals: data.goals,
-    view,
-    ownerEmail: ownerFilter?.toLowerCase() || null,
-    currentUserEmail: (currentEmail || '').toLowerCase(),
-    pinnedIds: data.myPriorityIds,
-  }), [data.goals, data.myPriorityIds, view, ownerFilter, currentEmail]);
+  const filtered = useMemo(() => {
+    let gs = filterGoals({
+      goals: data.goals,
+      view,
+      ownerEmail: ownerFilter?.toLowerCase() || null,
+      currentUserEmail: (currentEmail || '').toLowerCase(),
+      pinnedIds: data.myPriorityIds,
+    });
+    if (statusFilter !== 'any') {
+      gs = gs.filter(g => {
+        const pct = progressMap[g.id] ?? 0;
+        return statusLabel(resolveStatus(g, pct, effectivePeriod), pct) === statusFilter;
+      });
+    }
+    return gs;
+  }, [data.goals, data.myPriorityIds, view, ownerFilter, currentEmail, statusFilter, progressMap, effectivePeriod]);
 
-  const tree = useMemo(() => buildTree(visibleGoals), [visibleGoals]);
+  const tree = useMemo(() => buildTree(filtered), [filtered]);
+  const aggregates = useMemo(
+    () => computeAggregates(filtered, tree, progressMap, effectivePeriod),
+    [filtered, tree, progressMap, effectivePeriod],
+  );
 
   const togglePin = useCallback(async (goal, pin) => {
     setData(d => ({
@@ -108,9 +197,6 @@ export default function GoalTrackingModule() {
 
   const handleDelete = useCallback(async (goal) => {
     if (!window.confirm(`Delete "${goal.name}"? This will archive it.`)) return;
-
-    // Optimistic: remove the goal (and any descendants) from local state so the row
-    // disappears immediately, even before the server responds.
     const descendantIds = new Set([goal.id]);
     let added = true;
     while (added) {
@@ -129,7 +215,6 @@ export default function GoalTrackingModule() {
       myPriorityIds: d.myPriorityIds.filter(id => !descendantIds.has(id)),
     }));
     setSelectedGoalId(sid => (descendantIds.has(sid) ? null : sid));
-
     try {
       await deleteGoal(goal.id);
     } catch (err) {
@@ -148,60 +233,85 @@ export default function GoalTrackingModule() {
     await load();
   }, [formConfig, load]);
 
-  if (userLoading) return <div className="gt-empty">Loading…</div>;
+  if (userLoading) return <div className="ql-loading">Loading…</div>;
 
   return (
-    <div className="gt-module">
-      <div className="gt-toolbar">
-        <QuarterNavigator period={period} onChange={setPeriod} />
-        <button className="gt-btn-primary gt-btn-create" onClick={() => setFormConfig({})}>
-          <Plus size={14} />
-          <span>New Goal</span>
-        </button>
-      </div>
+    <div className="ql-module">
+      <WatermarkCorner />
 
-      <GoalFilters
-        view={view}
-        onViewChange={setView}
-        owners={owners}
-        owner={ownerFilter}
-        onOwnerChange={setOwnerFilter}
+      <LedgerMasthead
+        onNewGoal={() => setFormConfig({})}
+        canCreate={isManager || !archiveMode}
+        archiveMode={archiveMode}
       />
 
-      {error && <div className="gt-form-error">{error}</div>}
-
-      {loading && <div className="gt-empty">Loading goals…</div>}
-
-      {!loading && visibleGoals.length === 0 && (
-        <div className="gt-empty-state">
-          {isManager ? 'Create your first Company Priority for this quarter.' : 'No goals in this period yet.'}
+      {archiveMode && (
+        <div className="ql-archive-banner">
+          <span className="ql-archive-eyebrow">
+            VIEWING ARCHIVE · {formatPeriod(archivedParam)}
+          </span>
+          <button type="button" className="ql-btn-secondary" onClick={exitArchive}>
+            <ArrowLeft size={13} /> Back to current
+          </button>
         </div>
       )}
 
-      {!loading && visibleGoals.length > 0 && (
-        <GoalTree
-          tree={tree}
-          progressMap={progressMap}
-          pinnedIds={data.myPriorityIds}
-          period={period}
-          currentEmail={currentEmail}
-          isManager={isManager}
-          onSelect={(g) => setSelectedGoalId(g.id)}
-          onTogglePin={togglePin}
-          onEdit={(g) => setFormConfig({ goal: g })}
-          onAddSubGoal={(g) => setFormConfig({ parent: g })}
-          onDelete={handleDelete}
-        />
-      )}
+      <div className="ql-columns">
+        <div className="ql-ledger-col">
+          {!archiveMode && (
+            <QuarterSwitcher period={period} onChange={setPeriod} />
+          )}
+
+          <LedgerFilterBar
+            view={view}
+            onViewChange={setView}
+            owners={owners}
+            owner={ownerFilter}
+            onOwnerChange={setOwnerFilter}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            goalCount={filtered.length}
+            priorityCount={aggregates.priorities}
+          />
+
+          {error && <div className="ql-error">{error}</div>}
+
+          {loading ? (
+            <div className="ql-list-loading">Loading goals…</div>
+          ) : (
+            <LedgerList
+              tree={tree}
+              progressMap={progressMap}
+              pinnedIds={data.myPriorityIds}
+              period={effectivePeriod}
+              currentEmail={currentEmail}
+              isManager={isManager}
+              readOnly={archiveMode}
+              archivedCount={data.archivedCount}
+              onSelect={(g) => setSelectedGoalId(g.id)}
+              onTogglePin={togglePin}
+              onEdit={(g) => setFormConfig({ goal: g })}
+              onAddSubGoal={(g) => setFormConfig({ parent: g })}
+              onDelete={handleDelete}
+              onViewArchive={enterArchive}
+            />
+          )}
+        </div>
+
+        <aside className="ql-side-rail">
+          <QuarterAtAGlance aggregates={aggregates} />
+          <Distribution distribution={aggregates.distribution} />
+        </aside>
+      </div>
 
       {selectedGoalId && (
         <GoalDetail
           goalId={selectedGoalId}
-          period={period}
+          period={effectivePeriod}
           allGoals={data.goals}
           pinned={data.myPriorityIds.includes(selectedGoalId)}
           currentUser={{ email: currentEmail, name: currentName }}
-          canManage={isManager}
+          canManage={isManager && !archiveMode}
           onClose={() => setSelectedGoalId(null)}
           onChanged={load}
           onDelete={handleDelete}

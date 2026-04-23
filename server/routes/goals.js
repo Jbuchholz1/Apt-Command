@@ -52,9 +52,13 @@ async function loadGoalOr404(id, res) {
 router.get('/', async (req, res, next) => {
   try {
     const period = req.query.period || getCurrentPeriod();
-    const { goals, tasks } = await db.listGoals(period);
+    const archived = req.query.archived === 'true';
+    const { goals, tasks } = archived
+      ? await db.listArchivedGoals(period)
+      : await db.listGoals(period);
     const myPriorityIds = await db.listMyPriorityIds(userEmail(req), period);
-    res.json({ period, goals, tasks, myPriorityIds });
+    const archivedCount = archived ? 0 : await db.countArchivedGoals(period);
+    res.json({ period, goals, tasks, myPriorityIds, archivedCount, archived });
   } catch (err) { next(err); }
 });
 

@@ -9,9 +9,22 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.11.3';
+export const APP_VERSION = '3.12.0';
 
 export const CHANGELOG = [
+  {
+    version: '3.12.0',
+    date: '2026-04-23',
+    title: 'Goal Tracking — The Quarterly Ledger',
+    changes: [
+      { type: 'major', text: 'Goal Tracking has been rebuilt as "The Quarterly Ledger" — an editorial layout matching the Daily Brief vocabulary. Serif masthead headline, gold hairline rule, a quarter switcher with a hairline through-quarter indicator, a tabbed filter bar (All / My Goals / Company Priorities) with owner and status dropdowns, and a single continuous goal list instead of separate cards.' },
+      { type: 'minor', text: 'Goal rows redesigned: serif index numbers on roots, gold-tinted avatar + "COMPANY PRIORITY" micro-eyebrow for company priorities, status dot + uppercase label (ON TRACK / AT RISK / OFF TRACK / COMPLETE) in place of the old black ROLLUP pill, 2px hairline progress rules with a serif percentage readout, and tinted navy-50 bleed rows for nested sub-goals so the hierarchy reads as a distinct band.' },
+      { type: 'minor', text: 'New right-hand side rail: "The quarter at a glance" 2×2 stats (active goals, company priorities, on-track count, aggregate progress) and a "Distribution" block with a stacked hairline bar + three-row legend.' },
+      { type: 'minor', text: 'Route moved to /goals; legacy /goal-tracking now redirects to /goals so existing bookmarks keep working. URL now carries the current quarter as ?q=2026-Q2 and archive state as ?archived=2026-Q1.' },
+      { type: 'minor', text: 'New archive view: footer shows "Plus N archived goals from {prev quarter}" with a "View archive →" button that loads a read-only ledger of archived goals for that period. Server adds GET /api/goals?archived=true&period=X and an archivedCount on the live response.' },
+      { type: 'patch', text: 'Responsive breakpoints tuned: below 1200px the side rail stacks under the ledger; below 900px status labels collapse to dots only and the watermark hides; below 680px goal rows fold into a two-line layout.' },
+    ],
+  },
   {
     version: '3.11.3',
     date: '2026-04-23',
