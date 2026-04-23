@@ -23,3 +23,9 @@ export const msalConfig = {
 export const loginRequest = {
   scopes: ['User.Read'],
 };
+
+// Incremental scope requested on first mount of the CalendarWidget.
+// Kept separate so users who never open the widget aren't prompted.
+export const graphCalendarRequest = {
+  scopes: ['Calendars.Read'],
+};

@@ -4,6 +4,7 @@ import { useUserRole } from '../lib/UserRoleContext';
 import { getAnnouncement, updateAnnouncement, getReminder, updateReminder } from '../lib/api';
 import { showToast } from '../lib/toast';
 import { Megaphone, Bell, Pencil, Check, X } from 'lucide-react';
+import CalendarWidget from './CalendarWidget/CalendarWidget';
 
 export default function HomePage() {
   const { accounts } = useMsal();
@@ -168,6 +169,8 @@ export default function HomePage() {
           </div>
         )}
       </div>
+
+      <CalendarWidget />
     </div>
   );
 }
