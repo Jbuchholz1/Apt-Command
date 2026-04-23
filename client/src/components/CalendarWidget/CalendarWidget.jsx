@@ -94,6 +94,7 @@ export default function CalendarWidget() {
 
   const parsedEvents = useMemo(() => {
     return events
+      .filter((e) => !e.isAllDay)
       .map((e) => {
         const startMs = new Date(e.start.dateTime).getTime();
         const endMs = new Date(e.end.dateTime).getTime();

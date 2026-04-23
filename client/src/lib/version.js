@@ -9,9 +9,21 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.9.2';
+export const APP_VERSION = '3.10.0';
 
 export const CHANGELOG = [
+  {
+    version: '3.10.0',
+    date: '2026-04-22',
+    title: 'Calendar Widget on Dashboard',
+    changes: [
+      { type: 'minor', text: 'New Calendar widget on the home dashboard below Reminders — today\'s Outlook calendar pulled live from Microsoft Graph. Header shows meeting count and total hours; a "Next up" hero callout surfaces the in-progress or next meeting with a one-click Teams join button.' },
+      { type: 'minor', text: '8 AM–6 PM vertical timeline with meeting blocks positioned by start time and sized by duration. Overlapping meetings render side-by-side so nothing gets hidden, and a red "now" line marks the current time. Click any meeting to expand an inline detail panel with attendees, location, body preview, and Teams join link. Events outside 8 AM–6 PM roll up into "+ N earlier / + N later" toggles.' },
+      { type: 'minor', text: 'Mobile (under 640px) collapses the timeline to a simple chronological list with the same click-to-expand detail.' },
+      { type: 'patch', text: 'All-day events are excluded so they don\'t inflate the meeting count, dominate the "Next up" callout, or clutter the timeline.' },
+      { type: 'patch', text: 'Calendars.Read scope is acquired incrementally — separate from login, so users who never open the widget aren\'t prompted. Admin-granted tenant-wide so there\'s no per-user consent popup on first load.' },
+    ],
+  },
   {
     version: '3.9.2',
     date: '2026-04-22',
