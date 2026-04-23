@@ -1,5 +1,5 @@
 import { InteractionRequiredAuthError } from '@azure/msal-browser';
-import { graphCalendarRequest } from './authConfig';
+import { graphCalendarRequest, graphSearchRequest } from './authConfig';
 
 /**
  * @typedef {Object} CalendarEvent
@@ -30,6 +30,27 @@ export async function getCalendarAccessToken(instance, account) {
   } catch (err) {
     if (err instanceof InteractionRequiredAuthError) {
       const response = await instance.acquireTokenPopup(graphCalendarRequest);
+      return response.accessToken;
+    }
+    throw err;
+  }
+}
+
+/**
+ * Acquire a Graph access token with the full Universal Search scope set.
+ * Silent first; popup fallback on interaction-required.
+ */
+export async function getSearchAccessToken(instance, account) {
+  if (!instance || !account) throw new Error('MSAL instance and account are required');
+  try {
+    const response = await instance.acquireTokenSilent({
+      ...graphSearchRequest,
+      account,
+    });
+    return response.accessToken;
+  } catch (err) {
+    if (err instanceof InteractionRequiredAuthError) {
+      const response = await instance.acquireTokenPopup(graphSearchRequest);
       return response.accessToken;
     }
     throw err;

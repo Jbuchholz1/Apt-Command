@@ -16,6 +16,7 @@ import {
   ChevronDown,
   ChevronRight,
   LogOut,
+  Search,
 } from 'lucide-react';
 import { APP_VERSION } from '../lib/version';
 import ChangelogModal from './ChangelogModal';
@@ -45,7 +46,7 @@ const QUICK_LINKS = [
   { label: 'SharePoint', href: 'https://bytesizeinc.sharepoint.com/sites/AptCentral' },
 ];
 
-export default function Sidebar({ userName, userRole, onLogout, mobileOpen }) {
+export default function Sidebar({ userName, userRole, onLogout, mobileOpen, onOpenSearch }) {
   const location = useLocation();
   const [linksOpen, setLinksOpen] = useState(false);
   const [changelogOpen, setChangelogOpen] = useState(false);
@@ -104,6 +105,22 @@ export default function Sidebar({ userName, userRole, onLogout, mobileOpen }) {
             );
           })}
         </nav>
+
+        {/* Universal Search trigger — opens Cmd+K modal */}
+        {onOpenSearch && (
+          <div className="sidebar-search-wrap">
+            <button
+              type="button"
+              className="sidebar-nav-item sidebar-search-trigger"
+              onClick={onOpenSearch}
+              aria-label="Open universal search (Cmd+K)"
+            >
+              <Search size={18} />
+              <span>Search everything…</span>
+              <kbd className="sidebar-search-kbd">⌘K</kbd>
+            </button>
+          </div>
+        )}
 
         {/* Quick Links */}
         <div className="sidebar-section">

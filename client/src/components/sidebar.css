@@ -116,6 +116,37 @@
   margin-left: auto;
 }
 
+/* ---- Universal Search Trigger ---- */
+.sidebar-search-wrap {
+  padding: 4px 8px 0;
+}
+.sidebar-search-trigger {
+  width: 100%;
+  background: none;
+  border: none;
+  font-family: inherit;
+  text-align: left;
+}
+.sidebar-search-kbd {
+  margin-left: auto;
+  font-family: var(--mono, monospace);
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 1px 6px;
+  line-height: 1.4;
+}
+.sidebar-search-trigger:hover .sidebar-search-kbd {
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.12);
+}
+@media (max-width: 768px) {
+  .sidebar-search-kbd { display: none; }
+}
+
 /* ---- Quick Links Section ---- */
 .sidebar-section {
   padding: 0 8px;

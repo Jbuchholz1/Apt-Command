@@ -18,6 +18,7 @@ const adminRouter = require('./routes/admin');
 const operationsRouter = require('./routes/operations');
 const supportRouter = require('./routes/support');
 const goalsRouter = require('./routes/goals');
+const searchRouter = require('./routes/search');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -151,6 +152,8 @@ app.use('/api/operations', operationsRouter);
 app.use('/api/support', supportRouter);
 // Goal Tracking module
 app.use('/api/goals', goalsRouter);
+// Universal Search
+app.use('/api/search', searchRouter);
 // User management
 app.use('/api/users', usersRouter);
 app.use('/api/admin', adminRouter);

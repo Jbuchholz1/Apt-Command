@@ -9,9 +9,21 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.12.0';
+export const APP_VERSION = '3.13.0';
 
 export const CHANGELOG = [
+  {
+    version: '3.13.0',
+    date: '2026-04-23',
+    title: 'Universal Search — Cmd+K Across M365 + Bullhorn',
+    changes: [
+      { type: 'major', text: 'New Cmd+K / Ctrl+K command palette searches across Microsoft 365 (email, files, calendar, people) and Bullhorn (jobs, candidates) in parallel. Results are grouped by type, keyboard navigable (↑↓ nav, ↵ open, Esc close), and open the source item in a new tab with one click.' },
+      { type: 'minor', text: 'New "Search everything…" item added to the sidebar just above Quick Links — click the item or press ⌘K from anywhere in the app to open the palette.' },
+      { type: 'minor', text: 'Results page preserves hit highlighting from Graph Search, groups by People / Jobs / Candidates / Files / Emails / Events, and shows a "See all N →" inline expander per group. Partial failures (one source down) show a warning banner and still render whatever came back.' },
+      { type: 'minor', text: 'Recent searches persist in localStorage — up to 5 recent queries appear as chips on the empty state.' },
+      { type: 'patch', text: 'Backend /api/search caches per-user query results for 60 seconds (reusing the existing in-flight-dedup cache) so repeat searches return instantly.' },
+    ],
+  },
   {
     version: '3.12.0',
     date: '2026-04-23',

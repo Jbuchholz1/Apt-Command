@@ -29,3 +29,14 @@ export const loginRequest = {
 export const graphCalendarRequest = {
   scopes: ['Calendars.Read'],
 };
+
+// Extended for Universal Search — admin consent granted in Entra by James
+export const graphSearchRequest = {
+  scopes: [
+    'Files.Read.All',
+    'Mail.Read',
+    'Calendars.Read',
+    'People.Read',
+    'User.Read.All',
+  ],
+};

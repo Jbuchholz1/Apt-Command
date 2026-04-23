@@ -177,6 +177,16 @@ export function getExecutiveDashboard(startDate, endDate) {
   return fetchAPI(`/api/reporting/executive-dashboard?start=${startDate}&end=${endDate}`);
 }
 
+// --- Universal Search ---
+
+export function searchUniversal({ query, accessToken, signal }) {
+  return fetchAPI('/api/search', {
+    method: 'POST',
+    body: { query, accessToken },
+    signal,
+  });
+}
+
 // --- Individual Performance ---
 
 export function getMyDashboard(startDate, endDate, email) {
