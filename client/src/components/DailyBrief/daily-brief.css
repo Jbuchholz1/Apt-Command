@@ -1,0 +1,529 @@
+/* ================================================
+   Daily Brief — editorial dashboard
+   Uses --apt-* tokens defined in index.css
+   ================================================ */
+
+.daily-brief {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 44px 56px 60px;
+  background: var(--apt-paper);
+  color: var(--apt-ink);
+  min-height: 100%;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Override the page background behind .daily-brief to --apt-paper and hide the hex overlay */
+.shell-content:has(.daily-brief) { background: var(--apt-paper); }
+.shell-content:has(.daily-brief)::before { display: none; }
+
+/* ---- Masthead ---- */
+.db-masthead {
+  margin-bottom: 48px;
+}
+
+.db-masthead-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.db-eyebrow-text {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 10.5px;
+  letter-spacing: var(--tracking-widest);
+  color: var(--apt-gold-700);
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.db-masthead-rule {
+  flex: 1;
+  height: 1px;
+  background: var(--apt-fog);
+  min-width: 12px;
+}
+
+.db-volume {
+  font-family: var(--apt-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--apt-steel);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.db-headline {
+  font-family: var(--apt-serif);
+  font-size: 72px;
+  font-weight: 300;
+  letter-spacing: -0.025em;
+  line-height: 0.98;
+  color: var(--apt-navy);
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.db-headline-line1 {
+  display: block;
+}
+
+.db-headline-line2 {
+  display: block;
+  font-style: italic;
+  font-weight: 300;
+  color: var(--apt-gold-700);
+}
+
+.db-gold-rule {
+  width: 64px;
+  height: 2px;
+  background: var(--apt-gold);
+  margin-top: 20px;
+}
+
+/* ---- Two-column layout ---- */
+.db-columns {
+  display: grid;
+  grid-template-columns: 1.8fr 1fr;
+  gap: 60px;
+  align-items: start;
+}
+
+/* ---- Shared block eyebrow ---- */
+.db-block-eyebrow {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 10.5px;
+  letter-spacing: var(--tracking-widest);
+  color: var(--apt-gold-700);
+  text-transform: uppercase;
+  margin-bottom: 18px;
+}
+
+/* ---- Priorities column ---- */
+.db-priorities {
+  min-width: 0;
+}
+
+.db-priorities-eyebrow {
+  margin-bottom: 24px;
+}
+
+.db-priority-stack {
+  display: flex;
+  flex-direction: column;
+}
+
+.db-priority-card {
+  display: grid;
+  grid-template-columns: 48px 1fr auto;
+  gap: 24px;
+  align-items: start;
+  padding: 28px 0;
+  border-top: 1px solid var(--apt-fog);
+}
+
+.db-priority-card.is-first {
+  border-top: 2px solid var(--apt-navy);
+}
+
+.db-priority-index {
+  font-family: var(--apt-serif);
+  font-size: 38px;
+  font-weight: 300;
+  color: var(--apt-gold-700);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.db-priority-body {
+  min-width: 0;
+}
+
+.db-priority-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.db-pill {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  line-height: 1.4;
+}
+
+.db-pill-urgent {
+  background: var(--apt-danger-bg);
+  color: var(--apt-danger);
+}
+
+.db-pill-interview {
+  background: var(--apt-gold-100);
+  color: var(--apt-gold-700);
+}
+
+.db-pill-offer {
+  background: var(--apt-success-bg);
+  color: var(--apt-success);
+}
+
+.db-priority-client {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  color: var(--apt-steel);
+  text-transform: uppercase;
+}
+
+.db-priority-headline {
+  font-family: var(--apt-serif);
+  font-size: 26px;
+  font-weight: 400;
+  color: var(--apt-navy);
+  margin: 10px 0 0;
+  line-height: 1.2;
+}
+
+.db-priority-context {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--apt-slate);
+  margin: 10px 0 0;
+  max-width: 62ch;
+}
+
+.db-priority-action {
+  align-self: center;
+}
+
+/* ---- Buttons ---- */
+.db-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  background: #fff;
+  border: 1px solid var(--apt-fog);
+  border-radius: var(--radius-md);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--apt-navy);
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 200ms ease-out, color 200ms ease-out, background-color 200ms ease-out;
+  white-space: nowrap;
+}
+
+.db-btn-secondary:hover {
+  border-color: var(--apt-navy-600);
+  color: var(--apt-navy);
+}
+
+.db-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  background: var(--apt-navy);
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 200ms ease-out;
+}
+
+.db-btn-primary:hover {
+  background: var(--apt-navy-900);
+}
+
+.daily-brief :is(button, a):focus-visible {
+  outline: 3px solid rgba(46, 72, 182, 0.35);
+  outline-offset: 2px;
+}
+
+/* ---- Priorities footer ---- */
+.db-priorities-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 2px solid var(--apt-navy);
+}
+
+.db-priorities-footer-text {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--apt-slate);
+}
+
+/* ---- Side rail ---- */
+.db-side-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  min-width: 0;
+}
+
+.db-block {
+  background: transparent;
+}
+
+/* ---- Today at a glance (2x2 stats) ---- */
+.db-glance-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 24px;
+}
+
+.db-glance-stat {
+  padding-top: 18px;
+  border-top: 1px solid var(--apt-fog);
+}
+
+.db-glance-value {
+  font-family: var(--apt-serif);
+  font-size: 44px;
+  font-weight: 400;
+  color: var(--apt-navy);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.db-glance-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--apt-steel);
+  margin-top: 10px;
+}
+
+.db-glance-skeleton {
+  height: 36px;
+  width: 70%;
+  border-radius: 4px;
+}
+
+/* ---- Your day ---- */
+.db-agenda-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.db-agenda-row {
+  display: grid;
+  grid-template-columns: 62px 1fr;
+  gap: 14px;
+  padding: 13px 0;
+  border-top: 1px solid var(--apt-fog);
+  align-items: baseline;
+}
+
+.db-agenda-row:first-child {
+  border-top: 1px solid var(--apt-fog);
+}
+
+.db-agenda-time {
+  font-family: var(--apt-mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--apt-gold-700);
+  font-variant-numeric: tabular-nums;
+}
+
+.db-agenda-body {
+  min-width: 0;
+}
+
+.db-agenda-title,
+.db-agenda-title-link {
+  font-family: 'Inter', sans-serif;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--apt-navy);
+  line-height: 1.35;
+  display: block;
+  text-decoration: none;
+  transition: color 200ms ease-out;
+}
+
+.db-agenda-title-link:hover {
+  color: var(--apt-navy-600);
+}
+
+.db-agenda-subtitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 11.5px;
+  color: var(--apt-steel);
+  margin-top: 3px;
+}
+
+.db-agenda-skeleton {
+  height: 22px;
+  margin: 10px 0;
+  border-radius: 4px;
+}
+
+.db-your-day-empty {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--apt-steel);
+  padding: 14px 0;
+  border-top: 1px solid var(--apt-fog);
+}
+
+.db-your-day-error {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--apt-danger);
+  padding: 14px 0;
+  border-top: 1px solid var(--apt-fog);
+}
+
+/* ---- Announcement card (navy flood) ---- */
+.db-announcement {
+  background: var(--apt-navy);
+  color: #fff;
+  padding: 24px 26px;
+  border-radius: var(--radius-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.db-announcement-glyph {
+  position: absolute;
+  top: -20px;
+  right: -30px;
+  font-family: var(--apt-serif);
+  font-size: 180px;
+  font-weight: 400;
+  line-height: 1;
+  color: rgba(209, 190, 20, 0.08);
+  pointer-events: none;
+  user-select: none;
+}
+
+.db-announcement-eyebrow {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 10.5px;
+  letter-spacing: var(--tracking-widest);
+  color: var(--apt-gold);
+  text-transform: uppercase;
+  position: relative;
+}
+
+.db-announcement-title {
+  font-family: var(--apt-serif);
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.3;
+  color: #fff;
+  margin: 10px 0 0;
+  position: relative;
+}
+
+.db-announcement-bullets {
+  margin: 14px 0 0;
+  padding-left: 18px;
+  list-style: disc;
+  color: rgba(255, 255, 255, 0.8);
+  position: relative;
+}
+
+.db-announcement-bullets li {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.db-announcement-footer {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.55);
+  position: relative;
+}
+
+.db-announcement-skeleton {
+  height: 140px;
+  border-radius: var(--radius-md);
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 1100px) {
+  .daily-brief {
+    padding: 36px 32px 48px;
+  }
+  .db-columns {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+  .db-headline {
+    font-size: 60px;
+  }
+}
+
+@media (max-width: 720px) {
+  .daily-brief {
+    padding: 28px 20px 40px;
+  }
+  .db-headline {
+    font-size: 48px;
+    letter-spacing: -0.02em;
+  }
+  .db-priority-card {
+    grid-template-columns: 28px 1fr;
+    gap: 14px;
+  }
+  .db-priority-index {
+    font-size: 24px;
+  }
+  .db-priority-action {
+    grid-column: 2;
+    margin-top: 14px;
+    align-self: start;
+  }
+  .db-priorities-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .db-glance-grid {
+    grid-template-columns: 1fr;
+  }
+  .db-glance-stat {
+    padding-top: 14px;
+  }
+  .db-masthead-rule {
+    min-width: 8px;
+  }
+  .db-volume {
+    display: none;
+  }
+}

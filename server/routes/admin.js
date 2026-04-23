@@ -92,31 +92,6 @@ router.put('/announcement', async (req, res, next) => {
   }
 });
 
-// PUT /api/admin/reminder — Update the reminder text
-router.put('/reminder', async (req, res, next) => {
-  try {
-    if (!supabase) return res.status(503).json({ error: 'Database not configured' });
-
-    const { text } = req.body || {};
-    if (typeof text !== 'string') {
-      return res.status(400).json({ error: 'text field required' });
-    }
-
-    // Upsert into announcements table (single-row, id=2)
-    const { data, error } = await supabase
-      .from('announcements')
-      .upsert({ id: 2, text: text.trim(), updated_by: req.user?.email || '', updated_at: new Date().toISOString() })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    res.json(data);
-  } catch (err) {
-    next(err);
-  }
-});
-
 // GET /api/admin/reconciliation-queue — list pending split-brain rows.
 // Visible to managers+ so ops can see when Bullhorn/local writes diverged.
 router.get('/reconciliation-queue', async (req, res, next) => {

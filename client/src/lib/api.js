@@ -195,6 +195,17 @@ export function updateOpportunityInBullhorn(id, fields) {
   });
 }
 
+export function convertOpportunityToJob(oppId, body) {
+  return fetchAPI(`/api/req-board/jobs/opportunities/${oppId}/convert`, {
+    method: 'POST',
+    body,
+  });
+}
+
+export function getClientContactsForCorp(corpId) {
+  return fetchAPI(`/api/req-board/jobs/client-contacts?corpId=${encodeURIComponent(corpId)}`);
+}
+
 export function updateSubmissionInBullhorn(id, fields) {
   return fetchAPI(`/api/req-board/jobs/submissions/${id}/update`, {
     method: 'POST',
@@ -208,17 +219,6 @@ export function getAnnouncement() {
 
 export function updateAnnouncement(text) {
   return fetchAPI('/api/admin/announcement', {
-    method: 'PUT',
-    body: { text },
-  });
-}
-
-export function getReminder() {
-  return fetchAPI('/api/users/reminder');
-}
-
-export function updateReminder(text) {
-  return fetchAPI('/api/admin/reminder', {
     method: 'PUT',
     body: { text },
   });

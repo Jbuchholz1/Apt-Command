@@ -28,6 +28,29 @@
   --sidebar-active-bg: rgba(211, 191, 48, 0.12);
   --sidebar-active-border: var(--gold);
 
+  /* ---- Daily Brief editorial tokens (used by DailyBrief.jsx only) ---- */
+  --apt-navy:       #051451;
+  --apt-navy-600:   #1A3091;
+  --apt-navy-100:   #E6EAF8;
+  --apt-navy-900:   #030B33;
+  --apt-gold:       #D1BE14;
+  --apt-gold-700:   #9E8E0B;
+  --apt-gold-100:   #F8F3CE;
+  --apt-ink:        #0A0F1F;
+  --apt-graphite:   #2A3142;
+  --apt-slate:      #4B5268;
+  --apt-steel:      #6B7388;
+  --apt-fog:        #D6DAE3;
+  --apt-paper:      #F7F8FB;
+  --apt-success:    #0F8A5F;
+  --apt-success-bg: #E3F5EC;
+  --apt-danger:     #B42C2C;
+  --apt-danger-bg:  #FBE6E6;
+  --tracking-widest: 0.28em;
+  --radius-md:      6px;
+  --apt-serif:      'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  --apt-mono:       'JetBrains Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
+
   font: 13px/1.5 var(--sans);
   color: var(--text);
   background: var(--bg);

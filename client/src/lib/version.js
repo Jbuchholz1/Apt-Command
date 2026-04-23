@@ -9,9 +9,22 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.10.0';
+export const APP_VERSION = '3.11.0';
 
 export const CHANGELOG = [
+  {
+    version: '3.11.0',
+    date: '2026-04-23',
+    title: 'Daily Brief — Dashboard Redesign',
+    changes: [
+      { type: 'major', text: 'The home dashboard has been rebuilt as "The Daily Brief" — an editorial, priorities-first morning page. A serif masthead headline greets you by name, followed by three ranked priority cards (URGENT / INTERVIEW / OFFER) with client context and a one-click action per card. A footer row links directly to the full Req Board.' },
+      { type: 'minor', text: 'Right-hand side rail now packs three focused blocks: "Today at a glance" (Active jobs assigned, Submittals this week, Placements QTD, Client submissions QTD pulled live from the performance API), "Your day" (today\'s Outlook meetings in a clean agenda list with Teams join links), and a single Announcement block in navy with the quote-glyph flourish.' },
+      { type: 'minor', text: 'Typography system upgraded — Cormorant Garamond for editorial serif moments (masthead headline, big stat numbers, priority titles), Inter for UI, JetBrains Mono for timestamps. Gold is now an accent only, not a fill.' },
+      { type: 'patch', text: 'Retired the standalone Calendar widget — its data source (Microsoft Graph) now powers the side-rail "Your day" agenda. All-day events continue to be filtered out.' },
+      { type: 'patch', text: 'Retired the Reminders card and its backend routes. Announcements remain and drive the navy card in the side rail.' },
+      { type: 'patch', text: 'Fully responsive: under 1100px the side rail stacks below priorities; under 720px the masthead shrinks and the stat grid collapses to a single column.' },
+    ],
+  },
   {
     version: '3.10.0',
     date: '2026-04-22',
