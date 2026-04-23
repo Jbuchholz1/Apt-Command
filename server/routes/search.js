@@ -14,12 +14,14 @@ const CANDIDATE_FIELDS_LITE = 'id,firstName,lastName,status,owner,dateAdded,prim
 // Graph Search only allows certain entityType combinations per request:
 //   - (message, event) together (both Exchange-backed)
 //   - (driveItem) alone
+//   - (site, list, listItem) together (SharePoint — requires Sites.Read.All)
 //   - (person) alone
-// Mixing person or driveItem with others returns HTTP 400. So we issue
-// three parallel requests and merge results.
+// Mixing incompatible types returns HTTP 400. We issue parallel requests
+// per group and merge results. Each group can fail independently.
 const GRAPH_ENTITY_GROUPS = [
   ['message', 'event'],
   ['driveItem'],
+  ['site', 'list', 'listItem'],
   ['person'],
 ];
 
@@ -51,6 +53,11 @@ function graphEntityTypeOf(hit) {
   if (odata.includes('driveItem')) return 'file';
   if (odata.includes('event')) return 'event';
   if (odata.includes('person')) return 'person';
+  // SharePoint types — bucket under 'file' so they show in the Files group.
+  // `site` = SharePoint site, `list` = a list, `listItem` = an item in a list
+  // (e.g. announcement, task, page). `microsoft.graph.site` / `.list` / `.listItem`.
+  if (odata.includes('listItem')) return 'file';
+  if (odata.includes('site') || odata.includes('list')) return 'file';
   return null;
 }
 
@@ -77,12 +84,27 @@ function normalizeGraphHit(hit) {
   }
 
   if (type === 'file') {
-    const parentName = resource.parentReference?.name || '';
+    // Covers driveItem (OneDrive/SharePoint files), site, list, listItem.
+    // Title preference order: name (files), displayName (sites/lists), title field (listItems)
+    const title = resource.name
+      || resource.displayName
+      || resource.fields?.title
+      || resource.webUrl?.split('/').pop()
+      || '(untitled)';
+    const odata = resource['@odata.type'] || '';
+    const isSite = odata.includes('site') && !odata.includes('list');
+    const isList = odata.includes('list') && !odata.includes('listItem');
+    const isListItem = odata.includes('listItem');
+    let subtitle = '';
+    if (isSite) subtitle = 'SharePoint site';
+    else if (isList) subtitle = `SharePoint list${resource.parentReference?.siteId ? '' : ''}`;
+    else if (isListItem) subtitle = 'SharePoint item';
+    else subtitle = resource.parentReference?.name || '';
     return {
       id: String(resource.id || hit?.hitId || ''),
       type,
-      title: resource.name || '(untitled file)',
-      subtitle: parentName,
+      title,
+      subtitle,
       preview,
       url: resource.webUrl || '',
       date: resource.lastModifiedDateTime || resource.createdDateTime || null,
