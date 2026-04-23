@@ -9,9 +9,20 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.13.0';
+export const APP_VERSION = '3.14.0';
 
 export const CHANGELOG = [
+  {
+    version: '3.14.0',
+    date: '2026-04-23',
+    title: 'Daily Brief — Points-Based Priorities',
+    changes: [
+      { type: 'minor', text: 'Priority cards are now ranked by a points system rather than age. A req earns 1 point each for: (a) still in Accepting Candidates and open 2+ weeks, (b) a missed deadline, (c) a missed follow-up. Cards are ordered most points first; ties break on oldest dateAdded.' },
+      { type: 'minor', text: 'Pill color now reflects the most severe flag on the card — red "DEADLINE MISSED", gold "FOLLOW-UP DUE", or gold "STALE". Context line lists every flag that tripped, followed by employment type and location.' },
+      { type: 'patch', text: 'Priority candidate pool is no longer restricted to A/B reqs — any of your reqs with at least one flag is eligible.' },
+      { type: 'patch', text: 'Empty state copy updated: "Nothing flagged on your board right now — no stale reqs, missed deadlines, or overdue follow-ups."' },
+    ],
+  },
   {
     version: '3.13.0',
     date: '2026-04-23',

@@ -17,21 +17,64 @@ import './daily-brief.css';
  * @property {{ label: string, href: string }} action
  */
 
-function jobToPriority(job) {
-  const letter = job.priority; // 'A' or 'B'
-  const kind = letter === 'A' ? 'urgent' : 'interview';
-  const addedMs = job.dateAdded ? new Date(job.dateAdded).getTime() : Date.now();
-  const daysOpen = Math.max(0, Math.floor((Date.now() - addedMs) / 86400000));
+const TWO_WEEKS_MS = 14 * 86400000;
+
+function parseDateFlexible(value) {
+  if (!value) return null;
+  const t = new Date(value).getTime();
+  return Number.isNaN(t) ? null : t;
+}
+
+/**
+ * Score a job on the three priority criteria. Each criterion = 1 point.
+ * Returns { reasons: [{ key, label }, ...] } — points count === reasons.length.
+ */
+function computePriorityReasons(job, nowMs) {
+  const reasons = [];
+
+  // 1. Still Accepting Candidates for 2+ weeks
+  if (job.status === 'Accepting Candidates') {
+    const addedMs = parseDateFlexible(job.dateAdded);
+    if (addedMs != null && nowMs - addedMs >= TWO_WEEKS_MS) {
+      const ageDays = Math.floor((nowMs - addedMs) / 86400000);
+      reasons.push({ key: 'stale', label: `Open ${ageDays} days accepting candidates` });
+    }
+  }
+
+  // 2. Missed deadline
+  const deadlineMs = parseDateFlexible(job.deadline);
+  if (deadlineMs != null && deadlineMs < nowMs) {
+    reasons.push({ key: 'deadline', label: 'Deadline missed' });
+  }
+
+  // 3. Missed follow-up
+  const followUpMs = parseDateFlexible(job.followUp);
+  if (followUpMs != null && followUpMs < nowMs) {
+    reasons.push({ key: 'followup', label: 'Follow-up overdue' });
+  }
+
+  return reasons;
+}
+
+const REASON_PILL = {
+  deadline: { kind: 'urgent', label: 'DEADLINE MISSED' },
+  followup: { kind: 'interview', label: 'FOLLOW-UP DUE' },
+  stale: { kind: 'interview', label: 'STALE' },
+};
+const REASON_SEVERITY_ORDER = ['deadline', 'followup', 'stale'];
+
+function jobToPriority(job, reasons) {
+  const leadingKey = REASON_SEVERITY_ORDER.find((k) => reasons.some((r) => r.key === k)) || 'stale';
+  const pill = REASON_PILL[leadingKey];
+  const reasonLabels = REASON_SEVERITY_ORDER
+    .filter((k) => reasons.some((r) => r.key === k))
+    .map((k) => reasons.find((r) => r.key === k).label);
   const loc = [job.city, job.state].filter(Boolean).join(', ');
-  const parts = [
-    `${daysOpen} day${daysOpen === 1 ? '' : 's'} in Accepting Candidates`,
-    job.employmentType,
-    loc,
-  ].filter(Boolean);
+  const parts = [reasonLabels.join(' · '), job.employmentType, loc].filter(Boolean);
   return {
     id: `job-${job.id}`,
-    kind,
-    pillLabel: `${letter}-REQ`,
+    kind: pill.kind,
+    pillLabel: pill.label,
     clientLabel: job.client || 'Unknown client',
     headline: job.title || '(Untitled req)',
     context: `${parts.join(' · ')}.`,
@@ -42,20 +85,20 @@ function jobToPriority(job) {
 function extractMyPriorities(jobs, fullName) {
   if (!Array.isArray(jobs) || !fullName) return [];
   const me = fullName.toLowerCase();
-  return jobs
-    .filter(
-      (j) =>
-        j.status === 'Accepting Candidates'
-        && (j.priority === 'A' || j.priority === 'B')
-        && (j.owner || '').toLowerCase() === me,
-    )
-    .sort((a, b) => {
-      const aMs = a.dateAdded ? new Date(a.dateAdded).getTime() : Infinity;
-      const bMs = b.dateAdded ? new Date(b.dateAdded).getTime() : Infinity;
-      return aMs - bMs;
-    })
-    .slice(0, 3)
-    .map(jobToPriority);
+  const nowMs = Date.now();
+  const scored = jobs
+    .filter((j) => (j.owner || '').toLowerCase() === me)
+    .map((job) => ({ job, reasons: computePriorityReasons(job, nowMs) }))
+    .filter((entry) => entry.reasons.length > 0);
+
+  scored.sort((a, b) => {
+    if (a.reasons.length !== b.reasons.length) return b.reasons.length - a.reasons.length;
+    const aMs = parseDateFlexible(a.job.dateAdded) ?? Infinity;
+    const bMs = parseDateFlexible(b.job.dateAdded) ?? Infinity;
+    return aMs - bMs;
+  });
+
+  return scored.slice(0, 3).map(({ job, reasons }) => jobToPriority(job, reasons));
 }
 
 function formatCurrencyCompact(n) {
@@ -199,7 +242,7 @@ function PrioritiesColumn({ fullName }) {
           </>
         ) : priorities.length === 0 ? (
           <div className="db-priorities-empty">
-            No A or B reqs accepting candidates on your board right now.
+            Nothing flagged on your board right now — no stale reqs, missed deadlines, or overdue follow-ups.
           </div>
         ) : (
           priorities.map((p, i) => <PriorityCard key={p.id} priority={p} index={i} />)
