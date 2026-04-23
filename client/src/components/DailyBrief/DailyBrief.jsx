@@ -156,6 +156,13 @@ function getDateEyebrow(d = new Date()) {
   return `${weekday} · ${monthDay}`;
 }
 
+// Time-of-day greeting for the masthead. Switches to "Good afternoon"
+// at local noon. Keeps the editorial sentence-case style of the rest
+// of the headline.
+function getGreeting(d = new Date()) {
+  return d.getHours() < 12 ? 'Good morning' : 'Good afternoon';
+}
+
 function getVolumeIssue(d = new Date()) {
   const year = d.getFullYear();
   const start = new Date(year, 0, 1);
@@ -207,7 +214,6 @@ export default function DailyBrief() {
   const { accounts } = useMsal();
   const account = accounts[0];
   const msalName = account?.name || '';
-  const firstName = msalName.split(' ')[0] || 'there';
 
   const { isAdmin, bullhornRole, bullhornUserId, bullhornName } = useUserRole();
 
@@ -216,6 +222,21 @@ export default function DailyBrief() {
   // server/routes/jobs.js `formatJob`). Fall back to the MSAL display name
   // while the /api/users/me fetch is in-flight or when Bullhorn has no match.
   const matchName = bullhornName || msalName;
+
+  // First name for the greeting. Bullhorn's name is always "First Last"
+  // (`${firstName} ${lastName}` joined server-side), so split(' ')[0] is
+  // reliable there. MSAL can return "Last, First" on some Entra tenants, so
+  // strip a trailing-comma case before splitting as a defensive fallback.
+  const firstName = (() => {
+    if (bullhornName) return bullhornName.split(' ')[0];
+    if (!msalName) return 'there';
+    if (msalName.includes(',')) {
+      // "Buchholz, James" -> "James"
+      const afterComma = msalName.split(',').slice(1).join(',').trim();
+      if (afterComma) return afterComma.split(' ')[0];
+    }
+    return msalName.split(' ')[0] || 'there';
+  })();
 
   // Admins and anyone without a "Recruiter" Bullhorn role land on the AM
   // ("sales") view per the current product decision. A dedicated Exec view
@@ -248,10 +269,16 @@ export default function DailyBrief() {
   const now = new Date();
   const dateEyebrow = getDateEyebrow(now);
   const volumeIssue = getVolumeIssue(now);
+  const greeting = getGreeting(now);
 
   return (
     <div className="daily-brief">
-      <Masthead firstName={firstName} dateEyebrow={dateEyebrow} volumeIssue={volumeIssue} />
+      <Masthead
+        greeting={greeting}
+        firstName={firstName}
+        dateEyebrow={dateEyebrow}
+        volumeIssue={volumeIssue}
+      />
       <div className="db-columns">
         <PrioritiesColumn jobs={jobs} jobsError={jobsError} fullName={matchName} />
         <SideRail
@@ -276,7 +303,7 @@ export default function DailyBrief() {
   );
 }
 
-function Masthead({ firstName, dateEyebrow, volumeIssue }) {
+function Masthead({ greeting, firstName, dateEyebrow, volumeIssue }) {
   return (
     <header className="db-masthead">
       <div className="db-masthead-eyebrow">
@@ -285,8 +312,8 @@ function Masthead({ firstName, dateEyebrow, volumeIssue }) {
         <span className="db-volume">{volumeIssue}</span>
       </div>
       <h1 className="db-headline">
-        <span className="db-headline-line1">Good morning, {firstName}.</span>
-        <span className="db-headline-line2">Three things that need you today.</span>
+        <span className="db-headline-line1">{greeting}, {firstName}.</span>
+        <span className="db-headline-line2">What needs attention today.</span>
       </h1>
       <div className="db-gold-rule" aria-hidden />
     </header>

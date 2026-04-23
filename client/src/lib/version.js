@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.15.4';
+export const APP_VERSION = '3.15.5';
 
 export const CHANGELOG = [
+  {
+    version: '3.15.5',
+    date: '2026-04-23',
+    title: 'Daily Brief — Masthead Copy Polish',
+    changes: [
+      { type: 'patch', text: 'Masthead greeting now switches based on the time of day \u2014 "Good morning" before noon, "Good afternoon" after. The first name is pulled from your Bullhorn profile when available (which is always "First Last"), with a defensive fallback for MSAL accounts that return "Last, First" so nobody gets greeted as "Buchholz".' },
+      { type: 'patch', text: 'Subtitle changed from "Three things that need you today." to "What needs attention today." \u2014 matches the scrollable Priorities stack shipped in v3.14.1, which already stopped capping at three items.' },
+    ],
+  },
   {
     version: '3.15.4',
     date: '2026-04-23',
