@@ -156,11 +156,14 @@ function getDateEyebrow(d = new Date()) {
   return `${weekday} · ${monthDay}`;
 }
 
-// Time-of-day greeting for the masthead. Switches to "Good afternoon"
-// at local noon. Keeps the editorial sentence-case style of the rest
-// of the headline.
+// Time-of-day greeting for the masthead. Morning until noon, afternoon
+// until 6pm, evening after. Keeps the editorial sentence-case style of
+// the rest of the headline.
 function getGreeting(d = new Date()) {
-  return d.getHours() < 12 ? 'Good morning' : 'Good afternoon';
+  const hour = d.getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
 }
 
 function getVolumeIssue(d = new Date()) {

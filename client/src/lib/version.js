@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.15.5';
+export const APP_VERSION = '3.15.6';
 
 export const CHANGELOG = [
+  {
+    version: '3.15.6',
+    date: '2026-04-23',
+    title: 'Daily Brief — Evening Greeting',
+    changes: [
+      { type: 'patch', text: 'Masthead greeting now has three buckets instead of two: "Good morning" before noon, "Good afternoon" until 6pm, and "Good evening" after.' },
+    ],
+  },
   {
     version: '3.15.5',
     date: '2026-04-23',
