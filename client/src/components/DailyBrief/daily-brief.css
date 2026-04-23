@@ -777,6 +777,65 @@
   color: var(--apt-steel);
 }
 
+/* ---- Stale Clients drawer variant ----
+   Reuses .db-drawer-* but the first column is a contact name (not a narrow
+   Req # ID), so the 72px first-column constraint from the flagged-reqs
+   table needs to relax. Also adds email + action column styling. */
+
+.db-drawer-stale .db-drawer-table th:first-child,
+.db-drawer-stale .db-drawer-table td:first-child {
+  width: auto;
+}
+
+.db-drawer-email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+.db-drawer-link {
+  color: var(--apt-navy-600);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 180ms ease-out, color 180ms ease-out;
+}
+
+.db-drawer-link:hover {
+  color: var(--apt-navy);
+  border-bottom-color: var(--apt-navy-600);
+}
+
+.db-drawer-link-strong {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--apt-navy);
+  text-decoration: none;
+  padding: 6px 10px;
+  border: 1px solid var(--apt-fog);
+  border-radius: 4px;
+  transition: background-color 180ms ease-out, border-color 180ms ease-out, color 180ms ease-out;
+  white-space: nowrap;
+}
+
+.db-drawer-link-strong:hover {
+  background: var(--apt-navy);
+  border-color: var(--apt-navy);
+  color: #fff;
+}
+
+.db-drawer-muted {
+  color: var(--apt-steel);
+}
+
+.db-drawer-th-action,
+.db-drawer-action-cell {
+  width: 120px;
+  text-align: right;
+}
+
 @media (max-width: 720px) {
   .db-drawer {
     max-height: 100%;
@@ -791,9 +850,12 @@
   .db-drawer-table td:first-child { padding-left: 18px; }
   .db-drawer-table th:last-child,
   .db-drawer-table td:last-child { padding-right: 18px; }
-  .db-drawer-client { display: none; }
+  .db-drawer-client,
+  .db-drawer-email { display: none; }
   .db-drawer-footer {
     flex-direction: column;
     align-items: stretch;
   }
+  .db-drawer-th-action,
+  .db-drawer-action-cell { width: 88px; }
 }

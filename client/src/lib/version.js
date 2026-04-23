@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.15.3';
+export const APP_VERSION = '3.15.4';
 
 export const CHANGELOG = [
+  {
+    version: '3.15.4',
+    date: '2026-04-23',
+    title: 'Daily Brief — Stale Clients Drawer',
+    changes: [
+      { type: 'patch', text: 'Renamed the AM "Stale client contacts" tile to "Stale clients" for brevity.' },
+      { type: 'minor', text: 'Clicking the Stale clients tile now opens an inline drawer on the Daily Brief listing the contacts (name, client, email, direct Bullhorn link) instead of navigating away to APT Health. Sorted by client then last name so you can work through multiple contacts at the same company back-to-back. Contact emails are clickable (mailto:) and the Bullhorn button opens the contact record in a new tab.' },
+    ],
+  },
   {
     version: '3.15.3',
     date: '2026-04-23',

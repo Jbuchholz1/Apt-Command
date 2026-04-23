@@ -435,21 +435,28 @@ function StatCardGrid({ items, loading }) {
 
 function AmStats({ jobs, fullName, onOpenFlaggedDrawer }) {
   const navigate = useNavigate();
-  const [staleCount, setStaleCount] = useState(null);
+  // Hold the full list (not just the count) so the "Stale clients" drawer
+  // can render it without a second fetch.
+  const [staleContacts, setStaleContacts] = useState(null);
   const [staleError, setStaleError] = useState(false);
+  const [staleDrawerOpen, setStaleDrawerOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     getStaleContacts()
       .then((res) => {
         if (cancelled) return;
-        setStaleCount(typeof res?.total === 'number' ? res.total : (res?.data?.length ?? 0));
+        setStaleContacts(Array.isArray(res?.data) ? res.data : []);
       })
       .catch(() => {
         if (!cancelled) setStaleError(true);
       });
     return () => { cancelled = true; };
   }, []);
+
+  const staleCount = staleError
+    ? null
+    : (staleContacts === null ? null : staleContacts.length);
 
   // Everything AM-specific derives from the hoisted jobs list. Guard with
   // Array.isArray so a null prop (still loading) keeps the skeletons up.
@@ -482,13 +489,17 @@ function AmStats({ jobs, fullName, onOpenFlaggedDrawer }) {
       },
     },
     {
-      label: 'Stale client contacts',
-      value: staleError ? null : staleCount,
+      label: 'Stale clients',
+      value: staleCount,
       format: 'number',
       tooltip:
-        'Count of Bullhorn ClientContacts you own that have had no MAR-driving appointment ' +
-        'logged by you in the last 14 days. Same activity types the AM Sales Dashboard uses for MAR.',
-      onClick: () => navigate('/clients'),
+        'Bullhorn ClientContacts you own with no MAR-driving activity logged by you in the last 14 days. ' +
+        'Same activity types the AM Sales Dashboard uses for MAR. ' +
+        'Click to see the list.',
+      onClick: () => {
+        // If zero (or errored), navigating or opening an empty modal is pointless.
+        if (staleCount && staleCount > 0) setStaleDrawerOpen(true);
+      },
     },
     {
       label: 'Potential input',
@@ -512,10 +523,18 @@ function AmStats({ jobs, fullName, onOpenFlaggedDrawer }) {
   ];
 
   return (
-    <section className="db-block db-glance">
-      <div className="db-block-eyebrow">TODAY · AT · A · GLANCE</div>
-      <StatCardGrid items={items} loading={loading} />
-    </section>
+    <>
+      <section className="db-block db-glance">
+        <div className="db-block-eyebrow">TODAY · AT · A · GLANCE</div>
+        <StatCardGrid items={items} loading={loading} />
+      </section>
+      {staleDrawerOpen && (
+        <StaleClientsDrawer
+          contacts={staleContacts || []}
+          onClose={() => setStaleDrawerOpen(false)}
+        />
+      )}
+    </>
   );
 }
 
@@ -877,6 +896,101 @@ function FlaggedReqsDrawer({ jobs, fullName, onClose }) {
         )}
         <footer className="db-drawer-footer">
           <span className="db-drawer-hint">Changes save automatically when you leave a field.</span>
+          <button type="button" className="db-btn-primary" onClick={onClose}>
+            Done
+          </button>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+// --- Stale Clients Drawer ---
+// Read-only modal listing ClientContacts owned by the AM with no MAR-driving
+// activity in the last 14 days. Matches the visual language of
+// FlaggedReqsDrawer but doesn't edit anything — just shows who to reach out
+// to next, with a direct Bullhorn link per contact.
+
+const BH_BASE = 'https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm';
+
+function StaleClientsDrawer({ contacts, onClose }) {
+  // ESC key closes the drawer.
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  // Sort by client company, then last name — makes it easy to scan and call
+  // multiple contacts at the same client back-to-back.
+  const sorted = [...contacts].sort((a, b) => {
+    const c = (a.client || '').localeCompare(b.client || '');
+    if (c !== 0) return c;
+    return (a.lastName || '').localeCompare(b.lastName || '');
+  });
+
+  const backdropClick = (e) => {
+    if (e.target === e.currentTarget) onClose();
+  };
+
+  return (
+    <div
+      className="db-drawer-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Stale clients"
+      onClick={backdropClick}
+    >
+      <div className="db-drawer db-drawer-stale">
+        <header className="db-drawer-header">
+          <h2 className="db-drawer-title">Stale clients</h2>
+          <button type="button" className="db-drawer-close" onClick={onClose} aria-label="Close">
+            ×
+          </button>
+        </header>
+        {sorted.length === 0 ? (
+          <div className="db-drawer-empty">No stale clients right now. Nice work.</div>
+        ) : (
+          <table className="db-drawer-table">
+            <thead>
+              <tr>
+                <th>Contact</th>
+                <th>Client</th>
+                <th>Email</th>
+                <th className="db-drawer-th-action">&nbsp;</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((c) => (
+                <tr key={c.id}>
+                  <td className="db-drawer-title-cell">{c.name || `${c.firstName} ${c.lastName}`.trim()}</td>
+                  <td className="db-drawer-client">{c.client || '—'}</td>
+                  <td className="db-drawer-email">
+                    {c.email ? (
+                      <a className="db-drawer-link" href={`mailto:${c.email}`}>{c.email}</a>
+                    ) : (
+                      <span className="db-drawer-muted">—</span>
+                    )}
+                  </td>
+                  <td className="db-drawer-action-cell">
+                    <a
+                      className="db-drawer-link-strong"
+                      href={`${BH_BASE}?Entity=ClientContact&id=${c.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Bullhorn ↗
+                    </a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <footer className="db-drawer-footer">
+          <span className="db-drawer-hint">
+            No activity from you in 14 days. Log a call, email, or meeting in Bullhorn to clear.
+          </span>
           <button type="button" className="db-btn-primary" onClick={onClose}>
             Done
           </button>
