@@ -11,7 +11,17 @@ const MIN_QUERY_LEN = 2;
 const JOB_FIELDS_LITE = 'id,title,clientCorporation,status,owner,dateAdded,address,isOpen';
 const CANDIDATE_FIELDS_LITE = 'id,firstName,lastName,status,owner,dateAdded,primarySkills,city,state';
 
-const GRAPH_ENTITY_TYPES = ['message', 'driveItem', 'event', 'person'];
+// Graph Search only allows certain entityType combinations per request:
+//   - (message, event) together (both Exchange-backed)
+//   - (driveItem) alone
+//   - (person) alone
+// Mixing person or driveItem with others returns HTTP 400. So we issue
+// three parallel requests and merge results.
+const GRAPH_ENTITY_GROUPS = [
+  ['message', 'event'],
+  ['driveItem'],
+  ['person'],
+];
 
 function sanitizeQuery(raw) {
   if (typeof raw !== 'string') return '';
@@ -118,21 +128,13 @@ function normalizeGraphHit(hit) {
   return null;
 }
 
-async function searchGraph(accessToken, query) {
+async function searchGraphGroup(accessToken, query, entityTypes) {
   const body = {
     requests: [{
-      entityTypes: GRAPH_ENTITY_TYPES,
+      entityTypes,
       query: { queryString: query },
       from: 0,
-      size: 25,
-      fields: [
-        'id', 'subject', 'summary', 'name', 'webUrl', 'webLink',
-        'lastModifiedDateTime', 'createdDateTime', 'sentDateTime', 'receivedDateTime',
-        'start', 'end', 'location',
-        'from', 'displayName', 'jobTitle', 'department', 'companyName',
-        'userPrincipalName', 'scoredEmailAddresses', 'emailAddresses',
-        'hitHighlightedSummary', 'parentReference', 'bodyPreview',
-      ],
+      size: 15,
     }],
   };
 
@@ -157,23 +159,51 @@ async function searchGraph(accessToken, query) {
     let bodyText = '';
     try { bodyText = await res.text(); } catch { /* ignore */ }
     const snippet = bodyText.slice(0, 400);
-    const err = new Error(`Graph Search request failed: ${res.status} ${res.statusText} ${snippet}`);
+    const err = new Error(`Graph ${entityTypes.join('+')} failed: ${res.status} ${res.statusText} ${snippet}`);
     err.graphStatus = res.status;
     err.graphBody = snippet;
+    err.entityTypes = entityTypes;
     throw err;
   }
 
   const data = await res.json();
   const hitsContainers = data?.value?.[0]?.hitsContainers || [];
-  const allHits = hitsContainers.flatMap(c => c?.hits || []);
+  return hitsContainers.flatMap(c => c?.hits || []);
+}
+
+async function searchGraph(accessToken, query) {
+  // Issue one request per allowed entityType combination in parallel.
+  // Partial failure is tolerated — if one group 400s, the others still return.
+  const settled = await Promise.allSettled(
+    GRAPH_ENTITY_GROUPS.map(types => searchGraphGroup(accessToken, query, types))
+  );
 
   const grouped = { email: [], file: [], event: [], person: [] };
-  for (const hit of allHits) {
-    const normalized = normalizeGraphHit(hit);
-    if (normalized && grouped[normalized.type]) {
-      grouped[normalized.type].push(normalized);
+  const subErrors = [];
+
+  for (const result of settled) {
+    if (result.status === 'fulfilled') {
+      for (const hit of result.value) {
+        const normalized = normalizeGraphHit(hit);
+        if (normalized && grouped[normalized.type]) {
+          grouped[normalized.type].push(normalized);
+        }
+      }
+    } else {
+      subErrors.push(result.reason);
     }
   }
+
+  // Only throw (marking the whole Graph source as unavailable) if EVERY
+  // sub-request failed. If at least one succeeded, return what we got.
+  if (subErrors.length === GRAPH_ENTITY_GROUPS.length) {
+    const first = subErrors[0];
+    const err = new Error(first?.message || 'All Graph Search sub-requests failed');
+    err.graphStatus = first?.graphStatus;
+    err.graphBody = first?.graphBody;
+    throw err;
+  }
+
   return grouped;
 }
 
