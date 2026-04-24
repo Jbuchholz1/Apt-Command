@@ -36,12 +36,14 @@ function calcHealth(placements, activities) {
 // Bullhorn values here without editing the logic below.
 const HEALTH_CONFIG = {
   REAL_MEETING_TYPES: [
-    'In-Person Meeting',
-    'Phone Call',
-    'Video Call',
-    'Lunch',
-    'Site Visit',
-    'Conference',
+    'In Person Meetings',
+    'New Meeting',
+    'Req Qual',
+    'Referral Meeting',
+    'OOA',
+    'Dinner',
+    'Sol Disc Meeting',
+    'Sol Pitch Meeting',
   ],
   IN_PERSON_TYPES: [
     'In-Person Meeting',

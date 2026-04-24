@@ -84,7 +84,7 @@ const frameworkTooltip = (c) => {
 
 const realMeetingsTooltip = (c) => (
   `Real meetings in last 90 days: ${c.realMeetings90d ?? 0}\n` +
-  `Filtered by configured appointment types (In-Person, Phone, Video, Lunch, Site Visit, Conference).\n` +
+  `Counts only client-facing BD appointment types: In Person Meetings, New Meeting, Req Qual, Referral Meeting, OOA, Dinner, Sol Disc Meeting, Sol Pitch Meeting.\n` +
   `Prior 90d (91\u2013180 days ago): ${c.prior90ActivityCount ?? 0}`
 );
 

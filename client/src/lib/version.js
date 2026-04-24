@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.16.1';
+export const APP_VERSION = '3.16.2';
 
 export const CHANGELOG = [
+  {
+    version: '3.16.2',
+    date: '2026-04-23',
+    title: 'APT Health \u2014 Real Meeting Types Confirmed',
+    changes: [
+      { type: 'patch', text: 'Swapped the placeholder real-meeting whitelist for the confirmed APT appointment types: In Person Meetings, New Meeting, Req Qual, Referral Meeting, OOA, Dinner, Sol Disc Meeting, Sol Pitch Meeting. Real Mtg. (90d) counts and new-scoring thresholds now count exactly these eight types. In-person subset (used by the Higher Up tier) still uses placeholder values \u2014 Higher Up remains inert until org-tree data lands, so no live impact yet.' },
+    ],
+  },
   {
     version: '3.16.1',
     date: '2026-04-23',
