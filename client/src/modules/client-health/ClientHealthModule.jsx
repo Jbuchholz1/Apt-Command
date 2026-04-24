@@ -42,7 +42,7 @@ const HEALTH_ORDER = { red: 0, yellow: 1, green: 2 };
 const HEALTH_LABELS = { green: 'Healthy', yellow: 'At Risk', red: 'Needs Attention' };
 
 const healthTooltip = (c) => (
-  `Health: ${(c.health || '').toUpperCase()}\n` +
+  `Old scoring: ${(c.health || '').toUpperCase()}\n` +
   `\u2022 Active placements: ${c.activePlacements}\n` +
   `\u2022 Activities (14d, all types): ${c.recentActivities}\n` +
   `\u2022 Score = ${c.activePlacements} + floor(${c.recentActivities}/5) = ${c.effectiveScore}\n` +
@@ -61,7 +61,7 @@ const tierTooltip = (c) => (
 const frameworkTooltip = (c) => {
   if (!c.frameworkHealth) return 'Onboarding \u2014 no score yet';
   const parts = [
-    `Framework: ${c.frameworkHealth.toUpperCase()}${c.direction ? ` (${c.direction})` : ''}`,
+    `New scoring: ${c.frameworkHealth.toUpperCase()}${c.direction ? ` (${c.direction})` : ''}`,
     `Tier: ${c.tier}`,
   ];
   if (c.tier === 'Hiring Manager') {
@@ -301,13 +301,13 @@ export default function ClientHealthModule() {
           <table className="ch-table">
             <thead>
               <tr>
-                <th className="sortable" onClick={() => handleSort('health')}>Health{sortIcon('health')}</th>
+                <th className="sortable" onClick={() => handleSort('health')}>Old Scoring{sortIcon('health')}</th>
                 <th className="sortable" onClick={() => handleSort('name')}>Client{sortIcon('name')}</th>
                 <th className="sortable" onClick={() => handleSort('activePlacements')}>Active Placements{sortIcon('activePlacements')}</th>
                 <th className="sortable" onClick={() => handleSort('recentActivities')}>Activities (14d){sortIcon('recentActivities')}</th>
                 <th className="sortable" onClick={() => handleSort('effectiveScore')} title="Score = Active Placements + (Activities in last 14 days ÷ 5). Green: > 3 | Yellow: 1–3 | Red: 0">Score{sortIcon('effectiveScore')}</th>
                 <th>Tier</th>
-                <th>Framework</th>
+                <th>New Scoring</th>
                 <th title="Real meetings in last 90 days (filtered by configured appointment types)">Real Mtg. (90d)</th>
                 <th>Owners</th>
               </tr>

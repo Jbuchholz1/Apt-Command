@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.16.0';
+export const APP_VERSION = '3.16.1';
 
 export const CHANGELOG = [
+  {
+    version: '3.16.1',
+    date: '2026-04-23',
+    title: 'APT Health \u2014 Column Labels',
+    changes: [
+      { type: 'patch', text: 'Renamed the Health column to "Old Scoring" and the Framework column to "New Scoring" on the client health table \u2014 makes the parallel-rollout intent explicit. Tooltip prefixes updated to match.' },
+    ],
+  },
   {
     version: '3.16.0',
     date: '2026-04-23',
