@@ -192,10 +192,26 @@ router.get('/', async (req, res, next) => {
       }
     }
 
+    const fmtApptDate = (ms) => ms ? new Date(Number(ms)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }) : '';
+    const apptDetail = (a) => ({
+      appointmentId: a.id,
+      link: bhLink('Appointment', a.id),
+      type: a.type || '',
+      subject: a.subject || '',
+      dateBegin: fmtApptDate(a.dateBegin),
+      dateBeginMs: Number(a.dateBegin) || 0,
+      owner: a.owner ? `${a.owner.firstName || ''} ${a.owner.lastName || ''}`.trim() : '',
+      contact: a.clientContactReference ? `${a.clientContactReference.firstName || ''} ${a.clientContactReference.lastName || ''}`.trim() : '',
+    });
+
     const clientActivities = {};
+    const clientActivityDetails = {};
     for (const a of appointments) {
       const clientId = a.clientContactReference?.clientCorporation?.id || a.jobOrder?.clientCorporation?.id;
-      if (clientId) clientActivities[clientId] = (clientActivities[clientId] || 0) + 1;
+      if (!clientId) continue;
+      clientActivities[clientId] = (clientActivities[clientId] || 0) + 1;
+      if (!clientActivityDetails[clientId]) clientActivityDetails[clientId] = [];
+      clientActivityDetails[clientId].push(apptDetail(a));
     }
 
     const allClientIds = new Set([
@@ -211,6 +227,7 @@ router.get('/', async (req, res, next) => {
 
     const realMeetings90 = {};
     const realMeetingsPrior = {};
+    const realMeetingDetails = {};
     const inPerson90 = {};
     const inPersonMonths = {};
 
@@ -221,8 +238,13 @@ router.get('/', async (req, res, next) => {
       if (!dateMs) continue;
       const type = a.type || '';
       if (REAL_SET.has(type)) {
-        if (dateMs >= ms90) realMeetings90[clientId] = (realMeetings90[clientId] || 0) + 1;
-        else if (dateMs >= ms180) realMeetingsPrior[clientId] = (realMeetingsPrior[clientId] || 0) + 1;
+        if (dateMs >= ms90) {
+          realMeetings90[clientId] = (realMeetings90[clientId] || 0) + 1;
+          if (!realMeetingDetails[clientId]) realMeetingDetails[clientId] = [];
+          realMeetingDetails[clientId].push(apptDetail(a));
+        } else if (dateMs >= ms180) {
+          realMeetingsPrior[clientId] = (realMeetingsPrior[clientId] || 0) + 1;
+        }
       }
       if (IN_PERSON_SET.has(type) && dateMs >= ms90) {
         inPerson90[clientId] = (inPerson90[clientId] || 0) + 1;
@@ -338,6 +360,8 @@ router.get('/', async (req, res, next) => {
         prior90ActivityCount,
         orgPlacements90d,
         referralPlacements90d,
+        activityDetails: clientActivityDetails[c.id] || [],
+        realMeetingDetails: realMeetingDetails[c.id] || [],
       };
     });
 

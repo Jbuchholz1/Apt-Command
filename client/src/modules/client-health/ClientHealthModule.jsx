@@ -111,6 +111,8 @@ export default function ClientHealthModule() {
   const [gaugeSort, setGaugeSort] = useState({ key: null, dir: 'asc' });
   const [placementModal, setPlacementModal] = useState(null);
   const [placementSort, setPlacementSort] = useState({ key: 'startDate', dir: 'desc' });
+  const [appointmentModal, setAppointmentModal] = useState(null);
+  const [appointmentSort, setAppointmentSort] = useState({ key: 'dateBeginMs', dir: 'desc' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({ clients: [], owners: [] });
@@ -320,7 +322,9 @@ export default function ClientHealthModule() {
                   <td className={`ch-num ${c.placementDetails?.length > 0 ? 'clickable-cell' : ''}`}
                     onClick={() => c.placementDetails?.length > 0 && setPlacementModal({ clientName: c.name, details: c.placementDetails })}
                   >{c.activePlacements}</td>
-                  <td className="ch-num">{c.recentActivities}</td>
+                  <td className={`ch-num ${c.activityDetails?.length > 0 ? 'clickable-cell' : ''}`}
+                    onClick={() => c.activityDetails?.length > 0 && setAppointmentModal({ clientName: c.name, title: 'Activities (14d)', details: c.activityDetails })}
+                  >{c.recentActivities}</td>
                   <td className="ch-num" title={`Score = ${c.activePlacements} + floor(${c.recentActivities}/5) = ${c.effectiveScore}\nThresholds: Green > 3  |  Yellow 1\u20133  |  Red 0`}>{c.effectiveScore}</td>
                   <td title={tierTooltip(c)}>{c.tier || '\u2014'}</td>
                   <td title={frameworkTooltip(c)}>
@@ -332,7 +336,10 @@ export default function ClientHealthModule() {
                       </>
                     ) : '\u2014'}
                   </td>
-                  <td className="ch-num" title={realMeetingsTooltip(c)}>{c.realMeetings90d ?? 0}</td>
+                  <td className={`ch-num ${c.realMeetingDetails?.length > 0 ? 'clickable-cell' : ''}`}
+                    title={realMeetingsTooltip(c)}
+                    onClick={() => c.realMeetingDetails?.length > 0 && setAppointmentModal({ clientName: c.name, title: 'Real Meetings (90d)', details: c.realMeetingDetails })}
+                  >{c.realMeetings90d ?? 0}</td>
                   <td className="ch-owners">{c.owners.join(', ')}</td>
                 </tr>
               ))}
@@ -533,6 +540,69 @@ export default function ClientHealthModule() {
             </div>
           </div>
         </div>
+        );
+      })()}
+
+      {/* Appointment Detail Modal (Activities 14d / Real Meetings 90d) */}
+      {appointmentModal && (() => {
+        const toggleApptSort = (key) => setAppointmentSort(prev =>
+          prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }
+        );
+        const aSortIcon = (key) => appointmentSort.key !== key ? ' \u2195' : appointmentSort.dir === 'asc' ? ' \u2191' : ' \u2193';
+        const sortedAppts = [...appointmentModal.details].sort((a, b) => {
+          const av = a[appointmentSort.key];
+          const bv = b[appointmentSort.key];
+          if (av == null && bv == null) return 0;
+          if (av == null) return 1;
+          if (bv == null) return -1;
+          if (typeof av === 'number' && typeof bv === 'number') {
+            return appointmentSort.dir === 'asc' ? av - bv : bv - av;
+          }
+          const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true });
+          return appointmentSort.dir === 'asc' ? cmp : -cmp;
+        });
+        return (
+          <div className="gauge-modal-overlay" onClick={() => setAppointmentModal(null)}>
+            <div className="gauge-modal" onClick={e => e.stopPropagation()}>
+              <div className="gauge-modal-header">
+                <h3>{`${appointmentModal.clientName} \u2014 ${appointmentModal.title}`}</h3>
+                <button className="modal-close" onClick={() => setAppointmentModal(null)}>&times;</button>
+              </div>
+              <div className="gauge-modal-body">
+                <table className="gauge-modal-table">
+                  <thead>
+                    <tr>
+                      {[
+                        { key: 'appointmentId', label: 'ID' },
+                        { key: 'type', label: 'Type' },
+                        { key: 'subject', label: 'Subject' },
+                        { key: 'dateBeginMs', label: 'Date' },
+                        { key: 'owner', label: 'Owner' },
+                        { key: 'contact', label: 'Contact' },
+                      ].map(col => (
+                        <th key={col.key} className="sortable" style={{ cursor: 'pointer' }} onClick={() => toggleApptSort(col.key)}>
+                          {col.label}{aSortIcon(col.key)}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedAppts.map((r, i) => (
+                      <tr key={i}>
+                        <td><a href={r.link} target="_blank" rel="noopener noreferrer" className="bh-detail-link">{r.appointmentId}</a></td>
+                        <td>{r.type || '\u2014'}</td>
+                        <td>{r.subject || '\u2014'}</td>
+                        <td>{r.dateBegin || '\u2014'}</td>
+                        <td>{r.owner || '\u2014'}</td>
+                        <td>{r.contact || '\u2014'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="gauge-modal-count">{sortedAppts.length} appointment{sortedAppts.length !== 1 ? 's' : ''}</p>
+              </div>
+            </div>
+          </div>
         );
       })()}
     </div>

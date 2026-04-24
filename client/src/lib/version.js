@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.16.3';
+export const APP_VERSION = '3.17.0';
 
 export const CHANGELOG = [
+  {
+    version: '3.17.0',
+    date: '2026-04-23',
+    title: 'APT Health \u2014 Drill Into Activity & Real Meeting Counts',
+    changes: [
+      { type: 'minor', text: 'Activities (14d) and Real Mtg. (90d) cells on the client health table are now clickable. Click opens a sortable modal listing the underlying Bullhorn appointments (ID link, Type, Subject, Date, Owner, Contact). The Activities view shows all appointment types in the 14-day window; the Real Meetings view shows only the eight BD types (In Person Meetings, New Meeting, Req Qual, Referral Meeting, OOA, Dinner, Sol Disc Meeting, Sol Pitch Meeting) in the 90-day window. Appointment IDs link directly to the record in Bullhorn.' },
+      { type: 'patch', text: 'Bullhorn appointment query extended to include Subject and owner first/last name so the modal can render useful context without follow-up lookups.' },
+    ],
+  },
   {
     version: '3.16.3',
     date: '2026-04-23',

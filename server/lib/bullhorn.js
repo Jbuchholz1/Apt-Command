@@ -556,7 +556,7 @@ async function getRecentAppointments(sinceDateMs) {
   return callTool('query_entity', {
     entityType: 'Appointment',
     where: `dateBegin > ${sinceDateMs} AND isDeleted = false`,
-    fields: 'id,type,dateBegin,owner,clientContactReference(id,clientCorporation),jobOrder(id,clientCorporation)',
+    fields: 'id,type,subject,dateBegin,owner(id,firstName,lastName),clientContactReference(id,firstName,lastName,clientCorporation),jobOrder(id,clientCorporation)',
     orderBy: '-dateBegin',
     count: 500,
   });
