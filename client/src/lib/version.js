@@ -9,9 +9,19 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.15.7';
+export const APP_VERSION = '3.16.0';
 
 export const CHANGELOG = [
+  {
+    version: '3.16.0',
+    date: '2026-04-23',
+    title: 'APT Health \u2014 Framework Scoring (Parallel Rollout)',
+    changes: [
+      { type: 'minor', text: 'New client health framework runs alongside the existing score during validation. Each row now shows a Tier (Onboarding / Hiring Manager / Higher Up / Outlier), a Framework dot (green/yellow/red or \u2014 for Onboarding) with a direction arrow (\u2193 cooling / \u2191 warming) on yellow rows, and a Real Mtg. (90d) count filtered to real appointment types only. Old Health, Activities (14d), and Score columns are unchanged.' },
+      { type: 'minor', text: 'Hover any score in the table to see how it was derived \u2014 tooltips on Health, Score, Tier, Framework, and Real Mtg. (90d) list the exact inputs and the tier-specific thresholds that produced the result.' },
+      { type: 'patch', text: 'Framework config (appointment type whitelists, onboarding window, direction threshold, per-tier thresholds) lives in a single HEALTH_CONFIG block in server/routes/clientHealth.js so thresholds can be tuned without touching logic. Org-tree data and referral-placement source are stubbed until those inputs land; Higher Up and Outlier tiers activate automatically once the stubs are swapped for real data.' },
+    ],
+  },
   {
     version: '3.15.7',
     date: '2026-04-23',

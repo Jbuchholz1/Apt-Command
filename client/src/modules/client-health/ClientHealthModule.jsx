@@ -41,6 +41,53 @@ function MultiSelect({ label, options, selected, onChange }) {
 const HEALTH_ORDER = { red: 0, yellow: 1, green: 2 };
 const HEALTH_LABELS = { green: 'Healthy', yellow: 'At Risk', red: 'Needs Attention' };
 
+const healthTooltip = (c) => (
+  `Health: ${(c.health || '').toUpperCase()}\n` +
+  `\u2022 Active placements: ${c.activePlacements}\n` +
+  `\u2022 Activities (14d, all types): ${c.recentActivities}\n` +
+  `\u2022 Score = ${c.activePlacements} + floor(${c.recentActivities}/5) = ${c.effectiveScore}\n` +
+  `Thresholds: Green > 3  |  Yellow 1\u20133  |  Red 0`
+);
+
+const tierTooltip = (c) => (
+  `Tier: ${c.tier || '\u2014'}\n` +
+  `\u2022 Active placements: ${c.activePlacements}\n` +
+  `\u2022 Direct placements (90d): ${c.directPlacements90d ?? 0}\n` +
+  `\u2022 Org placements (90d): ${c.orgPlacements90d ?? 0}\n` +
+  `\u2022 Referral placements (90d): ${c.referralPlacements90d ?? 0}\n` +
+  `\u2022 Real meetings (90d): ${c.realMeetings90d ?? 0}`
+);
+
+const frameworkTooltip = (c) => {
+  if (!c.frameworkHealth) return 'Onboarding \u2014 no score yet';
+  const parts = [
+    `Framework: ${c.frameworkHealth.toUpperCase()}${c.direction ? ` (${c.direction})` : ''}`,
+    `Tier: ${c.tier}`,
+  ];
+  if (c.tier === 'Hiring Manager') {
+    parts.push(`\u2022 Real meetings (90d): ${c.realMeetings90d}  (green \u2265 3)`);
+    parts.push(`\u2022 Active placements: ${c.activePlacements}  (green \u2265 2)`);
+  } else if (c.tier === 'Higher Up') {
+    parts.push(`\u2022 In-person meetings (90d): ${c.inPersonMeetings90d}`);
+    parts.push(`\u2022 In-person months (last 3): ${c.inPersonMonthsLast3 ?? 0}  (green \u2265 2)`);
+    parts.push(`\u2022 Org placements (90d): ${c.orgPlacements90d}`);
+    parts.push(`\u2022 Direct placements (90d): ${c.directPlacements90d ?? 0}`);
+  } else if (c.tier === 'Outlier') {
+    parts.push(`\u2022 Real meetings (90d): ${c.realMeetings90d}  (green \u2265 2)`);
+    parts.push(`\u2022 Referral placements (90d): ${c.referralPlacements90d}  (green \u2265 2)`);
+  }
+  if (c.direction) {
+    parts.push(`\u2022 Current 90d: ${c.current90ActivityCount}  |  Prior 90d: ${c.prior90ActivityCount}`);
+  }
+  return parts.join('\n');
+};
+
+const realMeetingsTooltip = (c) => (
+  `Real meetings in last 90 days: ${c.realMeetings90d ?? 0}\n` +
+  `Filtered by configured appointment types (In-Person, Phone, Video, Lunch, Site Visit, Conference).\n` +
+  `Prior 90d (91\u2013180 days ago): ${c.prior90ActivityCount ?? 0}`
+);
+
 function getDefaultDates() {
   const now = new Date();
   const qMonth = Math.floor(now.getMonth() / 3) * 3;
@@ -259,24 +306,38 @@ export default function ClientHealthModule() {
                 <th className="sortable" onClick={() => handleSort('activePlacements')}>Active Placements{sortIcon('activePlacements')}</th>
                 <th className="sortable" onClick={() => handleSort('recentActivities')}>Activities (14d){sortIcon('recentActivities')}</th>
                 <th className="sortable" onClick={() => handleSort('effectiveScore')} title="Score = Active Placements + (Activities in last 14 days ÷ 5). Green: > 3 | Yellow: 1–3 | Red: 0">Score{sortIcon('effectiveScore')}</th>
+                <th>Tier</th>
+                <th>Framework</th>
+                <th title="Real meetings in last 90 days (filtered by configured appointment types)">Real Mtg. (90d)</th>
                 <th>Owners</th>
               </tr>
             </thead>
             <tbody>
               {sorted.map(c => (
                 <tr key={c.id} className={`ch-row ch-row-${c.health}`}>
-                  <td><span className={`ch-dot ch-dot-${c.health}`} title={HEALTH_LABELS[c.health]}></span></td>
+                  <td title={healthTooltip(c)}><span className={`ch-dot ch-dot-${c.health}`}></span></td>
                   <td className="ch-client-name">{c.name}</td>
                   <td className={`ch-num ${c.placementDetails?.length > 0 ? 'clickable-cell' : ''}`}
                     onClick={() => c.placementDetails?.length > 0 && setPlacementModal({ clientName: c.name, details: c.placementDetails })}
                   >{c.activePlacements}</td>
                   <td className="ch-num">{c.recentActivities}</td>
-                  <td className="ch-num">{c.effectiveScore}</td>
+                  <td className="ch-num" title={`Score = ${c.activePlacements} + floor(${c.recentActivities}/5) = ${c.effectiveScore}\nThresholds: Green > 3  |  Yellow 1\u20133  |  Red 0`}>{c.effectiveScore}</td>
+                  <td title={tierTooltip(c)}>{c.tier || '\u2014'}</td>
+                  <td title={frameworkTooltip(c)}>
+                    {c.frameworkHealth ? (
+                      <>
+                        <span className={`ch-dot ch-dot-${c.frameworkHealth}`}></span>
+                        {c.direction === 'cooling' && <span className="ch-direction">{' \u2193'}</span>}
+                        {c.direction === 'warming' && <span className="ch-direction">{' \u2191'}</span>}
+                      </>
+                    ) : '\u2014'}
+                  </td>
+                  <td className="ch-num" title={realMeetingsTooltip(c)}>{c.realMeetings90d ?? 0}</td>
                   <td className="ch-owners">{c.owners.join(', ')}</td>
                 </tr>
               ))}
               {sorted.length === 0 && (
-                <tr><td colSpan="6" className="ch-empty">No clients match your filters.</td></tr>
+                <tr><td colSpan="9" className="ch-empty">No clients match your filters.</td></tr>
               )}
             </tbody>
           </table>

@@ -415,6 +415,13 @@ td.ch-muted { color: var(--text-light); }
 .ch-dot-yellow { background: #eab308; }
 .ch-dot-red { background: #dc2626; }
 
+.ch-direction {
+  margin-left: 4px;
+  font-weight: 600;
+  font-size: 13px;
+  color: #334155;
+}
+
 /* ---- Error Banner ---- */
 .client-health-module .error-banner {
   background: #fef2f2;

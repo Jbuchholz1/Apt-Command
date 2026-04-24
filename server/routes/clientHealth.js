@@ -19,6 +19,7 @@ const {
   getPlacementsForJobs,
   getBackoutNotesInRange,
   getCheckinNotesForType,
+  callTool,
 } = require('../lib/bullhorn');
 const { POINTS, EXCLUDED_RECRUITERS, bhLink } = require('../lib/recruiterConfig');
 const { SALES_POINTS, EXCLUDED_AMS } = require('../lib/salesConfig');
@@ -28,6 +29,100 @@ function calcHealth(placements, activities) {
   if (effective > 3) return 'green';
   if (effective > 0) return 'yellow';
   return 'red';
+}
+
+// === Framework scoring (parallel rollout) ===
+// Thresholds and appointment type strings are placeholders; swap in confirmed
+// Bullhorn values here without editing the logic below.
+const HEALTH_CONFIG = {
+  REAL_MEETING_TYPES: [
+    'In-Person Meeting',
+    'Phone Call',
+    'Video Call',
+    'Lunch',
+    'Site Visit',
+    'Conference',
+  ],
+  IN_PERSON_TYPES: [
+    'In-Person Meeting',
+    'Lunch',
+    'Site Visit',
+    'Off-Site Event',
+    'Conference',
+  ],
+  ONBOARDING_DAYS: 90,
+  DIRECTION_THRESHOLD: 0.20,
+  THRESHOLDS: {
+    HIRING_MANAGER: { meetings: 3, placements: 2 },
+    HIGHER_UP: { orgPlacements: 6, directPlacements: 3, inPersonMonths: 2 },
+    OUTLIER: { meetings: 2, referralPlacements: 2 },
+  },
+};
+
+function assignTier(signals) {
+  const {
+    earliestContactDateMs, now,
+    activePlacements, hasActiveReqs,
+    orgData, orgPlacements90d,
+    directPlacements90d, realMeetings90d, referralPlacements90d,
+  } = signals;
+
+  const onboardingCutoff = now - HEALTH_CONFIG.ONBOARDING_DAYS * 86400000;
+  if (earliestContactDateMs && earliestContactDateMs > onboardingCutoff) return 'Onboarding';
+
+  // Without org data we cannot separate Higher Up / Outlier — default fallback.
+  if (!orgData) return 'Hiring Manager';
+
+  const hasDirect = activePlacements > 0 || directPlacements90d > 0 || hasActiveReqs;
+  const hasSubordinatePlacements = orgPlacements90d > 0;
+
+  if (hasDirect && !hasSubordinatePlacements) return 'Hiring Manager';
+  if (hasSubordinatePlacements && !hasDirect) return 'Higher Up';
+  if (!hasDirect && !hasSubordinatePlacements && realMeetings90d > 0 && referralPlacements90d > 0) return 'Outlier';
+  return 'Hiring Manager';
+}
+
+function scoreHealth(tier, signals) {
+  const T = HEALTH_CONFIG.THRESHOLDS;
+  if (tier === 'Onboarding') return null;
+
+  if (tier === 'Hiring Manager') {
+    const { realMeetings90d, activePlacements } = signals;
+    if (realMeetings90d >= T.HIRING_MANAGER.meetings && activePlacements >= T.HIRING_MANAGER.placements) return 'green';
+    if (realMeetings90d === 0 && activePlacements === 0) return 'red';
+    return 'yellow';
+  }
+
+  if (tier === 'Higher Up') {
+    const {
+      inPersonMeetings90d, inPersonMonthsLast3,
+      orgPlacements90d, directPlacements90d, priorPlacements90d,
+    } = signals;
+    const monthsOk = inPersonMonthsLast3 >= T.HIGHER_UP.inPersonMonths;
+    const volumeOk = orgPlacements90d >= T.HIGHER_UP.orgPlacements || directPlacements90d >= T.HIGHER_UP.directPlacements;
+    if (monthsOk && volumeOk) return 'green';
+    const declining = (orgPlacements90d + directPlacements90d) < priorPlacements90d;
+    if (inPersonMeetings90d === 0 && declining) return 'red';
+    return 'yellow';
+  }
+
+  if (tier === 'Outlier') {
+    const { realMeetings90d, referralPlacements90d } = signals;
+    if (realMeetings90d >= T.OUTLIER.meetings && referralPlacements90d >= T.OUTLIER.referralPlacements) return 'green';
+    if (realMeetings90d === 0 && referralPlacements90d === 0) return 'red';
+    return 'yellow';
+  }
+
+  return null;
+}
+
+function computeDirection(current, prior) {
+  if (prior === 0 && current === 0) return null;
+  if (prior === 0) return current > 0 ? 'warming' : null;
+  const delta = (current - prior) / prior;
+  if (delta <= -HEALTH_CONFIG.DIRECTION_THRESHOLD) return 'cooling';
+  if (delta >= HEALTH_CONFIG.DIRECTION_THRESHOLD) return 'warming';
+  return null;
 }
 
 function parseDates(req) {
@@ -44,16 +139,21 @@ function parseDates(req) {
 // GET /api/client-health?start=2026-01-01&end=2026-04-09
 router.get('/', async (req, res, next) => {
   try {
-    // Always use current active placements and last 14 days of activity, regardless of date filter
-    const activitySinceMs = Date.now() - (14 * 24 * 60 * 60 * 1000);
+    // Existing scoring uses 14-day window; framework scoring uses 90/180 day windows.
+    const now = Date.now();
+    const ms14 = now - 14 * 86400000;
+    const ms90 = now - 90 * 86400000;
+    const ms180 = now - 180 * 86400000;
 
-    const [placementsRes, appointmentsRes] = await Promise.all([
+    const [placementsRes, appointmentsRes, appointments180Res] = await Promise.all([
       getActivePlacementsWithClient(),
-      getRecentAppointments(activitySinceMs),
+      getRecentAppointments(ms14),
+      getRecentAppointments(ms180),
     ]);
 
     const placements = placementsRes?.data || [];
     const appointments = appointmentsRes?.data || [];
+    const appointments180 = appointments180Res?.data || [];
 
     const clientPlacements = {};
     const clientPlacementDetails = {};
@@ -100,6 +200,70 @@ router.get('/', async (req, res, next) => {
 
     if (allClientIds.size === 0) return res.json({ clients: [], summary: { green: 0, yellow: 0, red: 0, total: 0 } });
 
+    // === Framework scoring aggregators (parallel rollout) ===
+    const REAL_SET = new Set(HEALTH_CONFIG.REAL_MEETING_TYPES);
+    const IN_PERSON_SET = new Set(HEALTH_CONFIG.IN_PERSON_TYPES);
+
+    const realMeetings90 = {};
+    const realMeetingsPrior = {};
+    const inPerson90 = {};
+    const inPersonMonths = {};
+
+    for (const a of appointments180) {
+      const clientId = a.clientContactReference?.clientCorporation?.id || a.jobOrder?.clientCorporation?.id;
+      if (!clientId) continue;
+      const dateMs = Number(a.dateBegin);
+      if (!dateMs) continue;
+      const type = a.type || '';
+      if (REAL_SET.has(type)) {
+        if (dateMs >= ms90) realMeetings90[clientId] = (realMeetings90[clientId] || 0) + 1;
+        else if (dateMs >= ms180) realMeetingsPrior[clientId] = (realMeetingsPrior[clientId] || 0) + 1;
+      }
+      if (IN_PERSON_SET.has(type) && dateMs >= ms90) {
+        inPerson90[clientId] = (inPerson90[clientId] || 0) + 1;
+        const d = new Date(dateMs);
+        const monthKey = `${d.getFullYear()}-${d.getMonth()}`;
+        if (!inPersonMonths[clientId]) inPersonMonths[clientId] = new Set();
+        inPersonMonths[clientId].add(monthKey);
+      }
+    }
+
+    const direct90 = {};
+    const directPrior = {};
+    for (const p of placements) {
+      const clientId = p.jobOrder?.clientCorporation?.id;
+      if (!clientId) continue;
+      const dateMs = Number(p.dateBegin);
+      if (!dateMs) continue;
+      if (dateMs >= ms90) direct90[clientId] = (direct90[clientId] || 0) + 1;
+      else if (dateMs >= ms180) directPrior[clientId] = (directPrior[clientId] || 0) + 1;
+    }
+
+    // Earliest ClientContact.dateAdded per company (for Onboarding tier)
+    const earliestContactDate = {};
+    try {
+      const clientIdsArr = [...allClientIds];
+      const contactRes = await callTool('query_entity', {
+        entityType: 'ClientContact',
+        where: `clientCorporation.id IN (${clientIdsArr.join(',')}) AND isDeleted = false`,
+        fields: 'id,dateAdded,clientCorporation',
+        count: 500,
+      });
+      for (const contact of contactRes?.data || []) {
+        const companyId = contact.clientCorporation?.id;
+        const d = Number(contact.dateAdded);
+        if (!companyId || !d) continue;
+        if (!earliestContactDate[companyId] || d < earliestContactDate[companyId]) {
+          earliestContactDate[companyId] = d;
+        }
+      }
+    } catch (e) {
+      // If this fetch fails the Onboarding check simply won't trigger; clients fall through to Hiring Manager.
+    }
+
+    // Org tree data is not built yet — pass null so assignTier short-circuits to the default fallback.
+    const orgData = null;
+
     const clientsRes = await getClientCorporations([...allClientIds]);
     const clients = (clientsRes?.data || []).map(c => {
       const activePlacements = clientPlacements[c.id] || 0;
@@ -107,7 +271,69 @@ router.get('/', async (req, res, next) => {
       const effectiveScore = activePlacements + Math.floor(recentActivities / 5);
       const health = calcHealth(activePlacements, recentActivities);
       const owners = (c.owners?.data || []).map(o => `${o.firstName || ''} ${o.lastName || ''}`.trim()).filter(Boolean);
-      return { id: c.id, name: c.name || '', status: c.status || '', owners, activePlacements, recentActivities, effectiveScore, health, placementDetails: clientPlacementDetails[c.id] || [] };
+
+      // --- Framework fields ---
+      const realMeetings90d = realMeetings90[c.id] || 0;
+      const prior90ActivityCount = realMeetingsPrior[c.id] || 0;
+      const current90ActivityCount = realMeetings90d;
+      const inPersonMeetings90d = inPerson90[c.id] || 0;
+      const inPersonMonthsLast3 = inPersonMonths[c.id] ? inPersonMonths[c.id].size : 0;
+      const directPlacements90d = direct90[c.id] || 0;
+      const priorPlacements90d = directPrior[c.id] || 0;
+      const orgPlacements90d = 0; // stub until org tree is built
+      const referralPlacements90d = 0; // stub until referral source field is confirmed
+
+      const tier = assignTier({
+        earliestContactDateMs: earliestContactDate[c.id] || null,
+        now,
+        activePlacements,
+        hasActiveReqs: false,
+        orgData,
+        orgPlacements90d,
+        directPlacements90d,
+        realMeetings90d,
+        referralPlacements90d,
+      });
+
+      const frameworkHealth = scoreHealth(tier, {
+        realMeetings90d,
+        activePlacements,
+        inPersonMeetings90d,
+        inPersonMonthsLast3,
+        orgPlacements90d,
+        directPlacements90d,
+        priorPlacements90d,
+        referralPlacements90d,
+      });
+
+      const direction = frameworkHealth === 'yellow'
+        ? computeDirection(current90ActivityCount, prior90ActivityCount)
+        : null;
+
+      return {
+        // existing (unchanged)
+        id: c.id,
+        name: c.name || '',
+        status: c.status || '',
+        owners,
+        activePlacements,
+        recentActivities,
+        effectiveScore,
+        health,
+        placementDetails: clientPlacementDetails[c.id] || [],
+        // framework (new)
+        tier,
+        frameworkHealth,
+        direction,
+        realMeetings90d,
+        inPersonMeetings90d,
+        inPersonMonthsLast3,
+        directPlacements90d,
+        current90ActivityCount,
+        prior90ActivityCount,
+        orgPlacements90d,
+        referralPlacements90d,
+      };
     });
 
     const healthOrder = { red: 0, yellow: 1, green: 2 };
