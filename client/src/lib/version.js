@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.16.2';
+export const APP_VERSION = '3.16.3';
 
 export const CHANGELOG = [
+  {
+    version: '3.16.3',
+    date: '2026-04-23',
+    title: 'APT Health \u2014 In-Person Type List Aligned',
+    changes: [
+      { type: 'patch', text: 'HEALTH_CONFIG.IN_PERSON_TYPES now uses the same eight confirmed BD appointment types as REAL_MEETING_TYPES. Used by the Higher Up tier\u2019s in-person-months check, which will activate once org-tree data lands.' },
+    ],
+  },
   {
     version: '3.16.2',
     date: '2026-04-23',
