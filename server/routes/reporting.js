@@ -21,6 +21,7 @@ const {
 const { getAllOverrides } = require('../lib/db');
 const { POINTS, EXCLUDED_RECRUITERS, getRecruiterTier, getSpreadGoal, bhLink } = require('../lib/recruiterConfig');
 const { SALES_POINTS, ACTIVITY_LABELS, ACTIVITY_ORDER, EXCLUDED_AMS, getAMTier, getAMSpreadGoal } = require('../lib/salesConfig');
+const { requireAdmin } = require('../middleware/adminAuth');
 
 function formatDate(ms) {
   if (!ms) return '';
@@ -398,6 +399,11 @@ router.get('/sales-dashboard', async (req, res, next) => {
         spreadGoal,
         jobMetrics: { newReqs: 0, openings: 0, closedReqs: 0, fills: 0, losses: 0, washed: 0, newPlacements: 0 },
         jobDetails: { newReqs: [], closedReqs: [], fills: [], losses: [], washed: [], newPlacements: [] },
+        priorityBreakdown: {
+          A: { reqs: 0, fills: 0, losses: 0, washed: 0, details: { reqs: [], fills: [], losses: [], washed: [] } },
+          B: { reqs: 0, fills: 0, losses: 0, washed: 0, details: { reqs: [], fills: [], losses: [], washed: [] } },
+          C: { reqs: 0, fills: 0, losses: 0, washed: 0, details: { reqs: [], fills: [], losses: [], washed: [] } },
+        },
         activities: {},
         activityCount: 0,
         noteActivity: 0,
@@ -411,12 +417,20 @@ router.get('/sales-dashboard', async (req, res, next) => {
     }
 
     // --- Job metrics ---
+    const priorityLetter = (t) => {
+      const n = Number(t);
+      if (n === 1) return 'A';
+      if (n === 2) return 'B';
+      if (n === 3) return 'C';
+      return null;
+    };
     const fmtJob = (job) => ({
       jobId: job.id,
       title: job.title || '',
       status: Array.isArray(job.status) ? job.status[0] : (job.status || ''),
       openings: job.numOpenings || 0,
       client: job.clientCorporation?.name || '',
+      priority: priorityLetter(job.type) || '',
       link: bhLink('JobOrder', job.id),
     });
 
@@ -435,15 +449,24 @@ router.get('/sales-dashboard', async (req, res, next) => {
         const rawStatus = Array.isArray(job.status) ? job.status[0] : job.status;
         const status = (rawStatus || '').toLowerCase();
         const detail = fmtJob(job);
+        const prio = priorityLetter(job.type);
+        const pb = prio ? metricsMap[ownerId].priorityBreakdown[prio] : null;
+        if (pb) {
+          pb.reqs++;
+          pb.details.reqs.push(detail);
+        }
         if (status === 'filled' || status === 'placed') {
           metricsMap[ownerId].jobMetrics.fills++;
           metricsMap[ownerId].jobDetails.fills.push(detail);
+          if (pb) { pb.fills++; pb.details.fills.push(detail); }
         } else if (status === 'lost') {
           metricsMap[ownerId].jobMetrics.losses++;
           metricsMap[ownerId].jobDetails.losses.push(detail);
+          if (pb) { pb.losses++; pb.details.losses.push(detail); }
         } else if (status === 'wash') {
           metricsMap[ownerId].jobMetrics.washed++;
           metricsMap[ownerId].jobDetails.washed.push(detail);
+          if (pb) { pb.washed++; pb.details.washed.push(detail); }
         }
         metricsMap[ownerId].jobMetrics.closedReqs++;
         metricsMap[ownerId].jobDetails.closedReqs.push(detail);
@@ -872,6 +895,120 @@ router.get('/team-alerts', async (req, res, next) => {
     alerts.sort((a, b) => b.total - a.total);
 
     res.json({ alerts });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/reporting/executive-dashboard?start=2026-01-01&end=2026-04-20 (admin only)
+router.get('/executive-dashboard', requireAdmin, async (req, res, next) => {
+  try {
+    const { start, end } = req.query;
+    if (!start || !end) {
+      return res.status(400).json({ error: 'start and end query params required (ISO date)' });
+    }
+
+    const startMs = new Date(start).getTime();
+    const endDate = new Date(end);
+    endDate.setHours(23, 59, 59, 999);
+    const endMs = endDate.getTime();
+
+    if (isNaN(startMs) || isNaN(endMs)) {
+      return res.status(400).json({ error: 'Invalid date format. Use ISO dates like 2026-04-01' });
+    }
+
+    const rangeLabel = `${start} to ${end}`;
+
+    // --- Fetch placements (for Current New Input) and open jobs (for Potential New Input) in parallel ---
+    const [placementsRes, openJobsRes] = await Promise.all([
+      getPlacementsInRange(startMs, endMs),
+      getOpenJobs(),
+    ]);
+
+    const placements = placementsRes?.data || [];
+    const openJobs = openJobsRes?.data || [];
+
+    // --- Current New Input — mirrors the APT Health /kpis "Input" gauge formula ---
+    // Spread × sales commission %. Spread by employee type: perm, corp-to-corp, W2/other.
+    let currentNewInput = 0;
+    const currentDetails = [];
+
+    if (placements.length > 0) {
+      const pIds = placements.map(p => p.id);
+      const salesCommRes = await getSalesCommissions(pIds);
+
+      for (const c of (salesCommRes?.data || [])) {
+        const p = placements.find(pl => pl.id === c.placement?.id);
+        if (p && c.commissionPercentage) {
+          const bill = Number(p.clientBillRate) || 0;
+          const pay = Number(p.payRate) || 0;
+          const sal = Number(p.salary) || 0;
+          const feeRate = Number(p.fee) || 0;
+          const empType = (p.employeeType || '').toLowerCase();
+          let spread = 0;
+          if (empType === 'perm' && sal > 0 && feeRate > 0) spread = sal * feeRate / 26;
+          else if (empType === 'corp-to-corp' && bill > 0 && pay > 0) spread = (bill - pay * 1.05) * 40;
+          else if (bill > 0 && pay > 0) spread = (bill - pay * 1.25) * 40;
+          const input = Math.round(spread * (c.commissionPercentage || 1) * 100) / 100;
+          currentNewInput += input;
+          currentDetails.push({
+            placementId: p.id,
+            jobTitle: p.jobOrder?.title || '',
+            client: p.jobOrder?.clientCorporation?.name || '',
+            empType: p.employeeType || '',
+            am: c.user ? `${c.user.firstName || ''} ${c.user.lastName || ''}`.trim() : '',
+            input,
+          });
+        }
+      }
+    }
+    currentNewInput = Math.round(currentNewInput * 100) / 100;
+    currentDetails.sort((a, b) => b.input - a.input);
+
+    // --- Potential New Input — open reqs × user formula: ((Bill - Pay) × 1.25) × 2080, × numOpenings ---
+    let potentialNewInput = 0;
+    const potentialDetails = [];
+
+    for (const j of openJobs) {
+      const bill = Number(j.clientBillRate) || 0;
+      const pay = Number(j.payRate) || 0;
+      const openings = Number(j.numOpenings) || 0;
+      if (bill > 0 && pay > 0 && bill > pay && openings > 0) {
+        const perOpening = Math.round((bill - pay) * 1.25 * 2080 * 100) / 100;
+        const total = Math.round(perOpening * openings * 100) / 100;
+        potentialNewInput += total;
+        potentialDetails.push({
+          jobId: j.id,
+          title: j.title || '',
+          client: j.clientCorporation?.name || '',
+          owner: j.owner ? `${j.owner.firstName || ''} ${j.owner.lastName || ''}`.trim() : '',
+          employmentType: j.employmentType || '',
+          numOpenings: openings,
+          billRate: bill,
+          payRate: pay,
+          perOpening,
+          total,
+        });
+      }
+    }
+    potentialNewInput = Math.round(potentialNewInput * 100) / 100;
+    potentialDetails.sort((a, b) => b.total - a.total);
+
+    res.json({
+      rangeLabel,
+      dateRange: { start, end },
+      currentNewInput: {
+        value: currentNewInput,
+        formula: 'Spread (by employee type) × Sales Commission % per placement in date range. Same calculation as APT Health Input gauge.',
+        details: currentDetails,
+      },
+      potentialNewInput: {
+        value: potentialNewInput,
+        formula: '((Bill Rate − Pay Rate) × 1.25) × 2080 × # of Openings, summed across all open reqs with bill and pay set.',
+        openReqCount: potentialDetails.length,
+        details: potentialDetails,
+      },
+    });
   } catch (err) {
     next(err);
   }

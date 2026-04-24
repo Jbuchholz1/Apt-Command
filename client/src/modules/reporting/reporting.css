@@ -355,6 +355,44 @@
   }
 }
 
+/* ---- Priority Breakdown Table (Fills/Losses/Washes by A/B/C) ---- */
+.priority-breakdown-table {
+  table-layout: auto;
+}
+.priority-breakdown-table thead tr:first-child th.priority-group {
+  text-align: center;
+  border-left: 2px solid rgba(255, 255, 255, 0.25);
+  border-right: 2px solid rgba(255, 255, 255, 0.25);
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+.priority-breakdown-table thead tr:last-child th {
+  font-size: 10px;
+  padding: 6px 10px;
+}
+.priority-breakdown-table .priority-a { background: #1e3a8a; }
+.priority-breakdown-table .priority-b { background: #0e7490; }
+.priority-breakdown-table .priority-c { background: #475569; }
+.priority-breakdown-table .priority-a-sub { background: rgba(30, 58, 138, 0.85); }
+.priority-breakdown-table .priority-b-sub { background: rgba(14, 116, 144, 0.85); }
+.priority-breakdown-table .priority-c-sub { background: rgba(71, 85, 105, 0.85); }
+.priority-breakdown-table tbody td.priority-a-sub,
+.priority-breakdown-table tbody td.priority-b-sub,
+.priority-breakdown-table tbody td.priority-c-sub {
+  background: transparent;
+}
+.priority-breakdown-table tbody td:nth-child(6),
+.priority-breakdown-table tbody td:nth-child(10) {
+  border-left: 2px solid var(--border);
+}
+.priority-breakdown-table tbody td:nth-child(14) {
+  border-left: 2px solid var(--border);
+}
+.priority-breakdown-table .priority-am-col {
+  text-align: left;
+  min-width: 140px;
+}
+
 /* ---- Clickable Activity Cells ---- */
 .clickable-cell {
   cursor: pointer;
@@ -796,4 +834,159 @@
     flex-direction: column;
     align-items: flex-start;
   }
+}
+
+/* ================================================
+   Executive Reporting — KPI Cards & Modal
+   ================================================ */
+.exec-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+  padding: 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.exec-kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  transition: all 0.2s ease;
+}
+.exec-kpi-card.clickable {
+  cursor: pointer;
+}
+.exec-kpi-card.clickable:hover {
+  border-color: var(--gold);
+  box-shadow: 0 6px 20px rgba(4, 20, 79, 0.12);
+  transform: translateY(-1px);
+}
+
+.exec-kpi-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.exec-kpi-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.exec-kpi-tooltip {
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: help;
+}
+.exec-kpi-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--navy);
+  font-family: var(--mono);
+  margin-top: 4px;
+}
+.exec-kpi-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.exec-kpi-hint {
+  font-size: 11px;
+  color: var(--gold);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 6px;
+}
+
+.exec-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 20, 79, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 24px;
+}
+.exec-modal {
+  background: #fff;
+  border-radius: 10px;
+  max-width: 1100px;
+  width: 100%;
+  max-height: 85vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.3);
+}
+.exec-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: var(--navy);
+  color: #fff;
+}
+.exec-modal-header h3 {
+  margin: 0;
+  font-size: 15px;
+  color: var(--gold);
+  font-weight: 700;
+}
+.exec-modal-close {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 8px;
+}
+.exec-modal-close:hover { color: var(--gold); }
+.exec-modal-body {
+  overflow: auto;
+  flex: 1;
+}
+.exec-modal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.exec-modal-table thead {
+  background: #f1f5f9;
+  position: sticky;
+  top: 0;
+}
+.exec-modal-table th,
+.exec-modal-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.exec-modal-table th.num,
+.exec-modal-table td.num {
+  text-align: right;
+  font-family: var(--mono);
+}
+.exec-modal-table th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+.exec-modal-table tr:hover td {
+  background: #f8fafc;
+}
+.exec-empty {
+  text-align: center !important;
+  color: var(--text-muted);
+  padding: 24px !important;
 }

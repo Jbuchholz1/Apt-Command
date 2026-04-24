@@ -232,16 +232,38 @@ async function getPendingApprovedPlacements() {
   });
 }
 
-async function getClientSubmissions() {
-  return cache.cached('bh:clientSubs', READ_TTL_MS, () => {
-    const statusList = CLIENT_SUB_STATUSES.map(s => `'${s}'`).join(',');
-    return callTool('query_entity', {
+// Client submissions across many jobs, used for inline counts on the Req Board.
+// When called without args, falls back to a global query (capped at 500 — can
+// silently drop results if Bullhorn has more than that across all jobs).
+// Prefer passing jobOrderIds so the query is scoped and we never truncate.
+async function getClientSubmissions(jobOrderIds) {
+  const statusList = CLIENT_SUB_STATUSES.map(s => `'${s}'`).join(',');
+
+  if (Array.isArray(jobOrderIds) && jobOrderIds.length > 0) {
+    const numeric = jobOrderIds.map(i => parseInt(i, 10)).filter(i => !Number.isNaN(i));
+    if (numeric.length === 0) return { data: [] };
+
+    // Chunk to avoid URL-length / expression-complexity limits on very large boards.
+    const CHUNK = 100;
+    const chunks = [];
+    for (let i = 0; i < numeric.length; i += CHUNK) {
+      chunks.push(numeric.slice(i, i + CHUNK));
+    }
+    const results = await Promise.all(chunks.map(ids => callTool('query_entity', {
       entityType: 'JobSubmission',
-      where: `status IN (${statusList}) AND isDeleted = false`,
+      where: `jobOrder.id IN (${ids.join(',')}) AND status IN (${statusList}) AND isDeleted = false`,
       fields: 'id,jobOrder,dateAdded,status',
       count: 500,
-    });
-  });
+    })));
+    return { data: results.flatMap(r => r?.data || []) };
+  }
+
+  return cache.cached('bh:clientSubs', READ_TTL_MS, () => callTool('query_entity', {
+    entityType: 'JobSubmission',
+    where: `status IN (${statusList}) AND isDeleted = false`,
+    fields: 'id,jobOrder,dateAdded,status',
+    count: 500,
+  }));
 }
 
 // Submissions currently in "Offer Extended" status (corresponds to JobOrder "Offer Out" stage).
@@ -526,7 +548,7 @@ async function getClosedJobsInRange(startMs, endMs) {
     dateField: 'dateLastModified',
     startMs, endMs,
     extraWhere: 'AND isDeleted = false AND isOpen = false',
-    fields: 'id,title,status,owner,numOpenings,dateAdded,dateClosed,clientCorporation',
+    fields: 'id,title,status,owner,numOpenings,dateAdded,dateClosed,clientCorporation,type',
   });
 }
 

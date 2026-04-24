@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.17.0';
+export const APP_VERSION = '3.18.0';
 
 export const CHANGELOG = [
+  {
+    version: '3.18.0',
+    date: '2026-04-24',
+    title: 'Sales Dashboard \u2014 Fills/Losses/Washes by Priority (A/B/C)',
+    changes: [
+      { type: 'minor', text: 'Replaced the Fills/Losses/Washes bar chart with a per-AM priority breakdown table. Each row shows three column groups (Priority A, B, C), each with Reqs / Fills / Lost / Wash, plus a Total Closed column and a Total row across all AMs. Any cell with underlying reqs is clickable and opens the existing job-detail modal filtered to that priority + outcome.' },
+      { type: 'patch', text: 'Backend closed-jobs query now pulls the Bullhorn priority (type) field so the dashboard can bucket each closed req into A/B/C without a follow-up lookup.' },
+    ],
+  },
   {
     version: '3.17.0',
     date: '2026-04-23',

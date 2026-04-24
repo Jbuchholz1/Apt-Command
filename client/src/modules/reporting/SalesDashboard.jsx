@@ -4,7 +4,7 @@ import { getSalesDashboard, exportSalesDashboard } from '../../lib/api';
 import DateRangePicker from './components/DateRangePicker';
 import DashboardFilters from './components/DashboardFilters';
 import TeamAlerts from './components/TeamAlerts';
-import { BarChart, Bar, Line, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Bar, Line, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { CHART_COLORS } from './lib/constants';
 import { exportNodeToPdf } from './lib/pdfExport';
 
@@ -164,26 +164,19 @@ export default function SalesDashboard() {
     }));
   }, [filteredAms, marPacingTarget]);
 
-  // Fills / Losses / Washes chart data
-  const flwData = useMemo(() => {
-    return filteredAms.map(am => ({
-      name: am.name,
-      Fills: am.jobMetrics.fills,
-      Losses: am.jobMetrics.losses,
-      Washed: am.jobMetrics.washed,
-    }));
-  }, [filteredAms]);
-
-  // Click handler for Fills/Losses/Washes chart bars
-  const handleBarClick = (category) => (data) => {
-    const amName = data.name;
-    const am = filteredAms.find(a => a.name === amName);
-    if (!am) return;
-    const detailKeyMap = { Fills: 'fills', Losses: 'losses', Washed: 'washed' };
-    const details = am.jobDetails?.[detailKeyMap[category]] || [];
-    if (details.length > 0) {
-      setModal({ amName, activityType: category, records: details, isJob: true });
-    }
+  // Priority breakdown (A/B/C) cell click handler
+  const openPriorityDetail = (am, priority, bucket) => {
+    const pb = am.priorityBreakdown?.[priority];
+    if (!pb) return;
+    const records = pb.details?.[bucket] || [];
+    if (records.length === 0) return;
+    const labelMap = { reqs: 'Closed Reqs', fills: 'Fills', losses: 'Losses', washed: 'Washed' };
+    setModal({
+      amName: am.name,
+      activityType: `Priority ${priority} — ${labelMap[bucket]}`,
+      records,
+      isJob: true,
+    });
   };
 
   const ams = filteredAms;
@@ -291,22 +284,83 @@ export default function SalesDashboard() {
             </div>
           </div>
 
-          {/* Fills / Losses / Washes — full width below the two charts */}
+          {/* Fills / Losses / Washes by Priority (A/B/C) — full width below the two charts */}
           <div style={{ padding: '0 24px 24px' }}>
             <div className="chart-section" style={{ flex: 'none', width: '100%' }}>
-              <h3 className="section-title">Fills / Losses / Washes</h3>
-              <ResponsiveContainer width="100%" height={320}>
-                <BarChart data={flwData} barGap={4} margin={{ top: 10, right: 20, bottom: 30, left: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} />
-                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="Fills" fill={CHART_COLORS.fills} radius={[3, 3, 0, 0]} cursor="pointer" onClick={handleBarClick('Fills')} />
-                  <Bar dataKey="Losses" fill={CHART_COLORS.losses} radius={[3, 3, 0, 0]} cursor="pointer" onClick={handleBarClick('Losses')} />
-                  <Bar dataKey="Washed" fill={CHART_COLORS.washed} radius={[3, 3, 0, 0]} cursor="pointer" onClick={handleBarClick('Washed')} />
-                </BarChart>
-              </ResponsiveContainer>
+              <h3 className="section-title">Fills / Losses / Washes by Priority</h3>
+              <div style={{ overflowX: 'auto' }}>
+                <table className="metrics-table priority-breakdown-table">
+                  <thead>
+                    <tr>
+                      <th rowSpan={2} className="priority-am-col">Account Manager</th>
+                      <th colSpan={4} className="priority-group priority-a">Priority A</th>
+                      <th colSpan={4} className="priority-group priority-b">Priority B</th>
+                      <th colSpan={4} className="priority-group priority-c">Priority C</th>
+                      <th rowSpan={2} className="total-col">Total Closed</th>
+                    </tr>
+                    <tr>
+                      <th className="priority-a-sub">Reqs</th>
+                      <th className="priority-a-sub">Fills</th>
+                      <th className="priority-a-sub">Lost</th>
+                      <th className="priority-a-sub">Wash</th>
+                      <th className="priority-b-sub">Reqs</th>
+                      <th className="priority-b-sub">Fills</th>
+                      <th className="priority-b-sub">Lost</th>
+                      <th className="priority-b-sub">Wash</th>
+                      <th className="priority-c-sub">Reqs</th>
+                      <th className="priority-c-sub">Fills</th>
+                      <th className="priority-c-sub">Lost</th>
+                      <th className="priority-c-sub">Wash</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ams.map(am => {
+                      const pb = am.priorityBreakdown || {};
+                      const renderCell = (priority, bucket) => {
+                        const val = pb[priority]?.[bucket] || 0;
+                        const hasDetails = (pb[priority]?.details?.[bucket] || []).length > 0;
+                        return (
+                          <td
+                            className={`metric-val ${hasDetails ? 'clickable-cell' : ''}`}
+                            onClick={() => hasDetails && openPriorityDetail(am, priority, bucket)}
+                          >
+                            {val}
+                          </td>
+                        );
+                      };
+                      return (
+                        <tr key={am.id}>
+                          <td className="row-label">{am.name}</td>
+                          {renderCell('A', 'reqs')}
+                          {renderCell('A', 'fills')}
+                          {renderCell('A', 'losses')}
+                          {renderCell('A', 'washed')}
+                          {renderCell('B', 'reqs')}
+                          {renderCell('B', 'fills')}
+                          {renderCell('B', 'losses')}
+                          {renderCell('B', 'washed')}
+                          {renderCell('C', 'reqs')}
+                          {renderCell('C', 'fills')}
+                          {renderCell('C', 'losses')}
+                          {renderCell('C', 'washed')}
+                          <td className="metric-val total-col">{am.jobMetrics.closedReqs}</td>
+                        </tr>
+                      );
+                    })}
+                    <tr className="bold-row">
+                      <td className="row-label">Total</td>
+                      {['A', 'B', 'C'].flatMap(p => ['reqs', 'fills', 'losses', 'washed'].map(b => (
+                        <td key={`${p}-${b}`} className="metric-val">
+                          {ams.reduce((s, am) => s + (am.priorityBreakdown?.[p]?.[b] || 0), 0)}
+                        </td>
+                      )))}
+                      <td className="metric-val total-col">
+                        {ams.reduce((s, am) => s + (am.jobMetrics.closedReqs || 0), 0)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
