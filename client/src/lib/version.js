@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.19.0';
+export const APP_VERSION = '3.19.1';
 
 export const CHANGELOG = [
+  {
+    version: '3.19.1',
+    date: '2026-04-27',
+    title: 'Executive Reporting \u2014 First Live Tiles',
+    changes: [
+      { type: 'minor', text: 'Six tiles on Executive Reporting now show live data instead of "Coming Soon": New Reqs, New Placements This Week, Candidate Submissions, Active Contractor Headcount, and Revenue / Spread / Pipeline on the Weekly tab; Key Client Reviews & Health Scores on the Quarterly tab. The Weekly tab pulls counts from the existing sales-dashboard, recruiter-dashboard, stats, and executive-dashboard endpoints; the Quarterly client-health tile shows total active clients with a green / yellow / red breakdown subtitle. The toolbar date range now drives all three tabs. Remaining tiles stay as Coming Soon placeholders.' },
+      { type: 'patch', text: 'Active Contractor Headcount label dropped the "(\u0394 vs prior week)" suffix until the prior-period comparison ships \u2014 the tile now reads as a current snapshot with a "\u0394 vs prior week coming soon" subtitle to set the right expectation.' },
+    ],
+  },
   {
     version: '3.19.0',
     date: '2026-04-27',

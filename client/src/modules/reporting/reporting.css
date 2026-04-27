@@ -1084,3 +1084,20 @@
   border-radius: 999px;
   white-space: nowrap;
 }
+
+.exec-kpi-card.is-live-loading .exec-kpi-skeleton {
+  background: linear-gradient(90deg, #e2e8f0 0%, #f1f5f9 50%, #e2e8f0 100%);
+  background-size: 200% 100%;
+  animation: exec-shimmer 1.4s ease-in-out infinite;
+  border-radius: 6px;
+  height: 36px;
+  width: 60%;
+  color: transparent;
+}
+.exec-kpi-card.is-live-error .exec-kpi-value {
+  color: var(--text-muted);
+}
+@keyframes exec-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

@@ -17,7 +17,7 @@ const TILES = [
   { label: 'Cost-Saving Potential', note: 'Pending vendor benchmark data' },
 ];
 
-export default function MonthlyTab() {
+export default function MonthlyTab(_props) {
   return (
     <div className="exec-kpi-grid">
       {TILES.map((t) => (

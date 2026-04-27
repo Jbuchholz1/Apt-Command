@@ -224,9 +224,9 @@ export default function ExecutiveDashboard() {
       )}
 
       <TabNav active={activeTab} onChange={setActiveTab} />
-      {activeTab === 'weekly' && <WeeklyTab />}
-      {activeTab === 'monthly' && <MonthlyTab />}
-      {activeTab === 'quarterly' && <QuarterlyTab />}
+      {activeTab === 'weekly' && <WeeklyTab startDate={startDate} endDate={endDate} />}
+      {activeTab === 'monthly' && <MonthlyTab startDate={startDate} endDate={endDate} />}
+      {activeTab === 'quarterly' && <QuarterlyTab startDate={startDate} endDate={endDate} />}
 
       {openModal === 'current' && data && (
         <CurrentInputModal details={data.currentNewInput.details} onClose={() => setOpenModal(null)} />
