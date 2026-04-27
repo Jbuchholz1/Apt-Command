@@ -969,16 +969,52 @@ router.get('/executive-dashboard', requireAdmin, async (req, res, next) => {
     currentNewInput = Math.round(currentNewInput * 100) / 100;
     currentDetails.sort((a, b) => b.input - a.input);
 
-    // --- Potential New Input — open reqs × user formula: ((Bill - Pay) × 1.25) × 2080, × numOpenings ---
+    // --- Potential New Input — same per-job formula as the Req Board's ceSpread/permFee,
+    //     multiplied by # of openings to project the full open-req pipeline.
+    //     Contract (W2/other):  (billRate − payRate × 1.25) × 40 weekly
+    //     Corp-to-Corp:         (billRate − payRate × 1.05) × 40 weekly
+    //     Direct Hire (perm):   (salary × feeArrangement) / 26   weekly amortization
     let potentialNewInput = 0;
     const potentialDetails = [];
 
     for (const j of openJobs) {
       const bill = Number(j.clientBillRate) || 0;
       const pay = Number(j.payRate) || 0;
+      const salary = Number(j.salary) || 0;
+      const feePercent = Number(j.feeArrangement) || 0;
       const openings = Number(j.numOpenings) || 0;
-      if (bill > 0 && pay > 0 && bill > pay && openings > 0) {
-        const perOpening = Math.round((bill - pay) * 1.25 * 2080 * 100) / 100;
+      const empType = (j.employmentType || '').toLowerCase();
+
+      let perOpening = 0;
+      let kind = '';
+      let rateDetail = '';
+
+      if (empType === 'corp-to-corp' && bill > 0 && pay > 0) {
+        const spread = (bill - pay * 1.05) * 40;
+        if (spread > 0) {
+          perOpening = Math.round(spread * 100) / 100;
+          kind = 'Corp-to-Corp Spread';
+          rateDetail = `$${pay}/$${bill}`;
+        }
+      } else if (empType === 'direct hire' && salary > 0 && feePercent > 0) {
+        perOpening = Math.round((salary * feePercent / 26) * 100) / 100;
+        kind = 'Perm Fee';
+        rateDetail = `$${Number(salary).toLocaleString('en-US')} @ ${Math.round(feePercent * 100)}%`;
+      } else if (bill > 0 && pay > 0) {
+        const spread = (bill - pay * 1.25) * 40;
+        if (spread > 0) {
+          perOpening = Math.round(spread * 100) / 100;
+          kind = 'Contract Spread';
+          rateDetail = `$${pay}/$${bill}`;
+        }
+      } else if (salary > 0 && feePercent > 0) {
+        // Fall-back for perm-style records that don't have employmentType set to "Direct Hire"
+        perOpening = Math.round((salary * feePercent / 26) * 100) / 100;
+        kind = 'Perm Fee';
+        rateDetail = `$${Number(salary).toLocaleString('en-US')} @ ${Math.round(feePercent * 100)}%`;
+      }
+
+      if (perOpening > 0 && openings > 0) {
         const total = Math.round(perOpening * openings * 100) / 100;
         potentialNewInput += total;
         potentialDetails.push({
@@ -987,9 +1023,13 @@ router.get('/executive-dashboard', requireAdmin, async (req, res, next) => {
           client: j.clientCorporation?.name || '',
           owner: j.owner ? `${j.owner.firstName || ''} ${j.owner.lastName || ''}`.trim() : '',
           employmentType: j.employmentType || '',
+          kind,
+          rateDetail,
           numOpenings: openings,
-          billRate: bill,
-          payRate: pay,
+          billRate: bill || null,
+          payRate: pay || null,
+          salary: salary || null,
+          feePercent: feePercent || null,
           perOpening,
           total,
         });
@@ -1008,7 +1048,7 @@ router.get('/executive-dashboard', requireAdmin, async (req, res, next) => {
       },
       potentialNewInput: {
         value: potentialNewInput,
-        formula: '((Bill Rate − Pay Rate) × 1.25) × 2080 × # of Openings, summed across all open reqs with bill and pay set.',
+        formula: 'Per-opening weekly spread (Req Board formula): Contract = (Bill − Pay × 1.25) × 40, Corp-to-Corp = (Bill − Pay × 1.05) × 40, Direct Hire = (Salary × Fee%) / 26. Each multiplied by # of Openings, summed across open reqs.',
         openReqCount: potentialDetails.length,
         details: potentialDetails,
       },

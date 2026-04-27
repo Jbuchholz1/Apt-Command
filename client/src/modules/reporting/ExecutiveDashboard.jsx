@@ -101,16 +101,16 @@ function PotentialInputModal({ details, onClose }) {
                 <th>Client</th>
                 <th>Job Title</th>
                 <th>Owner</th>
+                <th>Type</th>
+                <th>Rate / Salary</th>
                 <th className="num">Openings</th>
-                <th className="num">Bill</th>
-                <th className="num">Pay</th>
-                <th className="num">Per Opening</th>
-                <th className="num">Total</th>
+                <th className="num">Per Opening / Wk</th>
+                <th className="num">Total / Wk</th>
               </tr>
             </thead>
             <tbody>
               {details.length === 0 && (
-                <tr><td colSpan={9} className="exec-empty">No open reqs with bill + pay rates.</td></tr>
+                <tr><td colSpan={9} className="exec-empty">No open reqs with bill+pay or salary+fee set.</td></tr>
               )}
               {details.map((d) => (
                 <tr key={d.jobId}>
@@ -118,9 +118,9 @@ function PotentialInputModal({ details, onClose }) {
                   <td>{d.client}</td>
                   <td>{d.title}</td>
                   <td>{d.owner}</td>
+                  <td>{d.kind || d.employmentType || '—'}</td>
+                  <td>{d.rateDetail || '—'}</td>
                   <td className="num">{d.numOpenings}</td>
-                  <td className="num">{formatCurrencyShort(d.billRate)}</td>
-                  <td className="num">{formatCurrencyShort(d.payRate)}</td>
                   <td className="num">{formatCurrency(d.perOpening)}</td>
                   <td className="num">{formatCurrency(d.total)}</td>
                 </tr>
@@ -214,7 +214,7 @@ export default function ExecutiveDashboard() {
             <KpiCard
               label="Potential New Input"
               value={data.potentialNewInput.value}
-              subtitle={`${data.potentialNewInput.openReqCount} open reqs with bill + pay set`}
+              subtitle={`${data.potentialNewInput.openReqCount} open reqs (weekly spread + perm fee)`}
               tooltip={data.potentialNewInput.formula}
               clickable={data.potentialNewInput.details?.length > 0}
               onClick={() => setOpenModal('potential')}

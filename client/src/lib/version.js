@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.20.1';
+export const APP_VERSION = '3.20.2';
 
 export const CHANGELOG = [
+  {
+    version: '3.20.2',
+    date: '2026-04-27',
+    title: 'Executive Reporting \u2014 Potential New Input Formula Aligned to Req Board',
+    changes: [
+      { type: 'patch', text: 'Potential New Input was using ((Bill \u2212 Pay) \u00d7 1.25) \u00d7 2080 \u00d7 Openings, which annualized the gross spread and applied the 1.25 markup to the wrong side of the calculation. It is now the same per-opening formula the Req Board uses for ceSpread / permFee, multiplied by # of openings: Contract = (Bill \u2212 Pay \u00d7 1.25) \u00d7 40 weekly, Corp-to-Corp = (Bill \u2212 Pay \u00d7 1.05) \u00d7 40 weekly, Direct Hire = (Salary \u00d7 Fee%) / 26 weekly amortization. Direct Hire reqs are now included (the old formula required bill+pay so perm jobs were silently dropped). The breakdown modal now shows Type, Rate / Salary, Per Opening / Wk, and Total / Wk columns instead of Bill / Pay so perm rows render meaningfully. Current New Input was already on the same weekly basis \u2014 the two values are now apples-to-apples.' },
+    ],
+  },
   {
     version: '3.20.1',
     date: '2026-04-27',
