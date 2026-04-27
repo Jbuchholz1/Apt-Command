@@ -9,9 +9,19 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.19.1';
+export const APP_VERSION = '3.20.0';
 
 export const CHANGELOG = [
+  {
+    version: '3.20.0',
+    date: '2026-04-27',
+    title: 'Executive Reporting \u2014 Most Bullhorn Tiles Live',
+    changes: [
+      { type: 'minor', text: 'Ten more Executive Reporting tiles now show live numbers instead of "Coming Soon". Weekly tab adds Active Contractor Headcount \u0394 vs prior week, Attrition / Dropouts (backout notes), and Offers Extended & Accepted (with breakdown subtitle). Monthly tab fills in New Hires vs Attrition (Net), Active Clients, New Clients Onboarded, Client Retention Rate, Contractor Headcount + Off-boards Next 30 Days, and YTD New Input. Quarterly tab adds the Talent Pipeline Health funnel \u2014 placements count headline with the full Lead \u2192 Sub \u2192 Interview \u2192 Placement chain in the subtitle. The toolbar date range continues to drive every tab; switching tabs no longer re-fetches data the other tab already pulled in this session.' },
+      { type: 'minor', text: 'Three new admin-only API endpoints back the dashboard: /api/reporting/executive-weekly, /executive-monthly, and /executive-quarterly. Each fans out parallel Bullhorn queries server-side and returns a single aggregated payload, so a tab open is one round-trip instead of five. New Bullhorn helpers \u2014 countActivePlacementsAsOf (point-in-time headcount), getOffboardsInWindow (placements ending in a window), and getOffersExtendedInRange \u2014 live in server/lib/bullhorn.js for reuse.' },
+      { type: 'patch', text: 'Tiles still pending external integration \u2014 Gross / Net Revenue, AR Aging, Payroll & Benefits, Compliance, P&L, GP vs Budget, Cost-Saving, Revenue Forecast, Budget vs Actuals, Headcount Plan vs Actuals, Regulatory Audit, Vendor Review, Client Escalations, Collections \u2014 keep their Coming Soon styling and tooltips describing the missing data source. Those unblock once accounting / payroll / compliance systems are connected.' },
+    ],
+  },
   {
     version: '3.19.1',
     date: '2026-04-27',

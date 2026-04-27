@@ -177,6 +177,18 @@ export function getExecutiveDashboard(startDate, endDate) {
   return fetchAPI(`/api/reporting/executive-dashboard?start=${startDate}&end=${endDate}`);
 }
 
+export function getExecutiveWeekly(startDate, endDate) {
+  return fetchAPI(`/api/reporting/executive-weekly?start=${startDate}&end=${endDate}`);
+}
+
+export function getExecutiveMonthly(startDate, endDate) {
+  return fetchAPI(`/api/reporting/executive-monthly?start=${startDate}&end=${endDate}`);
+}
+
+export function getExecutiveQuarterly(startDate, endDate) {
+  return fetchAPI(`/api/reporting/executive-quarterly?start=${startDate}&end=${endDate}`);
+}
+
 // --- Universal Search ---
 
 export function searchUniversal({ query, accessToken, signal }) {

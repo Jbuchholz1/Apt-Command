@@ -643,6 +643,42 @@ async function getBackoutNotesInRange(startMs, endMs) {
 
 const ALLOWED_CHECKIN_TYPES = new Set(['TR 30/90', 'AM 30/90']);
 
+// Count of placements that were "active" as of a specific point in time.
+// Active = dateBegin <= asOf AND (dateEnd is null OR dateEnd >= asOf), excluding voided.
+async function countActivePlacementsAsOf(asOfMs) {
+  const result = await callTool('query_entity', {
+    entityType: 'Placement',
+    where: `dateBegin <= ${asOfMs} AND status <> 'Voided' AND isDeleted = false`,
+    fields: 'id,dateBegin,dateEnd,status',
+    count: 1000,
+  });
+  const rows = result?.data || [];
+  return rows.filter(p => !p.dateEnd || p.dateEnd >= asOfMs).length;
+}
+
+// Placements whose contract ends in the supplied window (used for off-board forecast).
+async function getOffboardsInWindow(startMs, endMs) {
+  return callTool('query_entity', {
+    entityType: 'Placement',
+    where: `dateEnd >= ${startMs} AND dateEnd <= ${endMs} AND status <> 'Voided' AND isDeleted = false`,
+    fields: 'id,candidate(id,firstName,lastName),jobOrder(id,title,clientCorporation(name)),dateEnd,status,employmentType,payRate,clientBillRate',
+    orderBy: 'dateEnd',
+    count: 200,
+  });
+}
+
+// JobSubmissions that are currently in "Offer Extended" status and were touched
+// inside the supplied date range. Used as a proxy for "offers extended this period".
+async function getOffersExtendedInRange(startMs, endMs) {
+  return paginatedQuery({
+    entityType: 'JobSubmission',
+    dateField: 'dateLastModified',
+    startMs, endMs,
+    extraWhere: "AND status = 'Offer Extended' AND isDeleted = false",
+    fields: 'id,candidate,jobOrder,status,dateAdded,dateLastModified',
+  });
+}
+
 async function getCheckinNotesForType(actionType) {
   if (!ALLOWED_CHECKIN_TYPES.has(actionType)) {
     throw new Error(`Invalid checkin action type: ${actionType}`);
@@ -766,6 +802,9 @@ module.exports = {
   getProjectJobs,
   getPlacementsForJobs,
   getBackoutNotesInRange,
+  countActivePlacementsAsOf,
+  getOffboardsInWindow,
+  getOffersExtendedInRange,
   getCheckinNotesForType,
   getLeadsInRange,
   getCorporateUserByEmail,

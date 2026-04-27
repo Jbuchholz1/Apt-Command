@@ -6,6 +6,7 @@ import {
   getRecruiterDashboard,
   getStats,
   getExecutiveDashboard,
+  getExecutiveWeekly,
 } from '../../../lib/api';
 
 function fmtCurrency(n) {
@@ -18,6 +19,12 @@ function fmtNum(n) {
   return Number(n).toLocaleString('en-US');
 }
 
+function fmtDelta(n) {
+  if (n === null || n === undefined) return '';
+  if (n === 0) return 'no change vs prior week';
+  return `${n > 0 ? '+' : ''}${n} vs prior week`;
+}
+
 function tileState(loading, value) {
   if (loading) return 'loading';
   if (value === null || value === undefined) return 'error';
@@ -25,7 +32,7 @@ function tileState(loading, value) {
 }
 
 export default function WeeklyTab({ startDate, endDate }) {
-  const [data, setData] = useState({ sales: null, recruiter: null, stats: null, exec: null });
+  const [data, setData] = useState({ sales: null, recruiter: null, stats: null, exec: null, weekly: null });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,9 +43,10 @@ export default function WeeklyTab({ startDate, endDate }) {
       getRecruiterDashboard(startDate, endDate).catch(() => null),
       getStats().catch(() => null),
       getExecutiveDashboard(startDate, endDate).catch(() => null),
-    ]).then(([sales, recruiter, stats, exec]) => {
+      getExecutiveWeekly(startDate, endDate).catch(() => null),
+    ]).then(([sales, recruiter, stats, exec, weekly]) => {
       if (cancelled) return;
-      setData({ sales, recruiter, stats, exec });
+      setData({ sales, recruiter, stats, exec, weekly });
       setLoading(false);
     });
     return () => { cancelled = true; };
@@ -51,7 +59,14 @@ export default function WeeklyTab({ startDate, endDate }) {
     ? data.sales.ams.reduce((sum, am) => sum + (am.jobMetrics?.newPlacements || 0), 0)
     : null;
   const candidateSubs = data.recruiter?.totals?.clientSubs ?? null;
-  const activeContractors = data.stats?.activeContractors ?? null;
+  const activeContractors = data.weekly?.headcount?.current
+    ?? data.stats?.activeContractors
+    ?? null;
+  const headcountDelta = data.weekly?.headcount?.delta ?? null;
+  const attritionCount = data.weekly?.attrition?.count ?? null;
+  const offersTotal = data.weekly?.offers?.total ?? null;
+  const offersExtended = data.weekly?.offers?.extended ?? null;
+  const offersAccepted = data.weekly?.offers?.accepted ?? null;
   const newInput = data.exec?.currentNewInput?.value ?? null;
 
   return (
@@ -74,19 +89,23 @@ export default function WeeklyTab({ startDate, endDate }) {
         subtitle="Client subs in date range"
         state={tileState(loading, candidateSubs)}
       />
-      <PlaceholderTile
+      <LiveTile
         label="Offers Extended & Accepted"
-        note="From Bullhorn JobSubmission status transitions"
+        value={fmtNum(offersTotal)}
+        subtitle={offersExtended != null ? `${offersExtended} extended · ${offersAccepted} accepted` : 'In date range'}
+        state={tileState(loading, offersTotal)}
       />
       <LiveTile
         label="Active Contractor Headcount"
         value={fmtNum(activeContractors)}
-        subtitle="Current count (Δ vs prior week coming soon)"
+        subtitle={headcountDelta != null ? fmtDelta(headcountDelta) : 'Current count'}
         state={tileState(loading, activeContractors)}
       />
-      <PlaceholderTile
+      <LiveTile
         label="Attrition / Dropouts This Week"
-        note="From Bullhorn backout notes (NoteEntity)"
+        value={fmtNum(attritionCount)}
+        subtitle="Backout notes logged in range"
+        state={tileState(loading, attritionCount)}
       />
       <PlaceholderTile
         label="Client Escalations / Issues"

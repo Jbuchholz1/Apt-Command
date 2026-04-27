@@ -17,6 +17,10 @@ const {
   getOpenJobs,
   getActivePlacementsWithClient,
   getCheckinNotesForType,
+  getBackoutNotesInRange,
+  countActivePlacementsAsOf,
+  getOffboardsInWindow,
+  getOffersExtendedInRange,
 } = require('../lib/bullhorn');
 const { getAllOverrides } = require('../lib/db');
 const { POINTS, EXCLUDED_RECRUITERS, getRecruiterTier, getSpreadGoal, bhLink } = require('../lib/recruiterConfig');
@@ -1007,6 +1011,239 @@ router.get('/executive-dashboard', requireAdmin, async (req, res, next) => {
         formula: '((Bill Rate − Pay Rate) × 1.25) × 2080 × # of Openings, summed across all open reqs with bill and pay set.',
         openReqCount: potentialDetails.length,
         details: potentialDetails,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- Helpers shared across the new executive endpoints ---
+
+function rangeMs(start, end) {
+  const startMs = new Date(start).getTime();
+  const endDate = new Date(end);
+  endDate.setHours(23, 59, 59, 999);
+  const endMs = endDate.getTime();
+  if (isNaN(startMs) || isNaN(endMs)) return null;
+  return { startMs, endMs };
+}
+
+// Sums spread × sales commission % across a list of placements.
+// Mirrors the formula in /executive-dashboard's currentNewInput.
+async function sumNewInput(placements) {
+  if (!placements?.length) return 0;
+  const pIds = placements.map(p => p.id);
+  const salesCommRes = await getSalesCommissions(pIds);
+  let total = 0;
+  for (const c of (salesCommRes?.data || [])) {
+    const p = placements.find(pl => pl.id === c.placement?.id);
+    if (!p || !c.commissionPercentage) continue;
+    const bill = Number(p.clientBillRate) || 0;
+    const pay = Number(p.payRate) || 0;
+    const sal = Number(p.salary) || 0;
+    const feeRate = Number(p.fee) || 0;
+    const empType = (p.employeeType || '').toLowerCase();
+    let spread = 0;
+    if (empType === 'perm' && sal > 0 && feeRate > 0) spread = sal * feeRate / 26;
+    else if (empType === 'corp-to-corp' && bill > 0 && pay > 0) spread = (bill - pay * 1.05) * 40;
+    else if (bill > 0 && pay > 0) spread = (bill - pay * 1.25) * 40;
+    total += spread * (c.commissionPercentage || 1);
+  }
+  return Math.round(total * 100) / 100;
+}
+
+// GET /api/reporting/executive-weekly?start=&end= (admin)
+// Returns: headcount Δ vs prior week, attrition, offers extended/accepted
+router.get('/executive-weekly', requireAdmin, async (req, res, next) => {
+  try {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: 'start and end query params required' });
+    const r = rangeMs(start, end);
+    if (!r) return res.status(400).json({ error: 'Invalid date format' });
+    const { startMs, endMs } = r;
+    const windowMs = endMs - startMs;
+    const priorEndMs = startMs - 1;
+
+    const [currentCount, priorCount, backoutsRes, offersExtendedRes, placementsInRangeRes] = await Promise.all([
+      countActivePlacementsAsOf(endMs),
+      countActivePlacementsAsOf(priorEndMs),
+      getBackoutNotesInRange(startMs, endMs),
+      getOffersExtendedInRange(startMs, endMs),
+      getPlacementsInRange(startMs, endMs),
+    ]);
+
+    const backouts = backoutsRes?.data || [];
+    const offersExtended = (offersExtendedRes?.data || []).length;
+    const offersAccepted = (placementsInRangeRes?.data || []).length;
+
+    res.json({
+      dateRange: { start, end },
+      headcount: {
+        current: currentCount,
+        priorWeek: priorCount,
+        delta: currentCount - priorCount,
+      },
+      attrition: {
+        count: backouts.length,
+        details: backouts.slice(0, 100),
+      },
+      offers: {
+        extended: offersExtended,
+        accepted: offersAccepted,
+        total: offersExtended + offersAccepted,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/reporting/executive-monthly?start=&end= (admin)
+// Returns: new clients, active clients, off-boards next 30d, YTD GP, net hires, retention
+router.get('/executive-monthly', requireAdmin, async (req, res, next) => {
+  try {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: 'start and end query params required' });
+    const r = rangeMs(start, end);
+    if (!r) return res.status(400).json({ error: 'Invalid date format' });
+    const { startMs, endMs } = r;
+
+    const now = Date.now();
+    const thirtyDaysOut = now + 30 * 24 * 60 * 60 * 1000;
+    const yearStartMs = new Date(`${new Date().getFullYear()}-01-01T00:00:00`).getTime();
+
+    // Prior period for retention cohort = same-length window before [start, end]
+    const windowMs = endMs - startMs;
+    const priorPeriodEndMs = startMs - 1;
+
+    const [
+      newJobsRes,
+      activeClientsRes,
+      offboardsRes,
+      placementsInRangeRes,
+      ytdPlacementsRes,
+      backoutsRes,
+      activeClientsPriorMonthRes,
+    ] = await Promise.all([
+      getNewJobsInRange(startMs, endMs),
+      getActivePlacementsWithClient(),
+      getOffboardsInWindow(now, thirtyDaysOut),
+      getPlacementsInRange(startMs, endMs),
+      getPlacementsInRange(yearStartMs, endMs),
+      getBackoutNotesInRange(startMs, endMs),
+      // For retention, we need the set of clients with active placements at the END of the prior period.
+      // We approximate using current active-placement clients as the "this-month" set,
+      // and use placements that were active as of priorPeriodEndMs as the "last-month" set.
+      getPlacementsInRange(priorPeriodEndMs - windowMs, priorPeriodEndMs),
+    ]);
+
+    // New clients onboarded — distinct ClientCorporation.ids in newJobs
+    const newClientIds = new Set();
+    for (const j of (newJobsRes?.data || [])) {
+      if (j.clientCorporation?.id) newClientIds.add(j.clientCorporation.id);
+    }
+
+    // Active clients — distinct clientCorporation across active placements
+    const activeClientIds = new Set();
+    for (const p of (activeClientsRes?.data || [])) {
+      const cId = p.jobOrder?.clientCorporation?.id;
+      if (cId) activeClientIds.add(cId);
+    }
+
+    // Off-boards in next 30 days
+    const offboards = (offboardsRes?.data || []);
+
+    // YTD GP — sum new input across YTD placements
+    const ytdPlacements = ytdPlacementsRes?.data || [];
+    const ytdGp = await sumNewInput(ytdPlacements);
+
+    // Net hires
+    const newHires = (placementsInRangeRes?.data || []).length;
+    const attritionCount = (backoutsRes?.data || []).length;
+
+    // Retention — clients with placements in prior period vs same clients still active now
+    const priorPeriodClients = new Set();
+    for (const p of (activeClientsPriorMonthRes?.data || [])) {
+      const cId = p.jobOrder?.clientCorporation?.id;
+      if (cId) priorPeriodClients.add(cId);
+    }
+    let retainedCount = 0;
+    for (const cId of priorPeriodClients) {
+      if (activeClientIds.has(cId)) retainedCount++;
+    }
+    const retentionRate = priorPeriodClients.size > 0
+      ? Math.round((retainedCount / priorPeriodClients.size) * 1000) / 10
+      : null;
+
+    res.json({
+      dateRange: { start, end },
+      newClients: {
+        count: newClientIds.size,
+      },
+      activeClients: {
+        count: activeClientIds.size,
+      },
+      headcountForecast: {
+        active: activeClientsRes?.data?.length || 0,
+        offboards30d: offboards.length,
+      },
+      ytdGp: {
+        value: ytdGp,
+        rangeStart: new Date(yearStartMs).toISOString().slice(0, 10),
+      },
+      netHires: {
+        newHires,
+        attrition: attritionCount,
+        net: newHires - attritionCount,
+      },
+      retention: {
+        priorPeriodClients: priorPeriodClients.size,
+        retainedClients: retainedCount,
+        rate: retentionRate,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/reporting/executive-quarterly?start=&end= (admin)
+// Returns: talent pipeline funnel — Lead → Submission → Interview → Placement
+router.get('/executive-quarterly', requireAdmin, async (req, res, next) => {
+  try {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: 'start and end query params required' });
+    const r = rangeMs(start, end);
+    if (!r) return res.status(400).json({ error: 'Invalid date format' });
+    const { startMs, endMs } = r;
+
+    const [leadsRes, subsRes, interviewsRes, placementsRes] = await Promise.all([
+      getLeadsInRange(startMs, endMs),
+      getClientSubsInRange(startMs, endMs),
+      getInterviewsInRange(startMs, endMs),
+      getPlacementsInRange(startMs, endMs),
+    ]);
+
+    const leads = (leadsRes?.data || []).length;
+    const submissions = (subsRes?.data || []).length;
+    const interviews = (interviewsRes?.data || []).length;
+    const placements = (placementsRes?.data || []).length;
+
+    const pct = (num, den) => den > 0 ? Math.round((num / den) * 1000) / 10 : null;
+
+    res.json({
+      dateRange: { start, end },
+      funnel: {
+        leads,
+        submissions,
+        interviews,
+        placements,
+        conversions: {
+          subToInterview: pct(interviews, submissions),
+          interviewToPlacement: pct(placements, interviews),
+          subToPlacement: pct(placements, submissions),
+        },
       },
     });
   } catch (err) {
