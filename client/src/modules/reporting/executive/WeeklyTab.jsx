@@ -31,11 +31,12 @@ function tileState(loading, value) {
 
 const COLS = {
   newReqs: [
-    { key: 'id', label: 'Job ID' },
+    { key: 'jobId', label: 'Job ID' },
     { key: 'title', label: 'Title' },
     { key: 'client', label: 'Client' },
     { key: 'owner', label: 'Owner' },
-    { key: 'numOpenings', label: 'Openings', align: 'num' },
+    { key: 'priority', label: 'Priority' },
+    { key: 'openings', label: 'Openings', align: 'num' },
   ],
   newPlacements: [
     { key: 'placementId', label: 'Placement ID' },
@@ -44,11 +45,11 @@ const COLS = {
     { key: 'client', label: 'Client' },
   ],
   subs: [
-    { key: 'candidate', label: 'Candidate' },
+    { key: 'candidateName', label: 'Candidate' },
     { key: 'jobTitle', label: 'Job Title' },
-    { key: 'client', label: 'Client' },
-    { key: 'recruiter', label: 'Recruiter' },
-    { key: 'date', label: 'Date', format: 'date' },
+    { key: 'companyName', label: 'Client' },
+    { key: 'submittedBy', label: 'Recruiter' },
+    { key: 'dateAdded', label: 'Date' },
   ],
   offers: [
     { key: 'type', label: 'Type' },

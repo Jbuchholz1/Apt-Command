@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.20.2';
+export const APP_VERSION = '3.20.3';
 
 export const CHANGELOG = [
+  {
+    version: '3.20.3',
+    date: '2026-04-27',
+    title: 'Executive Reporting \u2014 Drill-Down Column Mapping Fix',
+    changes: [
+      { type: 'patch', text: 'Candidate Submissions and New Reqs drill-down modals were rendering "\u2014" in every column except Job Title because the modal column keys didn\'t match the server response field names. Submissions now reads candidateName / companyName / submittedBy / dateAdded (instead of candidate / client / recruiter / date) and New Reqs reads jobId / openings / priority (instead of id / numOpenings). The other modals already used matching keys and were not affected.' },
+    ],
+  },
   {
     version: '3.20.2',
     date: '2026-04-27',
