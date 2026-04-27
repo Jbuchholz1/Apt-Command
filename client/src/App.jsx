@@ -9,6 +9,7 @@ import ReportingModule from './modules/reporting/ReportingModule';
 import ReportingHome from './modules/reporting/ReportingHome';
 import RecruiterDashboard from './modules/reporting/RecruiterDashboard';
 import SalesDashboard from './modules/reporting/SalesDashboard';
+import ExecutiveDashboard from './modules/reporting/ExecutiveDashboard';
 import ClientHealthModule from './modules/client-health/ClientHealthModule';
 import OrgFlowModule from './modules/org-flow/OrgFlowModule';
 import MyDashboard from './modules/performance/MyDashboard';
@@ -42,7 +43,7 @@ function AppRoutes() {
           <Route path="recruiting" element={<RecruiterDashboard />} />
           <Route path="sales" element={<SalesDashboard />} />
           <Route path="performance" element={<MyDashboard />} />
-          <Route path="executive" element={<ComingSoon title="Executive Reporting" />} />
+          <Route path="executive" element={<ExecutiveDashboard />} />
         </Route>
         <Route path="performance" element={<Navigate to="/reporting/performance" replace />} />
         <Route path="goals" element={<GoalTrackingModule />} />
