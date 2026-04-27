@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.18.1';
+export const APP_VERSION = '3.19.0';
 
 export const CHANGELOG = [
+  {
+    version: '3.19.0',
+    date: '2026-04-27',
+    title: 'Executive Reporting \u2014 Layout Shell',
+    changes: [
+      { type: 'minor', text: 'New Executive Reporting view at Reporting \u2192 Executive Reporting. The existing Current / Potential New Input cards now live in a pinned "New Input \u2014 Live" strip at the top of the page so they stay visible regardless of which section you\u2019re in. Below them, three tabs \u2014 Weekly, Monthly, Quarterly \u2014 lay out the full executive KPI vision: 9 weekly tiles (new reqs, placements, submissions, offers, contractor headcount, attrition, escalations, spread, collections), 14 monthly tiles (gross/net revenue, AR aging, hires vs attrition, paying clients, retention, payroll, P&L, GP vs budget, contractor margins, YTD trackers, cost-saving), and 8 quarterly tiles (full P&L, revenue forecast, budget vs actuals, headcount plan, pipeline health, client reviews, compliance audit, vendor review).' },
+      { type: 'patch', text: 'Every tile in this release is a "Coming Soon" placeholder \u2014 same dimensions as a live KPI card, dashed border, gold pill badge top-right, and a hover tooltip describing the eventual data source (Bullhorn, accounting system, payroll, etc.). The structure ships first so tile order, labels, and groupings can be tuned cheaply before any data wiring begins. Live data wiring lands in subsequent updates, starting with the Bullhorn-backed weekly metrics.' },
+    ],
+  },
   {
     version: '3.18.1',
     date: '2026-04-27',
