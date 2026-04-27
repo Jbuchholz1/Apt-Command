@@ -266,6 +266,24 @@ export function getStaleContacts() {
   return fetchAPI('/api/dashboard/am-stale-contacts');
 }
 
+export function getLoggedMeetingIds() {
+  return fetchAPI('/api/dashboard/logged-meeting-ids');
+}
+
+export function matchMeetingAttendees(emails) {
+  return fetchAPI('/api/dashboard/match-meeting-attendees', {
+    method: 'POST',
+    body: { emails },
+  });
+}
+
+export function logMeetingActivity(payload) {
+  return fetchAPI('/api/dashboard/log-meeting-activity', {
+    method: 'POST',
+    body: payload,
+  });
+}
+
 // --- User Management ---
 
 export function getCurrentUser() {

@@ -9,8 +9,15 @@ import {
   getCandidatesInPlay,
   getStaleContacts,
   updateJobOverrides,
+  getLoggedMeetingIds,
+  matchMeetingAttendees,
+  logMeetingActivity,
 } from '../../lib/api';
-import { getCalendarAccessToken, fetchTodaysEvents } from '../../lib/graphClient';
+import {
+  getCalendarAccessToken,
+  fetchTodaysEvents,
+  fetchRecentEvents,
+} from '../../lib/graphClient';
 import { useUserRole } from '../../lib/UserRoleContext';
 import './daily-brief.css';
 
@@ -283,7 +290,10 @@ export default function DailyBrief() {
         volumeIssue={volumeIssue}
       />
       <div className="db-columns">
-        <PrioritiesColumn jobs={jobs} jobsError={jobsError} fullName={matchName} />
+        <div className="db-priorities-col">
+          <PrioritiesColumn jobs={jobs} jobsError={jobsError} fullName={matchName} />
+          <RecentMeetings />
+        </div>
         <SideRail
           jobs={jobs}
           view={view}
@@ -745,6 +755,371 @@ function AgendaRow({ ev }) {
         {subtitle && <div className="db-agenda-subtitle">{subtitle}</div>}
       </div>
     </li>
+  );
+}
+
+// --- Last 7 days of meetings -------------------------------------------------
+// Source: Outlook calendar (Microsoft Graph) — only past, non-all-day, external
+// (≥1 attendee outside the user's email domain) events the user didn't decline.
+// Each row offers a "Log activity" button that creates a Bullhorn Appointment
+// so the meeting drives MAR / dashboards the same way a manually-logged one would.
+
+// Mirror of server/lib/salesConfig.js SALES_POINTS keys, in the order the AM
+// dashboard already renders them. Kept in lockstep with the server list.
+const ACTIVITY_TYPE_OPTIONS = [
+  'Touch Point',
+  'Virtual Meeting',
+  'In Person Meeting',
+  'Coffee',
+  'Breakfast',
+  'Lunch',
+  'New Meeting',
+  'Req Qual',
+  'Referral Meeting',
+  'Happy Hour',
+  'Dinner',
+  'OOA',
+  'Discovery',
+  'Solutions Pitch',
+  'Solutions Touch',
+  'Solutions Opp Uncovered',
+];
+
+function getDomainFromEmail(email) {
+  if (!email) return '';
+  const at = email.lastIndexOf('@');
+  return at === -1 ? '' : email.slice(at + 1).toLowerCase();
+}
+
+function getEventStartMs(ev) {
+  return new Date(ev.start.dateTime).getTime();
+}
+
+function pickExternalAttendees(ev, userDomain) {
+  return (ev.attendees || [])
+    .filter((a) => a?.emailAddress?.address)
+    .filter((a) => getDomainFromEmail(a.emailAddress.address) !== userDomain);
+}
+
+// Drop events the user shouldn't be prompted to log: all-day blocks, declined
+// invites, internal-only meetings, and the day's still-future calendar slots.
+function filterRecentEventsForLogging(events, userDomain, nowMs) {
+  return events
+    .filter((ev) => !ev.isAllDay)
+    .filter((ev) => ev.responseStatus?.response !== 'declined')
+    .filter((ev) => getEventStartMs(ev) <= nowMs)
+    .filter((ev) => pickExternalAttendees(ev, userDomain).length > 0)
+    .sort((a, b) => getEventStartMs(b) - getEventStartMs(a));
+}
+
+function formatRecentEventDate(ms) {
+  const d = new Date(ms);
+  const wd = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+  const md = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
+  return `${wd} · ${md} · ${formatTime(d)}`;
+}
+
+function attendeeDisplayName(attendee) {
+  return attendee?.emailAddress?.name || attendee?.emailAddress?.address || '';
+}
+
+function RecentMeetings() {
+  const { instance, accounts } = useMsal();
+  const account = accounts[0];
+  const userDomain = getDomainFromEmail(account?.username);
+
+  const [events, setEvents] = useState(null);
+  const [error, setError] = useState(null);
+  const [loggedIds, setLoggedIds] = useState(() => new Set());
+  const [matches, setMatches] = useState({});
+  const [openEvent, setOpenEvent] = useState(null);
+
+  useEffect(() => {
+    if (!account) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = await getCalendarAccessToken(instance, account);
+        const [raw, loggedRes] = await Promise.all([
+          fetchRecentEvents(token, 7),
+          getLoggedMeetingIds().catch(() => ({ ids: [] })),
+        ]);
+        if (cancelled) return;
+        const filtered = filterRecentEventsForLogging(raw, userDomain, Date.now());
+        setEvents(filtered);
+        setLoggedIds(new Set(loggedRes?.ids || []));
+
+        const externalEmails = Array.from(new Set(
+          filtered.flatMap((ev) => pickExternalAttendees(ev, userDomain)
+            .map((a) => a.emailAddress.address.toLowerCase())),
+        ));
+        if (externalEmails.length > 0) {
+          matchMeetingAttendees(externalEmails)
+            .then((res) => { if (!cancelled) setMatches(res?.matches || {}); })
+            .catch(() => { /* match is best-effort; modal still works manually */ });
+        }
+      } catch (err) {
+        if (!cancelled) setError(err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [instance, account, userDomain]);
+
+  const markLogged = (outlookEventId) => {
+    setLoggedIds((prev) => {
+      const next = new Set(prev);
+      next.add(outlookEventId);
+      return next;
+    });
+  };
+
+  return (
+    <section className="db-block db-recent-meetings">
+      <div className="db-block-eyebrow">THE · LAST · 7 · DAYS</div>
+      <p className="db-recent-prompt">
+        Have you logged all your activity for these meetings?
+      </p>
+      {error ? (
+        <div className="db-your-day-error">Couldn&rsquo;t load your calendar.</div>
+      ) : events === null ? (
+        <div className="db-recent-stack">
+          <div className="skeleton-shimmer db-recent-skeleton" />
+          <div className="skeleton-shimmer db-recent-skeleton" />
+          <div className="skeleton-shimmer db-recent-skeleton" />
+        </div>
+      ) : events.length === 0 ? (
+        <div className="db-your-day-empty">
+          No external meetings in the last 7 days.
+        </div>
+      ) : (
+        <ul className="db-recent-stack">
+          {events.map((ev) => (
+            <RecentMeetingRow
+              key={ev.id}
+              ev={ev}
+              userDomain={userDomain}
+              matches={matches}
+              isLogged={loggedIds.has(ev.id)}
+              onLogClick={() => setOpenEvent(ev)}
+            />
+          ))}
+        </ul>
+      )}
+      {openEvent && (
+        <LogActivityModal
+          ev={openEvent}
+          userDomain={userDomain}
+          matches={matches}
+          onClose={() => setOpenEvent(null)}
+          onLogged={(id) => { markLogged(id); setOpenEvent(null); }}
+        />
+      )}
+    </section>
+  );
+}
+
+function RecentMeetingRow({ ev, userDomain, matches, isLogged, onLogClick }) {
+  const startMs = getEventStartMs(ev);
+  const externals = pickExternalAttendees(ev, userDomain);
+  const primary = externals[0];
+  const primaryEmail = primary?.emailAddress?.address?.toLowerCase() || '';
+  const match = matches[primaryEmail];
+
+  let subline;
+  if (match?.kind === 'contact') {
+    subline = `${match.firstName} ${match.lastName} — ClientContact${match.clientName ? ` · ${match.clientName}` : ''}`;
+  } else if (match?.kind === 'candidate') {
+    subline = `${match.firstName} ${match.lastName} — Candidate`;
+  } else if (externals.length === 1) {
+    subline = attendeeDisplayName(primary);
+  } else {
+    subline = `${externals.length} external attendees`;
+  }
+
+  return (
+    <li className="db-recent-row">
+      <div className="db-recent-row-body">
+        <time className="db-recent-row-time">{formatRecentEventDate(startMs)}</time>
+        <div className="db-recent-row-title">{ev.subject || '(no subject)'}</div>
+        <div className="db-recent-row-subline">{subline}</div>
+      </div>
+      <div className="db-recent-row-action">
+        {isLogged ? (
+          <span className="db-recent-row-logged">✓ Logged</span>
+        ) : (
+          <button
+            type="button"
+            className="db-btn-secondary"
+            onClick={onLogClick}
+          >
+            Log activity <ArrowRight size={13} />
+          </button>
+        )}
+      </div>
+    </li>
+  );
+}
+
+function LogActivityModal({ ev, userDomain, matches, onClose, onLogged }) {
+  const startMs = getEventStartMs(ev);
+  const externals = pickExternalAttendees(ev, userDomain);
+  const primary = externals[0];
+  const primaryEmail = primary?.emailAddress?.address?.toLowerCase() || '';
+  const initialMatch = matches[primaryEmail] || null;
+
+  const durationMinutes = (() => {
+    if (!ev.end?.dateTime) return null;
+    const ms = new Date(ev.end.dateTime).getTime() - startMs;
+    if (!Number.isFinite(ms) || ms <= 0) return null;
+    return Math.round(ms / 60000);
+  })();
+
+  const [type, setType] = useState('');
+  const [comments, setComments] = useState(ev.bodyPreview || '');
+  const [contactId, setContactId] = useState(initialMatch?.kind === 'contact' ? initialMatch.id : '');
+  const [candidateId, setCandidateId] = useState(initialMatch?.kind === 'candidate' ? initialMatch.id : '');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (submitting) return;
+    if (!type) { setSubmitError('Pick an activity type.'); return; }
+    if (!contactId && !candidateId) {
+      setSubmitError('Need a Bullhorn ClientContact or Candidate ID.');
+      return;
+    }
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      await logMeetingActivity({
+        outlookEventId: ev.id,
+        type,
+        dateBegin: startMs,
+        subject: ev.subject || '',
+        clientContactId: contactId ? Number(contactId) : null,
+        candidateId: candidateId ? Number(candidateId) : null,
+        comments: comments || '',
+        durationMinutes,
+      });
+      onLogged(ev.id);
+    } catch (err) {
+      setSubmitError(err.message || 'Failed to log activity.');
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="db-modal-backdrop" onClick={onClose}>
+      <div
+        className="db-modal db-log-activity-modal"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="db-log-activity-title"
+      >
+        <header className="db-modal-header">
+          <h2 id="db-log-activity-title" className="db-modal-title">Log activity</h2>
+          <button
+            type="button"
+            className="db-modal-close"
+            onClick={onClose}
+            aria-label="Close"
+          >×</button>
+        </header>
+        <form className="db-log-activity-form" onSubmit={handleSubmit}>
+          <div className="db-log-activity-meta">
+            <div className="db-log-activity-meta-time">{formatRecentEventDate(startMs)}</div>
+            <div className="db-log-activity-meta-subject">{ev.subject || '(no subject)'}</div>
+          </div>
+
+          <label className="db-form-row">
+            <span className="db-form-label">Activity type</span>
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+              required
+            >
+              <option value="">Select…</option>
+              {ACTIVITY_TYPE_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="db-form-row">
+            <span className="db-form-label">
+              Bullhorn ClientContact ID
+              {initialMatch?.kind === 'contact' && (
+                <span className="db-form-hint">
+                  {' '}— matched from {primary?.emailAddress?.address}
+                </span>
+              )}
+            </span>
+            <input
+              type="number"
+              inputMode="numeric"
+              value={contactId}
+              onChange={(e) => setContactId(e.target.value)}
+              placeholder="e.g. 12345"
+            />
+          </label>
+
+          <label className="db-form-row">
+            <span className="db-form-label">
+              Or Candidate ID
+              {initialMatch?.kind === 'candidate' && (
+                <span className="db-form-hint">
+                  {' '}— matched from {primary?.emailAddress?.address}
+                </span>
+              )}
+            </span>
+            <input
+              type="number"
+              inputMode="numeric"
+              value={candidateId}
+              onChange={(e) => setCandidateId(e.target.value)}
+              placeholder="e.g. 67890"
+            />
+          </label>
+
+          <label className="db-form-row">
+            <span className="db-form-label">Notes</span>
+            <textarea
+              value={comments}
+              onChange={(e) => setComments(e.target.value)}
+              rows={3}
+            />
+          </label>
+
+          {submitError && <div className="db-form-error">{submitError}</div>}
+
+          <footer className="db-modal-footer">
+            <button
+              type="button"
+              className="db-btn-secondary"
+              onClick={onClose}
+              disabled={submitting}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="db-btn-primary"
+              disabled={submitting}
+            >
+              {submitting ? 'Logging…' : 'Log activity'}
+            </button>
+          </footer>
+        </form>
+      </div>
+    </div>
   );
 }
 

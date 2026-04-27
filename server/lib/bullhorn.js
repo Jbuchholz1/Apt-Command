@@ -761,6 +761,86 @@ async function getClientContactsOwnedBy(userId) {
   });
 }
 
+// --- Daily Brief: "Last 7 days of meetings" — attendee match + appointment create ---
+
+// Lucene/Bullhorn WHERE quoting: a single quote in the value would close the
+// string and let the rest be parsed as code. Strip them — emails never legally
+// contain a quote anyway, so this is safe rejection rather than escaping.
+function sanitizeEmailForWhere(email) {
+  return String(email || '').replace(/['"`\\]/g, '').trim();
+}
+
+function buildEmailInClause(emails) {
+  const cleaned = (emails || [])
+    .map(sanitizeEmailForWhere)
+    .filter(e => e.includes('@'));
+  if (cleaned.length === 0) return null;
+  return cleaned.map(e => `'${e}'`).join(',');
+}
+
+async function findContactsByEmails(emails) {
+  const inClause = buildEmailInClause(emails);
+  if (!inClause) return { data: [] };
+  return callTool('query_entity', {
+    entityType: 'ClientContact',
+    where: `email IN (${inClause}) AND isDeleted = false`,
+    fields: 'id,firstName,lastName,email,clientCorporation(id,name)',
+    count: 100,
+  });
+}
+
+async function findCandidatesByEmails(emails) {
+  const inClause = buildEmailInClause(emails);
+  if (!inClause) return { data: [] };
+  return callTool('query_entity', {
+    entityType: 'Candidate',
+    where: `email IN (${inClause}) AND isDeleted = false`,
+    fields: 'id,firstName,lastName,email',
+    count: 100,
+  });
+}
+
+// Create a Bullhorn Appointment. Mirrors the shape used by getAppointmentsInRange
+// so the new record shows up in the AM dashboard MAR query immediately.
+async function createAppointment({
+  ownerId,
+  type,
+  dateBegin,
+  subject,
+  clientContactId,
+  candidateId,
+  jobOrderId,
+  comments,
+  durationMinutes,
+}) {
+  const fields = {
+    owner: { id: parseInt(ownerId, 10) },
+    type,
+    dateBegin,
+    subject: subject || '(No subject)',
+    isDeleted: false,
+  };
+  if (typeof durationMinutes === 'number' && durationMinutes > 0) {
+    fields.duration = durationMinutes;
+  }
+  if (clientContactId) {
+    fields.clientContactReference = { id: parseInt(clientContactId, 10) };
+  }
+  if (candidateId) {
+    fields.candidateReference = { id: parseInt(candidateId, 10) };
+  }
+  if (jobOrderId) {
+    fields.jobOrder = { id: parseInt(jobOrderId, 10) };
+  }
+  if (comments) {
+    fields.description = comments;
+  }
+  return callTool('create_entity', {
+    entityType: 'Appointment',
+    fields,
+  });
+}
+
 module.exports = {
   getOpenJobs,
   getRecentlyClosedJobs,
@@ -810,5 +890,8 @@ module.exports = {
   getCorporateUserByEmail,
   getInPlaySubmissionsForUser,
   getClientContactsOwnedBy,
+  findContactsByEmails,
+  findCandidatesByEmails,
+  createAppointment,
   callTool,
 };

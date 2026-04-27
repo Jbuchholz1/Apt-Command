@@ -102,3 +102,45 @@ export async function fetchTodaysEvents(accessToken) {
   const data = await res.json();
   return Array.isArray(data?.value) ? data.value : [];
 }
+
+/**
+ * Fetch the user's calendar events from the past `days` (default 7) up to now.
+ * Used by the Daily Brief "Last 7 days of meetings" section.
+ *
+ * @param {string} accessToken
+ * @param {number} [days=7]
+ * @returns {Promise<CalendarEvent[]>}
+ */
+export async function fetchRecentEvents(accessToken, days = 7) {
+  const now = new Date();
+  const start = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+
+  const params = new URLSearchParams({
+    startDateTime: start.toISOString(),
+    endDateTime: now.toISOString(),
+    $orderby: 'start/dateTime desc',
+    $top: '100',
+  });
+
+  const url = `https://graph.microsoft.com/v1.0/me/calendarView?${params.toString()}`;
+
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Prefer: 'outlook.timezone="America/Chicago"',
+    },
+  });
+
+  if (!res.ok) {
+    let body;
+    try { body = await res.json(); } catch { body = { error: { message: res.statusText } }; }
+    const msg = body?.error?.message || `Graph request failed (${res.status})`;
+    const error = new Error(msg);
+    error.status = res.status;
+    error.body = body;
+    throw error;
+  }
+
+  const data = await res.json();
+  return Array.isArray(data?.value) ? data.value : [];
+}
