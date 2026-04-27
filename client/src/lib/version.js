@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.18.0';
+export const APP_VERSION = '3.18.1';
 
 export const CHANGELOG = [
+  {
+    version: '3.18.1',
+    date: '2026-04-27',
+    title: 'Real-Time Req Board \u2014 Cache Removed',
+    changes: [
+      { type: 'patch', text: 'Fixed inline edits (most visibly the AM column) appearing to "blink" and revert. Removed the 30-second server-side cache on Bullhorn reads (open jobs, recently closed jobs, client submissions, offer-extended subs, corporate users) so every refresh tick pulls live data straight from Bullhorn. Trade-off: simultaneous logins now fan out to Bullhorn instead of sharing one cached response \u2014 acceptable given current usage.' },
+    ],
+  },
   {
     version: '3.18.0',
     date: '2026-04-24',

@@ -1,5 +1,4 @@
 const breaker = require('./mcpBreaker');
-const cache = require('./cache');
 
 const MCP_URL = process.env.BULLHORN_MCP_URL;
 const MCP_API_KEY = process.env.BULLHORN_MCP_API_KEY;
@@ -10,10 +9,6 @@ if (!MCP_URL) {
 if (!MCP_API_KEY) {
   console.warn('[MCP] BULLHORN_MCP_API_KEY not set — MCP requests will be unauthenticated');
 }
-
-// Short TTL: enough to absorb a login-storm (30 users loading the board at
-// once) without introducing staleness beyond the frontend's 5-min poll.
-const READ_TTL_MS = 30 * 1000;
 
 let requestId = 0;
 
@@ -130,27 +125,25 @@ const JOB_FIELDS = [
 ].join(',');
 
 async function getOpenJobs() {
-  return cache.cached('bh:openJobs', READ_TTL_MS, () => callTool('query_entity', {
+  return callTool('query_entity', {
     entityType: 'JobOrder',
     where: 'isOpen = true AND isDeleted = false',
     fields: JOB_FIELDS,
     orderBy: '-dateAdded',
     count: 200,
-  }));
+  });
 }
 
 // Jobs with status Archive/Placed/Lost/Wash modified recently — fetch wide window,
 // server-side logic uses status_changed_at for precise 12hr fall-off
 async function getRecentlyClosedJobs() {
-  return cache.cached('bh:recentlyClosedJobs', READ_TTL_MS, () => {
-    const cutoff = Date.now() - (48 * 60 * 60 * 1000); // 48 hours ago (wide net)
-    return callTool('query_entity', {
-      entityType: 'JobOrder',
-      where: `isOpen = false AND isDeleted = false AND dateLastModified > ${cutoff} AND (status = 'Archive' OR status = 'Placed' OR status = 'Lost' OR status = 'Wash')`,
-      fields: JOB_FIELDS,
-      orderBy: '-dateLastModified',
-      count: 100,
-    });
+  const cutoff = Date.now() - (48 * 60 * 60 * 1000); // 48 hours ago (wide net)
+  return callTool('query_entity', {
+    entityType: 'JobOrder',
+    where: `isOpen = false AND isDeleted = false AND dateLastModified > ${cutoff} AND (status = 'Archive' OR status = 'Placed' OR status = 'Lost' OR status = 'Wash')`,
+    fields: JOB_FIELDS,
+    orderBy: '-dateLastModified',
+    count: 100,
   });
 }
 
@@ -258,24 +251,24 @@ async function getClientSubmissions(jobOrderIds) {
     return { data: results.flatMap(r => r?.data || []) };
   }
 
-  return cache.cached('bh:clientSubs', READ_TTL_MS, () => callTool('query_entity', {
+  return callTool('query_entity', {
     entityType: 'JobSubmission',
     where: `status IN (${statusList}) AND isDeleted = false`,
     fields: 'id,jobOrder,dateAdded,status',
     count: 500,
-  }));
+  });
 }
 
 // Submissions currently in "Offer Extended" status (corresponds to JobOrder "Offer Out" stage).
 // Used by the On The Board modal to show which candidate is on the board per filled job.
 async function getOfferExtendedSubmissions() {
-  return cache.cached('bh:offerOut', READ_TTL_MS, () => callTool('query_entity', {
+  return callTool('query_entity', {
     entityType: 'JobSubmission',
     where: "status = 'Offer Extended' AND isDeleted = false",
     fields: 'id,candidate,jobOrder,status,dateAdded',
     orderBy: '-dateAdded',
     count: 500,
-  }));
+  });
 }
 
 async function getOpenOpportunities() {
@@ -296,15 +289,11 @@ async function searchJobs(query) {
 }
 
 async function updateJobField(jobOrderId, fields) {
-  const result = await callTool('update_entity', {
+  return callTool('update_entity', {
     entityType: 'JobOrder',
     entityId: parseInt(jobOrderId, 10),
     fields,
   });
-  // Any job write can affect the cached job lists (status, owner, comp, etc.).
-  cache.bust('bh:openJobs');
-  cache.bust('bh:recentlyClosedJobs');
-  return result;
 }
 
 async function updatePlacementField(placementId, fields) {
@@ -324,25 +313,20 @@ async function updateOpportunityField(opportunityId, fields) {
 }
 
 async function updateSubmissionField(submissionId, fields) {
-  const result = await callTool('update_entity', {
+  return callTool('update_entity', {
     entityType: 'JobSubmission',
     entityId: parseInt(submissionId, 10),
     fields,
   });
-  // Submission status changes can move a row into/out of the CLIENT_SUB and
-  // Offer Extended sets used by the board.
-  cache.bust('bh:clientSubs');
-  cache.bust('bh:offerOut');
-  return result;
 }
 
 async function getCorporateUsers() {
-  return cache.cached('bh:corporateUsers', READ_TTL_MS, () => callTool('query_entity', {
+  return callTool('query_entity', {
     entityType: 'CorporateUser',
     where: 'isDeleted = false AND enabled = true',
     fields: 'id,firstName,lastName,email,customText1',
     count: 100,
-  }));
+  });
 }
 
 async function getOpenOpportunitiesFull() {
@@ -375,13 +359,10 @@ async function getClientContactsForCorp(clientCorpId) {
 }
 
 async function createJob(fields) {
-  const result = await callTool('create_entity', {
+  return callTool('create_entity', {
     entityType: 'JobOrder',
     fields,
   });
-  cache.bust('bh:openJobs');
-  cache.bust('bh:recentlyClosedJobs');
-  return result;
 }
 
 async function addNoteToJob(jobOrderId, comments) {
