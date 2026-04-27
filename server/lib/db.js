@@ -482,6 +482,18 @@ async function getClientById(clientId) {
   return data;
 }
 
+// Unfiltered fetch of every client row — used by the Bullhorn sync job to
+// dedupe across the whole table regardless of which user owns each row.
+// Do NOT expose this through user-facing endpoints; use getClients(userId).
+async function getAllClients() {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from('clients')
+    .select('id, name, bullhorn_client_id, created_by');
+  if (error) { console.error('[db] getAllClients error:', error.message); return []; }
+  return data || [];
+}
+
 async function createClient(name, createdBy) {
   if (!supabase) return null;
   const { data, error } = await supabase
@@ -495,7 +507,7 @@ async function createClient(name, createdBy) {
 
 async function updateClient(clientId, fields) {
   if (!supabase) return null;
-  const ALLOWED = new Set(['name', 'created_by', 'logo_url', 'account_manager']);
+  const ALLOWED = new Set(['name', 'created_by', 'logo_url', 'account_manager', 'bullhorn_client_id']);
   const updates = {};
   for (const [key, val] of Object.entries(fields)) {
     if (ALLOWED.has(key)) updates[key] = val;
@@ -541,6 +553,69 @@ async function bulkImportClients(clientsToInsert, clientsToUpdate) {
   }
 
   return { inserted, updated };
+}
+
+// Bulk apply the result of a Bullhorn sync run. Each update row carries
+// only the fields the sync wants to change ({ id, name?, bullhorn_client_id?, created_by? }),
+// so we don't clobber unrelated columns like logo_url or account_manager.
+// `linked` counts updates that set a previously-NULL bullhorn_client_id —
+// the backfill path, useful telemetry for the first run.
+async function bulkSyncBullhornClients(toInsert, toUpdate) {
+  if (!supabase) return { inserted: 0, linked: 0, updated: 0 };
+
+  let inserted = 0;
+  let linked = 0;
+  let updated = 0;
+
+  if (toInsert.length > 0) {
+    const { error } = await supabase.from('clients').insert(toInsert);
+    if (error) throw error;
+    inserted = toInsert.length;
+  }
+
+  for (const row of toUpdate) {
+    const updates = {};
+    if (row.name !== undefined) updates.name = row.name;
+    if (row.bullhorn_client_id !== undefined) updates.bullhorn_client_id = row.bullhorn_client_id;
+    if (row.created_by !== undefined) updates.created_by = row.created_by;
+    if (Object.keys(updates).length === 0) continue;
+
+    const { error } = await supabase
+      .from('clients')
+      .update(updates)
+      .eq('id', row.id);
+    if (error) {
+      console.error(`[db] bulkSyncBullhornClients update error for client ${row.id}:`, error.message);
+      continue;
+    }
+    if (row._wasUnlinked) linked++;
+    else updated++;
+  }
+
+  return { inserted, linked, updated };
+}
+
+async function getSyncState(key) {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from('sync_state')
+    .select('*')
+    .eq('key', key)
+    .maybeSingle();
+  if (error) { console.error('[db] getSyncState error:', error.message); return null; }
+  return data;
+}
+
+async function upsertSyncState(key, fields) {
+  if (!supabase) return null;
+  const row = { key, ...fields, updated_at: new Date().toISOString() };
+  const { data, error } = await supabase
+    .from('sync_state')
+    .upsert(row, { onConflict: 'key' })
+    .select()
+    .single();
+  if (error) { console.error('[db] upsertSyncState error:', error.message); return null; }
+  return data;
 }
 
 // =============================================
@@ -1427,7 +1502,8 @@ module.exports = {
   getAllPlacementChecklist, getPlacementChecklist, upsertPlacementChecklist,
   // Org Flow
   getUserByEmail, getActiveUsers,
-  getClients, getClientById, createClient, updateClient, deleteClient, bulkImportClients,
+  getClients, getClientById, getAllClients, createClient, updateClient, deleteClient, bulkImportClients,
+  bulkSyncBullhornClients, getSyncState, upsertSyncState,
   getEmployeesByClient, createEmployee, updateEmployee, deleteEmployee,
   bulkDeleteEmployees, updateEmployeePositions, resetEmployeePositions, bulkImportEmployees,
   getAssignments, createAssignment, deleteAssignment,

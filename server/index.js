@@ -179,3 +179,20 @@ app.listen(PORT, () => {
   console.log(`API server running on port ${PORT}`);
   console.log(`Auth: ${process.env.AZURE_TENANT_ID ? 'Microsoft SSO enabled' : 'DEV MODE (no auth)'}`);
 });
+
+// Background: sync Bullhorn ClientCorporations into Org Flow every 30 min.
+// Off by default in dev so local runs don't hammer the MCP; opt in via
+// ENABLE_SYNC_CRON=true. Always on in production.
+if (IS_PROD || process.env.ENABLE_SYNC_CRON === 'true') {
+  const cron = require('node-cron');
+  const { syncBullhornClients } = require('./lib/orgflowSync');
+  cron.schedule('*/30 * * * *', async () => {
+    try {
+      const result = await syncBullhornClients();
+      console.log('[cron] orgflow bullhorn sync:', result);
+    } catch (err) {
+      console.error('[cron] orgflow bullhorn sync failed:', err.message);
+    }
+  });
+  console.log('[cron] orgflow bullhorn sync registered (every 30 min)');
+}

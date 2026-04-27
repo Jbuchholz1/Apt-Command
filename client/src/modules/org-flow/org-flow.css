@@ -56,6 +56,8 @@
 .of-icon-sm { width: 16px; height: 16px; }
 .of-icon-xs { width: 12px; height: 12px; }
 .of-hidden { display: none; }
+.of-spin { animation: of-spin 1s linear infinite; }
+@keyframes of-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
 /* ---- Shared: Error/Empty States ---- */
 .of-error-banner { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 10px 16px; border-radius: 6px; font-size: 13px; }

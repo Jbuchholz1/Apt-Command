@@ -407,6 +407,12 @@ export function importOrgFlowClients(rows, currentUserId) {
   });
 }
 
+export function syncBullhornClients() {
+  return fetchAPI('/api/org-flow/sync-bullhorn-clients', {
+    method: 'POST',
+  });
+}
+
 export async function uploadClientLogo(clientId, file) {
   const token = await getToken();
   const formData = new FormData();

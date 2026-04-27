@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Building2, FolderOpen, Trash2, Users, User as UserIcon, Settings, CreditCard as Edit2, FileDown, Upload, Search, Image } from 'lucide-react';
+import { Plus, Building2, FolderOpen, Trash2, Users, User as UserIcon, Settings, CreditCard as Edit2, FileDown, Upload, Search, Image, RefreshCw } from 'lucide-react';
 import { useMsal } from '@azure/msal-react';
 import ClientAssignment from './ClientAssignment';
 import { readExcelToJson, writeExcelFile } from '../../../lib/excel';
@@ -7,6 +7,7 @@ import {
   getClientHealthStats, getOrgFlowCurrentUser, getOrgFlowClients,
   getOrgFlowUsers, updateOrgFlowClient, uploadClientLogo, removeClientLogo,
   createOrgFlowClient, deleteOrgFlowClient, importOrgFlowClients,
+  syncBullhornClients,
 } from '../../../lib/api';
 
 export default function OrgFlowDashboard({ onSelectClient }) {
@@ -36,6 +37,7 @@ export default function OrgFlowDashboard({ onSelectClient }) {
   const [clientHealthStats, setClientHealthStats] = useState({});
   const [healthModal, setHealthModal] = useState(null);
   const [alliesModal, setAlliesModal] = useState(null);
+  const [syncing, setSyncing] = useState(false);
 
   // Resolve MSAL email to Supabase user_profiles ID on mount
   useEffect(() => {
@@ -199,6 +201,25 @@ export default function OrgFlowDashboard({ onSelectClient }) {
     }
   };
 
+  const handleSyncBullhorn = async () => {
+    if (syncing) return;
+    setSyncing(true);
+    try {
+      const result = await syncBullhornClients();
+      if (result?.skipped === 'already-running') {
+        alert('A sync is already running — try again in a moment.');
+      } else {
+        const { inserted = 0, linked = 0, updated = 0 } = result || {};
+        alert(`Bullhorn sync complete:\n• ${inserted} new client(s)\n• ${linked} linked to existing card(s)\n• ${updated} updated`);
+      }
+      await loadClients();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const isMyClient = (client) => client.created_by === currentUserId;
 
   const filteredAndSortedClients = clients
@@ -288,6 +309,15 @@ export default function OrgFlowDashboard({ onSelectClient }) {
             >
               <Upload className="of-icon" />
               <span>Import Clients</span>
+            </button>
+            <button
+              onClick={handleSyncBullhorn}
+              disabled={syncing}
+              className="of-btn of-btn-secondary"
+              title="Pull active clients from Bullhorn into Org Flow"
+            >
+              <RefreshCw className={`of-icon ${syncing ? 'of-spin' : ''}`} />
+              <span>{syncing ? 'Syncing…' : 'Sync from Bullhorn'}</span>
             </button>
             <button
               onClick={() => setShowAddModal(true)}

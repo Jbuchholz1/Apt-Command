@@ -576,6 +576,23 @@ async function getClientCorporations(clientIds) {
   });
 }
 
+// Pull active ClientCorporations modified since `sinceMs` (Unix ms).
+// Pass 0 for a full scan (used by the first run / backfill).
+// Used by the Org Flow sync job; sorted newest-first so streaming-style
+// callers see the most recent edits first.
+async function getActiveClientCorporations(sinceMs = 0) {
+  const where =
+    `status = 'Active' AND isDeleted = false` +
+    (sinceMs > 0 ? ` AND dateLastModified > ${sinceMs}` : '');
+  return callTool('query_entity', {
+    entityType: 'ClientCorporation',
+    where,
+    fields: 'id,name,status,dateAdded,dateLastModified,owner(id,email,firstName,lastName)',
+    orderBy: '-dateLastModified',
+    count: 500,
+  });
+}
+
 async function getABJobs(startMs, endMs) {
   let where = "isDeleted = false AND type IN (1,2)";
   if (startMs && endMs) {
@@ -878,6 +895,7 @@ module.exports = {
   getActivePlacementsWithClient,
   getRecentAppointments,
   getClientCorporations,
+  getActiveClientCorporations,
   getABJobs,
   getProjectJobs,
   getPlacementsForJobs,

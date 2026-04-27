@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const { getActivePlacementsWithClient } = require('../lib/bullhorn');
 const db = require('../lib/db');
+const { syncBullhornClients } = require('../lib/orgflowSync');
 
 // Multer: in-memory storage for logo uploads (max 5MB, images only)
 const upload = multer({
@@ -160,6 +161,24 @@ router.post('/clients/import', async (req, res, next) => {
       skippedRows,
       warnings,
     });
+  } catch (err) { next(err); }
+});
+
+// POST /api/org-flow/sync-bullhorn-clients — pull active Bullhorn ClientCorporations
+// into Org Flow. Also runs on a 30-minute cron (server/index.js); this endpoint
+// exists for the manual "Sync from Bullhorn" button on the dashboard.
+router.post('/sync-bullhorn-clients', async (req, res, next) => {
+  try {
+    const result = await syncBullhornClients();
+    res.json(result);
+  } catch (err) { next(err); }
+});
+
+// GET /api/org-flow/sync-bullhorn-clients/status — last run info for UI
+router.get('/sync-bullhorn-clients/status', async (req, res, next) => {
+  try {
+    const state = await db.getSyncState('orgflow_bullhorn_clients');
+    res.json(state || { last_run_at: null, last_success_at: null });
   } catch (err) { next(err); }
 });
 

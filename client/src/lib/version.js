@@ -9,9 +9,27 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.20.3';
+export const APP_VERSION = '3.21.0';
 
 export const CHANGELOG = [
+  {
+    version: '3.21.0',
+    date: '2026-04-27',
+    title: 'Org Flow — Auto-Create Client Cards From Bullhorn',
+    changes: [
+      { type: 'minor', text: 'New clients created in Bullhorn now flow into Org Flow automatically. A background job runs every 30 minutes and pulls every active ClientCorporation; new corps become new Org Flow cards, existing cards with the same name get linked (case-insensitive), and the Bullhorn owner email is mapped to the matching user_profiles record so the Account Manager populates without a manual edit. The new bullhorn_client_id column on the clients table is the durable link going forward — name drift in Bullhorn keeps the card synced without creating a duplicate.' },
+      { type: 'minor', text: 'Org Flow dashboard adds a "Sync from Bullhorn" button next to Import Clients for on-demand pulls between cron runs. The result toast reports new / linked / updated counts, the button shows a spinning icon while running, and a concurrent click is rejected so two syncs cannot stomp each other.' },
+      { type: 'patch', text: 'Adds server/migrations/004_orgflow_bullhorn_sync.sql (apply via Supabase SQL editor before deploy) for the new bullhorn_client_id column and a sync_state watermark table. The sync only refetches ClientCorporations modified since the last successful run, so steady-state pulls are small.' },
+    ],
+  },
+  {
+    version: '3.20.4',
+    date: '2026-04-27',
+    title: 'Req Board — On The Board Triggered by Offer Extended',
+    changes: [
+      { type: 'patch', text: 'The "On The Board" stat now populates the moment a candidate’s submission status hits "Offer Extended" in Bullhorn (was: when the JobOrder was manually moved to "Filled"). The tile and modal still show one row per req with the candidate name(s) in the Candidate column — layout, sorting, owner filter, and inline edits are unchanged. Jobs whose status is "Filled" but with no Offer Extended candidate no longer appear; jobs with an Offer Extended candidate now appear regardless of JobOrder status.' },
+    ],
+  },
   {
     version: '3.20.3',
     date: '2026-04-27',
