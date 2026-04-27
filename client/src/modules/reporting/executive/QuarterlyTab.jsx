@@ -1,23 +1,39 @@
 import { useState, useEffect } from 'react';
 import LiveTile from './components/LiveTile';
 import PlaceholderTile from './components/PlaceholderTile';
+import DrillDownModal from './components/DrillDownModal';
 import { getClientHealth, getExecutiveQuarterly } from '../../../lib/api';
 
 function fmtNum(n) {
   if (n === null || n === undefined) return '—';
   return Number(n).toLocaleString('en-US');
 }
-
 function tileState(loading, value) {
   if (loading) return 'loading';
   if (value === null || value === undefined) return 'error';
   return 'ready';
 }
 
+const COLS = {
+  funnel: [
+    { key: 'stage', label: 'Stage' },
+    { key: 'name', label: 'Name' },
+    { key: 'date', label: 'Date', format: 'date' },
+  ],
+  clientHealth: [
+    { key: 'name', label: 'Client' },
+    { key: 'tier', label: 'Tier' },
+    { key: 'health', label: 'Health' },
+    { key: 'activePlacements', label: 'Active', align: 'num' },
+    { key: 'realMeetings90d', label: 'Real Mtg. (90d)', align: 'num' },
+  ],
+};
+
 export default function QuarterlyTab({ startDate, endDate }) {
   const [health, setHealth] = useState(null);
   const [quarterly, setQuarterly] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [openModal, setOpenModal] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -39,33 +55,55 @@ export default function QuarterlyTab({ startDate, endDate }) {
   const clientSubtitle = summary
     ? `${summary.green ?? 0} healthy · ${summary.yellow ?? 0} watch · ${summary.red ?? 0} at risk`
     : 'Total active clients';
+  const healthRows = (health?.clients || []).map(c => ({
+    id: c.id ?? c.clientId,
+    name: c.name || c.clientName || '',
+    tier: c.tier || '',
+    health: c.health || c.healthLabel || '',
+    activePlacements: c.activePlacements ?? c.activePlacementCount ?? null,
+    realMeetings90d: c.realMeetings90d ?? c.realMeetingCount ?? null,
+  }));
 
   const funnel = quarterly?.funnel;
   const funnelHeadline = funnel ? fmtNum(funnel.placements) : null;
   const funnelSubtitle = funnel
     ? `${fmtNum(funnel.leads)} leads → ${fmtNum(funnel.submissions)} subs → ${fmtNum(funnel.interviews)} interviews → ${fmtNum(funnel.placements)} placements`
     : 'Lead → Sub → Interview → Placement';
+  const funnelRows = funnel?.details || [];
 
   return (
-    <div className="exec-kpi-grid">
-      <PlaceholderTile label="P&L Statement (Full)" note="Pending accounting integration" />
-      <PlaceholderTile label="Revenue Forecast (next 2 quarters)" note="Pending pipeline weighting model" />
-      <PlaceholderTile label="Budget vs Actuals" note="Pending GL + budget setup" />
-      <PlaceholderTile label="Headcount Plan vs Actuals" note="From Supabase employees + Bullhorn Placements" />
-      <LiveTile
-        label="Talent Pipeline Health Report"
-        value={funnelHeadline ?? '—'}
-        subtitle={funnelSubtitle}
-        state={tileState(loading, funnelHeadline)}
-      />
-      <LiveTile
-        label="Key Client Reviews & Health Scores"
-        value={totalClients ?? '—'}
-        subtitle={clientSubtitle}
-        state={tileState(loading, totalClients)}
-      />
-      <PlaceholderTile label="Regulatory & Compliance Audit" note="Pending compliance system integration" />
-      <PlaceholderTile label="Vendor & Partner Review" note="Pending procurement system integration" />
-    </div>
+    <>
+      <div className="exec-kpi-grid">
+        <PlaceholderTile label="P&L Statement (Full)" note="Pending accounting integration" />
+        <PlaceholderTile label="Revenue Forecast (next 2 quarters)" note="Pending pipeline weighting model" />
+        <PlaceholderTile label="Budget vs Actuals" note="Pending GL + budget setup" />
+        <PlaceholderTile label="Headcount Plan vs Actuals" note="From Supabase employees + Bullhorn Placements" />
+        <LiveTile
+          label="Talent Pipeline Health Report"
+          value={funnelHeadline ?? '—'}
+          subtitle={funnelSubtitle}
+          state={tileState(loading, funnelHeadline)}
+          clickable={funnelRows.length > 0}
+          onClick={() => setOpenModal('funnel')}
+        />
+        <LiveTile
+          label="Key Client Reviews & Health Scores"
+          value={totalClients ?? '—'}
+          subtitle={clientSubtitle}
+          state={tileState(loading, totalClients)}
+          clickable={healthRows.length > 0}
+          onClick={() => setOpenModal('clientHealth')}
+        />
+        <PlaceholderTile label="Regulatory & Compliance Audit" note="Pending compliance system integration" />
+        <PlaceholderTile label="Vendor & Partner Review" note="Pending procurement system integration" />
+      </div>
+
+      {openModal === 'funnel' && (
+        <DrillDownModal title="Talent Pipeline" columns={COLS.funnel} rows={funnelRows} onClose={() => setOpenModal(null)} />
+      )}
+      {openModal === 'clientHealth' && (
+        <DrillDownModal title="Client Health" columns={COLS.clientHealth} rows={healthRows} onClose={() => setOpenModal(null)} />
+      )}
+    </>
   );
 }

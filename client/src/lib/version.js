@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.20.0';
+export const APP_VERSION = '3.20.1';
 
 export const CHANGELOG = [
+  {
+    version: '3.20.1',
+    date: '2026-04-27',
+    title: 'Executive Reporting \u2014 Drill Into Every Live Tile',
+    changes: [
+      { type: 'minor', text: 'Every live tile on Executive Reporting is now clickable. Click opens a sortable modal with the underlying records \u2014 same pattern as the existing Current/Potential New Input drill-downs. Weekly: New Reqs, New Placements, Candidate Submissions, Offers Extended & Accepted, Active Contractor Headcount, Attrition / Dropouts, Revenue/Spread/Pipeline. Monthly: New Hires vs Attrition (combined hire/attrition view), Active Clients (with placement counts), New Clients Onboarded, Client Retention (with Yes/No retained column), Off-boards Next 30d, YTD New Input. Quarterly: Talent Pipeline funnel (rows tagged by stage) and Key Client Reviews (tier + health + active count). Each modal table has clickable headers for ascending/descending sort.' },
+      { type: 'patch', text: 'The three executive endpoints now return per-metric detail arrays alongside the count/value fields, so the modals open without an additional fetch. Coming Soon placeholder tiles stay non-interactive \u2014 no click affordance, no modal.' },
+    ],
+  },
   {
     version: '3.20.0',
     date: '2026-04-27',

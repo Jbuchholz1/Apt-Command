@@ -1062,20 +1062,64 @@ router.get('/executive-weekly', requireAdmin, async (req, res, next) => {
     const r = rangeMs(start, end);
     if (!r) return res.status(400).json({ error: 'Invalid date format' });
     const { startMs, endMs } = r;
-    const windowMs = endMs - startMs;
     const priorEndMs = startMs - 1;
 
-    const [currentCount, priorCount, backoutsRes, offersExtendedRes, placementsInRangeRes] = await Promise.all([
+    const [
+      currentCount,
+      priorCount,
+      backoutsRes,
+      offersExtendedRes,
+      placementsInRangeRes,
+      activePlacementsRes,
+    ] = await Promise.all([
       countActivePlacementsAsOf(endMs),
       countActivePlacementsAsOf(priorEndMs),
       getBackoutNotesInRange(startMs, endMs),
       getOffersExtendedInRange(startMs, endMs),
       getPlacementsInRange(startMs, endMs),
+      getActivePlacementsWithClient(),
     ]);
 
     const backouts = backoutsRes?.data || [];
-    const offersExtended = (offersExtendedRes?.data || []).length;
-    const offersAccepted = (placementsInRangeRes?.data || []).length;
+    const placementsInRange = placementsInRangeRes?.data || [];
+    const offersExtendedList = offersExtendedRes?.data || [];
+    const offersExtended = offersExtendedList.length;
+    const offersAccepted = placementsInRange.length;
+
+    const headcountDetails = (activePlacementsRes?.data || []).map(p => ({
+      id: p.id,
+      candidate: p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '',
+      jobTitle: p.jobOrder?.title || '',
+      client: p.jobOrder?.clientCorporation?.name || '',
+      empType: p.employeeType || '',
+      dateBegin: p.dateBegin || null,
+      dateEnd: p.dateEnd || null,
+      status: p.status || '',
+    }));
+
+    const attritionDetails = backouts.map(b => ({
+      id: b.id,
+      candidate: b.candidateName || '',
+      target: `${b.targetEntityName || ''} ${b.targetEntityID || ''}`.trim(),
+      comment: (b.comment || '').slice(0, 250),
+    }));
+
+    const offersExtendedDetails = offersExtendedList.map(s => ({
+      id: s.id,
+      type: 'Extended',
+      candidate: s.candidate ? `${s.candidate.firstName || ''} ${s.candidate.lastName || ''}`.trim() : '',
+      jobTitle: s.jobOrder?.title || '',
+      client: s.jobOrder?.clientCorporation?.name || '',
+      date: s.dateLastModified || s.dateAdded || null,
+    }));
+    const offersAcceptedDetails = placementsInRange.map(p => ({
+      id: p.id,
+      type: 'Accepted',
+      candidate: p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '',
+      jobTitle: p.jobOrder?.title || '',
+      client: p.jobOrder?.clientCorporation?.name || '',
+      date: p.dateBegin || null,
+    }));
 
     res.json({
       dateRange: { start, end },
@@ -1083,15 +1127,17 @@ router.get('/executive-weekly', requireAdmin, async (req, res, next) => {
         current: currentCount,
         priorWeek: priorCount,
         delta: currentCount - priorCount,
+        details: headcountDetails,
       },
       attrition: {
         count: backouts.length,
-        details: backouts.slice(0, 100),
+        details: attritionDetails,
       },
       offers: {
         extended: offersExtended,
         accepted: offersAccepted,
         total: offersExtended + offersAccepted,
+        details: [...offersExtendedDetails, ...offersAcceptedDetails],
       },
     });
   } catch (err) {
@@ -1139,68 +1185,168 @@ router.get('/executive-monthly', requireAdmin, async (req, res, next) => {
     ]);
 
     // New clients onboarded — distinct ClientCorporation.ids in newJobs
-    const newClientIds = new Set();
+    const newClientMap = new Map();
     for (const j of (newJobsRes?.data || [])) {
-      if (j.clientCorporation?.id) newClientIds.add(j.clientCorporation.id);
+      const cId = j.clientCorporation?.id;
+      if (!cId) continue;
+      if (!newClientMap.has(cId)) {
+        newClientMap.set(cId, {
+          id: cId,
+          name: j.clientCorporation?.name || '',
+          firstReqDate: j.dateAdded || null,
+          reqCount: 1,
+        });
+      } else {
+        const entry = newClientMap.get(cId);
+        entry.reqCount++;
+        if (j.dateAdded && (!entry.firstReqDate || j.dateAdded < entry.firstReqDate)) {
+          entry.firstReqDate = j.dateAdded;
+        }
+      }
     }
+    const newClientDetails = [...newClientMap.values()];
 
     // Active clients — distinct clientCorporation across active placements
-    const activeClientIds = new Set();
+    const activeClientMap = new Map();
     for (const p of (activeClientsRes?.data || [])) {
-      const cId = p.jobOrder?.clientCorporation?.id;
-      if (cId) activeClientIds.add(cId);
+      const c = p.jobOrder?.clientCorporation;
+      if (!c?.id) continue;
+      if (!activeClientMap.has(c.id)) {
+        activeClientMap.set(c.id, { id: c.id, name: c.name || '', placementCount: 1 });
+      } else {
+        activeClientMap.get(c.id).placementCount++;
+      }
     }
+    const activeClientDetails = [...activeClientMap.values()];
+    const activeClientIds = new Set(activeClientMap.keys());
 
-    // Off-boards in next 30 days
-    const offboards = (offboardsRes?.data || []);
+    // Active placements detail (for Headcount + Off-boards tile)
+    const activePlacementsDetail = (activeClientsRes?.data || []).map(p => ({
+      id: p.id,
+      candidate: p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '',
+      jobTitle: p.jobOrder?.title || '',
+      client: p.jobOrder?.clientCorporation?.name || '',
+      empType: p.employeeType || '',
+      dateBegin: p.dateBegin || null,
+      dateEnd: p.dateEnd || null,
+      status: p.status || '',
+    }));
 
-    // YTD GP — sum new input across YTD placements
+    // Off-boards in next 30 days (detail)
+    const offboardDetails = (offboardsRes?.data || []).map(p => ({
+      id: p.id,
+      candidate: p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '',
+      jobTitle: p.jobOrder?.title || '',
+      client: p.jobOrder?.clientCorporation?.name || '',
+      empType: p.employeeType || '',
+      dateEnd: p.dateEnd || null,
+      status: p.status || '',
+    }));
+
+    // YTD GP details — recompute per-placement input for the modal
     const ytdPlacements = ytdPlacementsRes?.data || [];
     const ytdGp = await sumNewInput(ytdPlacements);
+    let ytdDetails = [];
+    if (ytdPlacements.length > 0) {
+      const pIds = ytdPlacements.map(p => p.id);
+      const salesCommRes = await getSalesCommissions(pIds);
+      for (const c of (salesCommRes?.data || [])) {
+        const p = ytdPlacements.find(pl => pl.id === c.placement?.id);
+        if (!p || !c.commissionPercentage) continue;
+        const bill = Number(p.clientBillRate) || 0;
+        const pay = Number(p.payRate) || 0;
+        const sal = Number(p.salary) || 0;
+        const feeRate = Number(p.fee) || 0;
+        const empType = (p.employeeType || '').toLowerCase();
+        let spread = 0;
+        if (empType === 'perm' && sal > 0 && feeRate > 0) spread = sal * feeRate / 26;
+        else if (empType === 'corp-to-corp' && bill > 0 && pay > 0) spread = (bill - pay * 1.05) * 40;
+        else if (bill > 0 && pay > 0) spread = (bill - pay * 1.25) * 40;
+        const input = Math.round(spread * (c.commissionPercentage || 1) * 100) / 100;
+        ytdDetails.push({
+          id: p.id,
+          candidate: p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '',
+          jobTitle: p.jobOrder?.title || '',
+          client: p.jobOrder?.clientCorporation?.name || '',
+          dateBegin: p.dateBegin || null,
+          input,
+        });
+      }
+    }
+    ytdDetails.sort((a, b) => b.input - a.input);
 
-    // Net hires
-    const newHires = (placementsInRangeRes?.data || []).length;
-    const attritionCount = (backoutsRes?.data || []).length;
+    // Net hires detail — list new hires + backout records
+    const placementsInRange = placementsInRangeRes?.data || [];
+    const backouts = backoutsRes?.data || [];
+    const netHiresDetails = [
+      ...placementsInRange.map(p => ({
+        id: `hire-${p.id}`,
+        type: 'New Hire',
+        candidate: p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '',
+        jobTitle: p.jobOrder?.title || '',
+        client: p.jobOrder?.clientCorporation?.name || '',
+        date: p.dateBegin || null,
+      })),
+      ...backouts.map(b => ({
+        id: `backout-${b.id}`,
+        type: 'Attrition',
+        candidate: b.candidateName || '',
+        jobTitle: b.targetEntityName || '',
+        client: '',
+        date: null,
+      })),
+    ];
 
     // Retention — clients with placements in prior period vs same clients still active now
-    const priorPeriodClients = new Set();
+    const priorPeriodClientMap = new Map();
     for (const p of (activeClientsPriorMonthRes?.data || [])) {
-      const cId = p.jobOrder?.clientCorporation?.id;
-      if (cId) priorPeriodClients.add(cId);
+      const c = p.jobOrder?.clientCorporation;
+      if (!c?.id) continue;
+      if (!priorPeriodClientMap.has(c.id)) {
+        priorPeriodClientMap.set(c.id, { id: c.id, name: c.name || '' });
+      }
     }
-    let retainedCount = 0;
-    for (const cId of priorPeriodClients) {
-      if (activeClientIds.has(cId)) retainedCount++;
-    }
-    const retentionRate = priorPeriodClients.size > 0
-      ? Math.round((retainedCount / priorPeriodClients.size) * 1000) / 10
+    const retentionDetails = [...priorPeriodClientMap.values()].map(c => ({
+      ...c,
+      retained: activeClientIds.has(c.id) ? 'Yes' : 'No',
+    }));
+    const retainedCount = retentionDetails.filter(r => r.retained === 'Yes').length;
+    const retentionRate = priorPeriodClientMap.size > 0
+      ? Math.round((retainedCount / priorPeriodClientMap.size) * 1000) / 10
       : null;
 
     res.json({
       dateRange: { start, end },
       newClients: {
-        count: newClientIds.size,
+        count: newClientMap.size,
+        details: newClientDetails,
       },
       activeClients: {
-        count: activeClientIds.size,
+        count: activeClientMap.size,
+        details: activeClientDetails,
       },
       headcountForecast: {
-        active: activeClientsRes?.data?.length || 0,
-        offboards30d: offboards.length,
+        active: (activeClientsRes?.data || []).length,
+        offboards30d: offboardDetails.length,
+        activeDetails: activePlacementsDetail,
+        offboardDetails,
       },
       ytdGp: {
         value: ytdGp,
         rangeStart: new Date(yearStartMs).toISOString().slice(0, 10),
+        details: ytdDetails,
       },
       netHires: {
-        newHires,
-        attrition: attritionCount,
-        net: newHires - attritionCount,
+        newHires: placementsInRange.length,
+        attrition: backouts.length,
+        net: placementsInRange.length - backouts.length,
+        details: netHiresDetails,
       },
       retention: {
-        priorPeriodClients: priorPeriodClients.size,
+        priorPeriodClients: priorPeriodClientMap.size,
         retainedClients: retainedCount,
         rate: retentionRate,
+        details: retentionDetails,
       },
     });
   } catch (err) {
@@ -1225,25 +1371,53 @@ router.get('/executive-quarterly', requireAdmin, async (req, res, next) => {
       getPlacementsInRange(startMs, endMs),
     ]);
 
-    const leads = (leadsRes?.data || []).length;
-    const submissions = (subsRes?.data || []).length;
-    const interviews = (interviewsRes?.data || []).length;
-    const placements = (placementsRes?.data || []).length;
+    const leadsList = leadsRes?.data || [];
+    const subsList = subsRes?.data || [];
+    const interviewsList = interviewsRes?.data || [];
+    const placementsList = placementsRes?.data || [];
 
     const pct = (num, den) => den > 0 ? Math.round((num / den) * 1000) / 10 : null;
+
+    const funnelDetails = [
+      ...leadsList.map(l => ({
+        id: `lead-${l.id}`,
+        stage: 'Lead',
+        name: l.name || l.companyName || '',
+        date: l.dateAdded || null,
+      })),
+      ...subsList.map(s => ({
+        id: `sub-${s.id}`,
+        stage: 'Submission',
+        name: s.candidate ? `${s.candidate.firstName || ''} ${s.candidate.lastName || ''}`.trim() : '',
+        date: s.dateAdded || null,
+      })),
+      ...interviewsList.map(i => ({
+        id: `interview-${i.id}`,
+        stage: 'Interview',
+        name: i.candidateReference ? `${i.candidateReference.firstName || ''} ${i.candidateReference.lastName || ''}`.trim() : (i.subject || ''),
+        date: i.dateBegin || null,
+      })),
+      ...placementsList.map(p => ({
+        id: `placement-${p.id}`,
+        stage: 'Placement',
+        name: p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '',
+        date: p.dateBegin || null,
+      })),
+    ];
 
     res.json({
       dateRange: { start, end },
       funnel: {
-        leads,
-        submissions,
-        interviews,
-        placements,
+        leads: leadsList.length,
+        submissions: subsList.length,
+        interviews: interviewsList.length,
+        placements: placementsList.length,
         conversions: {
-          subToInterview: pct(interviews, submissions),
-          interviewToPlacement: pct(placements, interviews),
-          subToPlacement: pct(placements, submissions),
+          subToInterview: pct(interviewsList.length, subsList.length),
+          interviewToPlacement: pct(placementsList.length, interviewsList.length),
+          subToPlacement: pct(placementsList.length, subsList.length),
         },
+        details: funnelDetails,
       },
     });
   } catch (err) {
