@@ -262,6 +262,7 @@ router.post('/log-meeting-activity', async (req, res, next) => {
         subject,
         dateBeginMs: dateBegin,
         comments,
+        commentingPersonId: corpUser.id,
       });
     } catch (noteErr) {
       console.error('[dashboard] note create failed:', noteErr.message);

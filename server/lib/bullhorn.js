@@ -963,6 +963,7 @@ async function createMeetingNote({
   subject,
   dateBeginMs,
   comments,
+  commentingPersonId,
 }) {
   if (!clientContactId && !candidateId) return null;
 
@@ -991,6 +992,12 @@ async function createMeetingNote({
     comments: noteBody,
     action,
   };
+  // commentingPersonId attributes the Note to the actual user instead of
+  // letting Bullhorn default to the API service account ("Anthropic Claude
+  // AI API"). Pass through to add_note which sets Note.commentingPerson.
+  if (commentingPersonId) {
+    payload.commentingPersonId = parseInt(commentingPersonId, 10);
+  }
   console.log('[createMeetingNote] payload:', JSON.stringify(payload));
   const result = await callTool('add_note', payload);
   console.log('[createMeetingNote] full MCP result:', JSON.stringify(result));

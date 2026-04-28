@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.21.12';
+export const APP_VERSION = '3.21.13';
 
 export const CHANGELOG = [
+  {
+    version: '3.21.13',
+    date: '2026-04-28',
+    title: 'Daily Brief — Note Author Is Now The Logged-In User, Not The API Account',
+    changes: [
+      { type: 'patch', text: 'After v3.21.12 dual-write made Notes appear on the contact\'s Activity tab, the Author column showed "Anthropic Claude AI API" because Bullhorn defaults Note.commentingPerson to whoever holds the auth token (the API service account). The route now passes the signed-in user\'s CorporateUser id through createMeetingNote → bullhorn-mcp\'s add_note, which sets commentingPerson: { id, _subtype: "CorporateUser" } on the Note. Author now shows the actual user (e.g., Chris Schwab). Pair with bullhorn-mcp commit that adds the commentingPersonId field to handleAddNote.' },
+    ],
+  },
   {
     version: '3.21.12',
     date: '2026-04-28',
