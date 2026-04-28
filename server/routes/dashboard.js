@@ -8,6 +8,7 @@ const {
   findContactsByEmails,
   findCandidatesByEmails,
   createAppointment,
+  createMeetingNote,
 } = require('../lib/bullhorn');
 const { supabase } = require('../lib/db');
 const { SALES_POINTS } = require('../lib/salesConfig');
@@ -248,6 +249,25 @@ router.post('/log-meeting-activity', async (req, res, next) => {
       return res.status(502).json({ error: bhErr.message || 'Bullhorn rejected the appointment' });
     }
 
+    // Dual-write: Notes are what render on the contact's Activity tab in
+    // APT's Bullhorn config. Even though Add Appointment is the manual
+    // entry point, the resulting Appointment doesn't surface there — only
+    // Notes do. Best-effort; we don't fail the request if the Note fails.
+    let note = null;
+    try {
+      note = await createMeetingNote({
+        clientContactId,
+        candidateId,
+        action: type,
+        subject,
+        dateBeginMs: dateBegin,
+        comments,
+      });
+    } catch (noteErr) {
+      console.error('[dashboard] note create failed:', noteErr.message);
+      note = { ok: false, error: noteErr.message };
+    }
+
     if (supabase) {
       const { error: upErr } = await supabase
         .from('meeting_activity_logged')
@@ -267,7 +287,7 @@ router.post('/log-meeting-activity', async (req, res, next) => {
       }
     }
 
-    res.json({ ok: true, appointmentId, verified, attendee });
+    res.json({ ok: true, appointmentId, verified, attendee, note });
   } catch (err) {
     next(err);
   }

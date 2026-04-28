@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.21.11';
+export const APP_VERSION = '3.21.12';
 
 export const CHANGELOG = [
+  {
+    version: '3.21.12',
+    date: '2026-04-28',
+    title: 'Daily Brief — Dual-Write Appointment + Note for Contact-Activity Visibility',
+    changes: [
+      { type: 'patch', text: 'Chris confirmed: he opened ClientContact 28051 (Brian Somerford) directly and the Appointment was NOT on his Activity tab — even though the Appointment was created with the right Subject, dateAdded, clientContactReference, and an AppointmentAttendee junction. APT\'s Bullhorn Activity tab renders Notes, not Appointments. Dual-write fix: keep creating the Appointment (drives MAR via the AM dashboard\'s clientContactReference query) AND also create a Bullhorn Note attached to the contact with action=meeting type and subject/comments, which is what surfaces on the Activity tab. Required updating bullhorn-mcp\'s add_note to accept ClientContact (was Candidate/JobOrder only).' },
+    ],
+  },
   {
     version: '3.21.11',
     date: '2026-04-28',

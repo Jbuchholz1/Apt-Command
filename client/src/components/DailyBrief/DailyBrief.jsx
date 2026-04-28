@@ -1016,6 +1016,7 @@ function LogActivityModal({ ev, userDomain, matches, onClose, onLogged }) {
         alreadyLogged: !!res?.alreadyLogged,
         verified: res?.verified ?? null,
         attendee: res?.attendee ?? null,
+        note: res?.note ?? null,
       });
       setSubmitting(false);
     } catch (err) {
@@ -1096,8 +1097,18 @@ function LogActivityModal({ ev, userDomain, matches, onClose, onLogged }) {
                         <span className="db-form-label">AppointmentAttendee junction</span>
                         <span className="db-log-activity-verify-val">
                           {successResult.attendee.ok
-                            ? `Created (id #${successResult.attendee.id}) — appointment will appear on contact's Activity tab`
+                            ? `Created (id #${successResult.attendee.id})`
                             : `Failed: ${successResult.attendee.error}`}
+                        </span>
+                      </div>
+                    )}
+                    {successResult.note && (
+                      <div className="db-log-activity-verify-row">
+                        <span className="db-form-label">Bullhorn Note (Activity-tab visibility)</span>
+                        <span className="db-log-activity-verify-val">
+                          {successResult.note.ok
+                            ? `Created (Note id #${successResult.note.id}) — should appear on contact's Activity tab`
+                            : `Failed: ${successResult.note.error}`}
                         </span>
                       </div>
                     )}

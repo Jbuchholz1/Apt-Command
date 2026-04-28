@@ -950,6 +950,60 @@ async function createAppointment({
   return { ...result, id, verified: verifiedRow, attendee: attendeeResult };
 }
 
+// Create a Bullhorn Note attached to a ClientContact (or Candidate) so the
+// activity surfaces on the contact's Activity tab. The Appointment we create
+// alongside drives MAR via the existing AM dashboard query — but APT's
+// Bullhorn config doesn't render Appointments on contact-Activity tabs, only
+// Notes. Dual-write covers both paths: Note for visibility, Appointment for
+// MAR / dashboard counts.
+async function createMeetingNote({
+  clientContactId,
+  candidateId,
+  action,
+  subject,
+  dateBeginMs,
+  comments,
+}) {
+  if (!clientContactId && !candidateId) return null;
+
+  const dateLine = new Date(dateBeginMs).toLocaleString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric',
+    hour: 'numeric', minute: '2-digit', hour12: true,
+    timeZone: 'America/Chicago',
+  });
+  const noteBody = [
+    `[${action}] ${subject || '(No subject)'}`,
+    dateLine,
+    '',
+    comments || '',
+  ].join('\n').trim();
+
+  // Mirror the bullhorn-mcp's existing handleAddNote pattern: personReference
+  // is the polymorphic person link Bullhorn Notes use. add_note is already on
+  // the MCP allowlist and handles auth/headers, so prefer it over create_entity
+  // for Notes — and the existing Note shape is known-good.
+  const personId = clientContactId || candidateId;
+  const entityType = clientContactId ? 'ClientContact' : 'Candidate';
+
+  const payload = {
+    entityType,
+    entityId: parseInt(personId, 10),
+    comments: noteBody,
+    action,
+  };
+  console.log('[createMeetingNote] payload:', JSON.stringify(payload));
+  const result = await callTool('add_note', payload);
+  console.log('[createMeetingNote] full MCP result:', JSON.stringify(result));
+
+  const noteId = result?.changedEntityId || result?.data?.changedEntityId || null;
+  if (!noteId) {
+    const raw = result?.message
+      || (typeof result === 'string' ? result : JSON.stringify(result));
+    return { ok: false, error: String(raw).slice(0, 400) };
+  }
+  return { ok: true, id: noteId };
+}
+
 async function createAppointmentAttendee({ appointmentId, clientContactId, candidateId }) {
   if (!appointmentId) throw new Error('appointmentId required for AppointmentAttendee');
   if (!clientContactId && !candidateId) return null;
@@ -1044,5 +1098,6 @@ module.exports = {
   findContactsByEmails,
   findCandidatesByEmails,
   createAppointment,
+  createMeetingNote,
   callTool,
 };
