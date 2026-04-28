@@ -206,6 +206,16 @@ async function syncBullhornContacts() {
   const toInsert = [];
   let fetched = 0;
   let skipped = 0;
+  // Per-reason counters so we can see which check is filtering everything out.
+  let skipNoCorp = 0;
+  let skipDupBhId = 0;
+  let skipDupEmail = 0;
+  console.log('[orgflowSync] contact sync starting:', {
+    linkedClients: linked.length,
+    existingEmployees: existing.length,
+    existingWithBhId: existingByBhId.size,
+    existingByClientEmail: existingByClientEmail.size,
+  });
 
   let loggedSample = false;
   for (let i = 0; i < corpIds.length; i += CHUNK) {
@@ -247,12 +257,13 @@ async function syncBullhornContacts() {
       const cc = c.clientCorporation;
       const corpId = (cc && typeof cc === 'object') ? (cc.id ?? cc) : cc;
       const orgFlowClientId = corpId != null ? corpToClient.get(String(corpId)) : null;
-      if (!bhId || !orgFlowClientId) { skipped++; continue; }
-      if (existingByBhId.has(String(bhId))) { skipped++; continue; }
+      if (!bhId || !orgFlowClientId) { skipped++; skipNoCorp++; continue; }
+      if (existingByBhId.has(String(bhId))) { skipped++; skipDupBhId++; continue; }
 
       const email = (c.email || '').toLowerCase().trim();
       if (email && existingByClientEmail.has(`${orgFlowClientId}::${email}`)) {
         skipped++;
+        skipDupEmail++;
         continue;
       }
 
@@ -277,7 +288,14 @@ async function syncBullhornContacts() {
     await db.bulkInsertEmployees(toInsert);
   }
 
-  console.log('[orgflowSync] contacts:', { fetched, inserted: toInsert.length, skipped });
+  console.log('[orgflowSync] contacts:', {
+    fetched,
+    inserted: toInsert.length,
+    skipped,
+    skipNoCorp,
+    skipDupBhId,
+    skipDupEmail,
+  });
   return { contactsFetched: fetched, contactsInserted: toInsert.length, contactsSkipped: skipped };
 }
 

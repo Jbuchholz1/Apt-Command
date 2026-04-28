@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.22.3';
+export const APP_VERSION = '3.22.4';
 
 export const CHANGELOG = [
+  {
+    version: '3.22.4',
+    date: '2026-04-28',
+    title: 'Org Flow — Per-Reason Skip Counters For Contact Sync Diagnostic',
+    changes: [
+      { type: 'patch', text: 'v3.22.3 confirmed the corp-id lookup works (hasIt: true, lookupValue: <UUID>) — so the 661 skips are coming from one of the dedupe checks afterward. Added counters and a startup log: linkedClients, existingEmployees, existingWithBhId, existingByClientEmail set sizes; plus skipNoCorp / skipDupBhId / skipDupEmail buckets. Next sync click will tell us exactly which check is filtering everything (most likely existingByClientEmail catching pre-existing manual rows).' },
+    ],
+  },
   {
     version: '3.22.3',
     date: '2026-04-28',
