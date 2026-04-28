@@ -187,14 +187,17 @@ async function syncBullhornContacts() {
     return { contactsFetched: 0, contactsInserted: 0, contactsSkipped: 0 };
   }
 
+  // Use String() on both sides of the lookup. Supabase returns bigint
+  // columns as strings (to preserve precision); Bullhorn returns ids as
+  // numbers in JSON. Map uses strict equality, so mixing types misses.
   const corpToClient = new Map();
-  for (const c of linked) corpToClient.set(Number(c.bullhorn_client_id), c.id);
+  for (const c of linked) corpToClient.set(String(c.bullhorn_client_id), c.id);
 
   const existing = await db.getEmployeesForClientIds(linked.map(c => c.id));
   const existingByBhId = new Set();
   const existingByClientEmail = new Set();
   for (const e of existing) {
-    if (e.bullhorn_contact_id != null) existingByBhId.add(Number(e.bullhorn_contact_id));
+    if (e.bullhorn_contact_id != null) existingByBhId.add(String(e.bullhorn_contact_id));
     if (e.email) existingByClientEmail.add(`${e.client_id}::${e.email.toLowerCase().trim()}`);
   }
 
@@ -232,9 +235,9 @@ async function syncBullhornContacts() {
       // the Bullhorn response shape. Handle all three.
       const cc = c.clientCorporation;
       const corpId = (cc && typeof cc === 'object') ? (cc.id ?? cc) : cc;
-      const orgFlowClientId = corpId != null ? corpToClient.get(Number(corpId)) : null;
+      const orgFlowClientId = corpId != null ? corpToClient.get(String(corpId)) : null;
       if (!bhId || !orgFlowClientId) { skipped++; continue; }
-      if (existingByBhId.has(Number(bhId))) { skipped++; continue; }
+      if (existingByBhId.has(String(bhId))) { skipped++; continue; }
 
       const email = (c.email || '').toLowerCase().trim();
       if (email && existingByClientEmail.has(`${orgFlowClientId}::${email}`)) {
@@ -254,7 +257,7 @@ async function syncBullhornContacts() {
       });
       // Update dedupe sets so a duplicate within this same run can't slip in
       // (the same contact can ride along multiple chunks if a client got moved).
-      existingByBhId.add(Number(bhId));
+      existingByBhId.add(String(bhId));
       if (email) existingByClientEmail.add(`${orgFlowClientId}::${email}`);
     }
   }

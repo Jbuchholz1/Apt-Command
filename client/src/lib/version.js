@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.22.1';
+export const APP_VERSION = '3.22.2';
 
 export const CHANGELOG = [
+  {
+    version: '3.22.2',
+    date: '2026-04-28',
+    title: 'Org Flow — String-Compare Bullhorn IDs To Avoid bigint/Number Mismatch',
+    changes: [
+      { type: 'patch', text: 'After v3.22.1 the sample log showed clientCorporation.id = 3457 and corpToClient had 3457 as a key, yet every contact still skipped. Root cause: Supabase returns bigint columns (clients.bullhorn_client_id) as strings to preserve precision, but Bullhorn returns ids as numbers in JSON — Map.get uses strict equality so "3457" !== 3457 and every lookup missed. Switched the dedupe map and lookups to String() on both sides, which works regardless of how the underlying source represents the id. Also future-proofs against any other place where the two sources disagree on int vs string.' },
+    ],
+  },
   {
     version: '3.22.1',
     date: '2026-04-28',
