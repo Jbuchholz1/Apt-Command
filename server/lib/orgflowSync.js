@@ -204,6 +204,7 @@ async function syncBullhornContacts() {
   let fetched = 0;
   let skipped = 0;
 
+  let loggedSample = false;
   for (let i = 0; i < corpIds.length; i += CHUNK) {
     const chunk = corpIds.slice(i, i + CHUNK);
     const result = await getClientContactsForCorps(chunk);
@@ -216,11 +217,22 @@ async function syncBullhornContacts() {
     if (contacts.length === 500) {
       console.warn('[orgflowSync] contact chunk hit count=500 — possible truncation', { chunkSize: chunk.length });
     }
+    if (!loggedSample && contacts[0]) {
+      loggedSample = true;
+      console.log('[orgflowSync] sample contact shape:',
+        JSON.stringify(contacts[0]).slice(0, 400),
+        '| corpToClient sample keys:',
+        [...corpToClient.keys()].slice(0, 5).join(','));
+    }
 
     for (const c of contacts) {
       const bhId = c.id;
-      const corpId = c.clientCorporation?.id;
-      const orgFlowClientId = corpId ? corpToClient.get(Number(corpId)) : null;
+      // ClientContact.clientCorporation can come back as a nested object
+      // ({id, name}), as a bare numeric id, or as a string id depending on
+      // the Bullhorn response shape. Handle all three.
+      const cc = c.clientCorporation;
+      const corpId = (cc && typeof cc === 'object') ? (cc.id ?? cc) : cc;
+      const orgFlowClientId = corpId != null ? corpToClient.get(Number(corpId)) : null;
       if (!bhId || !orgFlowClientId) { skipped++; continue; }
       if (existingByBhId.has(Number(bhId))) { skipped++; continue; }
 

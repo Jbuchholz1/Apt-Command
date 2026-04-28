@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.22.0';
+export const APP_VERSION = '3.22.1';
 
 export const CHANGELOG = [
+  {
+    version: '3.22.1',
+    date: '2026-04-28',
+    title: 'Org Flow — Handle Multiple Shapes For Contact.clientCorporation',
+    changes: [
+      { type: 'patch', text: 'After v3.22.0 the metadata showed contactsFetched: 661 but contactsInserted: 0 — every contact was getting skipped at the "which Org Flow client?" lookup because c.clientCorporation was coming back as a bare numeric id, not the {id, name} object I assumed. The dedupe now accepts nested object, bare number, or string id. Also logs the first contact\'s shape on each run so any future tenant-specific quirks are visible in Railway logs.' },
+    ],
+  },
   {
     version: '3.22.0',
     date: '2026-04-28',
