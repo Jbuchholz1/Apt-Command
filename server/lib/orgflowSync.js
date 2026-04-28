@@ -222,10 +222,21 @@ async function syncBullhornContacts() {
     }
     if (!loggedSample && contacts[0]) {
       loggedSample = true;
-      console.log('[orgflowSync] sample contact shape:',
-        JSON.stringify(contacts[0]).slice(0, 400),
-        '| corpToClient sample keys:',
-        [...corpToClient.keys()].slice(0, 5).join(','));
+      const sampleCC = contacts[0].clientCorporation;
+      const sampleCorpId = (sampleCC && typeof sampleCC === 'object') ? (sampleCC.id ?? sampleCC) : sampleCC;
+      const firstMapKey = [...corpToClient.keys()][0];
+      console.log('[orgflowSync] DEBUG lookup:', {
+        sampleContact: JSON.stringify(contacts[0]).slice(0, 200),
+        sampleCorpIdValue: sampleCorpId,
+        sampleCorpIdType: typeof sampleCorpId,
+        sampleCorpIdAsString: String(sampleCorpId),
+        firstMapKey,
+        firstMapKeyType: typeof firstMapKey,
+        mapSize: corpToClient.size,
+        hasIt: corpToClient.has(String(sampleCorpId)),
+        lookupValue: corpToClient.get(String(sampleCorpId)),
+        keysSample: [...corpToClient.keys()].slice(0, 5),
+      });
     }
 
     for (const c of contacts) {

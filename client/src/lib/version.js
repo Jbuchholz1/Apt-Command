@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.22.2';
+export const APP_VERSION = '3.22.3';
 
 export const CHANGELOG = [
+  {
+    version: '3.22.3',
+    date: '2026-04-28',
+    title: 'Org Flow — Verbose Lookup Debug Log For Contact Sync',
+    changes: [
+      { type: 'patch', text: 'Even with the v3.22.2 String() fix, all 661 contacts were still skipping. Added a one-shot per-run debug log that prints the sample corp id (value + type), the first map key (value + type), the map size, and the actual hasIt/lookupValue results — so the next sync click will tell us definitively whether the keys are strings, numbers, BigInts, or something else, and whether the lookup is genuinely missing or returning a falsy value.' },
+    ],
+  },
   {
     version: '3.22.2',
     date: '2026-04-28',
