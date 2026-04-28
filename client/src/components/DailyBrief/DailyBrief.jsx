@@ -980,6 +980,9 @@ function LogActivityModal({ ev, userDomain, matches, onClose, onLogged }) {
   const [candidateId, setCandidateId] = useState(initialMatch?.kind === 'candidate' ? initialMatch.id : '');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+  // Hold success result on screen so user can verify the new Bullhorn
+  // appointment by ID instead of guessing whether the create silently failed.
+  const [successResult, setSuccessResult] = useState(null);
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -998,7 +1001,7 @@ function LogActivityModal({ ev, userDomain, matches, onClose, onLogged }) {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      await logMeetingActivity({
+      const res = await logMeetingActivity({
         outlookEventId: ev.id,
         type,
         dateBegin: startMs,
@@ -1008,11 +1011,19 @@ function LogActivityModal({ ev, userDomain, matches, onClose, onLogged }) {
         comments: comments || '',
         durationMinutes,
       });
-      onLogged(ev.id);
+      setSuccessResult({
+        appointmentId: res?.appointmentId ?? null,
+        alreadyLogged: !!res?.alreadyLogged,
+      });
+      setSubmitting(false);
     } catch (err) {
       setSubmitError(err.message || 'Failed to log activity.');
       setSubmitting(false);
     }
+  };
+
+  const handleDone = () => {
+    onLogged(ev.id);
   };
 
   return (
@@ -1025,14 +1036,53 @@ function LogActivityModal({ ev, userDomain, matches, onClose, onLogged }) {
         aria-labelledby="db-log-activity-title"
       >
         <header className="db-modal-header">
-          <h2 id="db-log-activity-title" className="db-modal-title">Log activity</h2>
+          <h2 id="db-log-activity-title" className="db-modal-title">
+            {successResult ? 'Activity logged' : 'Log activity'}
+          </h2>
           <button
             type="button"
             className="db-modal-close"
-            onClick={onClose}
+            onClick={successResult ? handleDone : onClose}
             aria-label="Close"
           >×</button>
         </header>
+        {successResult ? (
+          <div className="db-log-activity-success">
+            <div className="db-log-activity-meta">
+              <div className="db-log-activity-meta-time">{formatRecentEventDate(startMs)}</div>
+              <div className="db-log-activity-meta-subject">{ev.subject || '(no subject)'}</div>
+            </div>
+            <p className="db-log-activity-success-msg">
+              {successResult.alreadyLogged
+                ? 'This meeting was already logged in Bullhorn.'
+                : 'Bullhorn confirmed the new appointment.'}
+            </p>
+            {successResult.appointmentId ? (
+              <div className="db-log-activity-success-id">
+                <span className="db-form-label">Bullhorn Appointment ID</span>
+                <code>{successResult.appointmentId}</code>
+                <p className="db-log-activity-success-hint">
+                  Search this ID in Bullhorn (Apps &rarr; Find &rarr; Appointment) to verify it
+                  landed where you expect.
+                </p>
+              </div>
+            ) : (
+              <p className="db-log-activity-success-hint">
+                Server reported success but didn&rsquo;t return an ID &mdash; check Railway logs
+                for [createAppointment].
+              </p>
+            )}
+            <footer className="db-modal-footer">
+              <button
+                type="button"
+                className="db-btn-primary"
+                onClick={handleDone}
+              >
+                Done
+              </button>
+            </footer>
+          </div>
+        ) : (
         <form className="db-log-activity-form" onSubmit={handleSubmit}>
           <div className="db-log-activity-meta">
             <div className="db-log-activity-meta-time">{formatRecentEventDate(startMs)}</div>
@@ -1118,6 +1168,7 @@ function LogActivityModal({ ev, userDomain, matches, onClose, onLogged }) {
             </button>
           </footer>
         </form>
+        )}
       </div>
     </div>
   );

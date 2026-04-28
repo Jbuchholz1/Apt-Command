@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.21.6';
+export const APP_VERSION = '3.21.7';
 
 export const CHANGELOG = [
+  {
+    version: '3.21.7',
+    date: '2026-04-28',
+    title: 'Daily Brief — Log Activity Now Shows the Bullhorn Appointment ID',
+    changes: [
+      { type: 'patch', text: 'After paired bullhorn-mcp deploy that adds the create_entity tool, the modal now stays open on success and shows the Bullhorn Appointment ID it just created. Click Done to close. The ID is selectable for paste into Bullhorn (Apps → Find → Appointment) so you can verify exactly where the new record landed instead of guessing whether the create silently failed. If the server reports success without an ID, the modal flags it and points at the Railway [createAppointment] log line.' },
+    ],
+  },
   {
     version: '3.21.6',
     date: '2026-04-28',
