@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.21.5';
+export const APP_VERSION = '3.21.6';
 
 export const CHANGELOG = [
+  {
+    version: '3.21.6',
+    date: '2026-04-28',
+    title: 'Daily Brief — Log Activity Now Surfaces Bullhorn Errors + Sets `dateEnd`',
+    changes: [
+      { type: 'patch', text: 'The "Log activity" modal in the Last 7 Days section was silently reporting success even when Bullhorn rejected the create. Two fixes: (1) `dateEnd` is now sent on every Appointment create (Bullhorn requires it; previously only `dateBegin` + `duration` were sent so creates were silently rejected), and (2) when Bullhorn returns a non-JSON error the MCP wraps it as { message: "..." } — the route now detects that shape and returns a 502 with the rejection text so the modal shows what failed instead of fake-succeeding. Apply server/migrations/003_meeting_activity_logged.sql in Supabase if you haven\'t — without it the ✓ Logged badge resets on reload.' },
+    ],
+  },
   {
     version: '3.21.5',
     date: '2026-04-27',

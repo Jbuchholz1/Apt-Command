@@ -223,21 +223,26 @@ router.post('/log-meeting-activity', async (req, res, next) => {
       }
     }
 
-    const created = await createAppointment({
-      ownerId: corpUser.id,
-      type,
-      dateBegin,
-      subject,
-      clientContactId,
-      candidateId,
-      jobOrderId,
-      comments,
-      durationMinutes,
-    });
-    const appointmentId = created?.data?.changedEntityId
-      || created?.changedEntityId
-      || created?.data?.id
-      || null;
+    let appointmentId;
+    try {
+      const created = await createAppointment({
+        ownerId: corpUser.id,
+        type,
+        dateBegin,
+        subject,
+        clientContactId,
+        candidateId,
+        jobOrderId,
+        comments,
+        durationMinutes,
+      });
+      appointmentId = created.id;
+    } catch (bhErr) {
+      // createAppointment now throws when Bullhorn rejects (MCP { message }
+      // shape) — surface the rejection text to the modal so the user knows
+      // exactly what to fix instead of getting a silent fake-success.
+      return res.status(502).json({ error: bhErr.message || 'Bullhorn rejected the appointment' });
+    }
 
     if (supabase) {
       const { error: upErr } = await supabase

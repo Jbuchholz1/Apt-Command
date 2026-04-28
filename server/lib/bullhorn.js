@@ -824,10 +824,21 @@ async function findCandidatesByEmails(emails) {
 
 // Create a Bullhorn Appointment. Mirrors the shape used by getAppointmentsInRange
 // so the new record shows up in the AM dashboard MAR query immediately.
+//
+// Bullhorn requires `dateEnd` for Appointment creation (the in-app form has it
+// as a required field). We compute it from durationMinutes when known, else
+// default to 30 min after dateBegin.
+//
+// MCP failure mode: when Bullhorn rejects a create the MCP server returns
+// { message: "<raw error text>" } instead of throwing — see commit 44ad6a3
+// for the same trap on the Org Flow sync. Detect that shape and re-throw so
+// the route surfaces the Bullhorn complaint instead of silently reporting
+// "appointmentId: null".
 async function createAppointment({
   ownerId,
   type,
   dateBegin,
+  dateEnd,
   subject,
   clientContactId,
   candidateId,
@@ -835,16 +846,21 @@ async function createAppointment({
   comments,
   durationMinutes,
 }) {
+  const resolvedDuration = (typeof durationMinutes === 'number' && durationMinutes > 0)
+    ? durationMinutes
+    : 30;
+  const resolvedEnd = (typeof dateEnd === 'number' && dateEnd > dateBegin)
+    ? dateEnd
+    : dateBegin + resolvedDuration * 60 * 1000;
+
   const fields = {
     owner: { id: parseInt(ownerId, 10) },
     type,
     dateBegin,
+    dateEnd: resolvedEnd,
+    duration: resolvedDuration,
     subject: subject || '(No subject)',
-    isDeleted: false,
   };
-  if (typeof durationMinutes === 'number' && durationMinutes > 0) {
-    fields.duration = durationMinutes;
-  }
   if (clientContactId) {
     fields.clientContactReference = { id: parseInt(clientContactId, 10) };
   }
@@ -857,10 +873,22 @@ async function createAppointment({
   if (comments) {
     fields.description = comments;
   }
-  return callTool('create_entity', {
+
+  console.log('[createAppointment] payload:', JSON.stringify(fields));
+  const result = await callTool('create_entity', {
     entityType: 'Appointment',
     fields,
   });
+
+  const id = result?.changedEntityId || result?.data?.changedEntityId || result?.data?.id || null;
+  if (!id) {
+    const raw = result?.message
+      || (typeof result === 'string' ? result : JSON.stringify(result));
+    console.error('[createAppointment] Bullhorn rejected:', String(raw).slice(0, 800));
+    throw new Error(`Bullhorn rejected the appointment: ${String(raw).slice(0, 400)}`);
+  }
+  console.log('[createAppointment] created id:', id);
+  return { ...result, id };
 }
 
 module.exports = {
