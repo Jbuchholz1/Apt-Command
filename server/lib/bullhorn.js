@@ -576,13 +576,14 @@ async function getClientCorporations(clientIds) {
   });
 }
 
-// Pull active ClientCorporations modified since `sinceMs` (Unix ms).
+// Pull non-deleted ClientCorporations modified since `sinceMs` (Unix ms).
 // Pass 0 for a full scan (used by the first run / backfill).
-// Used by the Org Flow sync job; sorted newest-first so streaming-style
-// callers see the most recent edits first.
+// No status filter — APT's tenant uses a custom status value, so a literal
+// `status = 'Active'` matched nothing. The sync surfaces every non-deleted
+// corp; users can filter or delete archived cards from Org Flow if needed.
 async function getActiveClientCorporations(sinceMs = 0) {
   const where =
-    `status = 'Active' AND isDeleted = false` +
+    `isDeleted = false` +
     (sinceMs > 0 ? ` AND dateLastModified > ${sinceMs}` : '');
   return callTool('query_entity', {
     entityType: 'ClientCorporation',

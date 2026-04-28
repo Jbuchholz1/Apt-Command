@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.21.0';
+export const APP_VERSION = '3.21.1';
 
 export const CHANGELOG = [
+  {
+    version: '3.21.1',
+    date: '2026-04-27',
+    title: 'Org Flow — Bullhorn Sync Status Filter Removed',
+    changes: [
+      { type: 'patch', text: 'First sync after deploy returned 0 fetched / 0 inserted / 0 linked because the WHERE clause used a literal status = "Active" that did not match APT\'s tenant. Dropped the status filter so the sync now pulls every non-deleted ClientCorporation. Trade-off: archived / inactive corps will surface as Org Flow cards on the next run — delete them from Org Flow as needed, or we can re-add a status filter later once we know the exact value(s) APT uses.' },
+    ],
+  },
   {
     version: '3.21.0',
     date: '2026-04-27',
