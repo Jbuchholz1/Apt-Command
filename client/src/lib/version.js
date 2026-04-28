@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.21.2';
+export const APP_VERSION = '3.21.3';
 
 export const CHANGELOG = [
+  {
+    version: '3.21.3',
+    date: '2026-04-27',
+    title: 'Org Flow — Surface Bullhorn Error Text on Sync',
+    changes: [
+      { type: 'patch', text: 'When Bullhorn rejects the sync query (bad field name, bad WHERE, etc.) the MCP wraps the raw error string as { message: "..." } instead of returning structured data. The sync was treating that as "no rows" and silently writing 0/0/0 to sync_state. It now throws the message text into last_error in Supabase and into Railway logs, so the actual Bullhorn complaint is visible without grepping logs.' },
+    ],
+  },
   {
     version: '3.21.2',
     date: '2026-04-27',

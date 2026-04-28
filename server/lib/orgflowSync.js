@@ -39,7 +39,16 @@ async function syncBullhornClients() {
     const bhCorps = bhResult?.data || [];
     console.log('[orgflowSync] fetched', bhCorps.length, 'corps; sample keys:',
       bhCorps[0] ? Object.keys(bhCorps[0]).join(',') : '(empty)',
-      'raw response keys:', bhResult ? Object.keys(bhResult).join(',') : '(null)');
+      'raw response keys:', bhResult ? Object.keys(bhResult).join(',') : '(null)',
+      'message:', bhResult?.message ? String(bhResult.message).slice(0, 600) : '(none)');
+
+    // If MCP couldn't parse Bullhorn's response as JSON it falls back to
+    // { message: "<raw text>" } — almost always an error from Bullhorn (bad
+    // field, malformed where, etc.). Surface it as last_error instead of
+    // silently writing 0/0/0 to sync_state.
+    if (bhResult?.message && !Array.isArray(bhResult?.data)) {
+      throw new Error(`Bullhorn returned non-JSON response: ${String(bhResult.message).slice(0, 400)}`);
+    }
 
     if (bhCorps.length === 0) {
       await db.upsertSyncState(SYNC_KEY, {
