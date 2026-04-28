@@ -1102,15 +1102,19 @@ function LogActivityModal({ ev, userDomain, matches, onClose, onLogged }) {
                       </div>
                     )}
                     <p className="db-log-activity-success-hint">
-                      If the Subject above is your meeting and Created is just now, the
-                      Appointment is real. If it&rsquo;s a different meeting / older date, the
-                      MCP echoed an existing id — check Railway logs.
+                      <strong>To verify in Bullhorn:</strong> open the linked ClientContact above
+                      (not the appointment id) and look on its <strong>Activity</strong> tab —
+                      that&rsquo;s where this appointment will appear. Bullhorn ids aren&rsquo;t unique
+                      across entity types, so searching the Appointment id in the general Find
+                      will land on an unrelated Candidate/Contact with the same number.
                     </p>
                   </div>
                 ) : (
                   <p className="db-log-activity-success-hint">
-                    Search this ID in Bullhorn (Apps &rarr; Find &rarr; Appointment) to verify it
-                    landed where you expect.
+                    To verify in Bullhorn, open the linked ClientContact and check its
+                    <strong> Activity</strong> tab. (Bullhorn ids aren&rsquo;t unique across entity
+                    types — searching this Appointment id in the general Find will surface an
+                    unrelated record.)
                   </p>
                 )}
               </div>

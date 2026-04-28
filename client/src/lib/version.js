@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.21.10';
+export const APP_VERSION = '3.21.11';
 
 export const CHANGELOG = [
+  {
+    version: '3.21.11',
+    date: '2026-04-28',
+    title: 'Daily Brief — Modal Verify Copy Points At The Contact\'s Activity Tab',
+    changes: [
+      { type: 'patch', text: 'After v3.21.10, the AppointmentAttendee junction was being created successfully (id #17986 in James\'s test) but searching the Appointment id (37807) in Bullhorn\'s general Find returned Candidate 37807 (Frank Fishburn) — same number, different entity. Bullhorn ids are scoped per entity type so the same number can mean different records. Updated the modal copy to direct users to open the linked ClientContact and check its Activity tab — that\'s where the new appointment will actually appear, since the junction record now ties them together.' },
+    ],
+  },
   {
     version: '3.21.10',
     date: '2026-04-28',
