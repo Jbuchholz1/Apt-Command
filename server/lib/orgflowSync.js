@@ -37,6 +37,9 @@ async function syncBullhornClients() {
 
     const bhResult = await getActiveClientCorporations(lastSuccessMs);
     const bhCorps = bhResult?.data || [];
+    console.log('[orgflowSync] fetched', bhCorps.length, 'corps; sample keys:',
+      bhCorps[0] ? Object.keys(bhCorps[0]).join(',') : '(empty)',
+      'raw response keys:', bhResult ? Object.keys(bhResult).join(',') : '(null)');
 
     if (bhCorps.length === 0) {
       await db.upsertSyncState(SYNC_KEY, {
@@ -77,7 +80,12 @@ async function syncBullhornClients() {
         continue;
       }
 
-      const ownerEmail = corp.owner?.email?.toLowerCase();
+      // ClientCorporation.owners is a TO_MANY collection. Take the first owner's
+      // email (or fall back to corp.owner if Bullhorn ever returns it singular).
+      const ownerEmail = (corp.owners?.data?.[0]?.email
+        || corp.owners?.[0]?.email
+        || corp.owner?.email
+        || '').toLowerCase();
       const mappedUserId = ownerEmail ? emailToUserId.get(ownerEmail) || null : null;
 
       const linked = byBhId.get(Number(bhId));

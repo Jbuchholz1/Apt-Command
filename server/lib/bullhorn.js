@@ -585,10 +585,13 @@ async function getActiveClientCorporations(sinceMs = 0) {
   const where =
     `isDeleted = false` +
     (sinceMs > 0 ? ` AND dateLastModified > ${sinceMs}` : '');
+  // ClientCorporation has `owners` (TO_MANY) not `owner` (TO_ONE) — match the
+  // existing getClientCorporations helper. An invalid subselect can make
+  // Bullhorn silently return zero rows.
   return callTool('query_entity', {
     entityType: 'ClientCorporation',
     where,
-    fields: 'id,name,status,dateAdded,dateLastModified,owner(id,email,firstName,lastName)',
+    fields: 'id,name,status,dateAdded,dateLastModified,owners',
     orderBy: '-dateLastModified',
     count: 500,
   });

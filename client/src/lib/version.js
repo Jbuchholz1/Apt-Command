@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.21.1';
+export const APP_VERSION = '3.21.2';
 
 export const CHANGELOG = [
+  {
+    version: '3.21.2',
+    date: '2026-04-27',
+    title: 'Org Flow — Bullhorn Sync `owner` → `owners` Fix',
+    changes: [
+      { type: 'patch', text: 'After dropping the status filter, the sync was still fetching 0 corps. Root cause: my fields list referenced owner(...) (TO_ONE subselect), but ClientCorporation actually has owners (TO_MANY) — an invalid field reference makes Bullhorn silently return zero rows. Switched to the same `owners` shape the existing getClientCorporations helper uses, and updated the account-manager mapping to read corp.owners[0].email. Also added a one-line server log on each sync so we can see fetched count and response shape in Railway logs going forward.' },
+    ],
+  },
   {
     version: '3.21.1',
     date: '2026-04-27',
