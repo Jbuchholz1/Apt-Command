@@ -1014,6 +1014,8 @@ function LogActivityModal({ ev, userDomain, matches, onClose, onLogged }) {
       setSuccessResult({
         appointmentId: res?.appointmentId ?? null,
         alreadyLogged: !!res?.alreadyLogged,
+        verified: res?.verified ?? null,
+        attendee: res?.attendee ?? null,
       });
       setSubmitting(false);
     } catch (err) {
@@ -1061,10 +1063,56 @@ function LogActivityModal({ ev, userDomain, matches, onClose, onLogged }) {
               <div className="db-log-activity-success-id">
                 <span className="db-form-label">Bullhorn Appointment ID</span>
                 <code>{successResult.appointmentId}</code>
-                <p className="db-log-activity-success-hint">
-                  Search this ID in Bullhorn (Apps &rarr; Find &rarr; Appointment) to verify it
-                  landed where you expect.
-                </p>
+                {successResult.verified ? (
+                  <div className="db-log-activity-verify">
+                    <div className="db-log-activity-verify-row">
+                      <span className="db-form-label">Subject (read back from Bullhorn)</span>
+                      <span className="db-log-activity-verify-val">
+                        {successResult.verified.subject || '(no subject)'}
+                      </span>
+                    </div>
+                    {successResult.verified.dateAdded && (
+                      <div className="db-log-activity-verify-row">
+                        <span className="db-form-label">Created in Bullhorn</span>
+                        <span className="db-log-activity-verify-val">
+                          {new Date(successResult.verified.dateAdded).toLocaleString('en-US', {
+                            timeZone: 'America/Chicago',
+                          })}
+                        </span>
+                      </div>
+                    )}
+                    {successResult.verified.clientContactReference && (
+                      <div className="db-log-activity-verify-row">
+                        <span className="db-form-label">Linked ClientContact</span>
+                        <span className="db-log-activity-verify-val">
+                          {successResult.verified.clientContactReference.firstName || ''}{' '}
+                          {successResult.verified.clientContactReference.lastName || ''}{' '}
+                          (#{successResult.verified.clientContactReference.id})
+                        </span>
+                      </div>
+                    )}
+                    {successResult.attendee && (
+                      <div className="db-log-activity-verify-row">
+                        <span className="db-form-label">AppointmentAttendee junction</span>
+                        <span className="db-log-activity-verify-val">
+                          {successResult.attendee.ok
+                            ? `Created (id #${successResult.attendee.id}) — appointment will appear on contact's Activity tab`
+                            : `Failed: ${successResult.attendee.error}`}
+                        </span>
+                      </div>
+                    )}
+                    <p className="db-log-activity-success-hint">
+                      If the Subject above is your meeting and Created is just now, the
+                      Appointment is real. If it&rsquo;s a different meeting / older date, the
+                      MCP echoed an existing id — check Railway logs.
+                    </p>
+                  </div>
+                ) : (
+                  <p className="db-log-activity-success-hint">
+                    Search this ID in Bullhorn (Apps &rarr; Find &rarr; Appointment) to verify it
+                    landed where you expect.
+                  </p>
+                )}
               </div>
             ) : (
               <p className="db-log-activity-success-hint">

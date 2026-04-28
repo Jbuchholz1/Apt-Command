@@ -1161,3 +1161,24 @@
   color: var(--apt-slate, #5b6478);
   margin: 0;
 }
+
+.db-log-activity-verify {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--apt-fog);
+}
+
+.db-log-activity-verify-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.db-log-activity-verify-val {
+  font-family: 'Inter', sans-serif;
+  font-size: 13.5px;
+  color: var(--apt-ink);
+}

@@ -912,7 +912,7 @@ async function createAppointment({
   const verify = await callTool('query_entity', {
     entityType: 'Appointment',
     where: `id = ${parseInt(id, 10)} AND isDeleted = false`,
-    fields: 'id,subject,type,dateBegin,owner(id,firstName,lastName),clientContactReference(id,firstName,lastName)',
+    fields: 'id,subject,type,dateBegin,dateAdded,owner(id,firstName,lastName),clientContactReference(id,firstName,lastName)',
     count: 1,
   });
   const verifiedRow = verify?.data?.[0] || null;
@@ -926,7 +926,58 @@ async function createAppointment({
     );
   }
   console.log('[createAppointment] verified appointment:', JSON.stringify(verifiedRow));
-  return { ...result, id, verified: verifiedRow };
+
+  // Create the AppointmentAttendee junction so the new appointment appears on
+  // the linked contact/candidate's Activity tab in Bullhorn. Setting
+  // clientContactReference alone is enough for our MAR queries (the AM
+  // dashboard reads that field directly), but Bullhorn's contact-record UI
+  // queries the appointmentAttendees junction — which our PUT doesn't
+  // populate automatically.
+  let attendeeResult = null;
+  if (clientContactId || candidateId) {
+    try {
+      attendeeResult = await createAppointmentAttendee({
+        appointmentId: id,
+        clientContactId,
+        candidateId,
+      });
+    } catch (attErr) {
+      console.error('[createAppointment] attendee create failed:', attErr.message);
+      attendeeResult = { ok: false, error: attErr.message };
+    }
+  }
+
+  return { ...result, id, verified: verifiedRow, attendee: attendeeResult };
+}
+
+async function createAppointmentAttendee({ appointmentId, clientContactId, candidateId }) {
+  if (!appointmentId) throw new Error('appointmentId required for AppointmentAttendee');
+  if (!clientContactId && !candidateId) return null;
+
+  const fields = {
+    appointment: { id: parseInt(appointmentId, 10) },
+  };
+  if (clientContactId) {
+    fields.clientContact = { id: parseInt(clientContactId, 10) };
+  }
+  if (candidateId) {
+    fields.candidate = { id: parseInt(candidateId, 10) };
+  }
+
+  console.log('[createAppointmentAttendee] payload:', JSON.stringify(fields));
+  const result = await callTool('create_entity', {
+    entityType: 'AppointmentAttendee',
+    fields,
+  });
+  console.log('[createAppointmentAttendee] full MCP result:', JSON.stringify(result));
+
+  const aaId = result?.changedEntityId || result?.data?.changedEntityId || null;
+  if (!aaId) {
+    const raw = result?.message
+      || (typeof result === 'string' ? result : JSON.stringify(result));
+    return { ok: false, error: String(raw).slice(0, 400) };
+  }
+  return { ok: true, id: aaId };
 }
 
 module.exports = {

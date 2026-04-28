@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.21.8';
+export const APP_VERSION = '3.21.9';
 
 export const CHANGELOG = [
+  {
+    version: '3.21.9',
+    date: '2026-04-28',
+    title: 'Daily Brief — Create AppointmentAttendee + Show Verify Row in Modal',
+    changes: [
+      { type: 'patch', text: 'Two changes targeting the "appointment created but not on contact record" symptom: (1) the route now creates an AppointmentAttendee junction row after the Appointment, since Bullhorn\'s contact-Activity tab queries that junction (clientContactReference alone is enough for our MAR/dashboard reads but not for the contact UI). (2) The Log Activity modal now shows the verify row read back from Bullhorn — Subject, Created date, linked ClientContact name+id, and AppointmentAttendee junction status — so you can immediately tell whether the right meeting was logged or whether Bullhorn echoed an existing id.' },
+    ],
+  },
   {
     version: '3.21.8',
     date: '2026-04-28',

@@ -224,6 +224,8 @@ router.post('/log-meeting-activity', async (req, res, next) => {
     }
 
     let appointmentId;
+    let verified = null;
+    let attendee = null;
     try {
       const created = await createAppointment({
         ownerId: corpUser.id,
@@ -237,6 +239,8 @@ router.post('/log-meeting-activity', async (req, res, next) => {
         durationMinutes,
       });
       appointmentId = created.id;
+      verified = created.verified || null;
+      attendee = created.attendee || null;
     } catch (bhErr) {
       // createAppointment now throws when Bullhorn rejects (MCP { message }
       // shape) — surface the rejection text to the modal so the user knows
@@ -263,7 +267,7 @@ router.post('/log-meeting-activity', async (req, res, next) => {
       }
     }
 
-    res.json({ ok: true, appointmentId });
+    res.json({ ok: true, appointmentId, verified, attendee });
   } catch (err) {
     next(err);
   }
