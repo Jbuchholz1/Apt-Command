@@ -582,12 +582,13 @@ async function getClientCorporations(clientIds) {
 // `status = 'Active'` matched nothing. The sync surfaces every non-deleted
 // corp; users can filter or delete archived cards from Org Flow if needed.
 async function getActiveClientCorporations(sinceMs = 0) {
-  const where =
-    `isDeleted = false` +
-    (sinceMs > 0 ? ` AND dateLastModified > ${sinceMs}` : '');
-  // ClientCorporation has `owners` (TO_MANY) not `owner` (TO_ONE) — match the
-  // existing getClientCorporations helper. An invalid subselect can make
-  // Bullhorn silently return zero rows.
+  // Note: ClientCorporation does NOT support `isDeleted` (Bullhorn returns
+  // "is not a valid field name"). For a full scan we use `id > 0` to match
+  // every record; incremental runs filter by dateLastModified.
+  // `owners` is TO_MANY — matches the existing getClientCorporations helper.
+  const where = sinceMs > 0
+    ? `dateLastModified > ${sinceMs}`
+    : `id > 0`;
   return callTool('query_entity', {
     entityType: 'ClientCorporation',
     where,

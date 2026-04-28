@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.21.3';
+export const APP_VERSION = '3.21.4';
 
 export const CHANGELOG = [
+  {
+    version: '3.21.4',
+    date: '2026-04-27',
+    title: 'Org Flow — Drop `isDeleted` From Bullhorn Sync WHERE',
+    changes: [
+      { type: 'patch', text: 'Bullhorn rejected the sync query with "Where clause \'isDeleted\' at position 1 is not a valid field name." ClientCorporation does not expose isDeleted (only entities like JobOrder and ClientContact do). Replaced the WHERE with id > 0 for the initial backfill and dateLastModified > X for incremental runs — matches the field surface of the existing getClientCorporations helper.' },
+    ],
+  },
   {
     version: '3.21.3',
     date: '2026-04-27',
