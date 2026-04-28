@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.21.7';
+export const APP_VERSION = '3.21.8';
 
 export const CHANGELOG = [
+  {
+    version: '3.21.8',
+    date: '2026-04-28',
+    title: 'Daily Brief — Verify the Created Appointment + Detect Echo Failures',
+    changes: [
+      { type: 'patch', text: 'Diagnostic: when Chris ran v3.21.7, the modal showed Bullhorn Appointment ID 37803 but searching that ID in Bullhorn opened ClientContact 37803 (Alex Francis) — the same number Chris had typed as the contact ID. Bullhorn was silently failing the create and echoing the input clientContactReference.id back as changedEntityId. The route now (a) checks changedEntityType is "Appointment", and (b) reads the appointment back via query_entity to confirm it actually exists. If either check fails the modal shows a clear "Bullhorn echoed an existing entity id" error pointing at Railway logs. The bullhorn-mcp side now logs the full PUT response so the next attempt produces a complete trace.' },
+    ],
+  },
   {
     version: '3.21.7',
     date: '2026-04-28',

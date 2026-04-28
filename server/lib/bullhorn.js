@@ -879,16 +879,54 @@ async function createAppointment({
     entityType: 'Appointment',
     fields,
   });
+  console.log('[createAppointment] full MCP result:', JSON.stringify(result));
 
+  // Bullhorn's create response varies. We accept changedEntityType/Id pairs
+  // when present so we can also confirm the entity TYPE matches — a
+  // create-then-echo bug surfaced where the create failed silently but the
+  // response contained the input clientContactReference.id, which we then
+  // wrongly reported as the new appointment id.
+  const claimedType = result?.changedEntityType || result?.data?.changedEntityType || null;
   const id = result?.changedEntityId || result?.data?.changedEntityId || result?.data?.id || null;
+
   if (!id) {
     const raw = result?.message
       || (typeof result === 'string' ? result : JSON.stringify(result));
     console.error('[createAppointment] Bullhorn rejected:', String(raw).slice(0, 800));
     throw new Error(`Bullhorn rejected the appointment: ${String(raw).slice(0, 400)}`);
   }
-  console.log('[createAppointment] created id:', id);
-  return { ...result, id };
+  if (claimedType && claimedType !== 'Appointment') {
+    console.error('[createAppointment] wrong entity type returned:', claimedType, 'id:', id);
+    throw new Error(
+      `Bullhorn returned changedEntityType="${claimedType}" id=${id} instead of an Appointment — ` +
+      `the create likely failed and Bullhorn echoed an existing entity id.`,
+    );
+  }
+
+  console.log('[createAppointment] claimed id:', id, 'type:', claimedType || '(not reported)');
+
+  // Verify the appointment actually exists. If Bullhorn echoes the
+  // clientContactReference.id (the silent-failure mode that put us at
+  // ClientContact 37803 instead of an Appointment), this query will return
+  // empty data and we'll throw with that diagnostic.
+  const verify = await callTool('query_entity', {
+    entityType: 'Appointment',
+    where: `id = ${parseInt(id, 10)} AND isDeleted = false`,
+    fields: 'id,subject,type,dateBegin,owner(id,firstName,lastName),clientContactReference(id,firstName,lastName)',
+    count: 1,
+  });
+  const verifiedRow = verify?.data?.[0] || null;
+  if (!verifiedRow) {
+    console.error('[createAppointment] verify miss — no Appointment with id', id);
+    throw new Error(
+      `Bullhorn reported create with id ${id} but no Appointment exists at that id. ` +
+      `Likely silent rejection: the response carried an existing entity id (e.g. the ` +
+      `clientContactReference) instead of a real new Appointment id. Check Railway logs ` +
+      `for [createAppointment] full MCP result.`,
+    );
+  }
+  console.log('[createAppointment] verified appointment:', JSON.stringify(verifiedRow));
+  return { ...result, id, verified: verifiedRow };
 }
 
 module.exports = {
