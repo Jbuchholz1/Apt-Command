@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.21.4';
+export const APP_VERSION = '3.21.5';
 
 export const CHANGELOG = [
+  {
+    version: '3.21.5',
+    date: '2026-04-27',
+    title: 'Org Flow — Allow Cards With No Matched Account Manager',
+    changes: [
+      { type: 'patch', text: 'Sync was failing with `null value in column "created_by" of relation "clients" violates not-null constraint` when a Bullhorn ClientCorporation\'s owner email did not match any user_profiles row. Apply migration server/migrations/005_orgflow_clients_created_by_nullable.sql in Supabase to drop the NOT NULL constraint — the dashboard already renders nullable account_manager safely. Auto-created cards with no matched manager will show a blank Account Manager until someone edits the card.' },
+    ],
+  },
   {
     version: '3.21.4',
     date: '2026-04-27',
