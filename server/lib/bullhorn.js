@@ -954,14 +954,25 @@ async function createAppointmentAttendee({ appointmentId, clientContactId, candi
   if (!appointmentId) throw new Error('appointmentId required for AppointmentAttendee');
   if (!clientContactId && !candidateId) return null;
 
+  // Bullhorn's AppointmentAttendee uses a polymorphic `attendee` person
+  // reference (not separate clientContact/candidate fields). The first
+  // attempt with clientContact: {id: X} got back:
+  //   "missing required property: attendee, type: MISSING_REQUIRED"
+  // The _subtype hint tells Bullhorn whether the id refers to a
+  // ClientContact or a Candidate — both share the polymorphic Person base.
   const fields = {
     appointment: { id: parseInt(appointmentId, 10) },
   };
   if (clientContactId) {
-    fields.clientContact = { id: parseInt(clientContactId, 10) };
-  }
-  if (candidateId) {
-    fields.candidate = { id: parseInt(candidateId, 10) };
+    fields.attendee = {
+      id: parseInt(clientContactId, 10),
+      _subtype: 'ClientContact',
+    };
+  } else if (candidateId) {
+    fields.attendee = {
+      id: parseInt(candidateId, 10),
+      _subtype: 'Candidate',
+    };
   }
 
   console.log('[createAppointmentAttendee] payload:', JSON.stringify(fields));

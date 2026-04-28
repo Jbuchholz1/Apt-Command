@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.21.9';
+export const APP_VERSION = '3.21.10';
 
 export const CHANGELOG = [
+  {
+    version: '3.21.10',
+    date: '2026-04-28',
+    title: 'Daily Brief — AppointmentAttendee Uses Polymorphic `attendee` Field',
+    changes: [
+      { type: 'patch', text: 'Diagnostic from v3.21.9: the appointment was being created correctly (subject + dateAdded matched the meeting) but the AppointmentAttendee junction was failing with "missing required property: attendee, type: MISSING_REQUIRED". Bullhorn\'s AppointmentAttendee uses a polymorphic `attendee` person reference, not separate `clientContact`/`candidate` fields. Switched to `attendee: { id, _subtype: "ClientContact" }` (or "Candidate") so the junction record actually persists — once it does, the appointment will appear on the linked contact\'s Activity tab in Bullhorn.' },
+    ],
+  },
   {
     version: '3.21.9',
     date: '2026-04-28',
