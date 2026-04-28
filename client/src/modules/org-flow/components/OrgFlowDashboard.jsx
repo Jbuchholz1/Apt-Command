@@ -209,8 +209,14 @@ export default function OrgFlowDashboard({ onSelectClient }) {
       if (result?.skipped === 'already-running') {
         alert('A sync is already running — try again in a moment.');
       } else {
-        const { inserted = 0, linked = 0, updated = 0 } = result || {};
-        alert(`Bullhorn sync complete:\n• ${inserted} new client(s)\n• ${linked} linked to existing card(s)\n• ${updated} updated`);
+        const { inserted = 0, linked = 0, updated = 0, contactsInserted = 0 } = result || {};
+        alert(
+          `Bullhorn sync complete:\n` +
+          `• ${inserted} new client(s)\n` +
+          `• ${linked} linked to existing card(s)\n` +
+          `• ${updated} updated\n` +
+          `• ${contactsInserted} new contact(s)`
+        );
       }
       await loadClients();
     } catch (err) {

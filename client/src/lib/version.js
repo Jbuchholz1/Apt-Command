@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.21.13';
+export const APP_VERSION = '3.22.0';
 
 export const CHANGELOG = [
+  {
+    version: '3.22.0',
+    date: '2026-04-28',
+    title: 'Org Flow — Auto-Create Employee Cards From Bullhorn Contacts',
+    changes: [
+      { type: 'minor', text: 'Every linked Org Flow client (those with a bullhorn_client_id) now pulls its ClientContacts from Bullhorn on each sync run and inserts them as employees. Dedupe is two-tiered: by bullhorn_contact_id, and by (client_id, lower(email)) so manually-typed contacts get linked instead of duplicated. Manager hierarchy is left blank — APT\'s Bullhorn doesn\'t expose reportsTo to this app, so all imported employees land "disconnected" and can be wired up via the existing OrgChart drag-and-drop. The "Sync from Bullhorn" alert now shows the new contact count alongside client counts.' },
+      { type: 'patch', text: 'New migration server/migrations/006_orgflow_employees_bullhorn_contact_id.sql (apply in Supabase before deploy) adds the bullhorn_contact_id column on employees plus a partial unique index. Bulk fetch is chunked at 20 corps per Bullhorn call; if any chunk hits the 500-row count cap a warning logs to Railway so we know to paginate.' },
+    ],
+  },
   {
     version: '3.21.13',
     date: '2026-04-28',

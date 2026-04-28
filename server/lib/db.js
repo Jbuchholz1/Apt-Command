@@ -494,6 +494,19 @@ async function getAllClients() {
   return data || [];
 }
 
+// Org Flow clients that have been linked to a Bullhorn ClientCorporation —
+// the input set for the contact sync (we only pull contacts for clients we
+// can map back to a Supabase row).
+async function getAllClientsLinkedToBullhorn() {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from('clients')
+    .select('id, bullhorn_client_id')
+    .not('bullhorn_client_id', 'is', null);
+  if (error) { console.error('[db] getAllClientsLinkedToBullhorn error:', error.message); return []; }
+  return data || [];
+}
+
 async function createClient(name, createdBy) {
   if (!supabase) return null;
   const { data, error } = await supabase
@@ -632,6 +645,28 @@ async function getEmployeesByClient(clientId) {
   return data || [];
 }
 
+// Bulk dedupe-source for the Bullhorn contact sync. Pulls just the columns
+// the sync needs to decide insert-vs-skip across many clients in one query.
+async function getEmployeesForClientIds(clientIds) {
+  if (!supabase || !clientIds?.length) return [];
+  const { data, error } = await supabase
+    .from('employees')
+    .select('id, client_id, email, bullhorn_contact_id')
+    .in('client_id', clientIds);
+  if (error) { console.error('[db] getEmployeesForClientIds error:', error.message); return []; }
+  return data || [];
+}
+
+// Single bulk insert for the contact sync. Each row is { client_id, name,
+// email, bullhorn_contact_id, ... }. No upsert path — the sync only inserts
+// rows that passed dedupe upstream.
+async function bulkInsertEmployees(rows) {
+  if (!supabase || !rows?.length) return { inserted: 0 };
+  const { error } = await supabase.from('employees').insert(rows);
+  if (error) throw error;
+  return { inserted: rows.length };
+}
+
 async function createEmployee(fields) {
   if (!supabase) return null;
   const { data, error } = await supabase
@@ -648,7 +683,7 @@ async function updateEmployee(employeeId, fields) {
   const ALLOWED = new Set([
     'name', 'role', 'department', 'email', 'phone',
     'reports_to_id', 'num_ftes', 'num_contractors', 'num_apt_contractors',
-    'position_x', 'position_y', 'updated_at',
+    'position_x', 'position_y', 'updated_at', 'bullhorn_contact_id',
   ]);
   const updates = {};
   for (const [key, val] of Object.entries(fields)) {
@@ -1502,10 +1537,11 @@ module.exports = {
   getAllPlacementChecklist, getPlacementChecklist, upsertPlacementChecklist,
   // Org Flow
   getUserByEmail, getActiveUsers,
-  getClients, getClientById, getAllClients, createClient, updateClient, deleteClient, bulkImportClients,
+  getClients, getClientById, getAllClients, getAllClientsLinkedToBullhorn,
+  createClient, updateClient, deleteClient, bulkImportClients,
   bulkSyncBullhornClients, getSyncState, upsertSyncState,
-  getEmployeesByClient, createEmployee, updateEmployee, deleteEmployee,
-  bulkDeleteEmployees, updateEmployeePositions, resetEmployeePositions, bulkImportEmployees,
+  getEmployeesByClient, getEmployeesForClientIds, createEmployee, updateEmployee, deleteEmployee,
+  bulkDeleteEmployees, bulkInsertEmployees, updateEmployeePositions, resetEmployeePositions, bulkImportEmployees,
   getAssignments, createAssignment, deleteAssignment,
   uploadClientLogo, removeClientLogo,
   // Support

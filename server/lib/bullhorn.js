@@ -358,6 +358,20 @@ async function getClientContactsForCorp(clientCorpId) {
   });
 }
 
+// Bulk fetch ClientContacts for many corps in one call. Used by the Org Flow
+// contact sync; caller chunks corp ids (the Bullhorn `count` cap is the only
+// real limit). Same WHERE pattern as clientHealth.js's bulk lookup.
+async function getClientContactsForCorps(corpIds) {
+  const numeric = (corpIds || []).map(i => parseInt(i, 10)).filter(Boolean);
+  if (numeric.length === 0) return { data: [] };
+  return callTool('query_entity', {
+    entityType: 'ClientContact',
+    where: `clientCorporation.id IN (${numeric.join(',')}) AND isDeleted = false`,
+    fields: 'id,firstName,lastName,email,clientCorporation(id)',
+    count: 500,
+  });
+}
+
 async function createJob(fields) {
   return callTool('create_entity', {
     entityType: 'JobOrder',
@@ -1066,6 +1080,7 @@ module.exports = {
   getOpenOpportunitiesFull,
   getOpportunityById,
   getClientContactsForCorp,
+  getClientContactsForCorps,
   createJob,
   searchJobs,
   addNoteToJob,

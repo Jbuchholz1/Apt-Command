@@ -12,7 +12,7 @@
 // only what changed since the last successful run after the initial backfill.
 
 const db = require('./db');
-const { getActiveClientCorporations } = require('./bullhorn');
+const { getActiveClientCorporations, getClientContactsForCorps } = require('./bullhorn');
 
 const SYNC_KEY = 'orgflow_bullhorn_clients';
 
@@ -51,13 +51,20 @@ async function syncBullhornClients() {
     }
 
     if (bhCorps.length === 0) {
+      // Even with no client changes, run the contact sync — newly-linked
+      // clients from a prior run may still need their contacts pulled in.
+      const contactResult = await syncBullhornContacts();
+      const metadata = {
+        inserted: 0, linked: 0, updated: 0, skipped: 0, fetched: 0,
+        ...contactResult,
+      };
       await db.upsertSyncState(SYNC_KEY, {
         last_run_at: startedAt,
         last_success_at: startedAt,
         last_error: null,
-        metadata: { inserted: 0, linked: 0, updated: 0, skipped: 0, fetched: 0 },
+        metadata,
       });
-      return { inserted: 0, linked: 0, updated: 0, skipped: 0, fetched: 0 };
+      return metadata;
     }
 
     const [existing, users] = await Promise.all([
@@ -130,6 +137,11 @@ async function syncBullhornClients() {
     }
 
     const result = await db.bulkSyncBullhornClients(toInsert, toUpdate);
+
+    // Pull contacts for every linked client (this run's freshly-linked rows
+    // included). Running it after the client upsert means new/linked corps
+    // are visible to the contact sync via getAllClientsLinkedToBullhorn().
+    const contactResult = await syncBullhornContacts();
     const finishedAt = new Date().toISOString();
 
     const metadata = {
@@ -138,6 +150,7 @@ async function syncBullhornClients() {
       updated: result.updated,
       skipped,
       fetched: bhCorps.length,
+      ...contactResult,
     };
 
     await db.upsertSyncState(SYNC_KEY, {
@@ -160,4 +173,86 @@ async function syncBullhornClients() {
   }
 }
 
-module.exports = { syncBullhornClients };
+// Pulls every active Bullhorn ClientContact for the linked Org Flow clients
+// and inserts new ones as employees rows. Skip dedupe is two-tiered:
+//   1. bullhorn_contact_id already present (per-tenant Bullhorn id)
+//   2. (client_id, lower(email)) already present — catches manually-typed
+//      contacts so the sync links them by id rather than duplicating.
+// Manager hierarchy is left blank (reports_to_id = null) — APT's tenant
+// doesn't expose reportsTo to this MCP key, and the user wants new cards
+// to land "disconnected" so they can be wired up via OrgChart drag/drop.
+async function syncBullhornContacts() {
+  const linked = await db.getAllClientsLinkedToBullhorn();
+  if (linked.length === 0) {
+    return { contactsFetched: 0, contactsInserted: 0, contactsSkipped: 0 };
+  }
+
+  const corpToClient = new Map();
+  for (const c of linked) corpToClient.set(Number(c.bullhorn_client_id), c.id);
+
+  const existing = await db.getEmployeesForClientIds(linked.map(c => c.id));
+  const existingByBhId = new Set();
+  const existingByClientEmail = new Set();
+  for (const e of existing) {
+    if (e.bullhorn_contact_id != null) existingByBhId.add(Number(e.bullhorn_contact_id));
+    if (e.email) existingByClientEmail.add(`${e.client_id}::${e.email.toLowerCase().trim()}`);
+  }
+
+  const corpIds = [...corpToClient.keys()];
+  const CHUNK = 20;
+  const toInsert = [];
+  let fetched = 0;
+  let skipped = 0;
+
+  for (let i = 0; i < corpIds.length; i += CHUNK) {
+    const chunk = corpIds.slice(i, i + CHUNK);
+    const result = await getClientContactsForCorps(chunk);
+
+    if (result?.message && !Array.isArray(result?.data)) {
+      throw new Error(`Bullhorn returned non-JSON for contacts: ${String(result.message).slice(0, 400)}`);
+    }
+    const contacts = result?.data || [];
+    fetched += contacts.length;
+    if (contacts.length === 500) {
+      console.warn('[orgflowSync] contact chunk hit count=500 — possible truncation', { chunkSize: chunk.length });
+    }
+
+    for (const c of contacts) {
+      const bhId = c.id;
+      const corpId = c.clientCorporation?.id;
+      const orgFlowClientId = corpId ? corpToClient.get(Number(corpId)) : null;
+      if (!bhId || !orgFlowClientId) { skipped++; continue; }
+      if (existingByBhId.has(Number(bhId))) { skipped++; continue; }
+
+      const email = (c.email || '').toLowerCase().trim();
+      if (email && existingByClientEmail.has(`${orgFlowClientId}::${email}`)) {
+        skipped++;
+        continue;
+      }
+
+      const fullName = `${c.firstName || ''} ${c.lastName || ''}`.trim()
+        || c.email
+        || `Contact ${bhId}`;
+
+      toInsert.push({
+        client_id: orgFlowClientId,
+        name: fullName,
+        email: c.email || null,
+        bullhorn_contact_id: bhId,
+      });
+      // Update dedupe sets so a duplicate within this same run can't slip in
+      // (the same contact can ride along multiple chunks if a client got moved).
+      existingByBhId.add(Number(bhId));
+      if (email) existingByClientEmail.add(`${orgFlowClientId}::${email}`);
+    }
+  }
+
+  if (toInsert.length > 0) {
+    await db.bulkInsertEmployees(toInsert);
+  }
+
+  console.log('[orgflowSync] contacts:', { fetched, inserted: toInsert.length, skipped });
+  return { contactsFetched: fetched, contactsInserted: toInsert.length, contactsSkipped: skipped };
+}
+
+module.exports = { syncBullhornClients, syncBullhornContacts };
