@@ -4,15 +4,15 @@ const multer = require('multer');
 const { getActivePlacementsWithClient } = require('../lib/bullhorn');
 const db = require('../lib/db');
 const { syncBullhornClients } = require('../lib/orgflowSync');
+const { imageFileFilter, verifyImageBuffer } = require('../lib/imageUpload');
 
-// Multer: in-memory storage for logo uploads (max 5MB, images only)
+// Multer: in-memory storage for logo uploads (max 5MB, images only).
+// imageFileFilter rejects SVG and non-image mimetypes up front; verifyImageBuffer
+// (applied at the route) does the magic-byte check that the mimetype header can't.
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) return cb(null, true);
-    cb(new Error('Only image files are allowed'));
-  },
+  fileFilter: imageFileFilter,
 });
 
 // Org Flow is mutation-heavy (client imports, employee edits, position saves)
@@ -183,7 +183,7 @@ router.get('/sync-bullhorn-clients/status', async (req, res, next) => {
 });
 
 // POST /api/org-flow/clients/:id/logo — upload client logo
-router.post('/clients/:id/logo', upload.single('logo'), async (req, res, next) => {
+router.post('/clients/:id/logo', upload.single('logo'), verifyImageBuffer, async (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
     const publicUrl = await db.uploadClientLogo(

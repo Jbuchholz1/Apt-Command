@@ -24,6 +24,15 @@ function renderHighlightedHtml(raw) {
     .replace(/&lt;\/em&gt;/g, '</mark>');
 }
 
+// Only allow http(s) before opening a URL in a new tab — blocks
+// javascript:/data:/vbscript: schemes if a search result ever carries one.
+function safeExternalUrl(raw) {
+  try {
+    const u = new URL(raw);
+    return (u.protocol === 'http:' || u.protocol === 'https:') ? u.href : null;
+  } catch { return null; }
+}
+
 export default function UniversalSearch({ isOpen, onClose }) {
   const [query, setQuery] = useState('');
   const [focusedIndex, setFocusedIndex] = useState(0);
@@ -102,7 +111,8 @@ export default function UniversalSearch({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   function openResult(row) {
-    if (row?.url) window.open(row.url, '_blank', 'noopener');
+    const safe = safeExternalUrl(row?.url);
+    if (safe) window.open(safe, '_blank', 'noopener,noreferrer');
     if (query.trim()) saveRecentSearch(query);
     onClose();
   }

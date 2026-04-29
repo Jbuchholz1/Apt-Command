@@ -9,11 +9,19 @@
 
 const { supabase } = require('./db');
 
-// Bootstrap admin list — works even before the DB migration runs
-const BOOTSTRAP_ADMINS = new Set([
-  'james@aptcompanies.io',
-  'matt@aptcompanies.io',
-]);
+// Bootstrap admin list — comma-separated emails in BOOTSTRAP_ADMIN_EMAILS.
+// If the env var is unset, no users are bootstrap admins and the Supabase
+// user_profiles.role column becomes the only path to admin.
+function parseBootstrapAdmins() {
+  const raw = process.env.BOOTSTRAP_ADMIN_EMAILS || '';
+  return new Set(
+    raw.split(',')
+      .map(e => e.trim().toLowerCase())
+      .filter(e => e.includes('@'))
+  );
+}
+
+const BOOTSTRAP_ADMINS = parseBootstrapAdmins();
 
 const VALID_ROLES = new Set(['admin', 'manager', 'basic']);
 

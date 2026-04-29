@@ -29,7 +29,7 @@ const AptAllyNode = memo(({ data }) => {
   const handleBhClick = (e) => {
     e.stopPropagation();
     e.preventDefault();
-    window.open(`${BH_BASE}?Entity=Candidate&id=${data.candidateId}`, '_blank');
+    window.open(`${BH_BASE}?Entity=Candidate&id=${encodeURIComponent(data.candidateId)}`, '_blank', 'noopener,noreferrer');
   };
 
   return (

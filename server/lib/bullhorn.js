@@ -799,17 +799,24 @@ async function getClientContactsOwnedBy(userId) {
 
 // --- Daily Brief: "Last 7 days of meetings" — attendee match + appointment create ---
 
-// Lucene/Bullhorn WHERE quoting: a single quote in the value would close the
-// string and let the rest be parsed as code. Strip them — emails never legally
-// contain a quote anyway, so this is safe rejection rather than escaping.
+// Lucene/Bullhorn WHERE values are wrapped in single quotes. Anything
+// containing a quote, backtick, space, or Lucene operator could either close
+// the string or be parsed as syntax. Validate against a strict email shape
+// and reject anything that doesn't match — never mangle the input, since
+// stripping a quote out of a real address would silently match a different
+// mailbox. Edge-case-valid emails (quoted local parts, IDN domains) are
+// rejected by design; this codebase only operates on standard business emails.
+const EMAIL_RE = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
 function sanitizeEmailForWhere(email) {
-  return String(email || '').replace(/['"`\\]/g, '').trim();
+  const trimmed = String(email || '').trim();
+  return EMAIL_RE.test(trimmed) ? trimmed : null;
 }
 
 function buildEmailInClause(emails) {
   const cleaned = (emails || [])
     .map(sanitizeEmailForWhere)
-    .filter(e => e.includes('@'));
+    .filter(Boolean);
   if (cleaned.length === 0) return null;
   return cleaned.map(e => `'${e}'`).join(',');
 }

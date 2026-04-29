@@ -4,15 +4,15 @@ const multer = require('multer');
 const { requireManager, requireAdmin } = require('../middleware/adminAuth');
 const { resolveRole } = require('../lib/roles');
 const db = require('../lib/db');
+const { imageFileFilter, verifyImageBuffer } = require('../lib/imageUpload');
 
-// Multer: in-memory storage for screenshot uploads (max 5MB, images only)
+// Multer: in-memory storage for screenshot uploads (max 5MB, images only).
+// imageFileFilter rejects SVG and non-image mimetypes up front; verifyImageBuffer
+// (applied at the route) does the magic-byte check that the mimetype header can't.
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) return cb(null, true);
-    cb(new Error('Only image files are allowed'));
-  },
+  fileFilter: imageFileFilter,
 });
 
 // =============================================
@@ -164,7 +164,7 @@ const VALID_TOOLS = [
 const VALID_STATUSES = ['open', 'in_progress', 'resolved', 'closed'];
 
 // POST /api/support/tickets — submit a new ticket (all users)
-router.post('/tickets', upload.single('screenshot'), async (req, res, next) => {
+router.post('/tickets', upload.single('screenshot'), verifyImageBuffer, async (req, res, next) => {
   try {
     const { category, title, description, tool } = req.body;
 

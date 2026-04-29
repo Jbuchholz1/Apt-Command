@@ -2,7 +2,7 @@ import ModuleSplash from '../../components/ModuleSplash';
 
 export default function OrgFlowRedirect() {
   const handleComplete = () => {
-    window.open('https://aptorgflow.com/', '_blank');
+    window.open('https://aptorgflow.com/', '_blank', 'noopener,noreferrer');
     window.history.back();
   };
 

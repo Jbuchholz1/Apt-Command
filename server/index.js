@@ -39,8 +39,45 @@ const allowedOrigins = [
 
 console.log(`CORS: ${allowedOrigins.length} origin(s) configured`);
 
-// --- Security headers (CSP disabled to avoid breaking inline styles/scripts) ---
-app.use(helmet({ contentSecurityPolicy: false }));
+// --- Security headers ---
+//
+// CSP_MODE controls Content-Security-Policy enforcement:
+//   off          (default) — header not sent; current behavior
+//   report-only  — Content-Security-Policy-Report-Only header sent; violations
+//                  POST to /api/csp-report but nothing is blocked
+//   enforce      — Content-Security-Policy header sent; violations blocked
+//
+// Phase 1 inventory (2026-04-29) confirmed zero inline <script>/<style> blocks
+// in the build, no eval/new Function, no runtime DOM injection. 'unsafe-inline'
+// in style-src is required only for React runtime style="..." attributes.
+const CSP_MODE = (process.env.CSP_MODE || 'off').toLowerCase();
+const CSP_ENABLED = CSP_MODE === 'report-only' || CSP_MODE === 'enforce';
+const CSP_DIRECTIVES = {
+  defaultSrc: ["'self'"],
+  scriptSrc: ["'self'"],
+  styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+  fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+  imgSrc: ["'self'", 'data:', 'https:'],
+  connectSrc: [
+    "'self'",
+    'https://login.microsoftonline.com',
+    'https://*.microsoftonline.com',
+    'https://graph.microsoft.com',
+  ],
+  frameAncestors: ["'none'"],
+  baseUri: ["'self'"],
+  formAction: ["'self'", 'https://login.microsoftonline.com'],
+  objectSrc: ["'none'"],
+  reportUri: ['/api/csp-report'],
+};
+console.log(`CSP: ${CSP_MODE}`);
+app.use(helmet({
+  contentSecurityPolicy: CSP_ENABLED ? {
+    useDefaults: false,
+    directives: CSP_DIRECTIVES,
+    reportOnly: CSP_MODE === 'report-only',
+  } : false,
+}));
 
 // --- Response compression (gzip) ---
 app.use(compression());
@@ -121,6 +158,29 @@ app.use('/api', (req, res, next) => {
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// --- CSP violation reports (UNAUTHENTICATED — browsers can't send auth headers).
+// Body comes in as application/csp-report (legacy report-uri) or
+// application/reports+json (modern report-to). Per-route parser handles both.
+// Size-capped and IP-rate-limited via the upstream ipFloodLimiter.
+app.post(
+  '/api/csp-report',
+  express.json({
+    type: ['application/csp-report', 'application/reports+json', 'application/json'],
+    limit: '10kb',
+  }),
+  (req, res) => {
+    const r = (req.body && (req.body['csp-report'] || req.body)) || {};
+    console.warn('[CSP-REPORT]', JSON.stringify({
+      directive: r['effective-directive'] || r['violated-directive'],
+      blockedUri: r['blocked-uri'],
+      sourceFile: r['source-file'],
+      line: r['line-number'],
+      docUri: r['document-uri'],
+    }));
+    res.status(204).end();
+  }
+);
 
 // --- Auth middleware: all /api/* routes below require a valid Microsoft token ---
 app.use('/api', requireAuth);
