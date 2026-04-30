@@ -1054,6 +1054,16 @@
   color: var(--navy);
   border-bottom-color: var(--gold);
 }
+.exec-tab-range {
+  margin-left: auto;
+  align-self: center;
+  padding-bottom: 11px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
 
 .exec-kpi-card.is-placeholder {
   background: var(--surface);

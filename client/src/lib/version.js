@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.22.4';
+export const APP_VERSION = '3.22.5';
 
 export const CHANGELOG = [
+  {
+    version: '3.22.5',
+    date: '2026-04-30',
+    title: 'Executive Reporting — Date Range Callout On Tab Row',
+    changes: [
+      { type: 'patch', text: 'The Weekly / Monthly / Quarterly tab row now shows the active date range on the right (e.g. "Apr 26, 2026 - May 2, 2026"), so the range is visible while you read the tab content instead of only next to the page title. The callout reads from the same state as the top date picker — clicking This Week / Last Week / This Month or editing the From / To inputs updates it immediately, and it stays in place when you switch between Weekly, Monthly, and Quarterly.' },
+    ],
+  },
   {
     version: '3.22.4',
     date: '2026-04-28',

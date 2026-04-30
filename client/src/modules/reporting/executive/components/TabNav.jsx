@@ -4,7 +4,7 @@ const TABS = [
   { id: 'quarterly', label: 'Quarterly' },
 ];
 
-export default function TabNav({ active, onChange }) {
+export default function TabNav({ active, onChange, rightSlot }) {
   return (
     <div className="exec-tab-nav" role="tablist">
       {TABS.map((tab) => (
@@ -18,6 +18,7 @@ export default function TabNav({ active, onChange }) {
           {tab.label}
         </button>
       ))}
+      {rightSlot && <span className="exec-tab-range">{rightSlot}</span>}
     </div>
   );
 }

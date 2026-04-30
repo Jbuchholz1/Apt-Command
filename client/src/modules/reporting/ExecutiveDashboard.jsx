@@ -223,7 +223,7 @@ export default function ExecutiveDashboard() {
         </section>
       )}
 
-      <TabNav active={activeTab} onChange={setActiveTab} />
+      <TabNav active={activeTab} onChange={setActiveTab} rightSlot={formatRange()} />
       {activeTab === 'weekly' && <WeeklyTab startDate={startDate} endDate={endDate} />}
       {activeTab === 'monthly' && <MonthlyTab startDate={startDate} endDate={endDate} />}
       {activeTab === 'quarterly' && <QuarterlyTab startDate={startDate} endDate={endDate} />}
