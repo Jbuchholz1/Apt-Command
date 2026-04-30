@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.22.5';
+export const APP_VERSION = '3.22.6';
 
 export const CHANGELOG = [
+  {
+    version: '3.22.6',
+    date: '2026-04-30',
+    title: 'Executive Reporting — Tabs Auto-Snap To Current Week / Month / Quarter',
+    changes: [
+      { type: 'patch', text: 'Switching between Weekly / Monthly / Quarterly now snaps the date range to that period\'s current value: Weekly → this Sunday through Saturday, Monthly → 1st through last day of this month, Quarterly → first through last day of the current calendar quarter (Q2 = Apr 1 – Jun 30). Initial load opens on Weekly with the current week. The picker still works for ad-hoc ranges; tabs just give a one-click snap back to the natural period.' },
+    ],
+  },
   {
     version: '3.22.5',
     date: '2026-04-30',

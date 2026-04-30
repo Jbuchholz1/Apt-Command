@@ -8,14 +8,38 @@ import WeeklyTab from './executive/WeeklyTab';
 import MonthlyTab from './executive/MonthlyTab';
 import QuarterlyTab from './executive/QuarterlyTab';
 
-function getDefaultDates() {
+function toISODate(d) {
+  return d.toISOString().slice(0, 10);
+}
+
+function getWeekRange() {
   const today = new Date();
-  const sunday = new Date(today);
-  sunday.setDate(today.getDate() - today.getDay());
-  return {
-    start: sunday.toISOString().slice(0, 10),
-    end: today.toISOString().slice(0, 10),
-  };
+  const sun = new Date(today);
+  sun.setDate(today.getDate() - today.getDay());
+  const sat = new Date(sun);
+  sat.setDate(sun.getDate() + 6);
+  return { start: toISODate(sun), end: toISODate(sat) };
+}
+
+function getMonthRange() {
+  const today = new Date();
+  const first = new Date(today.getFullYear(), today.getMonth(), 1);
+  const last = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  return { start: toISODate(first), end: toISODate(last) };
+}
+
+function getQuarterRange() {
+  const today = new Date();
+  const qStartMonth = Math.floor(today.getMonth() / 3) * 3;
+  const first = new Date(today.getFullYear(), qStartMonth, 1);
+  const last = new Date(today.getFullYear(), qStartMonth + 3, 0);
+  return { start: toISODate(first), end: toISODate(last) };
+}
+
+function getRangeForTab(tabId) {
+  if (tabId === 'monthly') return getMonthRange();
+  if (tabId === 'quarterly') return getQuarterRange();
+  return getWeekRange();
 }
 
 function formatCurrency(n) {
@@ -135,14 +159,21 @@ function PotentialInputModal({ details, onClose }) {
 }
 
 export default function ExecutiveDashboard() {
-  const defaults = getDefaultDates();
-  const [startDate, setStartDate] = useState(defaults.start);
-  const [endDate, setEndDate] = useState(defaults.end);
+  const initial = getWeekRange();
+  const [startDate, setStartDate] = useState(initial.start);
+  const [endDate, setEndDate] = useState(initial.end);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [openModal, setOpenModal] = useState(null); // 'current' | 'potential' | null
   const [activeTab, setActiveTab] = useState('weekly');
+
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    const range = getRangeForTab(tabId);
+    setStartDate(range.start);
+    setEndDate(range.end);
+  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -223,7 +254,7 @@ export default function ExecutiveDashboard() {
         </section>
       )}
 
-      <TabNav active={activeTab} onChange={setActiveTab} rightSlot={formatRange()} />
+      <TabNav active={activeTab} onChange={handleTabChange} rightSlot={formatRange()} />
       {activeTab === 'weekly' && <WeeklyTab startDate={startDate} endDate={endDate} />}
       {activeTab === 'monthly' && <MonthlyTab startDate={startDate} endDate={endDate} />}
       {activeTab === 'quarterly' && <QuarterlyTab startDate={startDate} endDate={endDate} />}
