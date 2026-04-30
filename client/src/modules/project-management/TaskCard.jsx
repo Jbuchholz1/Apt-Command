@@ -50,6 +50,9 @@ export default function TaskCard({ task, onClick, isDragOverlay = false, comment
   const handleClick = (e) => {
     // Only trigger click if it's not the start of a drag
     if (isDragging) return;
+    // Optimistic cards (no real id yet) can't be opened — the detail modal
+    // would point at a tmp id that gets replaced when the server responds.
+    if (task._optimistic) return;
     e.stopPropagation();
     onClick?.(task);
   };

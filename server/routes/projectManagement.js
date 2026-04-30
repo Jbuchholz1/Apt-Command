@@ -70,6 +70,11 @@ function dbErr(res, err, fallback = 'Database error') {
   return res.status(500).json({ error: fallback });
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function badUuid(res, label) {
+  return res.status(400).json({ error: `Invalid ${label} id` });
+}
+
 function ensureSupabase(res) {
   if (!supabase) {
     res.status(503).json({ error: 'Database not configured' });
@@ -552,6 +557,7 @@ router.post('/tasks/:id/move', async (req, res, next) => {
 router.get('/tasks/:id/comments', async (req, res, next) => {
   try {
     if (!ensureSupabase(res)) return;
+    if (!UUID_RE.test(req.params.id)) return badUuid(res, 'task');
     const { data, error } = await supabase
       .from('pm_comments')
       .select('*')
@@ -566,6 +572,7 @@ router.get('/tasks/:id/comments', async (req, res, next) => {
 router.post('/tasks/:id/comments', async (req, res, next) => {
   try {
     if (!ensureSupabase(res)) return;
+    if (!UUID_RE.test(req.params.id)) return badUuid(res, 'task');
     const { body } = req.body || {};
     if (!body || !body.trim()) return res.status(400).json({ error: 'Comment body is required' });
     const { data, error } = await supabase

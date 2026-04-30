@@ -91,8 +91,13 @@ export default function ProjectBoard() {
     try {
       const res = await pmCreateTask(projectId, { columnId, title });
       setTasks(prev => prev.map(t => t.id === tmpId ? res.data : t));
+      // If the modal was opened against the tmp id (rare race — click landed
+      // before the response), swap it to the real id so the modal stays valid.
+      setOpenTaskId(prev => prev === tmpId ? res.data.id : prev);
     } catch (err) {
       setTasks(prev => prev.filter(t => t.id !== tmpId));
+      // If the modal was open on the tmp id, close it — the row no longer exists.
+      setOpenTaskId(prev => prev === tmpId ? null : prev);
       showToast(err.message || 'Failed to add card');
     }
   };
@@ -359,7 +364,7 @@ export default function ProjectBoard() {
         </DndContext>
       </div>
 
-      {openTaskId && (
+      {openTaskId && tasks.find(t => t.id === openTaskId) && (
         <TaskDetailModal
           taskId={openTaskId}
           task={tasks.find(t => t.id === openTaskId)}

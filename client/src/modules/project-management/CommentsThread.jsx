@@ -29,6 +29,12 @@ export default function CommentsThread({ taskId }) {
   const [editingBody, setEditingBody] = useState('');
 
   const reload = useCallback(async () => {
+    // Optimistic tasks have a tmp id and no comments yet — skip the fetch.
+    if (!taskId || taskId.startsWith('tmp-')) {
+      setComments([]);
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const res = await pmListComments(taskId);
