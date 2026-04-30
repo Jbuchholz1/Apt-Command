@@ -123,7 +123,7 @@ export default function MonthlyTab({ startDate, endDate }) {
           onClick={() => setOpenModal('activeClients')}
         />
         <LiveTile
-          label="New Clients Onboarded"
+          label="New Customers with Reqs"
           value={fmtNum(newClients)}
           subtitle="Distinct clients with new reqs in range"
           state={tileState(loading, newClients)}

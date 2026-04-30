@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.22.6';
+export const APP_VERSION = '3.22.7';
 
 export const CHANGELOG = [
+  {
+    version: '3.22.7',
+    date: '2026-04-30',
+    title: 'Executive Reporting — Card Label Cleanup',
+    changes: [
+      { type: 'patch', text: 'Renamed four KPI cards to better describe what they measure: "New Placements This Week" → "Starting This Week" (counts placements with a begin date in range), "Active Contractor Headcount" → "Change in Active Contractors for Time Period", "Attrition / Dropouts This Week" → "Backouts Logged", and "New Clients Onboarded" → "New Customers with Reqs". Confirmed the Candidate Submissions card already pulls Bullhorn Sendout records (= client submissions), so no underlying count changed.' },
+    ],
+  },
   {
     version: '3.22.6',
     date: '2026-04-30',

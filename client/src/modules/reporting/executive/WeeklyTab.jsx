@@ -145,7 +145,7 @@ export default function WeeklyTab({ startDate, endDate }) {
           onClick={() => setOpenModal('newReqs')}
         />
         <LiveTile
-          label="New Placements This Week"
+          label="Starting This Week"
           value={fmtNum(newPlacements)}
           subtitle="Placements approved in date range"
           state={tileState(loading, newPlacements)}
@@ -169,7 +169,7 @@ export default function WeeklyTab({ startDate, endDate }) {
           onClick={() => setOpenModal('offers')}
         />
         <LiveTile
-          label="Active Contractor Headcount"
+          label="Change in Active Contractors for Time Period"
           value={fmtNum(activeContractors)}
           subtitle={headcountDelta != null ? fmtDelta(headcountDelta) : 'Current count'}
           state={tileState(loading, activeContractors)}
@@ -177,7 +177,7 @@ export default function WeeklyTab({ startDate, endDate }) {
           onClick={() => setOpenModal('headcount')}
         />
         <LiveTile
-          label="Attrition / Dropouts This Week"
+          label="Backouts Logged"
           value={fmtNum(attritionCount)}
           subtitle="Backout notes logged in range"
           state={tileState(loading, attritionCount)}
