@@ -680,6 +680,110 @@ export function unpinGoalPriority(id) {
   return fetchAPI(`/api/goals/${id}/priority`, { method: 'DELETE' });
 }
 
+// --- Project Management (Trello-style kanban) ---
+
+const PM = '/api/project-management';
+
+function ifMatchHeaders(version) {
+  if (version === undefined || version === null) return {};
+  return { 'If-Match': String(version) };
+}
+
+export function pmListProjects({ archived = false } = {}) {
+  return fetchAPI(`${PM}/projects${archived ? '?archived=true' : ''}`);
+}
+
+export function pmCreateProject({ name, description, color }) {
+  return fetchAPI(`${PM}/projects`, { method: 'POST', body: { name, description, color } });
+}
+
+export function pmGetProject(id) {
+  return fetchAPI(`${PM}/projects/${id}`);
+}
+
+export function pmUpdateProject(id, fields, { expectedVersion } = {}) {
+  return fetchAPI(`${PM}/projects/${id}`, {
+    method: 'PATCH',
+    body: fields,
+    headers: ifMatchHeaders(expectedVersion),
+  });
+}
+
+export function pmArchiveProject(id) {
+  return fetchAPI(`${PM}/projects/${id}`, { method: 'DELETE' });
+}
+
+export function pmRestoreProject(id) {
+  return fetchAPI(`${PM}/projects/${id}/restore`, { method: 'POST', body: {} });
+}
+
+export function pmCreateColumn(projectId, name) {
+  return fetchAPI(`${PM}/projects/${projectId}/columns`, {
+    method: 'POST',
+    body: { name },
+  });
+}
+
+export function pmUpdateColumn(columnId, fields) {
+  return fetchAPI(`${PM}/columns/${columnId}`, { method: 'PATCH', body: fields });
+}
+
+export function pmDeleteColumn(columnId) {
+  return fetchAPI(`${PM}/columns/${columnId}`, { method: 'DELETE' });
+}
+
+export function pmReorderColumns(projectId, orderedIds) {
+  return fetchAPI(`${PM}/projects/${projectId}/columns/reorder`, {
+    method: 'POST',
+    body: { orderedIds },
+  });
+}
+
+export function pmCreateTask(projectId, fields) {
+  return fetchAPI(`${PM}/projects/${projectId}/tasks`, { method: 'POST', body: fields });
+}
+
+export function pmUpdateTask(taskId, fields, { expectedVersion } = {}) {
+  return fetchAPI(`${PM}/tasks/${taskId}`, {
+    method: 'PATCH',
+    body: fields,
+    headers: ifMatchHeaders(expectedVersion),
+  });
+}
+
+export function pmDeleteTask(taskId) {
+  return fetchAPI(`${PM}/tasks/${taskId}`, { method: 'DELETE' });
+}
+
+export function pmMoveTask(taskId, { columnId, beforeTaskId, afterTaskId }) {
+  return fetchAPI(`${PM}/tasks/${taskId}/move`, {
+    method: 'POST',
+    body: { columnId, beforeTaskId, afterTaskId },
+  });
+}
+
+export function pmListComments(taskId) {
+  return fetchAPI(`${PM}/tasks/${taskId}/comments`);
+}
+
+export function pmCreateComment(taskId, body) {
+  return fetchAPI(`${PM}/tasks/${taskId}/comments`, {
+    method: 'POST',
+    body: { body },
+  });
+}
+
+export function pmUpdateComment(commentId, body) {
+  return fetchAPI(`${PM}/comments/${commentId}`, {
+    method: 'PATCH',
+    body: { body },
+  });
+}
+
+export function pmDeleteComment(commentId) {
+  return fetchAPI(`${PM}/comments/${commentId}`, { method: 'DELETE' });
+}
+
 export async function exportJobs() {
   const token = await getToken();
   const headers = {};

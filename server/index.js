@@ -20,6 +20,7 @@ const supportRouter = require('./routes/support');
 const goalsRouter = require('./routes/goals');
 const searchRouter = require('./routes/search');
 const dashboardRouter = require('./routes/dashboard');
+const projectManagementRouter = require('./routes/projectManagement');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -213,6 +214,8 @@ app.use('/api/operations', operationsRouter);
 app.use('/api/support', supportRouter);
 // Goal Tracking module
 app.use('/api/goals', goalsRouter);
+// Project Management module (admin/manager only — gated inside the router)
+app.use('/api/project-management', projectManagementRouter);
 // Universal Search
 app.use('/api/search', searchRouter);
 // Daily Brief role-aware tiles

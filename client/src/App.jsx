@@ -17,6 +17,9 @@ import PipelineModule from './modules/pipeline/PipelineModule';
 import OpportunityPipeline from './modules/pipeline/OpportunityPipeline';
 import AdminModule from './modules/admin/AdminModule';
 import OperationsModule from './modules/operations/OperationsModule';
+import ProjectManagementModule from './modules/project-management/ProjectManagementModule';
+import ProjectsListView from './modules/project-management/ProjectsListView';
+import ProjectBoard from './modules/project-management/ProjectBoard';
 import SupportModule from './modules/support/SupportModule';
 import SupportHome from './modules/support/SupportHome';
 import HelpDocs from './modules/support/HelpDocs';
@@ -56,6 +59,10 @@ function AppRoutes() {
 
         </Route>
         <Route path="operations" element={<OperationsModule />} />
+        <Route path="projects" element={<ProjectManagementModule />}>
+          <Route index element={<ProjectsListView />} />
+          <Route path=":projectId" element={<ProjectBoard />} />
+        </Route>
         <Route path="admin" element={<AdminModule />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

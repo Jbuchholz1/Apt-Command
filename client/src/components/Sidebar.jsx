@@ -12,6 +12,7 @@ import {
   Shield,
   Target,
   LifeBuoy,
+  KanbanSquare,
   ExternalLink,
   ChevronDown,
   ChevronRight,
@@ -56,8 +57,9 @@ export default function Sidebar({ userName, userRole, onLogout, mobileOpen, onOp
     const isManager = userRole === 'admin' || userRole === 'manager';
     // adminOnly items (Operations) only show for full admins
     const items = NAV_ITEMS.filter(item => !item.adminOnly || isAdmin);
-    // Admin tab shows for managers and admins
+    // Manager/Admin-only tabs
     if (isManager) {
+      items.push({ label: 'Project Management', icon: KanbanSquare, path: '/projects' });
       items.push({ label: 'Admin', icon: Shield, path: '/admin' });
     }
     return items;
