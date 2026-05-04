@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.22.7';
+export const APP_VERSION = '3.22.8';
 
 export const CHANGELOG = [
+  {
+    version: '3.22.8',
+    date: '2026-05-04',
+    title: 'Org Flow — Client Status Pill + Filter',
+    changes: [
+      { type: 'minor', text: 'Each client card now shows a colored status pill in the top-right corner (Active / Prospect / On Hold / Inactive / Lost) — click it to change the status without leaving the dashboard. A matching "Filter by status" dropdown sits next to the sort selector so you can drill the grid down to just one status at a time. Existing clients default to Active. Note: the database column is added by migration 008 in the repo — run it once in the Supabase SQL editor before the new dropdown will save.' },
+    ],
+  },
   {
     version: '3.22.7',
     date: '2026-04-30',

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Plus, Building2, FolderOpen, Trash2, Users, User as UserIcon, Settings, CreditCard as Edit2, FileDown, Upload, Search, Image, RefreshCw } from 'lucide-react';
 import { useMsal } from '@azure/msal-react';
 import ClientAssignment from './ClientAssignment';
+import ClientStatusPill from './ClientStatusPill';
 import { readExcelToJson, writeExcelFile } from '../../../lib/excel';
 import {
   getClientHealthStats, getOrgFlowCurrentUser, getOrgFlowClients,
@@ -9,6 +10,14 @@ import {
   createOrgFlowClient, deleteOrgFlowClient, importOrgFlowClients,
   syncBullhornClients,
 } from '../../../lib/api';
+
+const STATUS_OPTIONS = [
+  { value: 'Active', label: 'Active' },
+  { value: 'Prospect', label: 'Prospect' },
+  { value: 'On Hold', label: 'On Hold' },
+  { value: 'Inactive', label: 'Inactive' },
+  { value: 'Lost', label: 'Lost' },
+];
 
 export default function OrgFlowDashboard({ onSelectClient }) {
   const { accounts } = useMsal();
@@ -28,6 +37,7 @@ export default function OrgFlowDashboard({ onSelectClient }) {
   const fileInputRef = useRef(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('name-asc');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [logoUploadClient, setLogoUploadClient] = useState(null);
   const [failedLogos, setFailedLogos] = useState(new Set());
   const [logoFile, setLogoFile] = useState(null);
@@ -82,6 +92,18 @@ export default function OrgFlowDashboard({ onSelectClient }) {
       setNewManagerId('');
       loadClients();
     } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleUpdateStatus = async (clientId, newStatus) => {
+    const prev = clients;
+    setClients((cs) => cs.map((c) => (c.id === clientId ? { ...c, status: newStatus } : c)));
+    try {
+      await updateOrgFlowClient(clientId, { status: newStatus });
+      loadClients();
+    } catch (err) {
+      setClients(prev);
       setError(err.message);
     }
   };
@@ -230,6 +252,7 @@ export default function OrgFlowDashboard({ onSelectClient }) {
 
   const filteredAndSortedClients = clients
     .filter((client) => {
+      if (statusFilter !== 'all' && (client.status || 'Active') !== statusFilter) return false;
       if (!searchQuery.trim()) return true;
 
       const query = searchQuery.toLowerCase();
@@ -347,6 +370,17 @@ export default function OrgFlowDashboard({ onSelectClient }) {
             />
           </div>
           <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="of-sort-select"
+            title="Filter by status"
+          >
+            <option value="all">All Statuses</option>
+            {STATUS_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+          <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
             className="of-sort-select"
@@ -401,6 +435,11 @@ export default function OrgFlowDashboard({ onSelectClient }) {
                 key={client.id}
                 className="of-client-card"
               >
+                <ClientStatusPill
+                  value={client.status || 'Active'}
+                  options={STATUS_OPTIONS}
+                  onSave={(newStatus) => handleUpdateStatus(client.id, newStatus)}
+                />
                 <div className="of-card-actions">
                   <button
                     onClick={(e) => {

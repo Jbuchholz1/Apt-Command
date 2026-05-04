@@ -520,7 +520,7 @@ async function createClient(name, createdBy) {
 
 async function updateClient(clientId, fields) {
   if (!supabase) return null;
-  const ALLOWED = new Set(['name', 'created_by', 'logo_url', 'account_manager', 'bullhorn_client_id']);
+  const ALLOWED = new Set(['name', 'created_by', 'logo_url', 'account_manager', 'bullhorn_client_id', 'status']);
   const updates = {};
   for (const [key, val] of Object.entries(fields)) {
     if (ALLOWED.has(key)) updates[key] = val;
