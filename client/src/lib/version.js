@@ -9,15 +9,23 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.22.8';
+export const APP_VERSION = '3.22.9';
 
 export const CHANGELOG = [
+  {
+    version: '3.22.9',
+    date: '2026-05-04',
+    title: 'Org Flow — Status Dropdown Moved Below Action Buttons',
+    changes: [
+      { type: 'patch', text: 'The client status control no longer floats over the top-right of the card (where it was overlapping the trash / settings icons). It now sits in its own row directly below the Logo / Settings / Delete button strip, with a "STATUS" label on the left and a colored dropdown on the right. The dropdown is always selectable in one click — no more click-to-edit two-step.' },
+    ],
+  },
   {
     version: '3.22.8',
     date: '2026-05-04',
     title: 'Org Flow — Client Status Pill + Filter',
     changes: [
-      { type: 'minor', text: 'Each client card now shows a colored status pill in the top-right corner (Active / Prospect / On Hold / Inactive / Lost) — click it to change the status without leaving the dashboard. A matching "Filter by status" dropdown sits next to the sort selector so you can drill the grid down to just one status at a time. Existing clients default to Active. Note: the database column is added by migration 008 in the repo — run it once in the Supabase SQL editor before the new dropdown will save.' },
+      { type: 'minor', text: 'Each client card now shows a colored status pill (Active / Prospect / On Hold / Inactive / Lost) — change it without leaving the dashboard. A matching "Filter by status" dropdown sits next to the sort selector so you can drill the grid down to just one status at a time. Existing clients default to Active. Note: the database column is added by migration 008 in the repo — run it once in the Supabase SQL editor before the new dropdown will save.' },
     ],
   },
   {

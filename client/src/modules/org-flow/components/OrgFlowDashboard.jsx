@@ -435,11 +435,6 @@ export default function OrgFlowDashboard({ onSelectClient }) {
                 key={client.id}
                 className="of-client-card"
               >
-                <ClientStatusPill
-                  value={client.status || 'Active'}
-                  options={STATUS_OPTIONS}
-                  onSave={(newStatus) => handleUpdateStatus(client.id, newStatus)}
-                />
                 <div className="of-card-actions">
                   <button
                     onClick={(e) => {
@@ -473,6 +468,11 @@ export default function OrgFlowDashboard({ onSelectClient }) {
                     <Trash2 className="of-icon-sm" />
                   </button>
                 </div>
+                <ClientStatusPill
+                  value={client.status || 'Active'}
+                  options={STATUS_OPTIONS}
+                  onSave={(newStatus) => handleUpdateStatus(client.id, newStatus)}
+                />
                 <button
                   onClick={() => onSelectClient(client.id)}
                   className="of-card-body"

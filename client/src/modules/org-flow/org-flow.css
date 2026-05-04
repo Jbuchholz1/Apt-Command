@@ -135,18 +135,17 @@
 .of-edit-manager-btn { padding: 2px; border: none; background: none; cursor: pointer; color: var(--text-light); transition: color 0.15s; }
 .of-edit-manager-btn:hover { color: var(--navy); }
 
-/* ---- Dashboard: Client Status Pill ---- */
-.of-status-pill { position: absolute; top: 10px; right: 10px; z-index: 2; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; border: 1px solid transparent; cursor: pointer; box-shadow: 0 1px 3px rgba(4,20,79,0.12); transition: transform 0.1s, box-shadow 0.15s; line-height: 1.4; }
-.of-status-pill:hover { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(4,20,79,0.18); }
-.of-status-pill--editing { padding: 0; cursor: default; }
-.of-status-pill--editing:hover { transform: none; }
-.of-status-pill-select { padding: 4px 22px 4px 10px; border: none; background: transparent; font-size: 11px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; color: inherit; cursor: pointer; outline: none; appearance: none; -webkit-appearance: none; font-family: inherit; }
-.of-status-pill-select:focus { outline: none; }
-.of-status-pill--active { background: #dcfce7; color: #166534; border-color: #86efac; }
-.of-status-pill--prospect { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
-.of-status-pill--onhold { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
-.of-status-pill--inactive { background: #e5e7eb; color: #374151; border-color: #d1d5db; }
-.of-status-pill--lost { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+/* ---- Dashboard: Client Status Row + Pill ---- */
+.of-status-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: #fafbfc; border-top: 1px solid var(--border); gap: 8px; }
+.of-status-row-label { color: var(--text-muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+.of-status-pill { appearance: none; -webkit-appearance: none; padding: 5px 26px 5px 12px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; border: 1px solid transparent; cursor: pointer; font-family: inherit; line-height: 1.4; box-shadow: 0 1px 3px rgba(4,20,79,0.12); background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 6'%3E%3Cpath fill='currentColor' d='M0 0l4 6 4-6z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 8px; outline: none; transition: box-shadow 0.15s; }
+.of-status-pill:hover { box-shadow: 0 3px 8px rgba(4,20,79,0.18); }
+.of-status-pill:focus-visible { box-shadow: 0 0 0 3px rgba(211,191,48,0.45); }
+.of-status-pill--active { background-color: #dcfce7; color: #166534; border-color: #86efac; }
+.of-status-pill--prospect { background-color: #dbeafe; color: #1e40af; border-color: #93c5fd; }
+.of-status-pill--onhold { background-color: #fef3c7; color: #92400e; border-color: #fcd34d; }
+.of-status-pill--inactive { background-color: #e5e7eb; color: #374151; border-color: #d1d5db; }
+.of-status-pill--lost { background-color: #fee2e2; color: #991b1b; border-color: #fca5a5; }
 
 /* ---- Dashboard: Client Logo ---- */
 .of-client-logo-wrapper { width: 48px; height: 48px; border-radius: 10px; overflow: hidden; flex-shrink: 0; background: #f1f5f9; display: flex; align-items: center; justify-content: center; }
