@@ -640,7 +640,8 @@ async function getEmployeesByClient(clientId) {
   const { data, error } = await supabase
     .from('employees')
     .select('*')
-    .eq('client_id', clientId);
+    .eq('client_id', clientId)
+    .not('name', 'ilike', 'Default Contact%');
   if (error) { console.error('[db] getEmployeesByClient error:', error.message); return []; }
   return data || [];
 }

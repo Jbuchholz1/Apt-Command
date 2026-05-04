@@ -251,6 +251,12 @@ async function syncBullhornContacts() {
 
     for (const c of contacts) {
       const bhId = c.id;
+      // Skip Bullhorn's auto-created placeholder ("Default Contact <CompanyName>")
+      // — these clutter the org chart and never represent a real person.
+      if ((c.firstName || '').trim().toLowerCase() === 'default contact') {
+        skipped++;
+        continue;
+      }
       // ClientContact.clientCorporation can come back as a nested object
       // ({id, name}), as a bare numeric id, or as a string id depending on
       // the Bullhorn response shape. Handle all three.

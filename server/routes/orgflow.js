@@ -378,7 +378,7 @@ router.get('/client-health', async (req, res, next) => {
     if (!supabase) return res.json({});
 
     const [employeesRes, placementsResult] = await Promise.all([
-      supabase.from('employees').select('id,client_id,name,role,email,num_ftes,num_contractors,reports_to_id'),
+      supabase.from('employees').select('id,client_id,name,role,email,num_ftes,num_contractors,reports_to_id').not('name', 'ilike', 'Default Contact%'),
       getActivePlacementsWithClient(),
     ]);
 

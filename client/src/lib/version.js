@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.22.9';
+export const APP_VERSION = '3.22.10';
 
 export const CHANGELOG = [
+  {
+    version: '3.22.10',
+    date: '2026-05-04',
+    title: 'Org Flow — Hide Bullhorn "Default Contact" Placeholders',
+    changes: [
+      { type: 'patch', text: 'Bullhorn auto-creates a "Default Contact <CompanyName>" placeholder on every ClientCorporation. Those rows were riding the contact sync into Org Flow and showing up as empty cards on the org chart and in the Healthy Managers stats. Now they are skipped on three sides: the per-client employee fetch hides them on the org chart, the client-health endpoint hides them from the manager / allies counts, and the Bullhorn → Supabase contact sync no longer inserts new ones (firstName = "Default Contact" check). Existing placeholder rows in Supabase stay in the table but are invisible — the table can be cleaned up later with a single SQL delete if desired.' },
+    ],
+  },
   {
     version: '3.22.9',
     date: '2026-05-04',
