@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.22.10';
+export const APP_VERSION = '3.22.11';
 
 export const CHANGELOG = [
+  {
+    version: '3.22.11',
+    date: '2026-05-04',
+    title: 'Org Flow — Status Saves Reliably + Writes Back To Bullhorn',
+    changes: [
+      { type: 'minor', text: 'Two fixes for the new client-status dropdown. (1) The status was reverting to Active because the underlying Supabase column was missing — the server now auto-adds clients.status on boot if migration 008 has not been run, mirroring the existing status_changed_at auto-migrate. (2) Status changes now propagate to Bullhorn: on every save, the API also calls Bullhorn update_entity on the linked ClientCorporation. Best-effort — if Bullhorn rejects the value (e.g. READ_ONLY_MODE in sandbox, or the value is not a valid Bullhorn status), the local save still sticks and a banner explains the Bullhorn-side error so you can adjust.' },
+    ],
+  },
   {
     version: '3.22.10',
     date: '2026-05-04',

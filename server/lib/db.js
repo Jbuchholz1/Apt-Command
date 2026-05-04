@@ -59,6 +59,20 @@ async function ensureSchema() {
       schemaFeatures.statusChangedAt = true;
     }
 
+    // clients.status: auto-add if missing (org-flow client status pill, migration 008).
+    const { error: csErr } = await supabase.from('clients').select('status').limit(1);
+    if (csErr && csErr.message.toLowerCase().includes('status')) {
+      console.log('[db] Adding status column to clients...');
+      const { error: rpcErr } = await supabase.rpc('exec_sql', {
+        query: "ALTER TABLE clients ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'Active';"
+      });
+      if (rpcErr) {
+        console.warn('[db] Could not auto-add clients.status — run migration 008 manually:', rpcErr.message);
+      } else {
+        console.log('[db] clients.status column added successfully');
+      }
+    }
+
     // version: probe only — migration 002 must be applied manually.
     const { error: vErr } = await supabase.from('job_overrides').select('version').limit(1);
     if (!vErr) {

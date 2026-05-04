@@ -100,7 +100,10 @@ export default function OrgFlowDashboard({ onSelectClient }) {
     const prev = clients;
     setClients((cs) => cs.map((c) => (c.id === clientId ? { ...c, status: newStatus } : c)));
     try {
-      await updateOrgFlowClient(clientId, { status: newStatus });
+      const result = await updateOrgFlowClient(clientId, { status: newStatus });
+      if (result?.bullhornSync && result.bullhornSync.ok === false) {
+        setError(`Saved to Org Flow, but Bullhorn write-back failed: ${result.bullhornSync.error || 'unknown error'}`);
+      }
       loadClients();
     } catch (err) {
       setClients(prev);

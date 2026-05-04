@@ -24,6 +24,14 @@ const ALLOWED_TOOLS = new Set([
   'create_entity',
 ]);
 
+// Mutating MCP tools — blocked when READ_ONLY_MODE is enabled (sandbox).
+const MUTATING_TOOLS = new Set(['update_entity', 'add_note', 'create_entity']);
+const READ_ONLY_MODE = process.env.READ_ONLY_MODE === 'true';
+
+if (READ_ONLY_MODE) {
+  console.warn('[MCP] READ_ONLY_MODE=true — Bullhorn writes (update_entity, add_note, create_entity) will be blocked');
+}
+
 /**
  * Call a tool on the Bullhorn MCP server via JSON-RPC over SSE.
  * Used by the convenience wrappers below and exported for health checks.
@@ -31,6 +39,17 @@ const ALLOWED_TOOLS = new Set([
 async function callTool(toolName, args = {}) {
   if (!ALLOWED_TOOLS.has(toolName)) {
     throw new Error(`Blocked: tool "${toolName}" is not in the allowed tools whitelist`);
+  }
+
+  // Sandbox guard: refuse mutations when running in read-only mode.
+  // Local Supabase writes (overrides, notes, goals, etc.) are unaffected —
+  // they don't go through callTool().
+  if (READ_ONLY_MODE && MUTATING_TOOLS.has(toolName)) {
+    console.warn(`[READ_ONLY_MODE] Blocked Bullhorn ${toolName}`, { args });
+    const err = new Error('Bullhorn writes are disabled in sandbox (READ_ONLY_MODE).');
+    err.code = 'READ_ONLY_MODE';
+    err.statusCode = 403;
+    throw err;
   }
 
   // Circuit breaker: fail fast when MCP is known to be down so one outage
@@ -316,6 +335,14 @@ async function updateSubmissionField(submissionId, fields) {
   return callTool('update_entity', {
     entityType: 'JobSubmission',
     entityId: parseInt(submissionId, 10),
+    fields,
+  });
+}
+
+async function updateClientCorporationField(clientCorpId, fields) {
+  return callTool('update_entity', {
+    entityType: 'ClientCorporation',
+    entityId: parseInt(clientCorpId, 10),
     fields,
   });
 }
@@ -1096,6 +1123,7 @@ module.exports = {
   updatePlacementField,
   updateOpportunityField,
   updateSubmissionField,
+  updateClientCorporationField,
   getCorporateUsers,
   getRecruiterUsers,
   getClientSubsInRange,

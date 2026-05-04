@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const { getActivePlacementsWithClient } = require('../lib/bullhorn');
+const { getActivePlacementsWithClient, updateClientCorporationField } = require('../lib/bullhorn');
 const db = require('../lib/db');
 const { syncBullhornClients } = require('../lib/orgflowSync');
 const { imageFileFilter, verifyImageBuffer } = require('../lib/imageUpload');
@@ -82,7 +82,24 @@ router.post('/clients', async (req, res, next) => {
 router.patch('/clients/:id', async (req, res, next) => {
   try {
     const client = await db.updateClient(req.params.id, req.body);
-    res.json(client);
+
+    // Bullhorn write-back: when status changes on a client linked to a
+    // ClientCorporation, push the new status to Bullhorn. Best-effort —
+    // a Bullhorn-side failure (READ_ONLY_MODE, invalid value, perms) is
+    // logged and surfaced in the response so the UI can warn, but the
+    // local save is not rolled back.
+    let bullhornSync = null;
+    if (req.body.status && client?.bullhorn_client_id) {
+      try {
+        await updateClientCorporationField(client.bullhorn_client_id, { status: req.body.status });
+        bullhornSync = { ok: true };
+      } catch (bhErr) {
+        console.warn('[orgflow] Bullhorn ClientCorporation status write-back failed:', bhErr.message);
+        bullhornSync = { ok: false, error: bhErr.message, code: bhErr.code || null };
+      }
+    }
+
+    res.json({ ...client, bullhornSync });
   } catch (err) { next(err); }
 });
 
