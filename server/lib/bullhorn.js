@@ -643,20 +643,42 @@ async function getActiveClientCorporations(sinceMs = 0) {
 
   // Full scan — paginate by id. orderBy: 'id' so the cursor (max id seen)
   // monotonically advances; loop until a page returns less than PAGE_SIZE.
+  // Per-page failures are caught and retried once; if a page still fails
+  // we break with what we have so the sync surfaces partial progress
+  // instead of a hard 500 to the user.
   const allCorps = [];
   let lastId = 0;
   let pages = 0;
+  let pageErrors = 0;
   while (true) {
-    const result = await callTool('query_entity', {
-      entityType: 'ClientCorporation',
-      where: `id > ${lastId}`,
-      fields,
-      orderBy: 'id',
-      count: PAGE_SIZE,
-    });
+    let result;
+    try {
+      result = await callTool('query_entity', {
+        entityType: 'ClientCorporation',
+        where: `id > ${lastId}`,
+        fields,
+        orderBy: 'id',
+        count: PAGE_SIZE,
+      });
+    } catch (err) {
+      pageErrors++;
+      console.warn(`[bullhorn] page ${pages + 1} (id > ${lastId}) failed, retrying: ${err.message}`);
+      try {
+        result = await callTool('query_entity', {
+          entityType: 'ClientCorporation',
+          where: `id > ${lastId}`,
+          fields,
+          orderBy: 'id',
+          count: PAGE_SIZE,
+        });
+      } catch (retryErr) {
+        console.warn(`[bullhorn] retry failed: ${retryErr.message} — returning partial result`);
+        break;
+      }
+    }
     if (result?.message && !Array.isArray(result?.data)) {
-      // Surface MCP / Bullhorn errors so the sync can write last_error.
-      return result;
+      console.warn(`[bullhorn] page ${pages + 1} returned non-JSON: ${String(result.message).slice(0, 200)}`);
+      break;
     }
     const corps = result?.data || [];
     pages++;
@@ -671,7 +693,7 @@ async function getActiveClientCorporations(sinceMs = 0) {
       break;
     }
   }
-  console.log(`[bullhorn] full ClientCorporation scan: ${allCorps.length} corps in ${pages} pages`);
+  console.log(`[bullhorn] full ClientCorporation scan: ${allCorps.length} corps in ${pages} pages, ${pageErrors} retries`);
   return { data: allCorps };
 }
 

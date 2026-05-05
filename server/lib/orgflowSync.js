@@ -16,6 +16,21 @@ const { getActiveClientCorporations, getClientContactsForCorps } = require('./bu
 
 const SYNC_KEY = 'orgflow_bullhorn_clients';
 
+// APT renamed the ClientCorporation status picklist at some point; older
+// Bullhorn records still hold the legacy value on the left, which isn't in
+// the new dropdown. Translate during sync so the pill renders correctly and
+// (when the user changes status from Org Flow) the write-back uses the new
+// label. Add more entries here if other legacy values surface.
+const LEGACY_STATUS_MAP = {
+  'Active': 'Active Account',
+};
+
+function mapBullhornStatus(raw) {
+  const trimmed = (raw || '').trim();
+  if (!trimmed) return null;
+  return LEGACY_STATUS_MAP[trimmed] || trimmed;
+}
+
 let isRunning = false;
 
 function normalizeName(name) {
@@ -57,7 +72,11 @@ async function syncBullhornClients(options = {}) {
     if (bhCorps.length === 0) {
       // Even with no client changes, run the contact sync — newly-linked
       // clients from a prior run may still need their contacts pulled in.
-      const contactResult = await syncBullhornContacts();
+      // skipContacts is set by the manual "Sync from Bullhorn" button so the
+      // request completes well within the HTTP timeout; cron handles contacts.
+      const contactResult = options.skipContacts
+        ? { contactsFetched: 0, contactsInserted: 0, contactsSkipped: 0, contactsSkippedReason: 'manual-sync' }
+        : await syncBullhornContacts();
       const metadata = {
         inserted: 0, linked: 0, updated: 0, skipped: 0, fetched: 0,
         ...contactResult,
@@ -111,8 +130,9 @@ async function syncBullhornClients(options = {}) {
       // Bullhorn ClientCorporation.status is the source of truth for the
       // status pill — sync it down so existing rows stop showing the column
       // default. Only included on toUpdate when it differs from Supabase, so
-      // the metadata count stays accurate.
-      const bhStatus = (corp.status || '').trim() || null;
+      // the metadata count stays accurate. Legacy values (e.g. "Active") are
+      // translated to current picklist labels via mapBullhornStatus.
+      const bhStatus = mapBullhornStatus(corp.status);
 
       const linked = byBhId.get(Number(bhId));
       if (linked) {
@@ -153,7 +173,11 @@ async function syncBullhornClients(options = {}) {
     // Pull contacts for every linked client (this run's freshly-linked rows
     // included). Running it after the client upsert means new/linked corps
     // are visible to the contact sync via getAllClientsLinkedToBullhorn().
-    const contactResult = await syncBullhornContacts();
+    // Skipped on manual "Sync from Bullhorn" — that path optimises for
+    // status-pill freshness; the 30-min cron handles the heavier contact pull.
+    const contactResult = options.skipContacts
+      ? { contactsFetched: 0, contactsInserted: 0, contactsSkipped: 0, contactsSkippedReason: 'manual-sync' }
+      : await syncBullhornContacts();
     const finishedAt = new Date().toISOString();
 
     const metadata = {

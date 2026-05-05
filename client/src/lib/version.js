@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.22.15';
+export const APP_VERSION = '3.22.16';
 
 export const CHANGELOG = [
+  {
+    version: '3.22.16',
+    date: '2026-05-04',
+    title: 'Org Flow — Manual Sync Skips Contacts + Maps Legacy "Active" Status',
+    changes: [
+      { type: 'patch', text: 'Three follow-ups for the manual "Sync from Bullhorn" button. (1) The button now passes skipContacts: true to the sync, so it finishes well within the HTTP request timeout — the contact sync continues to run on the 30-minute cron where time isn\'t a constraint. (2) The paginated full scan retries each page once on transient MCP errors and returns a partial result instead of bubbling a hard 500 if a page still fails. (3) Many older Bullhorn ClientCorporations carry a legacy status value of "Active" that APT renamed to "Active Account" — the sync now translates "Active" to "Active Account" before writing to Supabase, and any other unrecognized values surface in the dropdown as "(legacy)" so they\'re visible instead of silently displaying as Unqualified.' },
+    ],
+  },
   {
     version: '3.22.15',
     date: '2026-05-04',

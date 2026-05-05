@@ -185,12 +185,13 @@ router.post('/clients/import', async (req, res, next) => {
 // into Org Flow. Also runs on a 30-minute cron (server/index.js); this endpoint
 // exists for the manual "Sync from Bullhorn" button on the dashboard.
 //
-// Manual click forces a full scan (full: true) so backfills like the new
-// status field cover every corp, not just the ones modified since the last
-// successful run. Cron remains incremental.
+// Manual click forces a full scan (full: true) so status backfills cover
+// every corp, and skips the contact sync (which iterates ~150 chunks at
+// 1–2s each and would blow past the HTTP request timeout). Cron remains
+// incremental and handles contacts on its 30-minute schedule.
 router.post('/sync-bullhorn-clients', async (req, res, next) => {
   try {
-    const result = await syncBullhornClients({ full: true });
+    const result = await syncBullhornClients({ full: true, skipContacts: true });
     res.json(result);
   } catch (err) { next(err); }
 });
