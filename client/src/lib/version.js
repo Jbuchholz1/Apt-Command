@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.22.17';
+export const APP_VERSION = '3.22.18';
 
 export const CHANGELOG = [
+  {
+    version: '3.22.18',
+    date: '2026-05-04',
+    title: 'Org Flow — Hide Bullhorn "Imported Contacts" Placeholder Corps',
+    changes: [
+      { type: 'patch', text: 'After v3.22.17 finally pulled the full corp list out of Bullhorn, hundreds of "Imported Contacts" cards appeared. Those are placeholder ClientCorporations that Bullhorn auto-creates whenever someone bulk-imports ClientContacts — every batch makes one, all with status Archive, none representing a real account. The sync now skips any corp whose name matches "Imported Contacts" exactly (case-insensitive), and the dashboard query filters them out so any rows already in Supabase from before this fix stay invisible. Existing rows can be deleted with: delete from clients where name ilike \'Imported Contacts%\';' },
+    ],
+  },
   {
     version: '3.22.17',
     date: '2026-05-04',

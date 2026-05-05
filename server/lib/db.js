@@ -472,7 +472,8 @@ async function getClients(userId) {
 
   let query = supabase
     .from('clients')
-    .select('*, account_manager:user_profiles!created_by(email, full_name)');
+    .select('*, account_manager:user_profiles!created_by(email, full_name)')
+    .not('name', 'ilike', 'Imported Contacts%');
 
   if (userId) {
     const { data: assignments } = await supabase

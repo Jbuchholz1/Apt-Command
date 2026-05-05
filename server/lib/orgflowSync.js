@@ -118,6 +118,15 @@ async function syncBullhornClients(options = {}) {
         skipped++;
         continue;
       }
+      // Skip Bullhorn's "Imported Contacts" placeholder corps — these are
+      // auto-created when someone bulk-imports ClientContacts in Bullhorn
+      // and never represent a real account. They cluttered Org Flow with
+      // hundreds of identical Archive-status cards after the v3.22.17
+      // pagination fix finally pulled the whole tail of the corp list.
+      if (/^imported contacts$/i.test(bhName)) {
+        skipped++;
+        continue;
+      }
 
       // ClientCorporation.owners is a TO_MANY collection. Take the first owner's
       // email (or fall back to corp.owner if Bullhorn ever returns it singular).
