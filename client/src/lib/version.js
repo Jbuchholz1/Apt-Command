@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.22.20';
+export const APP_VERSION = '3.22.21';
 
 export const CHANGELOG = [
+  {
+    version: '3.22.21',
+    date: '2026-05-05',
+    title: 'Org Flow — Sort By Client Status',
+    changes: [
+      { type: 'patch', text: 'Added two new options to the toolbar sort dropdown: "Status (Lead → Archive)" and "Status (Archive → Lead)". The order follows the lifecycle (Unqualified, Qualified Lead, Proposal, Negotiation, Active Account, Passive Account, DNC, Archive) rather than alphabetical, so cards group by stage in a way that matches how an account works through them. Ties within a single status fall back to name (A-Z) so the order inside each group stays stable. Pairs naturally with the multi-select status filter — filter to "Active Account + Negotiation" then sort by status to see negotiation cards first, active accounts second.' },
+    ],
+  },
   {
     version: '3.22.20',
     date: '2026-05-05',

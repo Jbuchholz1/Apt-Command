@@ -23,6 +23,15 @@ const STATUS_OPTIONS = [
   { value: 'Archive', label: 'Archive' },
 ];
 
+// STATUS_OPTIONS doubles as the canonical pipeline order — sort by status
+// uses array index as the rank so cards group by stage in lifecycle order
+// rather than alphabetical (which would scatter Active/Archive/DNC).
+const STATUS_RANK = new Map(STATUS_OPTIONS.map((opt, idx) => [opt.value, idx]));
+const statusRank = (s) => {
+  const r = STATUS_RANK.get(s);
+  return r === undefined ? Number.MAX_SAFE_INTEGER : r;
+};
+
 export default function OrgFlowDashboard({ onSelectClient }) {
   const { accounts } = useMsal();
   const currentUserEmail = accounts[0]?.username || '';
@@ -287,6 +296,14 @@ export default function OrgFlowDashboard({ onSelectClient }) {
           return new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
         case 'updated-desc':
           return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+        case 'status-asc': {
+          const diff = statusRank(a.status) - statusRank(b.status);
+          return diff !== 0 ? diff : a.name.localeCompare(b.name);
+        }
+        case 'status-desc': {
+          const diff = statusRank(b.status) - statusRank(a.status);
+          return diff !== 0 ? diff : a.name.localeCompare(b.name);
+        }
         default:
           return 0;
       }
@@ -392,6 +409,8 @@ export default function OrgFlowDashboard({ onSelectClient }) {
             <option value="updated-asc">Least Recently Updated</option>
             <option value="name-asc">Name (A-Z)</option>
             <option value="name-desc">Name (Z-A)</option>
+            <option value="status-asc">Status (Lead → Archive)</option>
+            <option value="status-desc">Status (Archive → Lead)</option>
           </select>
         </div>
 
