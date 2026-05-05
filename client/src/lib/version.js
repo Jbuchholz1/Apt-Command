@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.22.19';
+export const APP_VERSION = '3.22.20';
 
 export const CHANGELOG = [
+  {
+    version: '3.22.20',
+    date: '2026-05-05',
+    title: 'Org Flow — Excel Import Handles Hyperlink Cells',
+    changes: [
+      { type: 'patch', text: 'Importing the Motion Industries employee file (and any future file where Excel auto-converted email addresses into clickable hyperlinks) failed with a generic "Error importing file. Please check the format." Under the hood, ExcelJS returns hyperlink cells as { text, hyperlink } objects instead of strings, and the downstream import code called .trim() on what it expected to be a string — throwing TypeError before the row reached the validator. readExcelToJson now flattens hyperlink, richText, and formula objects to plain strings at the parse step, so every row hands the importer simple key/value pairs. The fallback error alert also now includes the underlying message so the next surprise format issue is debuggable in seconds instead of guesswork.' },
+    ],
+  },
   {
     version: '3.22.19',
     date: '2026-05-04',

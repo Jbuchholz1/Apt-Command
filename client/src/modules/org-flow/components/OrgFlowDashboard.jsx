@@ -221,7 +221,7 @@ export default function OrgFlowDashboard({ onSelectClient }) {
         alert(message);
       } catch (err) {
         console.error('Error importing clients:', err);
-        setError('Error importing file. Please check the format.');
+        setError(`Error importing file. Please check the format. Details: ${err?.message || err}`);
       }
     };
     reader.readAsArrayBuffer(file);

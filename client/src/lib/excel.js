@@ -31,9 +31,20 @@ export async function readExcelToJson(arrayBuffer) {
       if (!header) return;
 
       let value = cell.value;
-      // ExcelJS can return rich text objects — unwrap them
-      if (value && typeof value === 'object' && value.richText) {
-        value = value.richText.map(rt => rt.text).join('');
+      // ExcelJS can return rich text objects, hyperlink objects, and
+      // formula objects — flatten them all to a plain string before
+      // handing the row to downstream code, which assumes string cells.
+      if (value && typeof value === 'object') {
+        if (Array.isArray(value.richText)) {
+          value = value.richText.map(rt => rt.text || '').join('');
+        } else if ('hyperlink' in value || 'text' in value) {
+          // Hyperlink cells (e.g. Excel auto-linked an email address) come
+          // back as { text, hyperlink } — prefer the visible text.
+          value = value.text != null ? value.text : (value.hyperlink || '');
+        } else if ('result' in value) {
+          // Formula cells: { formula, result }
+          value = value.result != null ? value.result : '';
+        }
       }
       // Convert dates to strings for consistency
       if (value instanceof Date) {

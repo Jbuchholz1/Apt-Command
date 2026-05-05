@@ -693,7 +693,7 @@ function OrgChartContent({ clientId, onBack }) {
         alert(message);
       } catch (error) {
         console.error('Error importing Excel:', error);
-        alert('Error importing file. Please check the format.');
+        alert(`Error importing file. Please check the format.\n\nDetails: ${error?.message || error}`);
       }
     };
     reader.readAsArrayBuffer(file);
