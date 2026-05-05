@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.22.11';
+export const APP_VERSION = '3.22.12';
 
 export const CHANGELOG = [
+  {
+    version: '3.22.12',
+    date: '2026-05-04',
+    title: 'Org Flow — Status Picklist Aligned With Bullhorn',
+    changes: [
+      { type: 'patch', text: 'Replaced the placeholder dropdown values (Active / Prospect / On Hold / Inactive / Lost) with the real Bullhorn ClientCorporation picklist: Unqualified, Qualified Lead, Proposal, Negotiation, Active Account, Passive Account, DNC, Archive. Each gets its own colored pill. The toolbar "Filter by status" picks up the same set automatically. Server boot will backfill any rows still on the old "Active" default to "Active Account" so existing cards do not show a phantom value, and the column default is now "Unqualified".' },
+    ],
+  },
   {
     version: '3.22.11',
     date: '2026-05-04',

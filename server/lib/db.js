@@ -64,12 +64,21 @@ async function ensureSchema() {
     if (csErr && csErr.message.toLowerCase().includes('status')) {
       console.log('[db] Adding status column to clients...');
       const { error: rpcErr } = await supabase.rpc('exec_sql', {
-        query: "ALTER TABLE clients ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'Active';"
+        query: "ALTER TABLE clients ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'Unqualified';"
       });
       if (rpcErr) {
         console.warn('[db] Could not auto-add clients.status — run migration 008 manually:', rpcErr.message);
       } else {
         console.log('[db] clients.status column added successfully');
+      }
+    } else if (!csErr) {
+      // Column exists — backfill rows still on the old draft default ("Active")
+      // to match the Bullhorn picklist ("Active Account"). Idempotent.
+      const { data: stale } = await supabase.from('clients').select('id').eq('status', 'Active').limit(1);
+      if (stale && stale.length > 0) {
+        console.log('[db] Backfilling clients.status: "Active" → "Active Account"...');
+        const { error: updErr } = await supabase.from('clients').update({ status: 'Active Account' }).eq('status', 'Active');
+        if (updErr) console.warn('[db] clients.status backfill failed:', updErr.message);
       }
     }
 

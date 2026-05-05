@@ -12,11 +12,14 @@ import {
 } from '../../../lib/api';
 
 const STATUS_OPTIONS = [
-  { value: 'Active', label: 'Active' },
-  { value: 'Prospect', label: 'Prospect' },
-  { value: 'On Hold', label: 'On Hold' },
-  { value: 'Inactive', label: 'Inactive' },
-  { value: 'Lost', label: 'Lost' },
+  { value: 'Unqualified', label: 'Unqualified' },
+  { value: 'Qualified Lead', label: 'Qualified Lead' },
+  { value: 'Proposal', label: 'Proposal' },
+  { value: 'Negotiation', label: 'Negotiation' },
+  { value: 'Active Account', label: 'Active Account' },
+  { value: 'Passive Account', label: 'Passive Account' },
+  { value: 'DNC', label: 'DNC' },
+  { value: 'Archive', label: 'Archive' },
 ];
 
 export default function OrgFlowDashboard({ onSelectClient }) {
@@ -472,7 +475,7 @@ export default function OrgFlowDashboard({ onSelectClient }) {
                   </button>
                 </div>
                 <ClientStatusPill
-                  value={client.status || 'Active'}
+                  value={client.status || 'Unqualified'}
                   options={STATUS_OPTIONS}
                   onSave={(newStatus) => handleUpdateStatus(client.id, newStatus)}
                 />

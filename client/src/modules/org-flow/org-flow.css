@@ -141,11 +141,14 @@
 .of-status-pill { appearance: none; -webkit-appearance: none; padding: 5px 26px 5px 12px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; border: 1px solid transparent; cursor: pointer; font-family: inherit; line-height: 1.4; box-shadow: 0 1px 3px rgba(4,20,79,0.12); background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 6'%3E%3Cpath fill='currentColor' d='M0 0l4 6 4-6z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 8px; outline: none; transition: box-shadow 0.15s; }
 .of-status-pill:hover { box-shadow: 0 3px 8px rgba(4,20,79,0.18); }
 .of-status-pill:focus-visible { box-shadow: 0 0 0 3px rgba(211,191,48,0.45); }
-.of-status-pill--active { background-color: #dcfce7; color: #166534; border-color: #86efac; }
-.of-status-pill--prospect { background-color: #dbeafe; color: #1e40af; border-color: #93c5fd; }
-.of-status-pill--onhold { background-color: #fef3c7; color: #92400e; border-color: #fcd34d; }
-.of-status-pill--inactive { background-color: #e5e7eb; color: #374151; border-color: #d1d5db; }
-.of-status-pill--lost { background-color: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+.of-status-pill--unqualified { background-color: #f1f5f9; color: #475569; border-color: #cbd5e1; }
+.of-status-pill--qualified-lead { background-color: #dbeafe; color: #1e40af; border-color: #93c5fd; }
+.of-status-pill--proposal { background-color: #ede9fe; color: #5b21b6; border-color: #c4b5fd; }
+.of-status-pill--negotiation { background-color: #fef3c7; color: #92400e; border-color: #fcd34d; }
+.of-status-pill--active-account { background-color: #dcfce7; color: #166534; border-color: #86efac; }
+.of-status-pill--passive-account { background-color: #f3f4f6; color: #4b5563; border-color: #d1d5db; }
+.of-status-pill--dnc { background-color: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+.of-status-pill--archive { background-color: #e5e7eb; color: #1f2937; border-color: #9ca3af; }
 
 /* ---- Dashboard: Client Logo ---- */
 .of-client-logo-wrapper { width: 48px; height: 48px; border-radius: 10px; overflow: hidden; flex-shrink: 0; background: #f1f5f9; display: flex; align-items: center; justify-content: center; }
