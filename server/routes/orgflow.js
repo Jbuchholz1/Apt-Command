@@ -100,7 +100,15 @@ router.patch('/clients/:id', async (req, res, next) => {
     }
 
     res.json({ ...client, bullhornSync });
-  } catch (err) { next(err); }
+  } catch (err) {
+    if (err.message && /column .*status.*schema cache/i.test(err.message)) {
+      return res.status(500).json({
+        error: 'The clients.status column is missing in Supabase. Run server/migrations/008_orgflow_clients_status.sql in your Supabase SQL editor, then retry.',
+        code: 'STATUS_COLUMN_MISSING',
+      });
+    }
+    next(err);
+  }
 });
 
 // DELETE /api/org-flow/clients/:id — delete client
@@ -193,7 +201,15 @@ router.post('/sync-bullhorn-clients', async (req, res, next) => {
   try {
     const result = await syncBullhornClients({ full: true, skipContacts: true });
     res.json(result);
-  } catch (err) { next(err); }
+  } catch (err) {
+    if (err.code === 'STATUS_COLUMN_MISSING' || (err.message && /column .*status.*schema cache/i.test(err.message))) {
+      return res.status(500).json({
+        error: 'The clients.status column is missing in Supabase. Run server/migrations/008_orgflow_clients_status.sql in your Supabase SQL editor, then click Sync from Bullhorn again.',
+        code: 'STATUS_COLUMN_MISSING',
+      });
+    }
+    next(err);
+  }
 });
 
 // GET /api/org-flow/sync-bullhorn-clients/status — last run info for UI

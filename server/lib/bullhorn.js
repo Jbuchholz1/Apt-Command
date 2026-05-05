@@ -685,11 +685,12 @@ async function getActiveClientCorporations(sinceMs = 0) {
     if (corps.length === 0) break;
     allCorps.push(...corps);
     lastId = corps[corps.length - 1].id;
-    if (corps.length < PAGE_SIZE) break;
-    // Safety: hard cap at 50 pages (25,000 corps). Real tenants are
-    // nowhere near this; the cap exists so a bug in ordering can't loop.
-    if (pages >= 50) {
-      console.warn('[bullhorn] getActiveClientCorporations hit 50-page safety cap');
+    // Don't bail on corps.length < PAGE_SIZE — APT's MCP caps responses
+    // at 200 even when count: 500 is requested, so the early-break stopped
+    // pagination after page 1 last time. Keep going until a page is empty.
+    // Safety: hard cap at 100 pages (~50,000 corps).
+    if (pages >= 100) {
+      console.warn('[bullhorn] getActiveClientCorporations hit 100-page safety cap');
       break;
     }
   }

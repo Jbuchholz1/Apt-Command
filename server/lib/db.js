@@ -609,24 +609,51 @@ async function bulkSyncBullhornClients(toInsert, toUpdate) {
     inserted = toInsert.length;
   }
 
-  for (const row of toUpdate) {
-    const updates = {};
-    if (row.name !== undefined) updates.name = row.name;
-    if (row.bullhorn_client_id !== undefined) updates.bullhorn_client_id = row.bullhorn_client_id;
-    if (row.created_by !== undefined) updates.created_by = row.created_by;
-    if (row.status !== undefined) updates.status = row.status;
-    if (Object.keys(updates).length === 0) continue;
+  // Parallelize updates within chunks. Sequential awaits across thousands
+  // of rows take minutes (Supabase round-trip is 50–100ms each); chunked
+  // parallel calls finish well within the HTTP request window.
+  const CHUNK = 50;
+  let columnMissingError = null;
 
-    const { error } = await supabase
-      .from('clients')
-      .update(updates)
-      .eq('id', row.id);
-    if (error) {
-      console.error(`[db] bulkSyncBullhornClients update error for client ${row.id}:`, error.message);
-      continue;
+  for (let i = 0; i < toUpdate.length && !columnMissingError; i += CHUNK) {
+    const chunk = toUpdate.slice(i, i + CHUNK);
+    const results = await Promise.all(chunk.map(async (row) => {
+      const updates = {};
+      if (row.name !== undefined) updates.name = row.name;
+      if (row.bullhorn_client_id !== undefined) updates.bullhorn_client_id = row.bullhorn_client_id;
+      if (row.created_by !== undefined) updates.created_by = row.created_by;
+      if (row.status !== undefined) updates.status = row.status;
+      if (Object.keys(updates).length === 0) return null;
+
+      const { error } = await supabase
+        .from('clients')
+        .update(updates)
+        .eq('id', row.id);
+      if (error) {
+        console.error(`[db] bulkSyncBullhornClients update error for client ${row.id}:`, error.message);
+        return { error };
+      }
+      return { row };
+    }));
+    for (const r of results) {
+      if (!r) continue;
+      if (r.error) {
+        // Surface the specific "missing column" case so the route handler
+        // can return an actionable message instead of generic 500.
+        if (r.error.message && /column .*status.*schema cache/i.test(r.error.message)) {
+          columnMissingError = r.error;
+        }
+        continue;
+      }
+      if (r.row._wasUnlinked) linked++;
+      else updated++;
     }
-    if (row._wasUnlinked) linked++;
-    else updated++;
+  }
+
+  if (columnMissingError) {
+    const err = new Error("Could not find the 'status' column of 'clients' in the schema cache");
+    err.code = 'STATUS_COLUMN_MISSING';
+    throw err;
   }
 
   return { inserted, linked, updated };

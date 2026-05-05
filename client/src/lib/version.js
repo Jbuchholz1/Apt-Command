@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.22.16';
+export const APP_VERSION = '3.22.17';
 
 export const CHANGELOG = [
+  {
+    version: '3.22.17',
+    date: '2026-05-04',
+    title: 'Org Flow — Surface Missing-Column Error + Parallelize Bulk Update',
+    changes: [
+      { type: 'patch', text: 'Three follow-ups after Railway logs revealed the real cause of the sync failures: the auto-migrate could not run because the user\'s Supabase project does not expose the exec_sql RPC, so the clients.status column was never added — every status read/write was failing silently. (1) The route now translates that specific Supabase error into a clear actionable message ("clients.status column is missing in Supabase — run migration 008") instead of an opaque 500. (2) The bulk client update during sync now parallelizes within chunks of 50, dropping the post-pagination write phase from minutes to seconds. (3) Pagination no longer stops when a page returns less than the requested count (APT\'s MCP capped at 200 even when 500 was requested), so the full scan now continues until a page returns zero results. Run migration 008 in the Supabase SQL editor before retrying — see commit notes.' },
+    ],
+  },
   {
     version: '3.22.16',
     date: '2026-05-04',
