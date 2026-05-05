@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.22.13';
+export const APP_VERSION = '3.22.14';
 
 export const CHANGELOG = [
+  {
+    version: '3.22.14',
+    date: '2026-05-04',
+    title: 'Org Flow — Manual Sync Now Forces A Full Scan',
+    changes: [
+      { type: 'patch', text: 'Confirmed via direct Bullhorn query that ClientCorporation.status returns the right values (Unqualified / Qualified Lead / Active Account / etc.) — but the sync was incremental, filtering to dateLastModified > last successful sync. Most APT clients haven\'t been touched in months, so they never came back in the sync, and their Supabase row kept the column default. Clicking "Sync from Bullhorn" now forces a full scan (sinceMs = 0) so every linked corp gets its real Bullhorn status copied down. The 30-minute cron stays incremental — the heavier full pass only runs when you ask for it.' },
+    ],
+  },
   {
     version: '3.22.13',
     date: '2026-05-04',

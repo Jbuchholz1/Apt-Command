@@ -22,7 +22,7 @@ function normalizeName(name) {
   return (name || '').toLowerCase().trim();
 }
 
-async function syncBullhornClients() {
+async function syncBullhornClients(options = {}) {
   if (isRunning) {
     return { skipped: 'already-running' };
   }
@@ -31,9 +31,13 @@ async function syncBullhornClients() {
   const startedAt = new Date().toISOString();
   try {
     const state = await db.getSyncState(SYNC_KEY);
-    const lastSuccessMs = state?.last_success_at
-      ? new Date(state.last_success_at).getTime()
-      : 0;
+    // Manual "Sync from Bullhorn" clicks pass { full: true } so user-driven
+    // syncs always do a fresh full scan. Cron stays incremental via the
+    // dateLastModified watermark.
+    const lastSuccessMs = options.full
+      ? 0
+      : (state?.last_success_at ? new Date(state.last_success_at).getTime() : 0);
+    console.log(`[orgflowSync] starting (full=${!!options.full}, sinceMs=${lastSuccessMs})`);
 
     const bhResult = await getActiveClientCorporations(lastSuccessMs);
     const bhCorps = bhResult?.data || [];

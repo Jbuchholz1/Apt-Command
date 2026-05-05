@@ -184,9 +184,13 @@ router.post('/clients/import', async (req, res, next) => {
 // POST /api/org-flow/sync-bullhorn-clients — pull active Bullhorn ClientCorporations
 // into Org Flow. Also runs on a 30-minute cron (server/index.js); this endpoint
 // exists for the manual "Sync from Bullhorn" button on the dashboard.
+//
+// Manual click forces a full scan (full: true) so backfills like the new
+// status field cover every corp, not just the ones modified since the last
+// successful run. Cron remains incremental.
 router.post('/sync-bullhorn-clients', async (req, res, next) => {
   try {
-    const result = await syncBullhornClients();
+    const result = await syncBullhornClients({ full: true });
     res.json(result);
   } catch (err) { next(err); }
 });
