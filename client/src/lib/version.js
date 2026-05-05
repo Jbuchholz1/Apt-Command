@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.22.18';
+export const APP_VERSION = '3.22.19';
 
 export const CHANGELOG = [
+  {
+    version: '3.22.19',
+    date: '2026-05-04',
+    title: 'Org Flow — Status Filter Is Now Multi-Select',
+    changes: [
+      { type: 'patch', text: 'The toolbar status filter is now a checkbox-style multi-select instead of a single-pick dropdown. Click it to open a panel of all 8 status values, toggle any combination, and the grid filters to show clients in any of the selected statuses (OR semantics). Empty selection means show everything. The button label flips between "All Statuses", a single status name, or "<N> statuses" depending on what is selected. Clicking outside the panel closes it; "Clear all" resets to empty. Per-card status pill stays single-select since each client has one status at a time.' },
+    ],
+  },
   {
     version: '3.22.18',
     date: '2026-05-04',

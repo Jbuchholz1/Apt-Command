@@ -3,6 +3,7 @@ import { Plus, Building2, FolderOpen, Trash2, Users, User as UserIcon, Settings,
 import { useMsal } from '@azure/msal-react';
 import ClientAssignment from './ClientAssignment';
 import ClientStatusPill from './ClientStatusPill';
+import MultiSelectStatusFilter from './MultiSelectStatusFilter';
 import { readExcelToJson, writeExcelFile } from '../../../lib/excel';
 import {
   getClientHealthStats, getOrgFlowCurrentUser, getOrgFlowClients,
@@ -40,7 +41,7 @@ export default function OrgFlowDashboard({ onSelectClient }) {
   const fileInputRef = useRef(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('name-asc');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState(() => new Set());
   const [logoUploadClient, setLogoUploadClient] = useState(null);
   const [failedLogos, setFailedLogos] = useState(new Set());
   const [logoFile, setLogoFile] = useState(null);
@@ -258,7 +259,7 @@ export default function OrgFlowDashboard({ onSelectClient }) {
 
   const filteredAndSortedClients = clients
     .filter((client) => {
-      if (statusFilter !== 'all' && (client.status || 'Active') !== statusFilter) return false;
+      if (statusFilter.size > 0 && !statusFilter.has(client.status || 'Unqualified')) return false;
       if (!searchQuery.trim()) return true;
 
       const query = searchQuery.toLowerCase();
@@ -375,17 +376,11 @@ export default function OrgFlowDashboard({ onSelectClient }) {
               className="of-search-input"
             />
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="of-sort-select"
-            title="Filter by status"
-          >
-            <option value="all">All Statuses</option>
-            {STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
+          <MultiSelectStatusFilter
+            options={STATUS_OPTIONS}
+            selected={statusFilter}
+            onChange={setStatusFilter}
+          />
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
