@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.22.12';
+export const APP_VERSION = '3.22.13';
 
 export const CHANGELOG = [
+  {
+    version: '3.22.13',
+    date: '2026-05-04',
+    title: 'Org Flow — Status Now Pulls From Bullhorn On Sync',
+    changes: [
+      { type: 'patch', text: 'After v3.22.12 every client card showed "Unqualified" because the Bullhorn → Supabase sync was never copying ClientCorporation.status — every row fell back to the column default. The sync now reads status off each Bullhorn corp and writes it through on insert and on update, so the pill reflects the real Bullhorn value as soon as the next sync runs (cron every 30 min, or click "Sync from Bullhorn" to backfill immediately). Bullhorn remains the source of truth; user-driven changes still write back via update_entity.' },
+    ],
+  },
   {
     version: '3.22.12',
     date: '2026-05-04',

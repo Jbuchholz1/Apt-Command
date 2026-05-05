@@ -614,6 +614,7 @@ async function bulkSyncBullhornClients(toInsert, toUpdate) {
     if (row.name !== undefined) updates.name = row.name;
     if (row.bullhorn_client_id !== undefined) updates.bullhorn_client_id = row.bullhorn_client_id;
     if (row.created_by !== undefined) updates.created_by = row.created_by;
+    if (row.status !== undefined) updates.status = row.status;
     if (Object.keys(updates).length === 0) continue;
 
     const { error } = await supabase

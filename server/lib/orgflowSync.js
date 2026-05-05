@@ -104,13 +104,19 @@ async function syncBullhornClients() {
         || '').toLowerCase();
       const mappedUserId = ownerEmail ? emailToUserId.get(ownerEmail) || null : null;
 
+      // Bullhorn ClientCorporation.status is the source of truth for the
+      // status pill — sync it down so existing rows stop showing the column
+      // default. Only included on toUpdate when it differs from Supabase, so
+      // the metadata count stays accurate.
+      const bhStatus = (corp.status || '').trim() || null;
+
       const linked = byBhId.get(Number(bhId));
       if (linked) {
-        if (linked.name !== bhName) {
-          toUpdate.push({ id: linked.id, name: bhName });
-        } else {
-          skipped++;
-        }
+        const update = { id: linked.id };
+        if (linked.name !== bhName) update.name = bhName;
+        if (bhStatus && linked.status !== bhStatus) update.status = bhStatus;
+        if (Object.keys(update).length > 1) toUpdate.push(update);
+        else skipped++;
         continue;
       }
 
@@ -118,6 +124,7 @@ async function syncBullhornClients() {
       if (nameMatch && nameMatch.bullhorn_client_id == null) {
         const update = { id: nameMatch.id, bullhorn_client_id: bhId, _wasUnlinked: true };
         if (!nameMatch.created_by && mappedUserId) update.created_by = mappedUserId;
+        if (bhStatus && nameMatch.status !== bhStatus) update.status = bhStatus;
         toUpdate.push(update);
         continue;
       }
@@ -133,6 +140,7 @@ async function syncBullhornClients() {
         name: bhName,
         bullhorn_client_id: bhId,
         created_by: mappedUserId,
+        status: bhStatus || 'Unqualified',
       });
     }
 
