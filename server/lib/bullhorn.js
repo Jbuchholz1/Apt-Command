@@ -622,21 +622,57 @@ async function getClientCorporations(clientIds) {
 // No status filter — APT's tenant uses a custom status value, so a literal
 // `status = 'Active'` matched nothing. The sync surfaces every non-deleted
 // corp; users can filter or delete archived cards from Org Flow if needed.
+//
+// Bullhorn caps query results at 500 per call. APT has thousands of
+// ClientCorporations, so a full scan paginates by id ascending until no
+// page is full. Incremental runs filter by dateLastModified and almost
+// always fit in a single page.
 async function getActiveClientCorporations(sinceMs = 0) {
-  // Note: ClientCorporation does NOT support `isDeleted` (Bullhorn returns
-  // "is not a valid field name"). For a full scan we use `id > 0` to match
-  // every record; incremental runs filter by dateLastModified.
-  // `owners` is TO_MANY — matches the existing getClientCorporations helper.
-  const where = sinceMs > 0
-    ? `dateLastModified > ${sinceMs}`
-    : `id > 0`;
-  return callTool('query_entity', {
-    entityType: 'ClientCorporation',
-    where,
-    fields: 'id,name,status,dateAdded,dateLastModified,owners',
-    orderBy: '-dateLastModified',
-    count: 500,
-  });
+  const PAGE_SIZE = 500;
+  const fields = 'id,name,status,dateAdded,dateLastModified,owners';
+
+  if (sinceMs > 0) {
+    return callTool('query_entity', {
+      entityType: 'ClientCorporation',
+      where: `dateLastModified > ${sinceMs}`,
+      fields,
+      orderBy: '-dateLastModified',
+      count: PAGE_SIZE,
+    });
+  }
+
+  // Full scan — paginate by id. orderBy: 'id' so the cursor (max id seen)
+  // monotonically advances; loop until a page returns less than PAGE_SIZE.
+  const allCorps = [];
+  let lastId = 0;
+  let pages = 0;
+  while (true) {
+    const result = await callTool('query_entity', {
+      entityType: 'ClientCorporation',
+      where: `id > ${lastId}`,
+      fields,
+      orderBy: 'id',
+      count: PAGE_SIZE,
+    });
+    if (result?.message && !Array.isArray(result?.data)) {
+      // Surface MCP / Bullhorn errors so the sync can write last_error.
+      return result;
+    }
+    const corps = result?.data || [];
+    pages++;
+    if (corps.length === 0) break;
+    allCorps.push(...corps);
+    lastId = corps[corps.length - 1].id;
+    if (corps.length < PAGE_SIZE) break;
+    // Safety: hard cap at 50 pages (25,000 corps). Real tenants are
+    // nowhere near this; the cap exists so a bug in ordering can't loop.
+    if (pages >= 50) {
+      console.warn('[bullhorn] getActiveClientCorporations hit 50-page safety cap');
+      break;
+    }
+  }
+  console.log(`[bullhorn] full ClientCorporation scan: ${allCorps.length} corps in ${pages} pages`);
+  return { data: allCorps };
 }
 
 async function getABJobs(startMs, endMs) {

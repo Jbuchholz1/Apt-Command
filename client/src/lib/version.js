@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.22.14';
+export const APP_VERSION = '3.22.15';
 
 export const CHANGELOG = [
+  {
+    version: '3.22.15',
+    date: '2026-05-04',
+    title: 'Org Flow — Full Sync Now Paginates Past 500 Clients',
+    changes: [
+      { type: 'patch', text: 'After v3.22.14 the full sync still left most cards on Unqualified because Bullhorn caps query results at 500 per call, and the APT tenant has thousands of ClientCorporations — only the 500 newest came back, every other corp\'s status went unchanged. The full scan now paginates by id ascending and keeps fetching until a page returns less than 500, so every linked client gets its real Bullhorn status copied down. Click "Sync from Bullhorn" once after the redeploy and the Railway log line "[bullhorn] full ClientCorporation scan: <N> corps in <P> pages" will tell you how many came through.' },
+    ],
+  },
   {
     version: '3.22.14',
     date: '2026-05-04',
