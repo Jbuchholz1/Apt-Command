@@ -9,6 +9,7 @@
     "audit:ci": "npm audit --omit=dev --audit-level=high"
   },
   "dependencies": {
+    "@azure/msal-node": "^5.1.5",
     "@supabase/supabase-js": "^2.103.0",
     "compression": "^1.8.1",
     "cors": "^2.8.5",

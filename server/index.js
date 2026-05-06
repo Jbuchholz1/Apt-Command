@@ -259,3 +259,20 @@ if (IS_PROD || process.env.ENABLE_SYNC_CRON === 'true') {
   });
   console.log('[cron] orgflow bullhorn sync registered (every 30 min)');
 }
+
+// Background: nightly SharePoint export of Req Board, Org Flow, and Pipeline
+// at 23:00 America/Chicago. Off by default in dev; opt in via
+// ENABLE_EXPORT_CRON=true. Always on in production.
+if (IS_PROD || process.env.ENABLE_EXPORT_CRON === 'true') {
+  const cron = require('node-cron');
+  const { runNightlyExport } = require('./lib/scheduledExport');
+  cron.schedule('0 23 * * *', async () => {
+    try {
+      const results = await runNightlyExport();
+      console.log('[cron] nightly sharepoint export:', JSON.stringify(results));
+    } catch (err) {
+      console.error('[cron] nightly sharepoint export failed:', err.message);
+    }
+  }, { timezone: 'America/Chicago' });
+  console.log('[cron] nightly sharepoint export registered (23:00 America/Chicago)');
+}
