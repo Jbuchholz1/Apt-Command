@@ -2,6 +2,125 @@
    Operations Module Styles
    ================================================ */
 
+/* ---- Operations Home (Tile Selector) ---- */
+.ops-home {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 60px 24px;
+}
+
+.ops-home-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--navy);
+  margin: 0 0 4px;
+}
+
+.ops-home-subtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 0 0 32px;
+}
+
+.ops-card-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 20px;
+}
+
+.ops-card {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 10px;
+  padding: 28px 24px;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 6px 28px rgba(4, 20, 79, 0.16), 0 3px 10px rgba(0,0,0,0.1);
+  width: calc(50% - 10px);
+  min-width: 240px;
+}
+.ops-card:hover {
+  border-color: rgba(211, 191, 48, 0.4);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 16px 48px rgba(4, 20, 79, 0.22), 0 6px 20px rgba(0,0,0,0.12);
+  transform: translateY(-2px);
+}
+
+.ops-card-icon {
+  color: var(--navy);
+}
+
+.ops-card-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--navy);
+  margin: 0;
+}
+
+.ops-card-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .ops-card { width: 100%; }
+  .ops-home { padding: 32px 16px; }
+}
+
+/* ---- Back Button (sub-pages) ---- */
+.ops-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-light);
+  text-decoration: none;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.15s;
+  margin-right: 4px;
+}
+.ops-back-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ---- Coming Soon (sub-page placeholder) ---- */
+.ops-coming-soon {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 80px 24px;
+  text-align: center;
+}
+
+.ops-coming-soon-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.ops-coming-soon-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--navy);
+  margin: 0 0 8px;
+}
+
+.ops-coming-soon-text {
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
 /* ---- Module Toolbar ---- */
 .ops-toolbar {
   background: var(--navy);

@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.22.21';
+export const APP_VERSION = '3.23.0';
 
 export const CHANGELOG = [
+  {
+    version: '3.23.0',
+    date: '2026-05-06',
+    title: 'Operations — Tile-Grid Home + COI Tracking Placeholder',
+    changes: [
+      { type: 'minor', text: 'Operations now opens to a tile-grid landing page (matching the Support module pattern) instead of going straight to placements. Two tiles: "Onboarding Tracking" (the existing new-hire paperwork / healthcare / payroll / 401k tracker, now at /operations/onboarding) and "COI Tracking" (placeholder at /operations/coi for future Certificate of Insurance tracking). Each sub-page has a back link to the Operations home. Splash + admin gate stay on the wrapper so they only fire once per module entry.' },
+    ],
+  },
   {
     version: '3.22.21',
     date: '2026-05-05',

@@ -17,6 +17,9 @@ import PipelineModule from './modules/pipeline/PipelineModule';
 import OpportunityPipeline from './modules/pipeline/OpportunityPipeline';
 import AdminModule from './modules/admin/AdminModule';
 import OperationsModule from './modules/operations/OperationsModule';
+import OperationsHome from './modules/operations/OperationsHome';
+import OnboardingTracking from './modules/operations/OnboardingTracking';
+import COITracking from './modules/operations/COITracking';
 import ProjectManagementModule from './modules/project-management/ProjectManagementModule';
 import ProjectsListView from './modules/project-management/ProjectsListView';
 import ProjectBoard from './modules/project-management/ProjectBoard';
@@ -58,7 +61,11 @@ function AppRoutes() {
           <Route path="status" element={<SystemStatus />} />
 
         </Route>
-        <Route path="operations" element={<OperationsModule />} />
+        <Route path="operations" element={<OperationsModule />}>
+          <Route index element={<OperationsHome />} />
+          <Route path="onboarding" element={<OnboardingTracking />} />
+          <Route path="coi" element={<COITracking />} />
+        </Route>
         <Route path="projects" element={<ProjectManagementModule />}>
           <Route index element={<ProjectsListView />} />
           <Route path=":projectId" element={<ProjectBoard />} />
