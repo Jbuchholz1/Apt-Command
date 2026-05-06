@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.27.3';
+export const APP_VERSION = '3.27.4';
 
 export const CHANGELOG = [
+  {
+    version: '3.27.4',
+    date: '2026-05-06',
+    title: 'Reporting — Rename Weekly "Candidate Submissions" to "Client Submissions"',
+    changes: [
+      { type: 'patch', text: 'The Weekly executive tab tile previously labelled "Candidate Submissions" is now "Client Submissions". The tile already showed client-side submissions (subs sent to clients in the date range) — only the label was off.' },
+    ],
+  },
   {
     version: '3.27.3',
     date: '2026-05-06',

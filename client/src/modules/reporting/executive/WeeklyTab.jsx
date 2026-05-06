@@ -153,7 +153,7 @@ export default function WeeklyTab({ startDate, endDate }) {
           onClick={() => setOpenModal('newPlacements')}
         />
         <LiveTile
-          label="Candidate Submissions"
+          label="Client Submissions"
           value={fmtNum(candidateSubs)}
           subtitle="Client subs in date range"
           state={tileState(loading, candidateSubs)}
