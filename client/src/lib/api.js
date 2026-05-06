@@ -301,6 +301,17 @@ export function updateUserRole(userId, role) {
   });
 }
 
+export function getUserPermissions(userId) {
+  return fetchAPI(`/api/admin/users/${userId}/permissions`);
+}
+
+export function updateUserPermissions(userId, permissions) {
+  return fetchAPI(`/api/admin/users/${userId}/permissions`, {
+    method: 'PUT',
+    body: { permissions },
+  });
+}
+
 // --- Client Health ---
 
 export function getClientHealth(startDate, endDate) {

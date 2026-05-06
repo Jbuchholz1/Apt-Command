@@ -25,7 +25,12 @@ const {
 const { getAllOverrides } = require('../lib/db');
 const { POINTS, EXCLUDED_RECRUITERS, getRecruiterTier, getSpreadGoal, bhLink } = require('../lib/recruiterConfig');
 const { SALES_POINTS, ACTIVITY_LABELS, ACTIVITY_ORDER, EXCLUDED_AMS, getAMTier, getAMSpreadGoal } = require('../lib/salesConfig');
-const { requireAdmin } = require('../middleware/adminAuth');
+const { requireModule } = require('../middleware/adminAuth');
+
+// Reporting is split per sub-dashboard so admins can grant fine-grained access.
+const requireRecruiter = requireModule('reporting_recruiter');
+const requireSales = requireModule('reporting_sales');
+const requireExec = requireModule('reporting_executive');
 
 function formatDate(ms) {
   if (!ms) return '';
@@ -43,7 +48,7 @@ function candidateName(c) {
 }
 
 // GET /api/reporting/recruiter-dashboard?start=2026-04-01&end=2026-04-09
-router.get('/recruiter-dashboard', async (req, res, next) => {
+router.get('/recruiter-dashboard', requireRecruiter, async (req, res, next) => {
   try {
     const { start, end } = req.query;
     if (!start || !end) {
@@ -333,7 +338,7 @@ router.get('/recruiter-dashboard', async (req, res, next) => {
 });
 
 // GET /api/reporting/sales-dashboard?start=2026-04-01&end=2026-04-09
-router.get('/sales-dashboard', async (req, res, next) => {
+router.get('/sales-dashboard', requireSales, async (req, res, next) => {
   try {
     const { start, end } = req.query;
     if (!start || !end) {
@@ -582,7 +587,7 @@ function styleSheet(ws, colCount) {
 }
 
 // GET /api/reporting/recruiter-export?start=...&end=...
-router.get('/recruiter-export', async (req, res, next) => {
+router.get('/recruiter-export', requireRecruiter, async (req, res, next) => {
   try {
     // Reuse the recruiter-dashboard logic by calling the handler internally
     const url = `/recruiter-dashboard?start=${req.query.start}&end=${req.query.end}`;
@@ -691,7 +696,7 @@ router.get('/recruiter-export', async (req, res, next) => {
 });
 
 // GET /api/reporting/sales-export?start=...&end=...
-router.get('/sales-export', async (req, res, next) => {
+router.get('/sales-export', requireSales, async (req, res, next) => {
   try {
     const { start, end } = req.query;
     if (!start || !end) return res.status(400).json({ error: 'start and end required' });
@@ -792,7 +797,14 @@ function isOverdueDate(str, emptyPhrase) {
 }
 
 // GET /api/reporting/team-alerts?team=recruiting|sales
-router.get('/team-alerts', async (req, res, next) => {
+// Gate matches the requested team — recruiter-team alerts need reporting_recruiter,
+// sales-team alerts need reporting_sales. Both share one handler.
+function requireTeamAlertsAccess(req, res, next) {
+  const team = req.query.team || 'recruiting';
+  const gate = team === 'sales' ? requireSales : requireRecruiter;
+  return gate(req, res, next);
+}
+router.get('/team-alerts', requireTeamAlertsAccess, async (req, res, next) => {
   try {
     const team = req.query.team || 'recruiting';
 
@@ -905,7 +917,7 @@ router.get('/team-alerts', async (req, res, next) => {
 });
 
 // GET /api/reporting/executive-dashboard?start=2026-01-01&end=2026-04-20 (admin only)
-router.get('/executive-dashboard', requireAdmin, async (req, res, next) => {
+router.get('/executive-dashboard', requireExec, async (req, res, next) => {
   try {
     const { start, end } = req.query;
     if (!start || !end) {
@@ -1095,7 +1107,7 @@ async function sumNewInput(placements) {
 
 // GET /api/reporting/executive-weekly?start=&end= (admin)
 // Returns: headcount Δ vs prior week, attrition, offers extended/accepted
-router.get('/executive-weekly', requireAdmin, async (req, res, next) => {
+router.get('/executive-weekly', requireExec, async (req, res, next) => {
   try {
     const { start, end } = req.query;
     if (!start || !end) return res.status(400).json({ error: 'start and end query params required' });
@@ -1187,7 +1199,7 @@ router.get('/executive-weekly', requireAdmin, async (req, res, next) => {
 
 // GET /api/reporting/executive-monthly?start=&end= (admin)
 // Returns: new clients, active clients, off-boards next 30d, YTD GP, net hires, retention
-router.get('/executive-monthly', requireAdmin, async (req, res, next) => {
+router.get('/executive-monthly', requireExec, async (req, res, next) => {
   try {
     const { start, end } = req.query;
     if (!start || !end) return res.status(400).json({ error: 'start and end query params required' });
@@ -1396,7 +1408,7 @@ router.get('/executive-monthly', requireAdmin, async (req, res, next) => {
 
 // GET /api/reporting/executive-quarterly?start=&end= (admin)
 // Returns: talent pipeline funnel — Lead → Submission → Interview → Placement
-router.get('/executive-quarterly', requireAdmin, async (req, res, next) => {
+router.get('/executive-quarterly', requireExec, async (req, res, next) => {
   try {
     const { start, end } = req.query;
     if (!start || !end) return res.status(400).json({ error: 'start and end query params required' });

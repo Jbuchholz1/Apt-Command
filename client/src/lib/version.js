@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.24.2';
+export const APP_VERSION = '3.26.0';
 
 export const CHANGELOG = [
+  {
+    version: '3.26.0',
+    date: '2026-05-06',
+    title: 'Access — Per-User Per-Module Permissions',
+    changes: [
+      { type: 'minor', text: 'New per-module access control replaces the coarse admin/manager/basic gating. Each user can now be granted access to individual tools (Req Board, Operations, Pipeline, Reporting sub-dashboards, Project Management, etc.) at either basic or admin level. Reporting is split into four separately-grantable sub-dashboards (Recruiter / Sales / Executive / My Performance). Global admin remains a superuser tier that bypasses the grant table. Backed by a new user_module_permissions table. The Admin module gains an "Edit" button per user that opens a per-module access editor with None/Basic/Admin radios. Existing managers and basic users were backfilled to preserve current access on rollout.' },
+    ],
+  },
   {
     version: '3.24.2',
     date: '2026-05-06',

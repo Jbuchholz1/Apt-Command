@@ -20,20 +20,25 @@ import {
   Search,
 } from 'lucide-react';
 import { APP_VERSION } from '../lib/version';
+import { useUserRole } from '../lib/UserRoleContext';
+import { REPORTING_SUB_KEYS } from '../lib/modules';
 import ChangelogModal from './ChangelogModal';
 import './sidebar.css';
 
+// Each entry's `module` is the access key (or list of keys for parents like
+// Reporting). Dashboard is always shown — it's the user's landing page.
 const NAV_ITEMS = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/', exact: true },
-  { label: 'Req Board', icon: ClipboardList, path: '/req-board' },
-  { label: 'Org Flow', icon: GitBranch, path: '/org-flow' },
-  { label: 'Pipeline', icon: Users, path: '/pipeline' },
-  { label: 'APT Health', icon: Building2, path: '/clients' },
-  { label: 'Reporting', icon: BarChart3, path: '/reporting' },
-
-  { label: 'Goal Tracking', icon: Target, path: '/goals' },
-  { label: 'Support', icon: LifeBuoy, path: '/support' },
-  { label: 'Operations', icon: Settings, path: '/operations', adminOnly: true },
+  { label: 'Req Board',     icon: ClipboardList, path: '/req-board',  module: 'req_board' },
+  { label: 'Org Flow',      icon: GitBranch,     path: '/org-flow',   module: 'org_flow' },
+  { label: 'Pipeline',      icon: Users,         path: '/pipeline',   module: 'pipeline' },
+  { label: 'APT Health',    icon: Building2,     path: '/clients',    module: 'client_health' },
+  { label: 'Reporting',     icon: BarChart3,     path: '/reporting',  modulesAny: REPORTING_SUB_KEYS },
+  { label: 'Goal Tracking', icon: Target,        path: '/goals',      module: 'goal_tracking' },
+  { label: 'Support',       icon: LifeBuoy,      path: '/support',    module: 'support' },
+  { label: 'Operations',    icon: Settings,      path: '/operations', module: 'operations' },
+  { label: 'Project Management', icon: KanbanSquare, path: '/projects', module: 'project_management' },
+  { label: 'Admin',         icon: Shield,        path: '/admin',      module: 'admin' },
 ];
 
 const QUICK_LINKS = [
@@ -47,23 +52,19 @@ const QUICK_LINKS = [
   { label: 'SharePoint', href: 'https://bytesizeinc.sharepoint.com/sites/AptCentral' },
 ];
 
-export default function Sidebar({ userName, userRole, onLogout, mobileOpen, onOpenSearch }) {
+export default function Sidebar({ userName, onLogout, mobileOpen, onOpenSearch }) {
   const location = useLocation();
   const [linksOpen, setLinksOpen] = useState(false);
   const [changelogOpen, setChangelogOpen] = useState(false);
+  const { hasAccess } = useUserRole();
 
   const navItems = useMemo(() => {
-    const isAdmin = userRole === 'admin';
-    const isManager = userRole === 'admin' || userRole === 'manager';
-    // adminOnly items (Operations) only show for full admins
-    const items = NAV_ITEMS.filter(item => !item.adminOnly || isAdmin);
-    // Manager/Admin-only tabs
-    if (isManager) {
-      items.push({ label: 'Project Management', icon: KanbanSquare, path: '/projects' });
-      items.push({ label: 'Admin', icon: Shield, path: '/admin' });
-    }
-    return items;
-  }, [userRole]);
+    return NAV_ITEMS.filter(item => {
+      if (!item.module && !item.modulesAny) return true; // Dashboard
+      if (item.modulesAny) return item.modulesAny.some(k => hasAccess(k));
+      return hasAccess(item.module);
+    });
+  }, [hasAccess]);
 
   const isActive = (item) => {
     if (item.exact) return location.pathname === item.path;

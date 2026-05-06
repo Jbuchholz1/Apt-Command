@@ -19,6 +19,9 @@ const { getAllOverrides } = require('../lib/db');
 const { POINTS, bhLink } = require('../lib/recruiterConfig');
 const { SALES_POINTS, ACTIVITY_LABELS, ACTIVITY_ORDER } = require('../lib/salesConfig');
 const { resolveRole } = require('../lib/roles');
+const { requireModule } = require('../middleware/adminAuth');
+
+router.use(requireModule('reporting_performance'));
 
 function formatDate(ms) {
   if (!ms) return '';

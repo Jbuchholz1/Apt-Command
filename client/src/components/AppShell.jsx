@@ -4,7 +4,7 @@ import { useMsal } from '@azure/msal-react';
 import { Menu } from 'lucide-react';
 import Sidebar from './Sidebar';
 import UniversalSearch from './UniversalSearch/UniversalSearch';
-import { UserRoleProvider, useUserRole } from '../lib/UserRoleContext';
+import { UserRoleProvider } from '../lib/UserRoleContext';
 
 function AppShellInner() {
   const { instance, accounts } = useMsal();
@@ -12,7 +12,6 @@ function AppShellInner() {
   const userName = accounts[0]?.name || accounts[0]?.username || '';
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const { role: userRole } = useUserRole();
 
   const handleLogout = () => {
     instance.logoutRedirect({ postLogoutRedirectUri: window.location.origin });
@@ -46,7 +45,6 @@ function AppShellInner() {
       <div onClick={handleNavClick}>
         <Sidebar
           userName={userName}
-          userRole={userRole}
           onLogout={handleLogout}
           mobileOpen={mobileOpen}
           onOpenSearch={() => setSearchOpen(true)}

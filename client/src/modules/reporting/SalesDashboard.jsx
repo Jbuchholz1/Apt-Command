@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import './reporting.css';
 import { getSalesDashboard, exportSalesDashboard } from '../../lib/api';
+import { useUserRole } from '../../lib/UserRoleContext';
+import AccessDenied from '../../components/AccessDenied';
 import DateRangePicker from './components/DateRangePicker';
 import DashboardFilters from './components/DashboardFilters';
 import TeamAlerts from './components/TeamAlerts';
@@ -29,6 +31,7 @@ function getDefaultDates() {
 }
 
 export default function SalesDashboard() {
+  const { hasAccess, loading: roleLoading } = useUserRole();
   const defaults = getDefaultDates();
   const [startDate, setStartDate] = useState(defaults.start);
   const [endDate, setEndDate] = useState(defaults.end);
@@ -180,6 +183,9 @@ export default function SalesDashboard() {
   };
 
   const ams = filteredAms;
+
+  if (roleLoading) return null;
+  if (!hasAccess('reporting_sales')) return <AccessDenied />;
 
   return (
     <div className="reporting-module">

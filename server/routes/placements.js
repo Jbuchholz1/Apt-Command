@@ -1,7 +1,10 @@
 const express = require('express');
 const { getActivePlacements } = require('../lib/bullhorn');
+const { requireModule } = require('../middleware/adminAuth');
 
 const router = express.Router();
+
+router.use(requireModule('req_board'));
 
 // GET /api/placements — Active placements (active contractors)
 router.get('/', async (req, res, next) => {

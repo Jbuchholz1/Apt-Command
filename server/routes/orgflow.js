@@ -5,6 +5,9 @@ const { getActivePlacementsWithClient, updateClientCorporationField } = require(
 const db = require('../lib/db');
 const { syncBullhornClients } = require('../lib/orgflowSync');
 const { imageFileFilter, verifyImageBuffer } = require('../lib/imageUpload');
+const { requireModule } = require('../middleware/adminAuth');
+
+router.use(requireModule('org_flow'));
 
 // Multer: in-memory storage for logo uploads (max 5MB, images only).
 // imageFileFilter rejects SVG and non-image mimetypes up front; verifyImageBuffer

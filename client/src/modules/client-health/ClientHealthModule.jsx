@@ -4,6 +4,8 @@ import { getClientHealth, getCompanyKPIs, exportHealthDashboard } from '../../li
 import GaugeCard from './GaugeCard';
 import DateRangePicker from '../reporting/components/DateRangePicker';
 import ModuleSplash from '../../components/ModuleSplash';
+import AccessDenied from '../../components/AccessDenied';
+import { useUserRole } from '../../lib/UserRoleContext';
 
 function MultiSelect({ label, options, selected, onChange }) {
   const [open, setOpen] = useState(false);
@@ -99,6 +101,7 @@ function getDefaultDates() {
 }
 
 export default function ClientHealthModule() {
+  const { hasAccess, loading: roleLoading } = useUserRole();
   const [showSplash, setShowSplash] = useState(true);
   const defaults = getDefaultDates();
   const [startDate, setStartDate] = useState(defaults.start);
@@ -228,6 +231,9 @@ export default function ClientHealthModule() {
       onComplete={() => setShowSplash(false)}
     />;
   }
+
+  if (roleLoading) return null;
+  if (!hasAccess('client_health')) return <AccessDenied />;
 
   return (
     <div className="client-health-module">

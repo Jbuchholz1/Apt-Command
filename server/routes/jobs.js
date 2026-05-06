@@ -1,13 +1,21 @@
 const express = require('express');
-const ExcelJS = require('exceljs');
-const { getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getJobsByIds, getSubmissions, addNoteToJob, updateJobField, updateOpportunityField, updateSubmissionField, getCorporateUsers, getOpenOpportunitiesFull, getClientSubmissions, getOfferExtendedSubmissions } = require('../lib/bullhorn');
+const { getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getJobsByIds, getSubmissions, addNoteToJob, addNoteToOpportunity, updateJobField, updateOpportunityField, updateSubmissionField, getCorporateUsers, getOpenOpportunitiesFull, getOpportunityById, getClientContactsForCorp, createJob, getClientSubmissions, getOfferExtendedSubmissions } = require('../lib/bullhorn');
 const {
   getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote,
   enqueueReconciliation, OverrideConflictError,
 } = require('../lib/db');
-const { sanitizeRow } = require('../lib/excelSafe');
+const { buildReqBoardWorkbook } = require('../lib/exporters');
+const { requireModule } = require('../middleware/adminAuth');
 
 const router = express.Router();
+
+// This router serves two modules: req_board (jobs, submissions, notes,
+// overrides) and pipeline (/opportunities/*). Each handler is gated
+// individually rather than at the router level so the two modules can be
+// granted independently.
+const requireRb = requireModule('req_board');
+const requireRbAdmin = requireModule('req_board', 'admin');
+const requirePipeline = requireModule('pipeline');
 
 // Strip HTML tags from user input to prevent stored XSS
 function sanitize(str) {
@@ -15,114 +23,28 @@ function sanitize(str) {
   return str.replace(/<[^>]*>/g, '');
 }
 
-// GET /api/jobs/export — Excel export (must be above /:id to avoid conflict)
-router.get('/export', async (req, res, next) => {
+// GET /api/jobs/export — Excel export (must be above /:id to avoid conflict).
+// Delegates to lib/exporters so the manual download and the nightly cron
+// upload share one source of truth.
+router.get('/export', requireRbAdmin, async (req, res, next) => {
   try {
-    const [result, clientSubsResult] = await Promise.all([getOpenJobs(), getClientSubmissions()]);
-    const overrides = await getAllOverrides();
-
-    const clientSubCounts = {};
-    for (const sub of (clientSubsResult?.data || [])) {
-      const jobId = sub.jobOrder?.id;
-      if (jobId) clientSubCounts[jobId] = (clientSubCounts[jobId] || 0) + 1;
-    }
-
-    const jobs = (result?.data || []).map(j => {
-      const formatted = mergeOverrides(formatJob(j), overrides);
-      formatted.clientSubs = clientSubCounts[j.id] || 0;
-      return formatted;
-    });
-
-    const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet('Req Board');
-
-    // Define columns — matches req board table exactly
-    sheet.columns = [
-      { header: 'Pri', key: 'priority', width: 5 },
-      { header: 'Req#', key: 'id', width: 7 },
-      { header: 'Date', key: 'dateAdded', width: 10 },
-      { header: 'AM', key: 'ownerInitials', width: 5 },
-      { header: 'TR', key: 'recruiter', width: 5 },
-      { header: '48 hr', key: 'fortyEightHr', width: 12 },
-      { header: 'Job Title', key: 'title', width: 28 },
-      { header: 'Client', key: 'client', width: 18 },
-      { header: 'Status', key: 'status', width: 20 },
-      { header: 'Notes', key: 'notes', width: 30 },
-      { header: 'Deadline', key: 'deadline', width: 14 },
-      { header: 'Follow Up', key: 'followUp', width: 14 },
-      { header: 'PrBr/Salary LH', key: 'brSalary', width: 16 },
-      { header: 'CE $', key: 'ceSpread', width: 10 },
-      { header: 'Perm $', key: 'permFee', width: 10 },
-      { header: 'Manager', key: 'clientContact', width: 14 },
-      { header: 'Type', key: 'employmentType', width: 14 },
-      { header: 'Remote', key: 'remote', width: 8 },
-      { header: '# Op', key: 'numOpenings', width: 6 },
-      { header: '# CS', key: 'clientSubs', width: 6 },
-    ];
-
-    // Style header row
-    const headerRow = sheet.getRow(1);
-    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
-    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF04144F' } };
-    headerRow.alignment = { vertical: 'middle' };
-    headerRow.height = 22;
-
-    // Add data rows
-    for (const job of jobs) {
-      const d = job.dateAdded ? new Date(job.dateAdded) : null;
-      const dateStr = d ? `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}/${String(d.getFullYear()).slice(-2)}` : '';
-      sheet.addRow(sanitizeRow({
-        priority: job.priority || '',
-        id: job.id,
-        dateAdded: dateStr,
-        ownerInitials: job.ownerInitials || '',
-        recruiter: job.recruiter || '',
-        fortyEightHr: job.fortyEightHr || '',
-        title: job.title || '',
-        client: job.client || '',
-        status: job.status || '',
-        notes: job.notes || '',
-        deadline: job.deadline || '',
-        followUp: job.followUp || '',
-        brSalary: job.brSalary || '',
-        ceSpread: job.ceSpread || '',
-        permFee: job.permFee || '',
-        clientContact: job.clientContact || '',
-        employmentType: job.employmentType || '',
-        remote: job.remote || '',
-        numOpenings: job.numOpenings || 0,
-        clientSubs: job.clientSubs || 0,
-      }));
-    }
-
-    // Format currency columns
-    sheet.getColumn('ceSpread').numFmt = '$#,##0';
-    sheet.getColumn('permFee').numFmt = '$#,##0';
-
-    // Auto-filter
-    sheet.autoFilter = { from: 'A1', to: `T${jobs.length + 1}` };
-
-    // Freeze header row
-    sheet.views = [{ state: 'frozen', ySplit: 1 }];
-
+    const buffer = await buildReqBoardWorkbook();
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=APT_Req_Board_${new Date().toISOString().slice(0, 10)}.xlsx`);
-    await workbook.xlsx.write(res);
-    res.end();
+    res.send(buffer);
   } catch (err) {
     next(err);
   }
 });
 
 // GET /api/jobs — All open jobs + recently closed (Archive/Placed/Lost/Wash within 12hrs)
-router.get('/', async (req, res, next) => {
+router.get('/', requireRb, async (req, res, next) => {
   try {
-    const [openResult, closedResult, clientSubsResult] = await Promise.all([
+    const [openResult, closedResult, overrides] = await Promise.all([
       getOpenJobs(),
       getRecentlyClosedJobs(),
-      getClientSubmissions(),
+      getAllOverrides(),
     ]);
-    const overrides = await getAllOverrides();
 
     // Called Shots persist on the board regardless of status or time window.
     // Pull any flagged jobs that aren't already in the open/closed result sets.
@@ -138,6 +60,15 @@ router.get('/', async (req, res, next) => {
     const missingCalledShotResult = missingCalledShotIds.length
       ? await getJobsByIds(missingCalledShotIds)
       : { data: [] };
+
+    // Scope the client-sub query to only the jobs we're about to show, so the
+    // global 500-record cap can't silently drop submissions for recent jobs.
+    const boardJobIds = [
+      ...(openResult?.data || []).map(j => j.id),
+      ...(closedResult?.data || []).map(j => j.id),
+      ...(missingCalledShotResult?.data || []).map(j => j.id),
+    ];
+    const clientSubsResult = await getClientSubmissions(boardJobIds);
 
     // Build client submission count and latest date maps by jobOrder ID
     const clientSubCounts = {};
@@ -201,7 +132,7 @@ router.get('/', async (req, res, next) => {
 });
 
 // GET /api/jobs/all — All jobs including closed (with overrides)
-router.get('/all', async (req, res, next) => {
+router.get('/all', requireRb, async (req, res, next) => {
   try {
     const result = await getAllJobs();
     const overrides = await getAllOverrides();
@@ -213,7 +144,7 @@ router.get('/all', async (req, res, next) => {
 });
 
 // GET /api/jobs/users — CorporateUser list for AM dropdown
-router.get('/users', async (req, res, next) => {
+router.get('/users', requireRb, async (req, res, next) => {
   try {
     const result = await getCorporateUsers();
     const allUsers = (result?.data || [])
@@ -246,7 +177,7 @@ router.get('/users', async (req, res, next) => {
 });
 
 // GET /api/jobs/opportunities — All open opportunities for modal
-router.get('/opportunities', async (req, res, next) => {
+router.get('/opportunities', requirePipeline, async (req, res, next) => {
   try {
     const result = await getOpenOpportunitiesFull();
     const opportunities = (result?.data || []).map(o => ({
@@ -255,6 +186,7 @@ router.get('/opportunities', async (req, res, next) => {
       status: o.status || null,
       owner: o.owner ? `${o.owner.firstName || ''} ${o.owner.lastName || ''}`.trim() : null,
       client: o.clientCorporation?.name || null,
+      clientCorporationId: o.clientCorporation?.id || null,
       dateAdded: o.dateAdded ? new Date(o.dateAdded).toISOString() : null,
       expectedCloseDate: o.expectedCloseDate ? new Date(o.expectedCloseDate).toISOString() : null,
       dealValue: o.dealValue || null,
@@ -267,7 +199,7 @@ router.get('/opportunities', async (req, res, next) => {
 });
 
 // POST /api/jobs/opportunities/:id/update — Update opportunity fields in Bullhorn
-router.post('/opportunities/:id/update', async (req, res, next) => {
+router.post('/opportunities/:id/update', requirePipeline, async (req, res, next) => {
   try {
     const oppId = parseInt(req.params.id, 10);
     if (isNaN(oppId) || oppId <= 0) {
@@ -298,8 +230,113 @@ router.post('/opportunities/:id/update', async (req, res, next) => {
   }
 });
 
+// GET /api/jobs/client-contacts?corpId=N — ClientContacts for a ClientCorporation
+// Used by the Convert-to-Job modal to populate the contact dropdown.
+router.get('/client-contacts', requirePipeline, async (req, res, next) => {
+  try {
+    const corpId = parseInt(req.query.corpId, 10);
+    if (isNaN(corpId) || corpId <= 0) {
+      return res.status(400).json({ error: 'corpId query param required' });
+    }
+    const result = await getClientContactsForCorp(corpId);
+    const contacts = (result?.data || []).map(c => ({
+      id: c.id,
+      firstName: c.firstName || '',
+      lastName: c.lastName || '',
+      email: c.email || '',
+      name: `${c.firstName || ''} ${c.lastName || ''}`.trim(),
+    }));
+    res.json({ data: contacts });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/jobs/opportunities/:id/convert — Convert an Opportunity to a JobOrder
+// Creates a JobOrder with fields from the Opportunity + user-supplied comp/type fields,
+// then best-effort marks the source Opportunity as Closed-Won and adds a linking Note.
+router.post('/opportunities/:id/convert', requirePipeline, async (req, res, next) => {
+  try {
+    const oppId = parseInt(req.params.id, 10);
+    if (isNaN(oppId) || oppId <= 0) {
+      return res.status(400).json({ error: 'Invalid opportunity ID' });
+    }
+
+    const body = req.body || {};
+    const employmentType = body.employmentType;
+    const numOpenings = body.numOpenings;
+    if (!employmentType || !Number.isFinite(numOpenings) || numOpenings < 1) {
+      return res.status(400).json({ error: 'employmentType and numOpenings (>=1) are required' });
+    }
+
+    // 1. Fetch source Opportunity
+    const oppResult = await getOpportunityById(oppId);
+    const opp = oppResult?.data?.[0];
+    if (!opp) {
+      return res.status(404).json({ error: `Opportunity ${oppId} not found` });
+    }
+
+    // 2. Build JobOrder payload — Opportunity-sourced fields + user-supplied fields
+    const jobFields = {
+      title: opp.title || 'Untitled Job',
+      status: 'Accepting Candidates',
+      isOpen: true,
+      employmentType,
+      numOpenings: parseInt(numOpenings, 10),
+    };
+    if (opp.owner?.id) jobFields.owner = { id: opp.owner.id };
+    if (opp.clientCorporation?.id) jobFields.clientCorporation = { id: opp.clientCorporation.id };
+    if (opp.dealValue != null) jobFields.customFloat2 = Number(opp.dealValue);
+    if (opp.expectedCloseDate) jobFields.estimatedEndDate = Number(opp.expectedCloseDate);
+
+    // Optional numeric comp fields — only set if supplied and finite
+    for (const [key, fieldName] of [
+      ['payRate', 'payRate'],
+      ['clientBillRate', 'clientBillRate'],
+      ['salary', 'salary'],
+      ['salaryHigh', 'customFloat1'],
+    ]) {
+      if (body[key] != null && body[key] !== '' && Number.isFinite(Number(body[key]))) {
+        jobFields[fieldName] = Number(body[key]);
+      }
+    }
+
+    // Optional string fields
+    if (body.remote) jobFields.customText1 = String(body.remote);
+    if (body.clientContactId) {
+      const ccId = parseInt(body.clientContactId, 10);
+      if (Number.isFinite(ccId)) jobFields.clientContact = { id: ccId };
+    }
+
+    // 3. Create the JobOrder (hard failure if this fails — no partial state yet)
+    const createResult = await createJob(jobFields);
+    const newJobId = createResult?.changedEntityId || createResult?.data?.changedEntityId;
+    if (!newJobId) {
+      return res.status(502).json({ error: 'Job created but no ID returned from Bullhorn', raw: createResult });
+    }
+
+    // 4. Best-effort close-out of the source Opportunity.
+    //    JobOrder already exists; if these fail, surface a warning but still succeed.
+    const warnings = [];
+    try {
+      await updateOpportunityField(oppId, { status: 'Closed-Won' });
+    } catch (err) {
+      warnings.push(`Failed to mark Opportunity Closed-Won: ${err.message}`);
+    }
+    try {
+      await addNoteToOpportunity(oppId, `Converted to JobOrder #${newJobId}`);
+    } catch (err) {
+      warnings.push(`Failed to add linking note on Opportunity: ${err.message}`);
+    }
+
+    res.json({ success: true, jobOrderId: newJobId, warnings: warnings.length ? warnings : undefined });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // POST /api/jobs/submissions/:id/update — Update submission fields in Bullhorn
-router.post('/submissions/:id/update', async (req, res, next) => {
+router.post('/submissions/:id/update', requireRb, async (req, res, next) => {
   try {
     const subId = parseInt(req.params.id, 10);
     if (isNaN(subId)) {
@@ -328,7 +365,7 @@ router.post('/submissions/:id/update', async (req, res, next) => {
 });
 
 // GET /api/jobs/offer-out-candidates — Map of jobOrderId → candidate name(s) for subs in Offer Extended
-router.get('/offer-out-candidates', async (req, res, next) => {
+router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
   try {
     const result = await getOfferExtendedSubmissions();
     const map = {};
@@ -352,7 +389,7 @@ router.get('/offer-out-candidates', async (req, res, next) => {
 });
 
 // GET /api/jobs/:id — Single job detail + submissions + overrides (must be after named routes)
-router.get('/:id', async (req, res, next) => {
+router.get('/:id', requireRb, async (req, res, next) => {
   try {
     const jobId = parseInt(req.params.id, 10);
     if (isNaN(jobId) || jobId <= 0) {
@@ -411,7 +448,7 @@ router.get('/:id', async (req, res, next) => {
 });
 
 // POST /api/jobs/:id/bullhorn-update — Push field changes to Bullhorn
-router.post('/:id/bullhorn-update', async (req, res, next) => {
+router.post('/:id/bullhorn-update', requireRb, async (req, res, next) => {
   try {
     const jobId = parseInt(req.params.id, 10);
     if (isNaN(jobId)) {
@@ -495,7 +532,7 @@ router.post('/:id/bullhorn-update', async (req, res, next) => {
 });
 
 // PATCH /api/jobs/:id/overrides — Update TR, Notes, Follow Up, Deadline
-router.patch('/:id/overrides', async (req, res, next) => {
+router.patch('/:id/overrides', requireRb, async (req, res, next) => {
   try {
     const jobId = parseInt(req.params.id, 10);
     if (isNaN(jobId)) {
@@ -542,13 +579,15 @@ router.patch('/:id/overrides', async (req, res, next) => {
     }
 
     // Push notes to Bullhorn as a Note entity on the JobOrder.
-    // Best-effort: if Bullhorn rejects, the local override already saved.
+    // Fire-and-forget: the local override (Supabase) is the source of truth
+    // for the board, and it's already committed. Awaiting Bullhorn here would
+    // gate the user's save round-trip on a 1-3s upstream call for no visible
+    // benefit — the Bullhorn note is downstream sync, not display data. Errors
+    // are still logged so we can investigate sync drift.
     if (notes !== undefined && notes.trim()) {
-      try {
-        await addNoteToJob(jobId, notes.trim());
-      } catch (err) {
+      addNoteToJob(jobId, notes.trim()).catch(err => {
         console.error(`Failed to push note to Bullhorn for job ${jobId}:`, err.message);
-      }
+      });
     }
 
     res.json({ success: true, data: result });
@@ -558,7 +597,7 @@ router.patch('/:id/overrides', async (req, res, next) => {
 });
 
 // POST /api/jobs/:id/notes — Add a note (stored locally)
-router.post('/:id/notes', async (req, res, next) => {
+router.post('/:id/notes', requireRb, async (req, res, next) => {
   try {
     const jobId = parseInt(req.params.id, 10);
     if (isNaN(jobId)) {

@@ -1,7 +1,10 @@
 const express = require('express');
 const { getOpenJobs, getActivePlacements, getOpenOpportunities } = require('../lib/bullhorn');
+const { requireModule } = require('../middleware/adminAuth');
 
 const router = express.Router();
+
+router.use(requireModule('req_board'));
 
 // GET /api/stats — Summary counts for the stats strip
 router.get('/', async (req, res, next) => {

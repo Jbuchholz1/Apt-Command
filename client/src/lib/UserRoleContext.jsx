@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { getCurrentUser } from './api';
 import { showToast } from './toast';
 
@@ -9,6 +9,8 @@ const UserRoleContext = createContext({
   loading: true,
   isAdmin: false,
   isManager: false,
+  permissions: {},
+  hasAccess: () => false,
   bullhornRole: '',
   bullhornUserId: null,
   bullhornName: '',
@@ -36,6 +38,7 @@ export function UserRoleProvider({ children }) {
   const [role, setRole] = useState(null);
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
+  const [permissions, setPermissions] = useState({});
   const [loading, setLoading] = useState(true);
   const [bullhornRole, setBullhornRole] = useState('');
   const [bullhornUserId, setBullhornUserId] = useState(null);
@@ -47,6 +50,7 @@ export function UserRoleProvider({ children }) {
         setRole(data?.role || 'basic');
         setEmail(data?.email || '');
         setName(data?.name || '');
+        setPermissions(data?.permissions || {});
         // Bullhorn functional role + CorporateUser id, used by the Daily Brief
         // to render AM vs Recruiter stats without a second round-trip.
         // `bullhorn` is null when the caller has no matching Bullhorn user
@@ -58,6 +62,7 @@ export function UserRoleProvider({ children }) {
       })
       .catch((err) => {
         setRole('basic');
+        setPermissions({});
         if (err?.status !== 401 && err?.status !== 403) {
           console.warn('[UserRoleContext] Failed to load user role after retries:', err);
           showToast("Couldn't verify your role — some tabs may be hidden. Refresh to retry.");
@@ -68,10 +73,30 @@ export function UserRoleProvider({ children }) {
 
   const isAdmin = role === 'admin';
   const isManager = role === 'admin' || role === 'manager';
-  const value = {
-    role, email, name, loading, isAdmin, isManager,
-    bullhornRole, bullhornUserId, bullhornName,
-  };
+
+  // hasAccess(moduleKey, level = 'basic') — true if the user has at least that
+  // level on the module. Global admins always pass (they bypass the grants
+  // table on the server and resolvePermissions seeds them admin everywhere).
+  const hasAccess = useCallback(
+    (moduleKey, level = 'basic') => {
+      if (!moduleKey) return false;
+      if (isAdmin) return true;
+      const granted = permissions[moduleKey];
+      if (!granted) return false;
+      if (level === 'admin') return granted === 'admin';
+      return true;
+    },
+    [permissions, isAdmin],
+  );
+
+  const value = useMemo(
+    () => ({
+      role, email, name, loading, isAdmin, isManager,
+      permissions, hasAccess,
+      bullhornRole, bullhornUserId, bullhornName,
+    }),
+    [role, email, name, loading, isAdmin, isManager, permissions, hasAccess, bullhornRole, bullhornUserId, bullhornName],
+  );
 
   return (
     <UserRoleContext.Provider value={value}>

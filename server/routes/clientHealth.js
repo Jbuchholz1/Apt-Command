@@ -23,6 +23,9 @@ const {
 } = require('../lib/bullhorn');
 const { POINTS, EXCLUDED_RECRUITERS, bhLink } = require('../lib/recruiterConfig');
 const { SALES_POINTS, EXCLUDED_AMS } = require('../lib/salesConfig');
+const { requireModule } = require('../middleware/adminAuth');
+
+router.use(requireModule('client_health'));
 
 function calcHealth(placements, activities) {
   const effective = placements + Math.floor(activities / 5);

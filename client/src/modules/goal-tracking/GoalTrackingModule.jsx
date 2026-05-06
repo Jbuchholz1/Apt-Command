@@ -11,6 +11,7 @@ import {
   updateGoal,
 } from '../../lib/api';
 import { useUserRole } from '../../lib/UserRoleContext';
+import AccessDenied from '../../components/AccessDenied';
 import { getCurrentPeriod, formatPeriod } from './lib/period';
 import { computeAllProgress, buildTree } from './lib/progress';
 import { resolveStatus, statusLabel } from './lib/status';
@@ -91,7 +92,7 @@ function computeAggregates(visibleGoals, tree, progressMap, period) {
 }
 
 export default function GoalTrackingModule() {
-  const { email: currentEmail, name: currentName, isManager, loading: userLoading } = useUserRole();
+  const { email: currentEmail, name: currentName, isManager, hasAccess, loading: userLoading } = useUserRole();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const archivedParam = searchParams.get('archived');
@@ -234,6 +235,7 @@ export default function GoalTrackingModule() {
   }, [formConfig, load]);
 
   if (userLoading) return <div className="ql-loading">Loading…</div>;
+  if (!hasAccess('goal_tracking')) return <AccessDenied />;
 
   return (
     <div className="ql-module">

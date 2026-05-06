@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import './org-flow.css';
 import ModuleSplash from '../../components/ModuleSplash';
+import AccessDenied from '../../components/AccessDenied';
+import { useUserRole } from '../../lib/UserRoleContext';
 import OrgFlowDashboard from './components/OrgFlowDashboard';
 import OrgChart from './components/OrgChart';
 
 export default function OrgFlowModule() {
+  const { hasAccess, loading: roleLoading } = useUserRole();
   const [showSplash, setShowSplash] = useState(true);
   const [view, setView] = useState('dashboard');
   const [selectedClientId, setSelectedClientId] = useState(null);
@@ -19,6 +22,9 @@ export default function OrgFlowModule() {
       />
     );
   }
+
+  if (roleLoading) return null;
+  if (!hasAccess('org_flow')) return <AccessDenied />;
 
   const handleBackToDashboard = () => {
     setView('dashboard');

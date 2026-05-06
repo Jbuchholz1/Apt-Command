@@ -8,9 +8,11 @@
 const express = require('express');
 const router = express.Router();
 const { supabase } = require('../lib/db');
-const { requireManager } = require('../middleware/adminAuth');
+const { requireModule } = require('../middleware/adminAuth');
 
-router.use(requireManager);
+// Reads require basic access; mutations require admin level on this module.
+router.use(requireModule('project_management'));
+const requirePmAdmin = requireModule('project_management', 'admin');
 
 // Always revalidate — board state is mutation-heavy and stale renders confuse users.
 router.use((req, res, next) => {
@@ -102,7 +104,7 @@ router.get('/projects', async (req, res, next) => {
 });
 
 // POST /api/project-management/projects
-router.post('/projects', async (req, res, next) => {
+router.post('/projects', requirePmAdmin, async (req, res, next) => {
   try {
     if (!ensureSupabase(res)) return;
     const { name, description, color } = req.body || {};
@@ -158,7 +160,7 @@ router.get('/projects/:id', async (req, res, next) => {
 });
 
 // PATCH /api/project-management/projects/:id
-router.patch('/projects/:id', async (req, res, next) => {
+router.patch('/projects/:id', requirePmAdmin, async (req, res, next) => {
   try {
     if (!ensureSupabase(res)) return;
     const id = req.params.id;
@@ -199,7 +201,7 @@ router.patch('/projects/:id', async (req, res, next) => {
 });
 
 // DELETE /api/project-management/projects/:id — soft delete
-router.delete('/projects/:id', async (req, res, next) => {
+router.delete('/projects/:id', requirePmAdmin, async (req, res, next) => {
   try {
     if (!ensureSupabase(res)) return;
     const { data, error } = await supabase
@@ -219,7 +221,7 @@ router.delete('/projects/:id', async (req, res, next) => {
 });
 
 // POST /api/project-management/projects/:id/restore — un-archive
-router.post('/projects/:id/restore', async (req, res, next) => {
+router.post('/projects/:id/restore', requirePmAdmin, async (req, res, next) => {
   try {
     if (!ensureSupabase(res)) return;
     const { data, error } = await supabase
@@ -237,7 +239,7 @@ router.post('/projects/:id/restore', async (req, res, next) => {
 // --- Columns ---
 
 // POST /api/project-management/projects/:id/columns
-router.post('/projects/:id/columns', async (req, res, next) => {
+router.post('/projects/:id/columns', requirePmAdmin, async (req, res, next) => {
   try {
     if (!ensureSupabase(res)) return;
     const projectId = req.params.id;
@@ -264,7 +266,7 @@ router.post('/projects/:id/columns', async (req, res, next) => {
 });
 
 // PATCH /api/project-management/columns/:id
-router.patch('/columns/:id', async (req, res, next) => {
+router.patch('/columns/:id', requirePmAdmin, async (req, res, next) => {
   try {
     if (!ensureSupabase(res)) return;
     const { name, position } = req.body || {};
@@ -285,7 +287,7 @@ router.patch('/columns/:id', async (req, res, next) => {
 });
 
 // DELETE /api/project-management/columns/:id (cascades tasks)
-router.delete('/columns/:id', async (req, res, next) => {
+router.delete('/columns/:id', requirePmAdmin, async (req, res, next) => {
   try {
     if (!ensureSupabase(res)) return;
     const { error } = await supabase.from('pm_columns').delete().eq('id', req.params.id);
@@ -295,7 +297,7 @@ router.delete('/columns/:id', async (req, res, next) => {
 });
 
 // POST /api/project-management/projects/:id/columns/reorder
-router.post('/projects/:id/columns/reorder', async (req, res, next) => {
+router.post('/projects/:id/columns/reorder', requirePmAdmin, async (req, res, next) => {
   try {
     if (!ensureSupabase(res)) return;
     const { orderedIds } = req.body || {};
@@ -317,7 +319,7 @@ router.post('/projects/:id/columns/reorder', async (req, res, next) => {
 // --- Tasks ---
 
 // POST /api/project-management/projects/:id/tasks
-router.post('/projects/:id/tasks', async (req, res, next) => {
+router.post('/projects/:id/tasks', requirePmAdmin, async (req, res, next) => {
   try {
     if (!ensureSupabase(res)) return;
     const projectId = req.params.id;
@@ -365,7 +367,7 @@ router.post('/projects/:id/tasks', async (req, res, next) => {
 });
 
 // PATCH /api/project-management/tasks/:id
-router.patch('/tasks/:id', async (req, res, next) => {
+router.patch('/tasks/:id', requirePmAdmin, async (req, res, next) => {
   try {
     if (!ensureSupabase(res)) return;
     const id = req.params.id;
@@ -418,7 +420,7 @@ router.patch('/tasks/:id', async (req, res, next) => {
 });
 
 // DELETE /api/project-management/tasks/:id
-router.delete('/tasks/:id', async (req, res, next) => {
+router.delete('/tasks/:id', requirePmAdmin, async (req, res, next) => {
   try {
     if (!ensureSupabase(res)) return;
     const { error } = await supabase.from('pm_tasks').delete().eq('id', req.params.id);
@@ -432,7 +434,7 @@ router.delete('/tasks/:id', async (req, res, next) => {
 //   beforeTaskId — drop the moving card immediately above this neighbor
 //   afterTaskId  — drop it immediately below this neighbor
 //   neither      — append to the end of the column
-router.post('/tasks/:id/move', async (req, res, next) => {
+router.post('/tasks/:id/move', requirePmAdmin, async (req, res, next) => {
   try {
     if (!ensureSupabase(res)) return;
     const taskId = req.params.id;
@@ -569,7 +571,7 @@ router.get('/tasks/:id/comments', async (req, res, next) => {
 });
 
 // POST /api/project-management/tasks/:id/comments
-router.post('/tasks/:id/comments', async (req, res, next) => {
+router.post('/tasks/:id/comments', requirePmAdmin, async (req, res, next) => {
   try {
     if (!ensureSupabase(res)) return;
     if (!UUID_RE.test(req.params.id)) return badUuid(res, 'task');
@@ -591,7 +593,7 @@ router.post('/tasks/:id/comments', async (req, res, next) => {
 });
 
 // PATCH /api/project-management/comments/:id (only original author)
-router.patch('/comments/:id', async (req, res, next) => {
+router.patch('/comments/:id', requirePmAdmin, async (req, res, next) => {
   try {
     if (!ensureSupabase(res)) return;
     const { body } = req.body || {};
@@ -614,7 +616,7 @@ router.patch('/comments/:id', async (req, res, next) => {
 });
 
 // DELETE /api/project-management/comments/:id (author or admin)
-router.delete('/comments/:id', async (req, res, next) => {
+router.delete('/comments/:id', requirePmAdmin, async (req, res, next) => {
   try {
     if (!ensureSupabase(res)) return;
     const { data: existing } = await supabase

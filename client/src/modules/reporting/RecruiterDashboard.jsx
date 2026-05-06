@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import './reporting.css';
 import { getRecruiterDashboard, exportRecruiterDashboard } from '../../lib/api';
+import { useUserRole } from '../../lib/UserRoleContext';
+import AccessDenied from '../../components/AccessDenied';
 import DateRangePicker from './components/DateRangePicker';
 import DashboardFilters from './components/DashboardFilters';
 import TeamAlerts from './components/TeamAlerts';
@@ -63,6 +65,7 @@ const NEW_INPUT_COLS = [
 ];
 
 export default function RecruiterDashboard() {
+  const { hasAccess, loading: roleLoading } = useUserRole();
   const defaults = getDefaultDates();
   const [startDate, setStartDate] = useState(defaults.start);
   const [endDate, setEndDate] = useState(defaults.end);
@@ -174,6 +177,9 @@ export default function RecruiterDashboard() {
     const opts = { month: 'short', day: 'numeric', year: 'numeric' };
     return `${s.toLocaleDateString('en-US', opts)} - ${e.toLocaleDateString('en-US', opts)}`;
   };
+
+  if (roleLoading) return null;
+  if (!hasAccess('reporting_recruiter')) return <AccessDenied />;
 
   return (
     <div className="reporting-module">

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { supabase } = require('../lib/db');
-const { resolveRole } = require('../lib/roles');
+const { resolvePermissions } = require('../lib/roles');
 const { getCorporateUserByEmail } = require('../lib/bullhorn');
 
 // GET /api/users/me — Returns the current user's profile and role.
@@ -15,7 +15,7 @@ router.get('/me', async (req, res, next) => {
   try {
     const email = req.user?.email || '';
     const name = req.user?.name || '';
-    const role = await resolveRole(email);
+    const { role, permissions } = await resolvePermissions(email);
 
     let bullhorn = null;
     if (email) {
@@ -33,7 +33,7 @@ router.get('/me', async (req, res, next) => {
       }
     }
 
-    res.json({ email, name, role, bullhorn });
+    res.json({ email, name, role, permissions, bullhorn });
   } catch (err) {
     next(err);
   }

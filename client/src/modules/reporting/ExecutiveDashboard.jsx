@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import './reporting.css';
 import { getExecutiveDashboard } from '../../lib/api';
+import { useUserRole } from '../../lib/UserRoleContext';
+import AccessDenied from '../../components/AccessDenied';
 import DateRangePicker from './components/DateRangePicker';
 import TabNav from './executive/components/TabNav';
 import WeeklyTab from './executive/WeeklyTab';
@@ -159,6 +161,7 @@ function PotentialInputModal({ details, onClose }) {
 }
 
 export default function ExecutiveDashboard() {
+  const { hasAccess, loading: roleLoading } = useUserRole();
   const initial = getWeekRange();
   const [startDate, setStartDate] = useState(initial.start);
   const [endDate, setEndDate] = useState(initial.end);
@@ -196,6 +199,9 @@ export default function ExecutiveDashboard() {
     const opts = { month: 'short', day: 'numeric', year: 'numeric' };
     return `${s.toLocaleDateString('en-US', opts)} - ${e.toLocaleDateString('en-US', opts)}`;
   };
+
+  if (roleLoading) return null;
+  if (!hasAccess('reporting_executive')) return <AccessDenied />;
 
   return (
     <div className="reporting-module">

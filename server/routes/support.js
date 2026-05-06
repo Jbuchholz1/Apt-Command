@@ -1,7 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const { requireManager, requireAdmin } = require('../middleware/adminAuth');
+const { requireModule } = require('../middleware/adminAuth');
+
+const requireSupport = requireModule('support');
+const requireSupportAdmin = requireModule('support', 'admin');
+
+// Read access requires basic; write/manage actions require admin level.
+router.use(requireSupport);
 const { resolveRole } = require('../lib/roles');
 const db = require('../lib/db');
 const { imageFileFilter, verifyImageBuffer } = require('../lib/imageUpload');
@@ -246,7 +252,7 @@ router.get('/tickets', async (req, res, next) => {
 });
 
 // PATCH /api/support/tickets/:id/status — update ticket status (manager/admin)
-router.patch('/tickets/:id/status', requireManager, async (req, res, next) => {
+router.patch('/tickets/:id/status', requireSupportAdmin, async (req, res, next) => {
   try {
     const { id } = req.params;
     const { status, admin_notes } = req.body;
@@ -270,7 +276,7 @@ router.patch('/tickets/:id/status', requireManager, async (req, res, next) => {
 });
 
 // PATCH /api/support/tickets/:id/assignee — assign ticket to an admin (admin-only)
-router.patch('/tickets/:id/assignee', requireAdmin, async (req, res, next) => {
+router.patch('/tickets/:id/assignee', requireSupportAdmin, async (req, res, next) => {
   try {
     const { id } = req.params;
     const { assigned_to, assigned_to_name } = req.body;
@@ -380,7 +386,7 @@ router.get('/known-issues', async (req, res, next) => {
 });
 
 // POST /api/support/known-issues — create known issue (manager/admin)
-router.post('/known-issues', requireManager, async (req, res, next) => {
+router.post('/known-issues', requireSupportAdmin, async (req, res, next) => {
   try {
     const { title, description, severity } = req.body;
 
@@ -406,7 +412,7 @@ router.post('/known-issues', requireManager, async (req, res, next) => {
 });
 
 // PATCH /api/support/known-issues/:id — update known issue (manager/admin)
-router.patch('/known-issues/:id', requireManager, async (req, res, next) => {
+router.patch('/known-issues/:id', requireSupportAdmin, async (req, res, next) => {
   try {
     const { id } = req.params;
     const { status, title, description } = req.body;

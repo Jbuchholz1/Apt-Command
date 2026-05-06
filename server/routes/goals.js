@@ -14,7 +14,12 @@ const express = require('express');
 const router = express.Router();
 const db = require('../lib/db');
 const { resolveRole } = require('../lib/roles');
+const { requireModule } = require('../middleware/adminAuth');
 const { getCurrentPeriod } = require('../lib/period');
+
+// Module-level access; the granular per-handler checks below (owner /
+// task-assignee / manager) layer on top.
+router.use(requireModule('goal_tracking'));
 
 // Shift a period string (e.g. "2026-Q2") by delta quarters. Negative = earlier.
 function shiftPeriod(period, delta) {

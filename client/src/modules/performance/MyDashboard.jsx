@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { getMyDashboard, getPerformanceUsers } from '../../lib/api';
 import { useUserRole } from '../../lib/UserRoleContext';
+import AccessDenied from '../../components/AccessDenied';
 import DateRangePicker from '../reporting/components/DateRangePicker';
 import DetailTable from '../reporting/components/DetailTable';
 import MyTicketsSection from './MyTicketsSection';
@@ -83,6 +84,7 @@ const JOB_METRIC_ROWS = [
 ];
 
 export default function MyDashboard() {
+  const { hasAccess, loading: roleLoading } = useUserRole();
   const defaults = getDefaultDates();
   const [startDate, setStartDate] = useState(defaults.start);
   const [endDate, setEndDate] = useState(defaults.end);
@@ -148,6 +150,9 @@ export default function MyDashboard() {
   };
 
   const formatCurrency = (val) => `$${Number(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  if (roleLoading) return null;
+  if (!hasAccess('reporting_performance')) return <AccessDenied />;
 
   return (
     <div className="reporting-module">

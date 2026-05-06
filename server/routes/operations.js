@@ -7,13 +7,15 @@ const {
   listVendorContracts, createVendorContract, updateVendorContract, deleteVendorContract,
   bulkCreateVendorContracts,
 } = require('../lib/db');
-const { requireAdmin } = require('../middleware/adminAuth');
+const { requireModule } = require('../middleware/adminAuth');
 const { sanitizeRow } = require('../lib/excelSafe');
 
 const router = express.Router();
 
-// All Operations routes require admin role — matches existing UI-level restriction
-router.use(requireAdmin);
+// All Operations routes require basic operations access for reads;
+// mutating handlers add a second requireModule('operations', 'admin') gate.
+router.use(requireModule('operations'));
+const requireOpsAdmin = requireModule('operations', 'admin');
 
 // Helper: format Bullhorn timestamp to MM/DD/YY
 function fmtDate(val) {
@@ -75,7 +77,7 @@ router.get('/placements', async (req, res, next) => {
 
 // POST /api/operations/placements/:id/bullhorn-update — Update Bullhorn fields on a placement
 const ALLOWED_BH_FIELDS = new Set(['dateBegin']);
-router.post('/placements/:id/bullhorn-update', async (req, res, next) => {
+router.post('/placements/:id/bullhorn-update', requireOpsAdmin, async (req, res, next) => {
   try {
     const placementId = parseInt(req.params.id, 10);
     if (isNaN(placementId)) {
@@ -101,7 +103,7 @@ router.post('/placements/:id/bullhorn-update', async (req, res, next) => {
 });
 
 // PATCH /api/operations/placements/:id — Update checklist for a placement
-router.patch('/placements/:id', async (req, res, next) => {
+router.patch('/placements/:id', requireOpsAdmin, async (req, res, next) => {
   try {
     const placementId = parseInt(req.params.id, 10);
     if (isNaN(placementId)) {
@@ -218,7 +220,7 @@ router.get('/coi', async (req, res, next) => {
   }
 });
 
-router.post('/coi', async (req, res, next) => {
+router.post('/coi', requireOpsAdmin, async (req, res, next) => {
   try {
     const { client_name, coi_link, expiration_date } = req.body || {};
     const created = await createCOIRecord({
@@ -233,7 +235,7 @@ router.post('/coi', async (req, res, next) => {
   }
 });
 
-router.patch('/coi/:id', async (req, res, next) => {
+router.patch('/coi/:id', requireOpsAdmin, async (req, res, next) => {
   try {
     const { id } = req.params;
     if (!id || !UUID_RE.test(id)) {
@@ -253,7 +255,7 @@ router.patch('/coi/:id', async (req, res, next) => {
   }
 });
 
-router.delete('/coi/:id', async (req, res, next) => {
+router.delete('/coi/:id', requireOpsAdmin, async (req, res, next) => {
   try {
     const { id } = req.params;
     if (!id || !UUID_RE.test(id)) {
@@ -281,7 +283,7 @@ router.get('/contracts', async (req, res, next) => {
 });
 
 // POST /api/operations/contracts — create a new contract
-router.post('/contracts', async (req, res, next) => {
+router.post('/contracts', requireOpsAdmin, async (req, res, next) => {
   try {
     if (!req.body?.vendor_name) {
       return res.status(400).json({ error: 'vendor_name is required' });
@@ -296,7 +298,7 @@ router.post('/contracts', async (req, res, next) => {
 });
 
 // PATCH /api/operations/contracts/:id — update a contract
-router.patch('/contracts/:id', async (req, res, next) => {
+router.patch('/contracts/:id', requireOpsAdmin, async (req, res, next) => {
   try {
     const updatedBy = req.user?.name || req.user?.email || '';
     const row = await updateVendorContract(req.params.id, req.body, updatedBy);
@@ -308,7 +310,7 @@ router.patch('/contracts/:id', async (req, res, next) => {
 });
 
 // DELETE /api/operations/contracts/:id — delete a contract
-router.delete('/contracts/:id', async (req, res, next) => {
+router.delete('/contracts/:id', requireOpsAdmin, async (req, res, next) => {
   try {
     const ok = await deleteVendorContract(req.params.id);
     if (!ok) return res.status(500).json({ error: 'Failed to delete contract' });
@@ -323,7 +325,7 @@ router.delete('/contracts/:id', async (req, res, next) => {
 // Body: { rows: [{ "Vendor Name": "...", "Start Date": "...", ... }] }
 // Headers match the export format. Per-row validation; invalid rows are
 // skipped and reported. All valid rows insert as new (no upsert by vendor).
-router.post('/contracts/import', async (req, res, next) => {
+router.post('/contracts/import', requireOpsAdmin, async (req, res, next) => {
   try {
     const { rows } = req.body || {};
     if (!Array.isArray(rows)) {

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import './req-board.css';
 import { getJobs, getStats, exportJobs } from '../../lib/api';
+import { useUserRole } from '../../lib/UserRoleContext';
+import AccessDenied from '../../components/AccessDenied';
 import StatsStrip from './StatsStrip';
 import FilterBar from './FilterBar';
 import ReqBoard from './ReqBoard';
@@ -35,7 +37,42 @@ function isFilledAndExpired(job) {
   return new Date(job.dateLastModified) < startOfToday;
 }
 
+// Override-derived fields. Must match the server-side mergeOverrides() set
+// in server/routes/jobs.js. When an auto-refresh response returns a job
+// whose overrideVersion is older than what we already have locally, we
+// preserve these fields from the existing row instead of regressing them.
+// This keeps just-saved edits visible while server caches catch up.
+const OVERRIDE_FIELDS = [
+  'notes', 'deadline', 'followUp',
+  'coverageNeeded', 'calledShot', 'fortyEightHr',
+  'trReassigned', 'trAssignedAt', 'statusChangedAt',
+  'overrideVersion', 'overrideUpdatedBy', 'overrideUpdatedAt',
+  'recruiter',
+];
+
+function isExistingOverrideNewer(existing, incoming) {
+  if (!existing) return false;
+  const ev = typeof existing.overrideVersion === 'number' ? existing.overrideVersion : null;
+  const iv = typeof incoming.overrideVersion === 'number' ? incoming.overrideVersion : null;
+  if (ev === null) return false;       // we have no local version → can't be newer
+  if (iv === null) return true;        // we have a version, server says none → stale
+  return ev > iv;
+}
+
+function mergeIncomingJobs(prev, incoming) {
+  if (!Array.isArray(prev) || prev.length === 0) return incoming;
+  const prevMap = new Map(prev.map(j => [j.id, j]));
+  return incoming.map(inc => {
+    const existing = prevMap.get(inc.id);
+    if (!isExistingOverrideNewer(existing, inc)) return inc;
+    const merged = { ...inc };
+    for (const f of OVERRIDE_FIELDS) merged[f] = existing[f];
+    return merged;
+  });
+}
+
 export default function ReqBoardModule() {
+  const { hasAccess, loading: roleLoading } = useUserRole();
   const [showSplash, setShowSplash] = useState(true);
 
   const [jobs, setJobs] = useState([]);
@@ -68,7 +105,12 @@ export default function ReqBoardModule() {
       setLoading(true);
       setError(null);
       const [jobsRes, statsRes] = await Promise.all([getJobs(), getStats()]);
-      setJobs(jobsRes.data || []);
+      // Per-job version-aware merge: if our local row has a newer override
+      // version than the incoming one (e.g. the server's caches haven't
+      // caught up to a save we just made), preserve the local override
+      // fields instead of regressing them. Bullhorn-derived fields still
+      // come from the incoming row.
+      setJobs(prev => mergeIncomingJobs(prev, jobsRes.data || []));
       setStats(statsRes);
       setLastRefresh(new Date());
     } catch (err) {
@@ -165,6 +207,9 @@ export default function ReqBoardModule() {
   if (showSplash) {
     return <SplashScreen onComplete={() => setShowSplash(false)} />;
   }
+
+  if (roleLoading) return null;
+  if (!hasAccess('req_board')) return <AccessDenied />;
 
   const refreshAge = lastRefresh ? formatRelative(lastRefresh.getTime(), now) : null;
   const pausedReason = isEditing
