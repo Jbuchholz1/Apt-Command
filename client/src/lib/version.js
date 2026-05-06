@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.23.1';
+export const APP_VERSION = '3.23.2';
 
 export const CHANGELOG = [
+  {
+    version: '3.23.2',
+    date: '2026-05-06',
+    title: 'Operations — COI Tracking: Save On Blur Fix',
+    changes: [
+      { type: 'patch', text: 'Fixed a bug where typing a client name (or link) into a COI row and clicking away looked like the value disappeared on the next refresh. Cause: the on-blur save handler was comparing the new value to the closure\'s record snapshot, but typing already mutated that snapshot in lockstep, so the comparison always matched and the PATCH never went out. The handler now always commits the latest value on blur. Also added a toast notification when a save fails (instead of silently reverting), and prevented the focus from snapping back to a row after it was edited.' },
+    ],
+  },
   {
     version: '3.23.1',
     date: '2026-05-06',

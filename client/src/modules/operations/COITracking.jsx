@@ -7,6 +7,7 @@ import {
   updateCOIRecord,
   deleteCOIRecord,
 } from '../../lib/api';
+import { showToast } from '../../lib/toast';
 
 const MS_PER_DAY = 86400000;
 
@@ -32,7 +33,8 @@ export default function COITracking() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [adding, setAdding] = useState(false);
-  const newRowRef = useRef(null);
+  const [justCreatedId, setJustCreatedId] = useState(null);
+  const newRowInputRef = useRef(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -51,13 +53,13 @@ export default function COITracking() {
     fetchData();
   }, [fetchData]);
 
-  // Focus the client-name input on a freshly added row.
+  // Focus the new row's client-name input exactly once after creation.
   useEffect(() => {
-    if (newRowRef.current) {
-      newRowRef.current.focus();
-      newRowRef.current = null;
+    if (justCreatedId && newRowInputRef.current) {
+      newRowInputRef.current.focus();
+      setJustCreatedId(null);
     }
-  });
+  }, [justCreatedId]);
 
   const handleAdd = async () => {
     if (adding) return;
@@ -71,10 +73,11 @@ export default function COITracking() {
       const created = res.data;
       if (created) {
         setRecords(prev => [created, ...prev]);
+        setJustCreatedId(created.id);
       }
     } catch (err) {
       console.error('[COITracking] add error:', err);
-      alert('Failed to add COI record: ' + err.message);
+      showToast('Failed to add COI record: ' + err.message);
     } finally {
       setAdding(false);
     }
@@ -86,8 +89,10 @@ export default function COITracking() {
     );
   };
 
-  const handleFieldCommit = async (id, field, newValue, oldValue) => {
-    if (newValue === oldValue) return;
+  // Always send the latest input value on blur. The previous oldValue check
+  // could not work for text inputs because typing already mutated the closure's
+  // record before blur fired.
+  const handleFieldCommit = async (id, field, newValue) => {
     try {
       const res = await updateCOIRecord(id, { [field]: newValue });
       if (res.data) {
@@ -97,10 +102,9 @@ export default function COITracking() {
       }
     } catch (err) {
       console.error('[COITracking] update error:', err);
-      // Revert
-      setRecords(prev =>
-        prev.map(r => (r.id === id ? { ...r, [field]: oldValue } : r)),
-      );
+      showToast(`Failed to save ${field.replace(/_/g, ' ')}: ${err.message}`);
+      // Re-fetch so the visible state matches what's actually persisted.
+      fetchData();
     }
   };
 
@@ -112,7 +116,7 @@ export default function COITracking() {
       await deleteCOIRecord(id);
     } catch (err) {
       console.error('[COITracking] delete error:', err);
-      alert('Failed to delete: ' + err.message);
+      showToast('Failed to delete: ' + err.message);
       setRecords(snapshot);
     }
   };
@@ -168,18 +172,18 @@ export default function COITracking() {
                   </tr>
                 </thead>
                 <tbody>
-                  {records.map((r, idx) => {
+                  {records.map((r) => {
                     const rowCls = rowHighlightClass(r.expiration_date);
                     return (
                       <tr key={r.id} className={rowCls}>
                         <td>
                           <input
-                            ref={idx === 0 && r.client_name === '' && r.coi_link === '' ? newRowRef : null}
+                            ref={r.id === justCreatedId ? newRowInputRef : null}
                             type="text"
                             className="ops-text-input"
                             value={r.client_name || ''}
                             onChange={(e) => handleLocalChange(r.id, 'client_name', e.target.value)}
-                            onBlur={(e) => handleFieldCommit(r.id, 'client_name', e.target.value, r.client_name)}
+                            onBlur={(e) => handleFieldCommit(r.id, 'client_name', e.target.value)}
                             placeholder="Client name"
                           />
                         </td>
@@ -190,7 +194,7 @@ export default function COITracking() {
                               className="ops-text-input"
                               value={r.coi_link || ''}
                               onChange={(e) => handleLocalChange(r.id, 'coi_link', e.target.value)}
-                              onBlur={(e) => handleFieldCommit(r.id, 'coi_link', e.target.value, r.coi_link)}
+                              onBlur={(e) => handleFieldCommit(r.id, 'coi_link', e.target.value)}
                               placeholder="https://..."
                             />
                             {isLikelyUrl(r.coi_link) && (
@@ -213,9 +217,8 @@ export default function COITracking() {
                             value={r.expiration_date || ''}
                             onChange={(e) => {
                               const newVal = e.target.value || null;
-                              const oldVal = r.expiration_date;
                               handleLocalChange(r.id, 'expiration_date', newVal);
-                              handleFieldCommit(r.id, 'expiration_date', newVal, oldVal);
+                              handleFieldCommit(r.id, 'expiration_date', newVal);
                             }}
                           />
                         </td>
