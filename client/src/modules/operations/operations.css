@@ -456,24 +456,6 @@
 .ops-icon-btn:hover { color: var(--navy); background: #f1f5f9; }
 .ops-icon-btn-danger:hover { color: #dc2626; background: #fef2f2; }
 
-.ops-row-coi-expired { background: #fef2f2; }
-.ops-row-coi-expired:hover { background: #fee2e2; }
-.ops-row-coi-expiring { background: #fffbeb; }
-.ops-row-coi-expiring:hover { background: #fef3c7; }
-
-.ops-coi-link-cell {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.ops-coi-link-open {
-  color: var(--navy);
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-}
-.ops-coi-link-open:hover { color: var(--gold); }
-
 /* ================================================
    Contract Tracking
    ================================================ */
@@ -501,6 +483,19 @@
   letter-spacing: 0.03em;
   background: #fed7aa;
   color: #9a3412;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ops-badge-danger {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background: #fecaca;
+  color: #991b1b;
   text-transform: uppercase;
   white-space: nowrap;
 }

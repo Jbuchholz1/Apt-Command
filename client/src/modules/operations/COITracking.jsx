@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, ExternalLink, Pencil } from 'lucide-react';
 import {
   getCOIRecords,
   createCOIRecord,
@@ -9,32 +9,53 @@ import {
 } from '../../lib/api';
 import { showToast } from '../../lib/toast';
 
-const MS_PER_DAY = 86400000;
-
-function rowHighlightClass(expirationDate) {
-  if (!expirationDate) return '';
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const exp = new Date(expirationDate + 'T00:00:00');
-  if (Number.isNaN(exp.getTime())) return '';
-  const days = Math.floor((exp - today) / MS_PER_DAY);
-  if (days < 0) return 'ops-row-coi-expired';
-  if (days <= 30) return 'ops-row-coi-expiring';
-  return '';
+function fmtDate(iso) {
+  if (!iso) return '';
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return iso;
+  return `${m[2]}/${m[3]}/${m[1].slice(-2)}`;
 }
 
-function isLikelyUrl(val) {
-  if (!val) return false;
-  return /^https?:\/\//i.test(val.trim());
+function daysUntil(iso) {
+  if (!iso) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return null;
+  const end = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.round((end - today) / 86400000);
+}
+
+function expiryStatus(iso) {
+  const d = daysUntil(iso);
+  if (d == null) return null;
+  if (d < 0) return 'expired';
+  if (d <= 30) return 'expiring';
+  return null;
+}
+
+function isHttpUrl(s) {
+  return typeof s === 'string' && /^https?:\/\//i.test(s.trim());
+}
+
+function emptyForm() {
+  return {
+    client_name: '',
+    coi_link: '',
+    expiration_date: '',
+  };
 }
 
 export default function COITracking() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [adding, setAdding] = useState(false);
-  const [justCreatedId, setJustCreatedId] = useState(null);
-  const newRowInputRef = useRef(null);
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState(emptyForm());
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -53,67 +74,77 @@ export default function COITracking() {
     fetchData();
   }, [fetchData]);
 
-  // Focus the new row's client-name input exactly once after creation.
-  useEffect(() => {
-    if (justCreatedId && newRowInputRef.current) {
-      newRowInputRef.current.focus();
-      setJustCreatedId(null);
-    }
-  }, [justCreatedId]);
+  function openAdd() {
+    setEditing(null);
+    setForm(emptyForm());
+    setFormError(null);
+    setModalOpen(true);
+  }
 
-  const handleAdd = async () => {
-    if (adding) return;
-    setAdding(true);
+  function openEdit(r) {
+    setEditing(r);
+    setForm({
+      client_name: r.client_name || '',
+      coi_link: r.coi_link || '',
+      expiration_date: r.expiration_date || '',
+    });
+    setFormError(null);
+    setModalOpen(true);
+  }
+
+  function closeModal() {
+    if (saving) return;
+    setModalOpen(false);
+  }
+
+  function setField(name, value) {
+    setForm(f => ({ ...f, [name]: value }));
+  }
+
+  async function handleSave(e) {
+    e.preventDefault();
+    if (!form.client_name.trim()) {
+      setFormError('Client name is required');
+      return;
+    }
+    setSaving(true);
+    setFormError(null);
+
+    const payload = {
+      client_name: form.client_name.trim(),
+      coi_link: form.coi_link.trim() || null,
+      expiration_date: form.expiration_date || null,
+    };
+
     try {
-      const res = await createCOIRecord({
-        client_name: '',
-        coi_link: '',
-        expiration_date: null,
-      });
-      const created = res.data;
-      if (created) {
-        setRecords(prev => [created, ...prev]);
-        setJustCreatedId(created.id);
+      if (editing) {
+        const res = await updateCOIRecord(editing.id, payload);
+        const row = res?.data;
+        if (row) {
+          setRecords(list => list.map(r => (r.id === row.id ? row : r)));
+        }
+      } else {
+        const res = await createCOIRecord(payload);
+        const row = res?.data;
+        if (row) {
+          setRecords(list => [row, ...list]);
+        }
       }
+      setModalOpen(false);
     } catch (err) {
-      console.error('[COITracking] add error:', err);
-      showToast('Failed to add COI record: ' + err.message);
+      console.error('[COITracking] save error:', err);
+      setFormError(err.message || 'Failed to save COI record');
     } finally {
-      setAdding(false);
+      setSaving(false);
     }
-  };
+  }
 
-  const handleLocalChange = (id, field, value) => {
-    setRecords(prev =>
-      prev.map(r => (r.id === id ? { ...r, [field]: value } : r)),
-    );
-  };
-
-  // Always send the latest input value on blur. The previous oldValue check
-  // could not work for text inputs because typing already mutated the closure's
-  // record before blur fired.
-  const handleFieldCommit = async (id, field, newValue) => {
-    try {
-      const res = await updateCOIRecord(id, { [field]: newValue });
-      if (res.data) {
-        setRecords(prev =>
-          prev.map(r => (r.id === id ? res.data : r)),
-        );
-      }
-    } catch (err) {
-      console.error('[COITracking] update error:', err);
-      showToast(`Failed to save ${field.replace(/_/g, ' ')}: ${err.message}`);
-      // Re-fetch so the visible state matches what's actually persisted.
-      fetchData();
-    }
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this COI record?')) return;
+  const handleDelete = async (r) => {
+    if (!window.confirm(`Delete COI record for "${r.client_name || 'this client'}"? This cannot be undone.`)) return;
     const snapshot = records;
-    setRecords(prev => prev.filter(r => r.id !== id));
+    setRecords(prev => prev.filter(x => x.id !== r.id));
     try {
-      await deleteCOIRecord(id);
+      await deleteCOIRecord(r.id);
     } catch (err) {
       console.error('[COITracking] delete error:', err);
       showToast('Failed to delete: ' + err.message);
@@ -130,11 +161,7 @@ export default function COITracking() {
           <h1 className="ops-toolbar-title">COI Tracking</h1>
         </div>
         <div className="ops-toolbar-right">
-          <button
-            className="ops-add-btn"
-            onClick={handleAdd}
-            disabled={adding}
-          >
+          <button className="ops-add-btn" onClick={openAdd}>
             <Plus size={14} /> Add COI
           </button>
         </div>
@@ -151,9 +178,7 @@ export default function COITracking() {
         <div className="ops-section">
           <div className="ops-section-header">
             <h3 className="ops-section-title">COI Records</h3>
-            <span className="ops-section-count">
-              {records.length} record{records.length !== 1 ? 's' : ''}
-            </span>
+            <span className="ops-section-count">{records.length}</span>
           </div>
 
           {records.length === 0 ? (
@@ -162,72 +187,45 @@ export default function COITracking() {
             </div>
           ) : (
             <div className="ops-table-wrap">
-              <table className="ops-table">
+              <table className="ops-table ops-contract-table">
                 <thead>
                   <tr>
-                    <th style={{ minWidth: 200 }}>Client Name</th>
-                    <th style={{ minWidth: 260 }}>Link to COI</th>
-                    <th style={{ minWidth: 140 }}>Expiration Date</th>
-                    <th style={{ width: 60, textAlign: 'center' }}>Actions</th>
+                    <th>Client Name</th>
+                    <th>Link to COI</th>
+                    <th>Expiration Date</th>
+                    <th aria-label="Actions" />
                   </tr>
                 </thead>
                 <tbody>
-                  {records.map((r) => {
-                    const rowCls = rowHighlightClass(r.expiration_date);
+                  {records.map(r => {
+                    const status = expiryStatus(r.expiration_date);
                     return (
-                      <tr key={r.id} className={rowCls}>
+                      <tr key={r.id}>
                         <td>
-                          <input
-                            ref={r.id === justCreatedId ? newRowInputRef : null}
-                            type="text"
-                            className="ops-text-input"
-                            value={r.client_name || ''}
-                            onChange={(e) => handleLocalChange(r.id, 'client_name', e.target.value)}
-                            onBlur={(e) => handleFieldCommit(r.id, 'client_name', e.target.value)}
-                            placeholder="Client name"
-                          />
-                        </td>
-                        <td>
-                          <div className="ops-coi-link-cell">
-                            <input
-                              type="text"
-                              className="ops-text-input"
-                              value={r.coi_link || ''}
-                              onChange={(e) => handleLocalChange(r.id, 'coi_link', e.target.value)}
-                              onBlur={(e) => handleFieldCommit(r.id, 'coi_link', e.target.value)}
-                              placeholder="https://..."
-                            />
-                            {isLikelyUrl(r.coi_link) && (
-                              <a
-                                href={r.coi_link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="ops-coi-link-open"
-                                title="Open link"
-                              >
-                                <ExternalLink size={14} />
-                              </a>
-                            )}
+                          <div className="ops-contract-vendor">
+                            <span>{r.client_name || '—'}</span>
+                            {status === 'expiring' && <span className="ops-badge-warn">Expiring Soon</span>}
+                            {status === 'expired' && <span className="ops-badge-danger">Expired</span>}
                           </div>
                         </td>
-                        <td className="ops-date-cell">
-                          <input
-                            type="date"
-                            className="ops-date-input"
-                            value={r.expiration_date || ''}
-                            onChange={(e) => {
-                              const newVal = e.target.value || null;
-                              handleLocalChange(r.id, 'expiration_date', newVal);
-                              handleFieldCommit(r.id, 'expiration_date', newVal);
-                            }}
-                          />
+                        <td className="ops-contract-link-cell">
+                          {r.coi_link ? (
+                            isHttpUrl(r.coi_link) ? (
+                              <a href={r.coi_link} target="_blank" rel="noopener noreferrer" className="ops-bh-link">
+                                <ExternalLink size={12} style={{ verticalAlign: -1, marginRight: 3 }} />
+                                Open
+                              </a>
+                            ) : (
+                              <span title={r.coi_link}>{r.coi_link}</span>
+                            )
+                          ) : ''}
                         </td>
-                        <td style={{ textAlign: 'center' }}>
-                          <button
-                            className="ops-icon-btn"
-                            onClick={() => handleDelete(r.id)}
-                            title="Delete record"
-                          >
+                        <td>{fmtDate(r.expiration_date)}</td>
+                        <td className="ops-table-actions">
+                          <button className="ops-icon-btn" onClick={() => openEdit(r)} title="Edit">
+                            <Pencil size={14} />
+                          </button>
+                          <button className="ops-icon-btn ops-icon-btn-danger" onClick={() => handleDelete(r)} title="Delete">
                             <Trash2 size={14} />
                           </button>
                         </td>
@@ -238,6 +236,58 @@ export default function COITracking() {
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {modalOpen && (
+        <div className="ops-contract-modal-overlay" onClick={closeModal}>
+          <div className="ops-contract-modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true">
+            <h3 className="ops-contract-modal-title">
+              {editing ? 'Edit COI Record' : 'Add COI Record'}
+            </h3>
+            <form onSubmit={handleSave} className="ops-contract-modal-form">
+              <label className="ops-contract-field ops-contract-field-full">
+                <span>Client Name *</span>
+                <input
+                  type="text"
+                  value={form.client_name}
+                  onChange={e => setField('client_name', e.target.value)}
+                  required
+                  autoFocus
+                />
+              </label>
+
+              <label className="ops-contract-field ops-contract-field-full">
+                <span>Expiration Date</span>
+                <input
+                  type="date"
+                  value={form.expiration_date}
+                  onChange={e => setField('expiration_date', e.target.value)}
+                />
+              </label>
+
+              <label className="ops-contract-field ops-contract-field-full">
+                <span>COI Link</span>
+                <input
+                  type="text"
+                  placeholder="https://..."
+                  value={form.coi_link}
+                  onChange={e => setField('coi_link', e.target.value)}
+                />
+              </label>
+
+              {formError && <div className="ops-contract-modal-error">{formError}</div>}
+
+              <div className="ops-contract-modal-actions">
+                <button type="button" className="ops-contract-modal-cancel" onClick={closeModal} disabled={saving}>
+                  Cancel
+                </button>
+                <button type="submit" className="ops-contract-modal-save" disabled={saving}>
+                  {saving ? 'Saving…' : editing ? 'Save Changes' : 'Create COI'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.0';
+export const APP_VERSION = '3.29.1';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.1',
+    date: '2026-05-06',
+    title: 'Operations — COI Tracker formatting matches Contract Tracker',
+    changes: [
+      { type: 'patch', text: 'COI Tracker (/operations/coi) now mirrors the Contract Tracker visual pattern: static display cells instead of always-on inline inputs, a modal-based add/edit form (Client Name, Expiration Date, COI Link), and pencil + trash icons in a right-aligned actions column. Expiry status moved from row background tinting to inline pill badges next to the client name — orange "Expiring Soon" within 30 days, red "Expired" once past. The two operations sub-pages now feel like one consistent module.' },
+    ],
+  },
   {
     version: '3.29.0',
     date: '2026-05-06',
