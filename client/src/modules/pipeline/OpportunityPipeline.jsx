@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { getOpportunities, updateOpportunityInBullhorn } from '../../lib/api';
 import EditableDate from '../req-board/EditableDate';
 import EditableSelect from '../req-board/EditableSelect';
+import ConvertToJobModal from './ConvertToJobModal';
 
 function MultiSelect({ label, options, selected, onChange }) {
   const [open, setOpen] = useState(false);
@@ -62,6 +63,7 @@ export default function OpportunityPipeline() {
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState({ status: [], owner: '', client: '' });
   const [sort, setSort] = useState({ key: 'dateAdded', dir: 'desc' });
+  const [convertingOpp, setConvertingOpp] = useState(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -178,6 +180,7 @@ export default function OpportunityPipeline() {
                   <th onClick={() => toggleSort('expectedCloseDate')}>Exp Close{sortIcon('expectedCloseDate')}</th>
                   <th onClick={() => toggleSort('dealValue')}>Deal Value{sortIcon('dealValue')}</th>
                   <th onClick={() => toggleSort('weightedDealValue')}>Weighted{sortIcon('weightedDealValue')}</th>
+                  <th style={{ cursor: 'default' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -222,6 +225,16 @@ export default function OpportunityPipeline() {
                     />
                     <td className="pipeline-money">{o.dealValue ? fmtCurrency(o.dealValue) : '—'}</td>
                     <td className="pipeline-money">{o.weightedDealValue ? fmtCurrency(o.weightedDealValue) : '—'}</td>
+                    <td className="pipeline-actions">
+                      <button
+                        type="button"
+                        className="pipeline-convert-btn"
+                        onClick={() => setConvertingOpp(o)}
+                        title="Create a new JobOrder from this opportunity"
+                      >
+                        Convert → Job
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {filtered.length > 0 && (
@@ -229,16 +242,28 @@ export default function OpportunityPipeline() {
                     <td colSpan="6" style={{ textAlign: 'right', fontWeight: 700 }}>Totals</td>
                     <td className="pipeline-money" style={{ fontWeight: 700 }}>{fmtCurrency(totalDeal)}</td>
                     <td className="pipeline-money" style={{ fontWeight: 700 }}>{fmtCurrency(totalWeighted)}</td>
+                    <td></td>
                   </tr>
                 )}
                 {filtered.length === 0 && (
-                  <tr><td colSpan="8" className="pipeline-empty">No opportunities found</td></tr>
+                  <tr><td colSpan="9" className="pipeline-empty">No opportunities found</td></tr>
                 )}
               </tbody>
             </table>
           </div>
         )}
       </div>
+
+      {convertingOpp && (
+        <ConvertToJobModal
+          opportunity={convertingOpp}
+          onClose={() => setConvertingOpp(null)}
+          onSuccess={(jobId, oppId) => {
+            setOpportunities(prev => prev.filter(op => op.id !== oppId));
+            setConvertingOpp(null);
+          }}
+        />
+      )}
     </div>
   );
 }

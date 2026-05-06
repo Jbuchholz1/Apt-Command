@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.27.4';
+export const APP_VERSION = '3.28.0';
 
 export const CHANGELOG = [
+  {
+    version: '3.28.0',
+    date: '2026-05-06',
+    title: 'Pipeline — Convert Opportunity → Job',
+    changes: [
+      { type: 'minor', text: 'New action on the Opportunity Pipeline: a "Convert → Job" button on every row that opens a modal to spin up a JobOrder in Bullhorn from the opportunity. The modal pre-fills the client and title from the opportunity, then asks for the fields a JobOrder needs that an opportunity doesn\'t carry: employment type (Contract / Direct Hire / Contract To Hire / Project), # of openings, remote (No / Yes / Hybrid), pay rate, client bill rate, salary low/high, and a client contact (loaded from getClientContactsForCorp on the parent corporation). On success, a new JobOrder is created via convertOpportunityToJob and the source opportunity is removed from the pipeline list. The Opportunities table grew an Actions column to host the button; totals row and empty-state colspan adjusted accordingly.' },
+    ],
+  },
   {
     version: '3.27.4',
     date: '2026-05-06',
