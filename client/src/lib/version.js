@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.27.0';
+export const APP_VERSION = '3.27.1';
 
 export const CHANGELOG = [
+  {
+    version: '3.27.1',
+    date: '2026-05-06',
+    title: 'Req Board — Stop Edits Disappearing (Server Cache Race)',
+    changes: [
+      { type: 'patch', text: 'Fixed the symptom where a freshly-saved edit (notes, deadline, follow-up, status, recruiter) would briefly disappear and then come back on the next auto-refresh tick. Two layered fixes. (1) /api GET responses now set Cache-Control: no-store instead of private, max-age=300; the browser HTTP cache had been serving the pre-edit body because server-side bust() can\'t invalidate the browser. (2) lib/cache.js now tracks a monotonic bustGen counter; cached() snapshots the gen before running the fetcher and refuses to write the result back into the in-memory store if a bust() landed while the fetch was in flight. Without the guard, an in-flight read started just before the user\'s save could re-populate the cache with stale data after the save\'s bust ran. Server-side caches still absorb load — only the browser cache went away.' },
+    ],
+  },
   {
     version: '3.27.0',
     date: '2026-05-06',

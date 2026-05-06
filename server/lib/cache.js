@@ -17,6 +17,15 @@
 const store = new Map(); // key -> { value, expiresAt }
 const inflight = new Map(); // key -> Promise<value>
 
+// Monotonic counter bumped on every bust(). Snapshotted by cached() before
+// starting a fetcher; if a bust happens *during* the fetch, the resolved
+// value is returned to that one caller but NOT written back into the cache,
+// because it represents a snapshot taken before a write that just landed.
+// Without this guard, an in-flight read started before a write can re-populate
+// the cache with stale data after the write's bust ran — leading to "edit
+// disappears then reappears" symptoms on the client.
+let bustGen = 0;
+
 function get(key) {
   const entry = store.get(key);
   if (!entry) return undefined;
@@ -33,6 +42,7 @@ function set(key, value, ttlMs) {
 
 function bust(keyOrPrefix) {
   if (!keyOrPrefix) return;
+  bustGen += 1;
   if (keyOrPrefix.endsWith(':*')) {
     const prefix = keyOrPrefix.slice(0, -1);
     for (const k of Array.from(store.keys())) {
@@ -46,6 +56,7 @@ function bust(keyOrPrefix) {
 function clear() {
   store.clear();
   inflight.clear();
+  bustGen += 1;
 }
 
 async function cached(key, ttlMs, fetcher) {
@@ -53,10 +64,11 @@ async function cached(key, ttlMs, fetcher) {
   if (hit !== undefined) return hit;
   const existing = inflight.get(key);
   if (existing) return existing;
+  const startGen = bustGen;
   const promise = (async () => {
     try {
       const value = await fetcher();
-      set(key, value, ttlMs);
+      if (bustGen === startGen) set(key, value, ttlMs);
       return value;
     } finally {
       inflight.delete(key);

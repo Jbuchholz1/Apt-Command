@@ -147,10 +147,16 @@ app.use(cors({
 
 app.use(express.json());
 
-// --- Cache-Control for GET responses (browser can reuse recent responses) ---
+// --- Cache-Control for GET responses ---
+// `no-store` because GETs surface override-mutable data (notes, deadlines,
+// follow-ups, recruiter assignments). A browser HTTP cache here causes saved
+// edits to "disappear" briefly when the auto-refresh or manual refresh hits
+// a cached pre-edit response — server-side cache busting can't reach the
+// browser. Server-side caches (lib/cache.js) and Bullhorn caching still
+// absorb load.
 app.use('/api', (req, res, next) => {
   if (req.method === 'GET') {
-    res.set('Cache-Control', 'private, max-age=300'); // 5 minutes
+    res.set('Cache-Control', 'no-store');
   }
   next();
 });
