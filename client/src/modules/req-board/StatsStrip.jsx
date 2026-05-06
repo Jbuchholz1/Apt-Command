@@ -106,6 +106,16 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
     getRecruiters().then(res => setRecruiters(res.data || [])).catch(() => {});
   }, []);
 
+  // Keep the On The Board candidate map fresh: load on mount and re-load whenever
+  // the parent refreshes jobs (auto-refresh ticks every 5 min).
+  useEffect(() => {
+    let cancelled = false;
+    getOfferOutCandidates()
+      .then(res => { if (!cancelled) setFilledCandidateMap(res.data || {}); })
+      .catch(err => console.error('Failed to load offer-out candidates:', err));
+    return () => { cancelled = true; };
+  }, [jobs]);
+
   // Compute stats from jobs array
   const acceptingCandidates = stats?.acceptingCandidates ?? 0;
   const activeContractors = stats?.activeContractors ?? 0;
@@ -118,8 +128,15 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
   // Missed follow-ups: no follow-up + past-due follow-ups (red urgency)
   const missedFollowUpJobs = (jobs || []).filter(j => getFollowUpUrgency(j.followUp) === 'red');
 
-  // Filled jobs (On The Board)
-  const filledJobs = (jobs || []).filter(j => j.status === 'Filled');
+  // On The Board: jobs that have at least one candidate in JobSubmission "Offer Extended".
+  // Source of truth is filledCandidateMap (loaded eagerly below + refreshed on jobs change),
+  // not JobOrder.status === 'Filled'.
+  const [filledCandidateMap, setFilledCandidateMap] = useState({});
+  const offerExtendedJobIds = useMemo(
+    () => new Set(Object.keys(filledCandidateMap).map(String)),
+    [filledCandidateMap]
+  );
+  const filledJobs = (jobs || []).filter(j => offerExtendedJobIds.has(String(j.id)));
   const missedFollowUps = missedFollowUpJobs.length;
 
   // Called Shots — jobs flagged as called_shot in overrides
@@ -378,15 +395,11 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
     return arr;
   }, [cReqs, cOwnerFilter, cSort]);
 
-  // On The Board (Filled): placement candidate map + owner filter
-  const [filledCandidateMap, setFilledCandidateMap] = useState({});
-
   const handleFilledClick = async () => {
     setFilledOwnerFilter('');
     setShowFilled(true);
+    // Defensive refresh on open so the modal is current between auto-refresh ticks.
     try {
-      // On The Board candidate = whoever is in "Offer Extended" (aka "Offer Out") for that job.
-      // Server returns a { jobOrderId: "First Last[, First Last]" } map.
       const res = await getOfferOutCandidates();
       setFilledCandidateMap(res.data || {});
     } catch (err) {
@@ -741,7 +754,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
     { label: 'Missed Follow Ups', value: missedFollowUps, color: '#dc2626', onClick: () => setShowMissedFollowUps(true) },
     { label: 'A/B Covered', value: `${abCovered} / ${abTotal}`, color: '#c9a227', onClick: () => { setAbOwnerFilter(''); setAbSort({ key: 'id', dir: 'desc' }); setShowAB(true); } },
     { label: 'C Reqs', value: cReqCount, color: '#94a3b8', onClick: () => { setCOwnerFilter(''); setCSort({ key: 'id', dir: 'desc' }); setShowC(true); } },
-    { label: 'On The Board', value: filledJobs.length, color: '#7c3aed', tooltip: 'The number of Jobs with a status of Filled', onClick: handleFilledClick },
+    { label: 'On The Board', value: filledJobs.length, color: '#7c3aed', tooltip: 'Jobs with a candidate in Offer Extended', onClick: handleFilledClick },
     { label: 'Called Shots', value: fmtCurrency(calledShotSpreadTotal), color: '#ea580c', tooltip: `Total spread across ${calledShotJobs.length} Called Shot job(s): weekly CE spread + perm fee. Click to see the list.`, onClick: () => { setCsOwnerFilter([]); setCsTrFilter([]); setCsSort({ key: 'id', dir: 'desc' }); setShowCalledShots(true); } },
     { label: 'Opportunities', value: totalOpportunities, color: '#0369a1', onClick: handleOpportunitiesClick },
     { label: 'Active Contractors', value: activeContractors, color: '#0d9488', onClick: handleContractorsClick },
@@ -1157,7 +1170,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
         <div className="modal-overlay" onClick={() => setShowFilled(false)}>
           <div className="modal-content contractors-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>On The Board — Filled ({filteredFilled.length}{filledOwnerFilter ? ` of ${filledJobs.length}` : ''})</h2>
+              <h2>On The Board ({filteredFilled.length}{filledOwnerFilter ? ` of ${filledJobs.length}` : ''})</h2>
               <button className="modal-close" onClick={() => setShowFilled(false)}>✕</button>
             </div>
             <div style={{ padding: '0 20px 12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -1231,7 +1244,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
                   </tr>
                 ))}
                 {filteredFilled.length === 0 && (
-                  <tr><td colSpan="9" style={{ textAlign: 'center', padding: '20px' }}>No filled jobs</td></tr>
+                  <tr><td colSpan="9" style={{ textAlign: 'center', padding: '20px' }}>No candidates on the board</td></tr>
                 )}
               </tbody>
             </table>

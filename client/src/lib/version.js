@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.27.1';
+export const APP_VERSION = '3.27.2';
 
 export const CHANGELOG = [
+  {
+    version: '3.27.2',
+    date: '2026-05-06',
+    title: 'Req Board — On The Board Uses Offer Extended Candidates',
+    changes: [
+      { type: 'patch', text: 'The "On The Board" stats tile no longer counts JobOrder.status === "Filled". It now counts jobs that have at least one candidate in JobSubmission status "Offer Extended" (i.e. an actual offer is out), pulling from getOfferOutCandidates() — which is the same source of truth the modal already used. The map refreshes on mount, on every parent jobs refresh (the 5-min auto-refresh tick), and defensively when the modal opens. The tile tooltip and modal title were updated to match: "Jobs with a candidate in Offer Extended" / "On The Board" instead of "Filled". Behaviour changes: a job whose status was set to Filled but has no Offer Extended submission no longer inflates the count; conversely, a job in any status with an Offer Extended candidate now counts.' },
+    ],
+  },
   {
     version: '3.27.1',
     date: '2026-05-06',
