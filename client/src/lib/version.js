@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.23.2';
+export const APP_VERSION = '3.24.0';
 
 export const CHANGELOG = [
+  {
+    version: '3.24.0',
+    date: '2026-05-06',
+    title: 'Operations — Contract Tracking',
+    changes: [
+      { type: 'minor', text: 'New Operations tile: "Contract Tracking" at /operations/contracts. Tracks vendor contracts with vendor name, start/end dates, monthly + yearly cost (independent — no auto-calc, since some contracts have annual discounts that break a 12× ratio), notice period in days, auto-renewing flag, cancelled flag, and a free-text contract link (rendered as a clickable link when it starts with http). Rows ending within 90 days get an orange "Expiring Soon" pill so renewals don\'t sneak up on you; cancelled rows are dimmed with strike-through. Full add / edit / delete inline, plus an Excel export that mirrors the Onboarding pattern (navy header, currency-formatted cost columns, frozen header, autofilter). Admin-only, persisted in Supabase (vendor_contracts table), independent of Bullhorn.' },
+    ],
+  },
   {
     version: '3.23.2',
     date: '2026-05-06',

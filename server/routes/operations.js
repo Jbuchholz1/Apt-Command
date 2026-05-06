@@ -4,6 +4,7 @@ const { getPendingApprovedPlacements, updatePlacementField } = require('../lib/b
 const {
   getAllPlacementChecklist, upsertPlacementChecklist,
   getAllCOIRecords, createCOIRecord, updateCOIRecord, deleteCOIRecord,
+  listVendorContracts, createVendorContract, updateVendorContract, deleteVendorContract,
 } = require('../lib/db');
 const { requireAdmin } = require('../middleware/adminAuth');
 const { sanitizeRow } = require('../lib/excelSafe');
@@ -259,6 +260,112 @@ router.delete('/coi/:id', async (req, res, next) => {
     }
     await deleteCOIRecord(id);
     res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// =============================================
+// Contract Tracking
+// =============================================
+
+// GET /api/operations/contracts — list all vendor contracts
+router.get('/contracts', async (req, res, next) => {
+  try {
+    const data = await listVendorContracts();
+    res.json({ data, total: data.length });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/operations/contracts — create a new contract
+router.post('/contracts', async (req, res, next) => {
+  try {
+    if (!req.body?.vendor_name) {
+      return res.status(400).json({ error: 'vendor_name is required' });
+    }
+    const createdBy = req.user?.name || req.user?.email || '';
+    const row = await createVendorContract(req.body, createdBy);
+    if (!row) return res.status(500).json({ error: 'Failed to create contract' });
+    res.status(201).json({ data: row });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/operations/contracts/:id — update a contract
+router.patch('/contracts/:id', async (req, res, next) => {
+  try {
+    const updatedBy = req.user?.name || req.user?.email || '';
+    const row = await updateVendorContract(req.params.id, req.body, updatedBy);
+    if (!row) return res.status(404).json({ error: 'Contract not found' });
+    res.json({ data: row });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/operations/contracts/:id — delete a contract
+router.delete('/contracts/:id', async (req, res, next) => {
+  try {
+    const ok = await deleteVendorContract(req.params.id);
+    if (!ok) return res.status(500).json({ error: 'Failed to delete contract' });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/operations/contracts/export — Excel export of contracts
+router.get('/contracts/export', async (req, res, next) => {
+  try {
+    const contracts = await listVendorContracts();
+
+    const rows = contracts.map(c => ({
+      vendor_name: c.vendor_name || '',
+      contract_start_date: fmtDate(c.contract_start_date),
+      contract_end_date: fmtDate(c.contract_end_date),
+      monthly_cost: c.monthly_cost != null ? Number(c.monthly_cost) : null,
+      yearly_cost: c.yearly_cost != null ? Number(c.yearly_cost) : null,
+      notice_period_days: c.notice_period_days != null ? Number(c.notice_period_days) : null,
+      auto_renewing: c.auto_renewing ? 'Yes' : 'No',
+      cancelled: c.cancelled ? 'Yes' : 'No',
+      contract_link: c.contract_link || '',
+    }));
+
+    const wb = new ExcelJS.Workbook();
+    const sheet = wb.addWorksheet('Contracts');
+
+    sheet.columns = [
+      { header: 'Vendor Name', key: 'vendor_name', width: 26 },
+      { header: 'Start Date', key: 'contract_start_date', width: 12 },
+      { header: 'End Date', key: 'contract_end_date', width: 12 },
+      { header: 'Monthly Cost', key: 'monthly_cost', width: 14, style: { numFmt: '"$"#,##0.00' } },
+      { header: 'Yearly Cost', key: 'yearly_cost', width: 14, style: { numFmt: '"$"#,##0.00' } },
+      { header: 'Notice Period (days)', key: 'notice_period_days', width: 18 },
+      { header: 'Auto-Renewing', key: 'auto_renewing', width: 14 },
+      { header: 'Cancelled', key: 'cancelled', width: 11 },
+      { header: 'Contract Link', key: 'contract_link', width: 40 },
+    ];
+
+    const headerRow = sheet.getRow(1);
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF04144F' } };
+    headerRow.alignment = { vertical: 'middle' };
+    headerRow.height = 22;
+
+    for (const r of rows) {
+      sheet.addRow(sanitizeRow(r));
+    }
+
+    sheet.autoFilter = { from: 'A1', to: `I${rows.length + 1}` };
+    sheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=APT_Contracts_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    await wb.xlsx.write(res);
+    res.end();
   } catch (err) {
     next(err);
   }

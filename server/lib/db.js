@@ -509,6 +509,104 @@ async function deleteCOIRecord(id) {
 }
 
 // =============================================
+// Vendor Contracts (Operations → Contract Tracking)
+// =============================================
+
+const VENDOR_CONTRACT_FIELDS = new Set([
+  'vendor_name', 'contract_start_date', 'contract_end_date',
+  'monthly_cost', 'yearly_cost', 'notice_period_days',
+  'auto_renewing', 'cancelled', 'contract_link',
+]);
+
+const VENDOR_CONTRACTS_TTL_MS = 30 * 1000;
+
+function pickContractFields(input) {
+  const out = {};
+  for (const [key, val] of Object.entries(input || {})) {
+    if (VENDOR_CONTRACT_FIELDS.has(key) && val !== undefined) {
+      out[key] = val === '' ? null : val;
+    }
+  }
+  return out;
+}
+
+async function listVendorContracts() {
+  if (!supabase) return [];
+  return cache.cached('vendorContracts:all', VENDOR_CONTRACTS_TTL_MS, async () => {
+    const { data, error } = await supabase
+      .from('vendor_contracts')
+      .select('*')
+      .order('contract_end_date', { ascending: true, nullsFirst: false })
+      .order('vendor_name', { ascending: true });
+
+    if (error) {
+      console.error('[db] listVendorContracts error:', error.message);
+      return [];
+    }
+    return data || [];
+  });
+}
+
+async function createVendorContract(fields, createdBy) {
+  if (!supabase) return null;
+  const insert = pickContractFields(fields);
+  if (!insert.vendor_name) {
+    throw new Error('vendor_name is required');
+  }
+  insert.created_by = createdBy || null;
+  insert.updated_by = createdBy || null;
+
+  const { data, error } = await supabase
+    .from('vendor_contracts')
+    .insert(insert)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('[db] createVendorContract error:', error.message);
+    return null;
+  }
+  cache.bust('vendorContracts:all');
+  return data;
+}
+
+async function updateVendorContract(id, fields, updatedBy) {
+  if (!supabase) return null;
+  const updates = pickContractFields(fields);
+  updates.updated_at = new Date().toISOString();
+  if (updatedBy) updates.updated_by = updatedBy;
+
+  const { data, error } = await supabase
+    .from('vendor_contracts')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .maybeSingle();
+
+  if (error) {
+    console.error('[db] updateVendorContract error:', error.message);
+    return null;
+  }
+  cache.bust('vendorContracts:all');
+  return data;
+}
+
+async function deleteVendorContract(id) {
+  if (!supabase) return false;
+  const { error } = await supabase
+    .from('vendor_contracts')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('[db] deleteVendorContract error:', error.message);
+    return false;
+  }
+  cache.bust('vendorContracts:all');
+  return true;
+}
+
+// =============================================
 // Org Flow — user_profiles
 // =============================================
 
@@ -1661,6 +1759,8 @@ module.exports = {
   getAllPlacementChecklist, getPlacementChecklist, upsertPlacementChecklist,
   // COI Tracking
   getAllCOIRecords, createCOIRecord, updateCOIRecord, deleteCOIRecord,
+  // Vendor Contracts
+  listVendorContracts, createVendorContract, updateVendorContract, deleteVendorContract,
   // Org Flow
   getUserByEmail, getActiveUsers,
   getClients, getClientById, getAllClients, getAllClientsLinkedToBullhorn,

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ClipboardCheck, FileCheck } from 'lucide-react';
+import { ClipboardCheck, FileCheck, FileText } from 'lucide-react';
 
 const sections = [
   {
@@ -15,6 +15,13 @@ const sections = [
     description: 'Track Certificates of Insurance for placements and clients.',
     Icon: FileCheck,
     path: '/operations/coi',
+  },
+  {
+    id: 'contracts',
+    title: 'Contract Tracking',
+    description: 'Track vendor contracts, costs, renewal dates, and notice periods.',
+    Icon: FileText,
+    path: '/operations/contracts',
   },
 ];
 

@@ -451,8 +451,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition: background 0.15s, color 0.15s;
 }
-.ops-icon-btn:hover { color: #dc2626; background: #fef2f2; }
+.ops-icon-btn:hover { color: var(--navy); background: #f1f5f9; }
+.ops-icon-btn-danger:hover { color: #dc2626; background: #fef2f2; }
 
 .ops-row-coi-expired { background: #fef2f2; }
 .ops-row-coi-expired:hover { background: #fee2e2; }
@@ -471,3 +473,176 @@
   align-items: center;
 }
 .ops-coi-link-open:hover { color: var(--gold); }
+
+/* ================================================
+   Contract Tracking
+   ================================================ */
+
+.ops-contract-table tbody tr.ops-row-cancelled {
+  opacity: 0.55;
+}
+.ops-contract-table tbody tr.ops-row-cancelled td {
+  text-decoration: line-through;
+}
+
+.ops-contract-vendor {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.ops-badge-warn {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background: #fed7aa;
+  color: #9a3412;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ops-contract-link-cell {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ops-table-actions {
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* ---- Contract Tracking Modal ---- */
+.ops-contract-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 20, 79, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 24px;
+}
+
+.ops-contract-modal {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  width: 100%;
+  max-width: 640px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  padding: 24px 28px;
+}
+
+.ops-contract-modal-title {
+  margin: 0 0 18px 0;
+  font-size: 1.15rem;
+  color: var(--navy);
+  font-weight: 700;
+}
+
+.ops-contract-modal-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 16px;
+}
+
+.ops-contract-field {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.82rem;
+  color: #374151;
+}
+.ops-contract-field > span {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--navy);
+}
+.ops-contract-field input[type="text"],
+.ops-contract-field input[type="number"],
+.ops-contract-field input[type="date"] {
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 0.85rem;
+  background: #fff;
+  color: #111827;
+  font-family: inherit;
+}
+.ops-contract-field input:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgba(211, 191, 48, 0.25);
+}
+
+.ops-contract-field-full {
+  grid-column: 1 / -1;
+}
+
+.ops-contract-field-checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding-top: 18px;
+}
+.ops-contract-field-checkbox > span {
+  margin-bottom: 0;
+}
+.ops-contract-field-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.ops-contract-modal-error {
+  grid-column: 1 / -1;
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.82rem;
+}
+
+.ops-contract-modal-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.ops-contract-modal-cancel,
+.ops-contract-modal-save {
+  padding: 8px 18px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.15s, color 0.15s;
+}
+.ops-contract-modal-cancel {
+  background: #fff;
+  color: #4b5563;
+  border-color: #d1d5db;
+}
+.ops-contract-modal-cancel:hover { background: #f3f4f6; }
+.ops-contract-modal-save {
+  background: var(--navy);
+  color: var(--gold);
+  border-color: var(--navy);
+}
+.ops-contract-modal-save:hover { background: var(--navy-light); }
+.ops-contract-modal-save:disabled,
+.ops-contract-modal-cancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

@@ -379,6 +379,28 @@ export function deleteCOIRecord(id) {
   return fetchAPI(`/api/operations/coi/${id}`, { method: 'DELETE' });
 }
 
+// --- Operations: Contract Tracking ---
+
+export function getContracts() {
+  return fetchAPI('/api/operations/contracts');
+}
+
+export function createContract(data) {
+  return fetchAPI('/api/operations/contracts', { method: 'POST', body: data });
+}
+
+export function updateContract(id, data) {
+  return fetchAPI(`/api/operations/contracts/${id}`, { method: 'PATCH', body: data });
+}
+
+export function deleteContract(id) {
+  return fetchAPI(`/api/operations/contracts/${id}`, { method: 'DELETE' });
+}
+
+export function exportContracts() {
+  return downloadExcel('/api/operations/contracts/export', `APT_Contracts_${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
 // --- Org Flow ---
 
 export function getOrgFlowUsers() {
