@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.23.0';
+export const APP_VERSION = '3.23.1';
 
 export const CHANGELOG = [
+  {
+    version: '3.23.1',
+    date: '2026-05-06',
+    title: 'Operations — COI Tracking Goes Live',
+    changes: [
+      { type: 'minor', text: 'COI Tracking is no longer a placeholder. The /operations/coi page is now a fillable list backed by Supabase: click "+ Add COI" to create a row, then type the client name, paste the link to the certificate, and pick an expiration date. Edits commit on blur (text fields) or immediately (date), and a trash icon deletes a record after confirmation. Rows whose expiration is in the past are highlighted red; rows expiring within 30 days are highlighted yellow, so at-a-glance you can see which COIs need attention. Sort order is by expiration date (soonest first), with rows missing a date pushed to the bottom. Admin-only — same gate as the rest of the Operations module.' },
+    ],
+  },
   {
     version: '3.23.0',
     date: '2026-05-06',

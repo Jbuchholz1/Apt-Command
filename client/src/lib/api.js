@@ -361,6 +361,24 @@ export function updatePlacementBullhorn(placementId, fields) {
   });
 }
 
+// --- Operations: COI Tracking ---
+
+export function getCOIRecords() {
+  return fetchAPI('/api/operations/coi');
+}
+
+export function createCOIRecord(data) {
+  return fetchAPI('/api/operations/coi', { method: 'POST', body: data });
+}
+
+export function updateCOIRecord(id, data) {
+  return fetchAPI(`/api/operations/coi/${id}`, { method: 'PATCH', body: data });
+}
+
+export function deleteCOIRecord(id) {
+  return fetchAPI(`/api/operations/coi/${id}`, { method: 'DELETE' });
+}
+
 // --- Org Flow ---
 
 export function getOrgFlowUsers() {

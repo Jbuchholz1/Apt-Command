@@ -438,6 +438,77 @@ async function upsertPlacementChecklist(placementId, fields) {
 }
 
 // =============================================
+// COI Tracking — coi_records
+// =============================================
+
+const COI_UPDATABLE = new Set(['client_name', 'coi_link', 'expiration_date']);
+
+async function getAllCOIRecords() {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from('coi_records')
+    .select('*')
+    .order('expiration_date', { ascending: true, nullsFirst: false })
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.error('[db] getAllCOIRecords error:', error.message);
+    return [];
+  }
+  return data || [];
+}
+
+async function createCOIRecord({ client_name, coi_link, expiration_date, created_by }) {
+  if (!supabase) return null;
+  const row = {
+    client_name: client_name || '',
+    coi_link: coi_link || '',
+    expiration_date: expiration_date || null,
+    created_by: created_by || null,
+    updated_by: created_by || null,
+  };
+  const { data, error } = await supabase
+    .from('coi_records')
+    .insert(row)
+    .select()
+    .single();
+  if (error) {
+    console.error('[db] createCOIRecord error:', error.message);
+    throw error;
+  }
+  return data;
+}
+
+async function updateCOIRecord(id, fields, updatedBy) {
+  if (!supabase) return null;
+  const updates = { updated_at: new Date().toISOString() };
+  for (const [k, v] of Object.entries(fields || {})) {
+    if (COI_UPDATABLE.has(k)) updates[k] = v;
+  }
+  if (updatedBy) updates.updated_by = updatedBy;
+  const { data, error } = await supabase
+    .from('coi_records')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .maybeSingle();
+  if (error) {
+    console.error('[db] updateCOIRecord error:', error.message);
+    throw error;
+  }
+  return data;
+}
+
+async function deleteCOIRecord(id) {
+  if (!supabase) return false;
+  const { error } = await supabase.from('coi_records').delete().eq('id', id);
+  if (error) {
+    console.error('[db] deleteCOIRecord error:', error.message);
+    throw error;
+  }
+  return true;
+}
+
+// =============================================
 // Org Flow — user_profiles
 // =============================================
 
@@ -1588,6 +1659,8 @@ module.exports = {
   enqueueReconciliation, listReconciliationQueue,
   getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote,
   getAllPlacementChecklist, getPlacementChecklist, upsertPlacementChecklist,
+  // COI Tracking
+  getAllCOIRecords, createCOIRecord, updateCOIRecord, deleteCOIRecord,
   // Org Flow
   getUserByEmail, getActiveUsers,
   getClients, getClientById, getAllClients, getAllClientsLinkedToBullhorn,

@@ -1,7 +1,10 @@
 const express = require('express');
 const ExcelJS = require('exceljs');
 const { getPendingApprovedPlacements, updatePlacementField } = require('../lib/bullhorn');
-const { getAllPlacementChecklist, upsertPlacementChecklist } = require('../lib/db');
+const {
+  getAllPlacementChecklist, upsertPlacementChecklist,
+  getAllCOIRecords, createCOIRecord, updateCOIRecord, deleteCOIRecord,
+} = require('../lib/db');
 const { requireAdmin } = require('../middleware/adminAuth');
 const { sanitizeRow } = require('../lib/excelSafe');
 
@@ -193,6 +196,69 @@ router.get('/placements/export', async (req, res, next) => {
     res.setHeader('Content-Disposition', `attachment; filename=APT_Placements_${new Date().toISOString().slice(0, 10)}.xlsx`);
     await wb.xlsx.write(res);
     res.end();
+  } catch (err) {
+    next(err);
+  }
+});
+
+// =============================================
+// COI Tracking — fillable list
+// =============================================
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+router.get('/coi', async (req, res, next) => {
+  try {
+    const records = await getAllCOIRecords();
+    res.json({ data: records });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/coi', async (req, res, next) => {
+  try {
+    const { client_name, coi_link, expiration_date } = req.body || {};
+    const created = await createCOIRecord({
+      client_name,
+      coi_link,
+      expiration_date,
+      created_by: req.user?.name || req.user?.email || '',
+    });
+    res.json({ data: created });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/coi/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (!id || !UUID_RE.test(id)) {
+      return res.status(400).json({ error: 'Invalid COI record ID' });
+    }
+    const updated = await updateCOIRecord(
+      id,
+      req.body || {},
+      req.user?.name || req.user?.email || '',
+    );
+    if (!updated) {
+      return res.status(404).json({ error: 'COI record not found' });
+    }
+    res.json({ data: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/coi/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (!id || !UUID_RE.test(id)) {
+      return res.status(400).json({ error: 'Invalid COI record ID' });
+    }
+    await deleteCOIRecord(id);
+    res.json({ success: true });
   } catch (err) {
     next(err);
   }
