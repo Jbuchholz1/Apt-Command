@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.24.0';
+export const APP_VERSION = '3.24.1';
 
 export const CHANGELOG = [
+  {
+    version: '3.24.1',
+    date: '2026-05-06',
+    title: 'Operations — Contract Tracking: Excel Import + Template',
+    changes: [
+      { type: 'patch', text: 'Contract Tracking gained two new toolbar buttons. "Template" downloads an empty .xlsx with the right column headers and two example rows so first-time imports don\'t need guesswork. "Import Excel" picks an .xlsx/.xls/.csv, reads it client-side, and bulk-creates new contract rows on the server. Headers match the Export format (Vendor Name, Start/End Date, Monthly/Yearly Cost, Notice Period (days), Auto-Renewing, Cancelled, Contract Link). Vendor Name is required; rows missing it are skipped and reported. Dates accept ISO, MM/DD/YYYY, or MM/DD/YY; Yes/No cells become booleans; cost cells tolerate "$1,200.50". Each import always creates new rows (never updates existing) — vendors with multiple contracts are common, so silent merges would be more dangerous than a manual cleanup if you re-import the same file twice.' },
+    ],
+  },
   {
     version: '3.24.0',
     date: '2026-05-06',

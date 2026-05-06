@@ -606,6 +606,30 @@ async function deleteVendorContract(id) {
   return true;
 }
 
+async function bulkCreateVendorContracts(rows, createdBy) {
+  if (!supabase) return { inserted: 0, data: [] };
+  if (!Array.isArray(rows) || rows.length === 0) return { inserted: 0, data: [] };
+
+  const inserts = rows.map(r => {
+    const picked = pickContractFields(r);
+    picked.created_by = createdBy || null;
+    picked.updated_by = createdBy || null;
+    return picked;
+  });
+
+  const { data, error } = await supabase
+    .from('vendor_contracts')
+    .insert(inserts)
+    .select();
+
+  if (error) {
+    console.error('[db] bulkCreateVendorContracts error:', error.message);
+    throw error;
+  }
+  cache.bust('vendorContracts:all');
+  return { inserted: (data || []).length, data: data || [] };
+}
+
 // =============================================
 // Org Flow — user_profiles
 // =============================================
@@ -1761,6 +1785,7 @@ module.exports = {
   getAllCOIRecords, createCOIRecord, updateCOIRecord, deleteCOIRecord,
   // Vendor Contracts
   listVendorContracts, createVendorContract, updateVendorContract, deleteVendorContract,
+  bulkCreateVendorContracts,
   // Org Flow
   getUserByEmail, getActiveUsers,
   getClients, getClientById, getAllClients, getAllClientsLinkedToBullhorn,

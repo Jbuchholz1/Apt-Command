@@ -401,6 +401,10 @@ export function exportContracts() {
   return downloadExcel('/api/operations/contracts/export', `APT_Contracts_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
+export function importContracts(rows) {
+  return fetchAPI('/api/operations/contracts/import', { method: 'POST', body: { rows } });
+}
+
 // --- Org Flow ---
 
 export function getOrgFlowUsers() {

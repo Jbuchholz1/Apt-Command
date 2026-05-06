@@ -5,6 +5,7 @@ const {
   getAllPlacementChecklist, upsertPlacementChecklist,
   getAllCOIRecords, createCOIRecord, updateCOIRecord, deleteCOIRecord,
   listVendorContracts, createVendorContract, updateVendorContract, deleteVendorContract,
+  bulkCreateVendorContracts,
 } = require('../lib/db');
 const { requireAdmin } = require('../middleware/adminAuth');
 const { sanitizeRow } = require('../lib/excelSafe');
@@ -316,6 +317,118 @@ router.delete('/contracts/:id', async (req, res, next) => {
     next(err);
   }
 });
+
+// POST /api/operations/contracts/import — bulk import from parsed Excel rows
+//
+// Body: { rows: [{ "Vendor Name": "...", "Start Date": "...", ... }] }
+// Headers match the export format. Per-row validation; invalid rows are
+// skipped and reported. All valid rows insert as new (no upsert by vendor).
+router.post('/contracts/import', async (req, res, next) => {
+  try {
+    const { rows } = req.body || {};
+    if (!Array.isArray(rows)) {
+      return res.status(400).json({ error: 'rows array required' });
+    }
+
+    const toInsert = [];
+    const skippedRows = [];
+
+    rows.forEach((raw, idx) => {
+      const rowNum = idx + 2; // +2 = +1 for header row, +1 for 1-indexing
+      const vendor = pickFirst(raw, ['Vendor Name', 'vendor_name', 'Vendor']);
+      if (!vendor || !String(vendor).trim()) {
+        skippedRows.push(`Row ${rowNum}: Missing Vendor Name`);
+        return;
+      }
+
+      const startDate = parseImportDate(pickFirst(raw, ['Start Date', 'Contract Start', 'contract_start_date']));
+      const endDate = parseImportDate(pickFirst(raw, ['End Date', 'Contract End', 'contract_end_date']));
+      const monthly = parseImportNumber(pickFirst(raw, ['Monthly Cost', 'monthly_cost']));
+      const yearly = parseImportNumber(pickFirst(raw, ['Yearly Cost', 'yearly_cost']));
+      const noticeDays = parseImportNumber(pickFirst(raw, ['Notice Period (days)', 'Notice Period', 'notice_period_days']));
+      const autoRenewing = parseImportBool(pickFirst(raw, ['Auto-Renewing', 'Auto Renewing', 'auto_renewing']));
+      const cancelled = parseImportBool(pickFirst(raw, ['Cancelled', 'cancelled']));
+      const link = pickFirst(raw, ['Contract Link', 'contract_link']);
+
+      toInsert.push({
+        vendor_name: String(vendor).trim(),
+        contract_start_date: startDate,
+        contract_end_date: endDate,
+        monthly_cost: monthly,
+        yearly_cost: yearly,
+        notice_period_days: noticeDays != null ? Math.trunc(noticeDays) : null,
+        auto_renewing: autoRenewing,
+        cancelled,
+        contract_link: link ? String(link).trim() : null,
+      });
+    });
+
+    if (toInsert.length === 0) {
+      return res.status(400).json({ error: 'No valid rows to import', skippedRows });
+    }
+
+    const createdBy = req.user?.name || req.user?.email || '';
+    const result = await bulkCreateVendorContracts(toInsert, createdBy);
+
+    res.json({
+      inserted: result.inserted,
+      skippedRows,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- Import helpers ---
+function pickFirst(row, keys) {
+  for (const k of keys) {
+    if (row[k] !== undefined && row[k] !== null && row[k] !== '') return row[k];
+  }
+  return undefined;
+}
+
+function parseImportDate(val) {
+  if (val == null || val === '') return null;
+  if (val instanceof Date) {
+    return val.toISOString().slice(0, 10);
+  }
+  const s = String(val).trim();
+  if (!s) return null;
+  // ISO timestamp (ExcelJS returns dates as ISO strings) — extract YYYY-MM-DD
+  let m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  // M/D/YYYY or MM/DD/YYYY
+  m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s);
+  if (m) return `${m[3]}-${String(m[1]).padStart(2, '0')}-${String(m[2]).padStart(2, '0')}`;
+  // M/D/YY or MM/DD/YY  → assume 20YY for 00-99
+  m = /^(\d{1,2})\/(\d{1,2})\/(\d{2})$/.exec(s);
+  if (m) {
+    const yy = parseInt(m[3], 10);
+    const yyyy = yy + (yy < 50 ? 2000 : 1900);
+    return `${yyyy}-${String(m[1]).padStart(2, '0')}-${String(m[2]).padStart(2, '0')}`;
+  }
+  // Fallback: let Date parse, extract YYYY-MM-DD
+  const d = new Date(s);
+  if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  return null;
+}
+
+function parseImportNumber(val) {
+  if (val == null || val === '') return null;
+  if (typeof val === 'number') return Number.isFinite(val) ? val : null;
+  const s = String(val).trim().replace(/[$,\s]/g, '');
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+function parseImportBool(val) {
+  if (val == null || val === '') return false;
+  if (typeof val === 'boolean') return val;
+  if (typeof val === 'number') return val !== 0;
+  const s = String(val).trim().toLowerCase();
+  return s === 'yes' || s === 'y' || s === 'true' || s === '1' || s === 'x';
+}
 
 // GET /api/operations/contracts/export — Excel export of contracts
 router.get('/contracts/export', async (req, res, next) => {

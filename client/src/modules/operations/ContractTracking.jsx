@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, Download, Plus, Pencil, Trash2, ExternalLink } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Download, Upload, FileDown, Plus, Pencil, Trash2, ExternalLink } from 'lucide-react';
 import {
   getContracts,
   createContract,
   updateContract,
   deleteContract,
   exportContracts,
+  importContracts,
 } from '../../lib/api';
+import { readExcelToJson, writeExcelFile } from '../../lib/excel';
 
 const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
@@ -74,6 +76,9 @@ export default function ContractTracking() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState(null);
 
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef(null);
+
   const load = useCallback(async () => {
     setError(null);
     try {
@@ -106,6 +111,73 @@ export default function ContractTracking() {
       setExporting(false);
     }
   }, []);
+
+  const handleDownloadTemplate = useCallback(async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const oneYearOut = new Date();
+    oneYearOut.setFullYear(oneYearOut.getFullYear() + 1);
+    const templateRows = [
+      {
+        'Vendor Name': 'Acme Cloud Inc.',
+        'Start Date': today,
+        'End Date': oneYearOut.toISOString().slice(0, 10),
+        'Monthly Cost': 500,
+        'Yearly Cost': 6000,
+        'Notice Period (days)': 30,
+        'Auto-Renewing': 'Yes',
+        'Cancelled': 'No',
+        'Contract Link': 'https://example.com/acme-msa.pdf',
+      },
+      {
+        'Vendor Name': 'Globex Software',
+        'Start Date': '',
+        'End Date': '',
+        'Monthly Cost': '',
+        'Yearly Cost': 14400,
+        'Notice Period (days)': 60,
+        'Auto-Renewing': 'No',
+        'Cancelled': 'No',
+        'Contract Link': '',
+      },
+    ];
+    await writeExcelFile(templateRows, 'Contracts', 'APT_Contracts_Template.xlsx');
+  }, []);
+
+  const handleImportClick = useCallback(() => {
+    if (importing) return;
+    fileInputRef.current?.click();
+  }, [importing]);
+
+  const handleImportFile = useCallback(async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    try {
+      const buffer = await file.arrayBuffer();
+      const rows = await readExcelToJson(buffer);
+      if (!rows || rows.length === 0) {
+        window.alert('The file is empty or has no valid data.');
+        return;
+      }
+      const result = await importContracts(rows);
+
+      let message = `Imported ${result.inserted} contract(s).`;
+      if (result.skippedRows?.length > 0) {
+        message += `\n\nSkipped ${result.skippedRows.length} row(s):\n${result.skippedRows.slice(0, 5).join('\n')}`;
+        if (result.skippedRows.length > 5) {
+          message += `\n... and ${result.skippedRows.length - 5} more`;
+        }
+      }
+      window.alert(message);
+      await load();
+    } catch (err) {
+      console.error('[ContractTracking] import error:', err);
+      window.alert(`Error importing file: ${err.message || err}`);
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }, [load]);
 
   function openAdd() {
     setEditing(null);
@@ -211,6 +283,14 @@ export default function ContractTracking() {
               Updated {lastRefresh.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
             </span>
           )}
+          <button className="ops-export-btn" onClick={handleDownloadTemplate}>
+            <FileDown size={12} style={{ marginRight: 4, verticalAlign: -1 }} />
+            Template
+          </button>
+          <button className="ops-export-btn" onClick={handleImportClick} disabled={importing}>
+            <Upload size={12} style={{ marginRight: 4, verticalAlign: -1 }} />
+            {importing ? 'Importing...' : 'Import Excel'}
+          </button>
           <button className="ops-export-btn" onClick={handleExport} disabled={exporting || loading}>
             <Download size={12} style={{ marginRight: 4, verticalAlign: -1 }} />
             {exporting ? 'Exporting...' : 'Export Excel'}
@@ -223,6 +303,13 @@ export default function ContractTracking() {
             <Plus size={14} style={{ marginRight: 4, verticalAlign: -2 }} />
             Add Contract
           </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            style={{ display: 'none' }}
+            onChange={handleImportFile}
+          />
         </div>
       </div>
 
