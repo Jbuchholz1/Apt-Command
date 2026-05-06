@@ -8,3 +8,23 @@ server/data/
 *.log
 *.pem
 *.key
+
+# Claude-local state (worktrees, plans, launcher tweaks)
+.claude/plans/
+.claude/worktrees/
+.claude/launch.json
+
+# Word junk
+~$*.docx
+*(Repaired).docx
+
+# Doc-generation toolchain (personal authoring tools, not part of the app)
+/package.json
+/package-lock.json
+/build_docx.js
+/generate_field_key.js
+/TECHNICAL_SPECIFICATIONS.md
+/APT_Req_Board_Field_Key.md
+/Digital_Req_Board_Technical_Specifications.docx
+/APT_Req_Board_Field_Key.docx
+/Security_Overview.docx
