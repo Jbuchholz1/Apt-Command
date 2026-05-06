@@ -259,6 +259,16 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`API server running on port ${PORT}`);
   console.log(`Auth: ${process.env.AZURE_TENANT_ID ? 'Microsoft SSO enabled' : 'DEV MODE (no auth)'}`);
+  // Single shared Supabase Realtime subscription for the Req Board.
+  // Fans out override + note changes to every connected SSE client at
+  // /api/req-board/jobs/events. Safe to call when Supabase isn't configured —
+  // the module no-ops with a warning and SSE connections continue to work
+  // (heartbeats only, no events).
+  try {
+    require('./lib/realtimeBroadcast').initRealtimeChannel();
+  } catch (err) {
+    console.warn('[realtime] init failed:', err && err.message);
+  }
 });
 
 // Background: sync Bullhorn ClientCorporations into Org Flow every 30 min.

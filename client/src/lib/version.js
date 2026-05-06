@@ -9,9 +9,20 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.28.0';
+export const APP_VERSION = '3.29.0';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.0',
+    date: '2026-05-06',
+    title: 'Real-time Req Board',
+    changes: [
+      { type: 'major', text: 'Override edits (notes, deadline, follow up, called shot, 48 hr, ZZ/* recruiter) now propagate to every connected board within roughly half a second — no more waiting on the 20-second poll to see what your colleagues just changed. Powered by Supabase Realtime fanned out via a Server-Sent Events stream from the API server (/api/req-board/jobs/events).' },
+      { type: 'minor', text: 'Server-side: a single shared Supabase Realtime subscription per API instance, broadcast to every connected SSE client. Idempotent merge by override version — your own edits never get clobbered by the echoed event. Connections auto-reconnect with exponential backoff; on reconnect the board re-fetches once to catch up on anything missed while disconnected.' },
+      { type: 'patch', text: 'Bullhorn-only fields (status, owner, AM, salaries, real recruiter assignments) still rely on the 20-second poll because Bullhorn doesn\'t push events to us. The poll continues to run as a safety net for everything Realtime can\'t cover.' },
+      { type: 'patch', text: 'Requires applying server/migrations/003_realtime_publication.sql in Supabase to enable Realtime on the job_overrides and job_notes tables. Until that runs, the system gracefully falls back to polling-only behavior.' },
+    ],
+  },
   {
     version: '3.28.0',
     date: '2026-05-06',

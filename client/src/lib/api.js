@@ -29,6 +29,17 @@ async function getToken() {
   }
 }
 
+// Exported for non-fetchAPI consumers — most notably the SSE event stream,
+// which uses fetch-streaming (not native EventSource) so it can pass the
+// Bearer token via Authorization header.
+export async function getApiToken() {
+  return getToken();
+}
+
+export function getApiBaseUrl() {
+  return BASE_URL;
+}
+
 // Errors thrown from fetchAPI carry a `.status` property so callers (and the
 // shared saveWithToast helper) can branch on it — 409 for version conflicts,
 // 429/5xx for retryable transient failures, etc. For 409 in particular we

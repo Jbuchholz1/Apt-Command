@@ -11,6 +11,7 @@ import JobDetail from './JobDetail';
 import SplashScreen from './SplashScreen';
 import { EditingContext, useEditingState } from './EditingContext';
 import ConflictDialog from './ConflictDialog';
+import { subscribeEventStream } from '../../lib/eventStream';
 
 const REFRESH_INTERVAL = 20 * 1000; // 20 seconds
 const REFRESH_TICK_MS = 5 * 1000;        // how often the "updated Xs ago" label ticks
@@ -69,6 +70,42 @@ function mergeIncomingJobs(prev, incoming) {
     for (const f of OVERRIDE_FIELDS) merged[f] = existing[f];
     return merged;
   });
+}
+
+// Apply a real-time override event from the SSE stream to a single job in
+// the local jobs array. Idempotent by version: if the incoming row's
+// version is older than or equal to what we already have, we skip — this
+// is what prevents the editor's own SSE event (a fraction of a second
+// after their save response) from clobbering already-applied state.
+//
+// Field names map snake_case (Supabase) → camelCase (client display).
+function applyOverrideRowToJob(job, row) {
+  const incomingVersion = typeof row.version === 'number' ? row.version : 0;
+  const localVersion = typeof job.overrideVersion === 'number' ? job.overrideVersion : 0;
+  if (incomingVersion <= localVersion) return job;
+
+  const next = {
+    ...job,
+    notes: row.notes || '',
+    followUp: row.follow_up || '',
+    deadline: row.deadline || '',
+    coverageNeeded: row.coverage_needed || '',
+    calledShot: row.called_shot === true || row.called_shot === 'true',
+    fortyEightHr: row.forty_eight_hr || '',
+    trReassigned: row.tr_reassigned === '1',
+    trAssignedAt: row.tr_assigned_at || null,
+    statusChangedAt: row.status_changed_at || null,
+    overrideVersion: row.version,
+    overrideUpdatedBy: row.updated_by || null,
+    overrideUpdatedAt: row.updated_at || null,
+  };
+  // Only override the recruiter when it's the local-only ZZ/* sentinel —
+  // a normal Bullhorn assignment shows initials we don't want to replace
+  // with whatever happens to be in the override row.
+  if (row.recruiter === 'ZZ' || row.recruiter === '*') {
+    next.recruiter = row.recruiter;
+  }
+  return next;
 }
 
 export default function ReqBoardModule() {
@@ -136,6 +173,41 @@ export default function ReqBoardModule() {
     }, REFRESH_INTERVAL);
     return () => clearInterval(interval);
   }, [fetchData, editingRef]);
+
+  // Real-time push: subscribe to the server's SSE stream of override + note
+  // changes. Peers' edits land in our jobs array within ~500ms of being
+  // saved, instead of waiting on the 20s poll. The poll stays as a safety
+  // net for Bullhorn-only fields (status, owner, AM, etc.) and for catching
+  // up after a transient disconnect.
+  useEffect(() => {
+    const unsubscribe = subscribeEventStream('/api/req-board/jobs/events', {
+      onMessage: (event) => {
+        if (!event || !event.type) return;
+        if (event.type === 'override' && event.row) {
+          const row = event.row;
+          if (row.job_id === undefined) return;
+          setJobs(prev => prev.map(j =>
+            j.id === row.job_id ? applyOverrideRowToJob(j, row) : j,
+          ));
+        }
+        // 'note' events are ignored at the board level — JobDetail re-fetches
+        // on open, which is fine; cross-user note visibility through the
+        // detail panel can be added later if needed.
+      },
+      onReconnect: () => {
+        // While we were disconnected we may have missed events. A single
+        // refresh re-syncs both jobs and stats.
+        fetchData();
+      },
+      onError: (err) => {
+        // Don't spam the console on every reconnect attempt.
+        if (err && err.status && err.status !== 401) {
+          console.warn('[req-board] event stream error:', err.message);
+        }
+      },
+    });
+    return unsubscribe;
+  }, [fetchData]);
 
   // Ticker for the "Updated Xs ago" pill. Only runs while the page is mounted
   // and uses a generous 15s cadence so the UI doesn't cause re-renders every

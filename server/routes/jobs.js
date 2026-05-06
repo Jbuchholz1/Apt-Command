@@ -6,6 +6,7 @@ const {
 } = require('../lib/db');
 const { buildReqBoardWorkbook } = require('../lib/exporters');
 const { requireModule } = require('../middleware/adminAuth');
+const realtime = require('../lib/realtimeBroadcast');
 
 const router = express.Router();
 
@@ -22,6 +23,47 @@ function sanitize(str) {
   if (!str || typeof str !== 'string') return str;
   return str.replace(/<[^>]*>/g, '');
 }
+
+// GET /api/req-board/jobs/events — Server-Sent Events stream for real-time
+// override + note changes. Backed by a single shared Supabase Realtime
+// subscription on the API server (see lib/realtimeBroadcast.js); each
+// connected browser receives an event within ~500ms of any peer's edit
+// landing in Supabase. Rapid-reconnect protection comes from the per-user
+// rate limiter; long-lived connections only count as one request.
+router.get('/events', requireRb, (req, res) => {
+  // Keep the connection alive through reverse proxies that buffer or time
+  // out idle responses (Railway, nginx, etc.).
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  if (typeof res.flushHeaders === 'function') res.flushHeaders();
+  // Disable Node's default 2-minute response timeout — SSE connections live
+  // until the client disconnects.
+  if (req.socket && typeof req.socket.setTimeout === 'function') req.socket.setTimeout(0);
+
+  // Initial event so the client knows the connection is live; payload is
+  // ignored but the round-trip confirms the stream works.
+  res.write(`event: connected\ndata: ${JSON.stringify({ ts: Date.now() })}\n\n`);
+
+  const client = {
+    send: (payload) => res.write(`data: ${payload}\n\n`),
+  };
+  realtime.addClient(client);
+
+  // Heartbeat every 25s — comments are SSE no-ops on the client side but
+  // keep proxies from killing an idle connection.
+  const heartbeat = setInterval(() => {
+    try { res.write(': heartbeat\n\n'); } catch (e) { /* socket dead */ }
+  }, 25000);
+
+  const cleanup = () => {
+    clearInterval(heartbeat);
+    realtime.removeClient(client);
+  };
+  req.on('close', cleanup);
+  req.on('error', cleanup);
+});
 
 // GET /api/jobs/export — Excel export (must be above /:id to avoid conflict).
 // Delegates to lib/exporters so the manual download and the nightly cron
