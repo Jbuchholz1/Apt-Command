@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.26.0';
+export const APP_VERSION = '3.27.0';
 
 export const CHANGELOG = [
+  {
+    version: '3.27.0',
+    date: '2026-05-06',
+    title: 'Sandbox — Env Banner, Typed-Error Pass-Through, Env Docs',
+    changes: [
+      { type: 'minor', text: 'Scaffolding for the upcoming sandbox deployment. The frontend now renders an orange "SANDBOX — Bullhorn writes are blocked. Local data is isolated from production." banner whenever VITE_ENV=sandbox, so anyone using the sandbox URL can\'t mistake it for prod. The API server\'s error handler now surfaces typed errors (anything with err.statusCode or err.code) directly to the client instead of falling through to a generic 500 — that lets READ_ONLY_MODE (403) from server/lib/bullhorn.js, OVERRIDE_CONFLICT (409), and validation errors render clean toasts in the UI without leaking unrelated internals. The root CLAUDE.md gains a new "Environments" section documenting prod/sandbox split, branch workflow (feature → staging → main), the READ_ONLY_MODE toggle, and how to test write-back. No production behavior changes — sandbox env is not yet provisioned.' },
+    ],
+  },
   {
     version: '3.26.0',
     date: '2026-05-06',

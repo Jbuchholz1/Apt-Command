@@ -203,6 +203,28 @@ VITE_API_BASE_URL=https://your-api-server.railway.app
 
 ---
 
+## Environments
+
+Two parallel deployments, one Bullhorn tenant (no separate Bullhorn sandbox available from the vendor).
+
+| | Production | Sandbox |
+|---|---|---|
+| Branch | `main` | `staging` |
+| Railway project | APT Req Board | APT Req Board – Sandbox |
+| Supabase | prod project | separate sandbox project (full data isolation) |
+| Bullhorn reads | live | live (same MCP server) |
+| Bullhorn writes | live | **blocked** via `READ_ONLY_MODE=true` |
+| Auth | Azure AD SSO | same Azure AD app (sandbox URL added as redirect URI) |
+| UI banner | none | orange "SANDBOX" banner (`VITE_ENV=sandbox`) |
+
+**Workflow:** feature branch → merge to `staging` → auto-deploys to sandbox → validate → merge `staging` → `main` → auto-deploys to prod.
+
+**The READ_ONLY_MODE toggle** (`server/lib/bullhorn.js`): when `true`, blocks `update_entity`, `add_note`, and `create_entity` at the MCP chokepoint. The route error handler (`server/index.js`) surfaces these as `403 READ_ONLY_MODE` so the UI can show a clean toast. Local Supabase writes are unaffected.
+
+**To test write-back specifically** in sandbox: temporarily set `READ_ONLY_MODE=false` on the sandbox api-server, redeploy, run the test against a clearly-marked test record in Bullhorn, then flip back to `true`.
+
+---
+
 ## Key Technical Notes
 
 1. **MCP calls are server-side only** — never call the MCP URL from the browser

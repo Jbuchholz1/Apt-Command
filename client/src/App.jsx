@@ -33,6 +33,27 @@ import ComingSoon from './components/ComingSoon';
 import ErrorBoundary from './components/ErrorBoundary';
 
 const DEV_BYPASS = import.meta.env.DEV && import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
+const IS_SANDBOX = import.meta.env.VITE_ENV === 'sandbox';
+
+function SandboxBanner() {
+  if (!IS_SANDBOX) return null;
+  return (
+    <div
+      role="status"
+      style={{
+        background: '#FFA500',
+        color: '#000',
+        padding: '6px 12px',
+        textAlign: 'center',
+        fontWeight: 600,
+        fontSize: '0.85rem',
+        letterSpacing: '0.02em',
+      }}
+    >
+      🟡 SANDBOX — Bullhorn writes are blocked. Local data is isolated from production.
+    </div>
+  );
+}
 
 function AppRoutes() {
   return (
@@ -83,6 +104,7 @@ export default function App() {
   if (DEV_BYPASS) {
     return (
       <ErrorBoundary>
+        <SandboxBanner />
         <AppRoutes />
       </ErrorBoundary>
     );
@@ -90,6 +112,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
+      <SandboxBanner />
       <UnauthenticatedTemplate>
         <Routes>
           <Route path="*" element={<LoginPage />} />

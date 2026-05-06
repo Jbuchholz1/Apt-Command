@@ -231,6 +231,18 @@ app.use('/api/stats', statsRouter);
 // --- Error handler: don't leak details in production ---
 app.use((err, req, res, next) => {
   console.error(`[ERROR] ${req.method} ${req.path}:`, err.message);
+
+  // Typed errors (have err.statusCode or err.code) are intentional and
+  // safe to surface — e.g., READ_ONLY_MODE (403) from the sandbox guard,
+  // OVERRIDE_CONFLICT (409), validation errors. Plain Errors fall through
+  // to the generic 500 to avoid leaking internals.
+  if (err.statusCode || err.code) {
+    return res.status(err.statusCode || 500).json({
+      error: err.message,
+      code: err.code,
+    });
+  }
+
   if (IS_PROD) {
     res.status(500).json({ error: 'Internal server error' });
   } else {
