@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, Download, Upload, FileDown, Plus, Pencil, Trash2, ExternalLink } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Download, FileText, Upload, FileDown, Plus, Pencil, Trash2, ExternalLink } from 'lucide-react';
 import {
   getContracts,
   createContract,
@@ -10,6 +10,8 @@ import {
   importContracts,
 } from '../../lib/api';
 import { readExcelToJson, writeExcelFile } from '../../lib/excel';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
@@ -77,6 +79,7 @@ export default function ContractTracking() {
   const [formError, setFormError] = useState(null);
 
   const [importing, setImporting] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const fileInputRef = useRef(null);
 
   const load = useCallback(async () => {
@@ -111,6 +114,118 @@ export default function ContractTracking() {
       setExporting(false);
     }
   }, []);
+
+  const handleExportPDF = useCallback(() => {
+    try {
+      setExportingPdf(true);
+
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter' });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const generatedAt = new Date().toLocaleString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric',
+        hour: 'numeric', minute: '2-digit',
+      });
+
+      // Totals exclude cancelled contracts
+      const active = contracts.filter(c => !c.cancelled);
+      const totalMonthly = active.reduce((sum, c) => sum + (Number(c.monthly_cost) || 0), 0);
+      const totalYearly = active.reduce((sum, c) => sum + (Number(c.yearly_cost) || 0), 0);
+      const expiringCount = active.filter(c => isExpiringSoon(c)).length;
+
+      // Title block — APT navy + gold
+      doc.setFillColor(4, 20, 79);
+      doc.rect(0, 0, pageWidth, 56, 'F');
+      doc.setTextColor(211, 191, 48);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+      doc.text('APT Vendor Contracts', 36, 28);
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text(`Generated ${generatedAt}`, 36, 44);
+
+      // Summary bar
+      doc.setTextColor(55, 65, 81);
+      doc.setFontSize(10);
+      const summaryY = 76;
+      const summary = [
+        `Total: ${contracts.length}`,
+        `Active: ${active.length}`,
+        `Cancelled: ${contracts.length - active.length}`,
+        `Expiring (<=90d): ${expiringCount}`,
+        `Total Monthly: ${currency.format(totalMonthly)}`,
+        `Total Yearly: ${currency.format(totalYearly)}`,
+      ].join('   |   ');
+      doc.text(summary, 36, summaryY);
+
+      // Table
+      const head = [[
+        'Vendor', 'Start', 'End', 'Monthly', 'Yearly',
+        'Notice (days)', 'Auto-Renew', 'Cancelled', 'Link',
+      ]];
+      const body = contracts.map(c => [
+        c.vendor_name || '',
+        fmtDate(c.contract_start_date),
+        fmtDate(c.contract_end_date),
+        fmtMoney(c.monthly_cost),
+        fmtMoney(c.yearly_cost),
+        c.notice_period_days != null ? String(c.notice_period_days) : '',
+        c.auto_renewing ? 'Yes' : 'No',
+        c.cancelled ? 'Yes' : 'No',
+        c.contract_link || '',
+      ]);
+
+      autoTable(doc, {
+        startY: 92,
+        head,
+        body,
+        margin: { left: 36, right: 36 },
+        styles: { fontSize: 9, cellPadding: 5, overflow: 'linebreak' },
+        headStyles: { fillColor: [4, 20, 79], textColor: [255, 255, 255], fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        columnStyles: {
+          0: { cellWidth: 110, fontStyle: 'bold' },   // Vendor
+          1: { cellWidth: 60 },                        // Start
+          2: { cellWidth: 60 },                        // End
+          3: { cellWidth: 65, halign: 'right' },       // Monthly
+          4: { cellWidth: 70, halign: 'right' },       // Yearly
+          5: { cellWidth: 60, halign: 'center' },      // Notice
+          6: { cellWidth: 55, halign: 'center' },      // Auto-Renew
+          7: { cellWidth: 55, halign: 'center' },      // Cancelled
+          8: { cellWidth: 'auto' },                    // Link
+        },
+        didParseCell: (data) => {
+          if (data.section !== 'body') return;
+          const c = contracts[data.row.index];
+          if (!c) return;
+          if (c.cancelled) {
+            data.cell.styles.textColor = [156, 163, 175];
+            data.cell.styles.fontStyle = 'italic';
+          } else if (isExpiringSoon(c) && data.column.index === 2) {
+            data.cell.styles.fillColor = [254, 215, 170];
+            data.cell.styles.textColor = [154, 52, 18];
+            data.cell.styles.fontStyle = 'bold';
+          }
+        },
+        didDrawPage: (data) => {
+          const pageNum = doc.internal.getNumberOfPages();
+          doc.setFontSize(8);
+          doc.setTextColor(107, 114, 128);
+          doc.text('APT Companies — Confidential', 36, pageHeight - 18);
+          doc.text(`Page ${data.pageNumber} of ${pageNum}`, pageWidth - 36, pageHeight - 18, { align: 'right' });
+        },
+      });
+
+      const today = new Date().toISOString().slice(0, 10);
+      doc.save(`APT_Contracts_${today}.pdf`);
+    } catch (err) {
+      console.error('[ContractTracking] PDF export error:', err);
+      window.alert(`PDF export failed: ${err.message || err}`);
+    } finally {
+      setExportingPdf(false);
+    }
+  }, [contracts]);
 
   const handleDownloadTemplate = useCallback(async () => {
     const today = new Date().toISOString().slice(0, 10);
@@ -294,6 +409,10 @@ export default function ContractTracking() {
           <button className="ops-export-btn" onClick={handleExport} disabled={exporting || loading}>
             <Download size={12} style={{ marginRight: 4, verticalAlign: -1 }} />
             {exporting ? 'Exporting...' : 'Export Excel'}
+          </button>
+          <button className="ops-export-btn" onClick={handleExportPDF} disabled={exportingPdf || loading || contracts.length === 0}>
+            <FileText size={12} style={{ marginRight: 4, verticalAlign: -1 }} />
+            {exportingPdf ? 'Exporting...' : 'Export PDF'}
           </button>
           <button className="ops-refresh-btn" onClick={handleRefresh} disabled={refreshing || loading}>
             <RefreshCw size={12} style={{ marginRight: 4, verticalAlign: -1 }} />

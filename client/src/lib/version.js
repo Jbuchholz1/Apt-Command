@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.24.1';
+export const APP_VERSION = '3.24.2';
 
 export const CHANGELOG = [
+  {
+    version: '3.24.2',
+    date: '2026-05-06',
+    title: 'Operations — Contract Tracking: PDF Export',
+    changes: [
+      { type: 'patch', text: 'Added an "Export PDF" button to the Contract Tracking toolbar (next to Export Excel). Generates a clean landscape one-pager (or multi-page for long lists) with an APT-branded navy + gold header, generation timestamp, and a summary line showing total / active / cancelled / expiring counts plus aggregate monthly + yearly cost across non-cancelled contracts. The table renders the same nine columns as the Excel export, with cancelled rows greyed out + italicized and "Expiring Soon" end-dates highlighted in orange. Each page footer carries "APT Companies — Confidential" and a page counter. Generated client-side via jsPDF + jspdf-autotable, so no server round-trip.' },
+    ],
+  },
   {
     version: '3.24.1',
     date: '2026-05-06',
