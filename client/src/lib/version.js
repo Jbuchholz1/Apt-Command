@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.27.2';
+export const APP_VERSION = '3.27.3';
 
 export const CHANGELOG = [
+  {
+    version: '3.27.3',
+    date: '2026-05-06',
+    title: 'Daily Brief — Hide Meetings Already Logged to Bullhorn',
+    changes: [
+      { type: 'patch', text: 'The "Recent Meetings" section of the Daily Brief no longer suggests meetings that have already been logged to Bullhorn. Previously, the filter only narrowed by date and external attendees — meetings you had already logged would re-appear on every refresh until they fell outside the recent window. Now, the previously-logged ids returned from getLoggedMeetingIds() are subtracted from the candidate list before render, so the section only shows meetings that still need attention.' },
+    ],
+  },
   {
     version: '3.27.2',
     date: '2026-05-06',

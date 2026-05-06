@@ -845,9 +845,11 @@ function RecentMeetings() {
           getLoggedMeetingIds().catch(() => ({ ids: [] })),
         ]);
         if (cancelled) return;
-        const filtered = filterRecentEventsForLogging(raw, userDomain, Date.now());
+        const previouslyLogged = new Set(loggedRes?.ids || []);
+        const filtered = filterRecentEventsForLogging(raw, userDomain, Date.now())
+          .filter((ev) => !previouslyLogged.has(ev.id));
         setEvents(filtered);
-        setLoggedIds(new Set(loggedRes?.ids || []));
+        setLoggedIds(previouslyLogged);
 
         const externalEmails = Array.from(new Set(
           filtered.flatMap((ev) => pickExternalAttendees(ev, userDomain)
