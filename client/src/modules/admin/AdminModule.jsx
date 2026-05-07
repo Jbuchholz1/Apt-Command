@@ -141,23 +141,57 @@ export default function AdminModule() {
             </span>
           </div>
           {exportResult && (
-            <pre
-              style={{
-                marginTop: 12,
-                padding: 8,
-                background: 'var(--surface-alt, #f8fafc)',
-                border: '1px solid var(--border, #e2e8f0)',
-                borderRadius: 4,
-                fontFamily: 'ui-monospace, SFMono-Regular, monospace',
-                fontSize: 11,
-                lineHeight: 1.5,
-                overflow: 'auto',
-                maxHeight: 320,
-                whiteSpace: 'pre-wrap',
-              }}
-            >
-              {JSON.stringify(exportResult, null, 2)}
-            </pre>
+            <div style={{ marginTop: 12, fontSize: 13 }}>
+              {exportResult.error && !exportResult.results && (
+                <div style={{ color: 'var(--danger, #dc2626)' }}>
+                  <strong>Error:</strong> {exportResult.error}
+                </div>
+              )}
+              {Array.isArray(exportResult.results) && (
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {exportResult.results.map((r) => (
+                    <li
+                      key={r.filename}
+                      style={{
+                        padding: '6px 0',
+                        display: 'flex',
+                        alignItems: 'baseline',
+                        gap: 10,
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <span
+                        aria-hidden
+                        style={{
+                          color: r.status === 'ok'
+                            ? 'var(--success, #16a34a)'
+                            : 'var(--danger, #dc2626)',
+                          fontWeight: 700,
+                          width: 14,
+                        }}
+                      >
+                        {r.status === 'ok' ? '✓' : '✗'}
+                      </span>
+                      <span style={{ fontWeight: 600, minWidth: 90 }}>{r.name}</span>
+                      {r.status === 'ok' ? (
+                        <a
+                          href={r.webUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: 'var(--link, #2563eb)' }}
+                        >
+                          Open {r.filename} in SharePoint
+                        </a>
+                      ) : (
+                        <span style={{ color: 'var(--danger, #dc2626)', flex: 1, minWidth: 0 }}>
+                          {r.error || 'Unknown error'}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
         </div>
       )}
