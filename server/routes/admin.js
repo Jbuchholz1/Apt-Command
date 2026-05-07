@@ -230,4 +230,23 @@ router.put('/users/:id/permissions', requireModule('admin', 'admin'), async (req
   }
 });
 
+// POST /api/admin/run-export-now — Trigger the nightly SharePoint export on-demand.
+// Same code path as the 23:00 cron (see lib/scheduledExport.js + lib/sharepoint.js).
+// Useful for ad-hoc snapshots before a major change, or for verifying the
+// SharePoint upload pipeline without waiting for the next cron tick.
+//
+// Returns { ok, results } where results is an array of per-file status:
+//   { name, filename, status: 'ok' | 'fail', webUrl?, error? }
+router.post('/run-export-now', requireModule('admin', 'admin'), async (req, res, next) => {
+  try {
+    const { runNightlyExport } = require('../lib/scheduledExport');
+    const results = await runNightlyExport();
+    const ok = results.every(r => r.status === 'ok');
+    res.json({ ok, results });
+  } catch (err) {
+    // Top-level errors (e.g., missing env vars) bubble to the standard handler.
+    next(err);
+  }
+});
+
 module.exports = router;
