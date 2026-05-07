@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useUserRole } from '../../lib/UserRoleContext';
-import { getAdminUsers, updateUserRole, getUserPermissions, updateUserPermissions } from '../../lib/api';
+import { getAdminUsers, updateUserRole, getUserPermissions, updateUserPermissions, runExportNow } from '../../lib/api';
 import { useMsal } from '@azure/msal-react';
 import { showToast } from '../../lib/toast';
 import { Shield, Search, Settings } from 'lucide-react';
@@ -19,6 +19,8 @@ export default function AdminModule() {
   const [searchQuery, setSearchQuery] = useState('');
   const [updating, setUpdating] = useState(null); // user ID being updated
   const [editorUser, setEditorUser] = useState(null); // user whose permissions are open
+  const [exportRunning, setExportRunning] = useState(false);
+  const [exportResult, setExportResult] = useState(null);
 
   const canRead = hasAccess('admin');
   const canManage = hasAccess('admin', 'admin');
@@ -37,6 +39,25 @@ export default function AdminModule() {
       setError('Failed to load users');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRunExport = async () => {
+    setExportRunning(true);
+    setExportResult(null);
+    try {
+      const result = await runExportNow();
+      setExportResult(result);
+      if (result?.ok) {
+        showToast('Export complete — 3 files uploaded to SharePoint', 'success');
+      } else {
+        showToast('Export had errors — see results below', 'error');
+      }
+    } catch (err) {
+      setExportResult({ ok: false, error: err?.message || 'Request failed' });
+      showToast(err?.message || 'Export failed', 'error');
+    } finally {
+      setExportRunning(false);
     }
   };
 
@@ -88,6 +109,58 @@ export default function AdminModule() {
           onChange={(e) => setSearchQuery(e.target.value)}
         />
       </div>
+
+      {canManage && (
+        <div
+          style={{
+            border: '1px solid var(--border, #e2e8f0)',
+            borderRadius: 6,
+            padding: 12,
+            margin: '12px 0',
+            background: 'var(--surface, #fff)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <strong style={{ fontSize: 14 }}>System actions</strong>
+            <button
+              className="admin-role-select"
+              style={{
+                background: 'var(--navy, #0f172a)',
+                color: '#fff',
+                borderColor: 'var(--navy, #0f172a)',
+                cursor: exportRunning ? 'wait' : 'pointer',
+              }}
+              onClick={handleRunExport}
+              disabled={exportRunning}
+            >
+              {exportRunning ? 'Running export… (~30s)' : 'Run nightly SharePoint export now'}
+            </button>
+            <span style={{ fontSize: 12, color: 'var(--muted, #64748b)' }}>
+              Generates Req Board, Org Flow, and Pipeline xlsx files and uploads to{' '}
+              <code>Back Office / Data Back Ups - DO NOT TOUCH</code>.
+            </span>
+          </div>
+          {exportResult && (
+            <pre
+              style={{
+                marginTop: 12,
+                padding: 8,
+                background: 'var(--surface-alt, #f8fafc)',
+                border: '1px solid var(--border, #e2e8f0)',
+                borderRadius: 4,
+                fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+                fontSize: 11,
+                lineHeight: 1.5,
+                overflow: 'auto',
+                maxHeight: 320,
+                whiteSpace: 'pre-wrap',
+              }}
+            >
+              {JSON.stringify(exportResult, null, 2)}
+            </pre>
+          )}
+        </div>
+      )}
 
       {error && <div className="admin-error">{error}</div>}
 

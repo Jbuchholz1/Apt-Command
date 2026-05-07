@@ -323,6 +323,13 @@ export function updateUserPermissions(userId, permissions) {
   });
 }
 
+// Trigger the nightly SharePoint export on demand. Returns
+// { ok, results: [{ name, filename, status, webUrl?, error? }, ...] }.
+// 30+ second response time is normal — generates 3 xlsx files + uploads.
+export function runExportNow() {
+  return fetchAPI('/api/admin/run-export-now', { method: 'POST' });
+}
+
 // --- Client Health ---
 
 export function getClientHealth(startDate, endDate) {
