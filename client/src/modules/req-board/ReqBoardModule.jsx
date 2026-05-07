@@ -125,6 +125,7 @@ export default function ReqBoardModule() {
     status: [],
     employmentType: [],
     owner: [],
+    recruiter: [],
     client: [],
     remote: '',
     redBoxes: '',
@@ -225,6 +226,7 @@ export default function ReqBoardModule() {
       if (filters.status?.length && !filters.status.includes(job.status)) return false;
       if (filters.employmentType?.length && !filters.employmentType.includes(job.employmentType)) return false;
       if (filters.owner?.length && !filters.owner.includes(job.owner)) return false;
+      if (filters.recruiter?.length && !filters.recruiter.includes(job.recruiter)) return false;
       if (filters.client?.length && !filters.client.includes(job.client)) return false;
       if (filters.remote) {
         const r = (job.remote || '').toLowerCase();

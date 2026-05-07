@@ -65,6 +65,12 @@ export default function FilterBar({ filters, onChange, jobs, redBoxCount }) {
     return [...set].sort();
   }, [jobs]);
 
+  const recruiters = useMemo(() => {
+    const set = new Set();
+    (jobs || []).forEach(j => { if (j.recruiter) set.add(j.recruiter); });
+    return [...set].sort();
+  }, [jobs]);
+
   const clients = useMemo(() => {
     const set = new Set();
     (jobs || []).forEach(j => { if (j.client) set.add(j.client); });
@@ -79,6 +85,7 @@ export default function FilterBar({ filters, onChange, jobs, redBoxCount }) {
     (filters.status?.length || 0) +
     (filters.employmentType?.length || 0) +
     (filters.owner?.length || 0) +
+    (filters.recruiter?.length || 0) +
     (filters.client?.length || 0) +
     (filters.remote ? 1 : 0) +
     (filters.calledShot ? 1 : 0) +
@@ -113,6 +120,16 @@ export default function FilterBar({ filters, onChange, jobs, redBoxCount }) {
           options={owners}
           selected={filters.owner || []}
           onChange={(val) => update('owner', val)}
+        />
+      </div>
+
+      <div className="filter-group">
+        <label>TR</label>
+        <MultiSelect
+          label="TRs"
+          options={recruiters}
+          selected={filters.recruiter || []}
+          onChange={(val) => update('recruiter', val)}
         />
       </div>
 
@@ -153,7 +170,7 @@ export default function FilterBar({ filters, onChange, jobs, redBoxCount }) {
       {activeCount > 0 && (
         <button
           className="filter-clear"
-          onClick={() => onChange({ status: [], employmentType: [], owner: [], client: [], remote: '', calledShot: '', redBoxes: '' })}
+          onClick={() => onChange({ status: [], employmentType: [], owner: [], recruiter: [], client: [], remote: '', calledShot: '', redBoxes: '' })}
         >
           Clear filters ({activeCount})
         </button>
