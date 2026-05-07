@@ -9,6 +9,7 @@ const BG_DRUG_OPTIONS = ['N/A', 'Complete', 'Submitted', 'Launched'];
 const CHECKBOX_FIELDS = [
   { key: 'ob_paperwork_complete', label: 'OB Paperwork' },
   { key: 'new_hire_filed', label: 'New Hire Filed' },
+  { key: 'ex_ab_sow_complete', label: 'Ex A/B, SOW' },
 ];
 
 const DATE_FIELDS = [

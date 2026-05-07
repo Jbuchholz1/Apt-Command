@@ -59,6 +59,7 @@ router.get('/placements', async (req, res, next) => {
         background_drug_status: checklist.background_drug_status || 'N/A',
         ob_paperwork_complete: checklist.ob_paperwork_complete || false,
         new_hire_filed: checklist.new_hire_filed || false,
+        ex_ab_sow_complete: checklist.ex_ab_sow_complete || false,
         healthcare_effective_date: checklist.healthcare_effective_date || null,
         healthcare_payroll_deduction_date: checklist.healthcare_payroll_deduction_date || null,
         enrolled_in_healthcare: checklist.enrolled_in_healthcare || false,
@@ -149,6 +150,7 @@ router.get('/placements/export', async (req, res, next) => {
         bgDrugStatus: cl.background_drug_status || 'N/A',
         obPaperwork: cl.ob_paperwork_complete ? 'Yes' : '',
         newHireFiled: cl.new_hire_filed ? 'Yes' : '',
+        exAbSow: cl.ex_ab_sow_complete ? 'Yes' : '',
         hcEffective: fmtDate(cl.healthcare_effective_date),
         hcPayrollDed: fmtDate(cl.healthcare_payroll_deduction_date),
         enrolledHc: cl.enrolled_in_healthcare ? 'Yes' : '',
@@ -172,6 +174,7 @@ router.get('/placements/export', async (req, res, next) => {
       { header: 'Background & Drug Status', key: 'bgDrugStatus', width: 22 },
       { header: 'OB Paperwork', key: 'obPaperwork', width: 13 },
       { header: 'New Hire Filed', key: 'newHireFiled', width: 14 },
+      { header: 'Ex A/B, SOW', key: 'exAbSow', width: 13 },
       { header: 'HC Effective Date', key: 'hcEffective', width: 16 },
       { header: 'HC Payroll Ded.', key: 'hcPayrollDed', width: 16 },
       { header: 'Enrolled HC', key: 'enrolledHc', width: 12 },
@@ -193,7 +196,7 @@ router.get('/placements/export', async (req, res, next) => {
     }
 
     // Auto-filter & freeze header
-    sheet.autoFilter = { from: 'A1', to: `P${placements.length + 1}` };
+    sheet.autoFilter = { from: 'A1', to: `Q${placements.length + 1}` };
     sheet.views = [{ state: 'frozen', ySplit: 1 }];
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

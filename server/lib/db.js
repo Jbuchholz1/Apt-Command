@@ -405,7 +405,7 @@ async function upsertPlacementChecklist(placementId, fields) {
   if (!supabase) return null;
 
   const ALLOWED = new Set([
-    'ob_paperwork_complete', 'new_hire_filed',
+    'ob_paperwork_complete', 'new_hire_filed', 'ex_ab_sow_complete',
     'healthcare_effective_date', 'healthcare_payroll_deduction_date',
     'enrolled_in_healthcare', 'added_to_payroll',
     'four01k_opt_in', 'four01k_forms_received', 'added_to_census',
