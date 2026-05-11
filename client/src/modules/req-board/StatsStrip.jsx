@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { getPlacements, getOfferOutCandidates, updateJobInBullhorn, updateJobOverrides, getRecruiters, getOpportunities, updateOpportunityInBullhorn } from '../../lib/api';
 import { getFollowUpUrgency } from './lib/urgency';
 import EditableDate from './EditableDate';
@@ -130,13 +131,17 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
 
   // On The Board: jobs that have at least one candidate in JobSubmission "Offer Extended".
   // Source of truth is filledCandidateMap (loaded eagerly below + refreshed on jobs change),
-  // not JobOrder.status === 'Filled'.
+  // not JobOrder.status === 'Filled'. Map shape: { [jobId]: [{ id, name }, ...] }.
   const [filledCandidateMap, setFilledCandidateMap] = useState({});
   const offerExtendedJobIds = useMemo(
     () => new Set(Object.keys(filledCandidateMap).map(String)),
     [filledCandidateMap]
   );
   const filledJobs = (jobs || []).filter(j => offerExtendedJobIds.has(String(j.id)));
+  const totalOfferExtended = useMemo(
+    () => Object.values(filledCandidateMap).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0),
+    [filledCandidateMap]
+  );
   const missedFollowUps = missedFollowUpJobs.length;
 
   // Called Shots — jobs flagged as called_shot in overrides
@@ -426,15 +431,17 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
     return filledSort.dir === 'asc' ? ' ↑' : ' ↓';
   };
 
+  // One row per (job, candidate-in-Offer-Extended). Matches the stat-card count.
   const filteredFilled = useMemo(() => {
-    let result = filledJobs;
+    let rows = filledJobs.flatMap(j =>
+      (filledCandidateMap[j.id] || []).map(cand => ({ job: j, cand }))
+    );
     if (filledOwnerFilter) {
-      result = result.filter(j => j.owner === filledOwnerFilter);
+      rows = rows.filter(r => r.job.owner === filledOwnerFilter);
     }
-    const arr = [...result];
-    arr.sort((a, b) => {
-      let av = filledSort.key === 'candidate' ? filledCandidateMap[a.id] : a[filledSort.key];
-      let bv = filledSort.key === 'candidate' ? filledCandidateMap[b.id] : b[filledSort.key];
+    rows.sort((a, b) => {
+      let av = filledSort.key === 'candidate' ? a.cand.name : a.job[filledSort.key];
+      let bv = filledSort.key === 'candidate' ? b.cand.name : b.job[filledSort.key];
       if (av == null && bv == null) return 0;
       if (av == null) return 1;
       if (bv == null) return -1;
@@ -444,7 +451,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
       const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true });
       return filledSort.dir === 'asc' ? cmp : -cmp;
     });
-    return arr;
+    return rows;
   }, [filledJobs, filledOwnerFilter, filledSort, filledCandidateMap]);
 
   // CE Spread sorting
@@ -754,7 +761,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
     { label: 'Missed Follow Ups', value: missedFollowUps, color: '#dc2626', onClick: () => setShowMissedFollowUps(true) },
     { label: 'A/B Covered', value: `${abCovered} / ${abTotal}`, color: '#c9a227', onClick: () => { setAbOwnerFilter(''); setAbSort({ key: 'id', dir: 'desc' }); setShowAB(true); } },
     { label: 'C Reqs', value: cReqCount, color: '#94a3b8', onClick: () => { setCOwnerFilter(''); setCSort({ key: 'id', dir: 'desc' }); setShowC(true); } },
-    { label: 'On The Board', value: filledJobs.length, color: '#7c3aed', tooltip: 'Jobs with a candidate in Offer Extended', onClick: handleFilledClick },
+    { label: 'On The Board', value: totalOfferExtended, color: '#7c3aed', tooltip: 'Candidates in Offer Extended', onClick: handleFilledClick },
     { label: 'Called Shots', value: fmtCurrency(calledShotSpreadTotal), color: '#ea580c', tooltip: `Total spread across ${calledShotJobs.length} Called Shot job(s): weekly CE spread + perm fee. Click to see the list.`, onClick: () => { setCsOwnerFilter([]); setCsTrFilter([]); setCsSort({ key: 'id', dir: 'desc' }); setShowCalledShots(true); } },
     { label: 'Opportunities', value: totalOpportunities, color: '#0369a1', onClick: handleOpportunitiesClick },
     { label: 'Active Contractors', value: activeContractors, color: '#0d9488', onClick: handleContractorsClick },
@@ -1166,11 +1173,11 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
       )}
 
       {/* On The Board (Filled) Modal */}
-      {showFilled && (
+      {showFilled && createPortal(
         <div className="modal-overlay" onClick={() => setShowFilled(false)}>
           <div className="modal-content contractors-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>On The Board ({filteredFilled.length}{filledOwnerFilter ? ` of ${filledJobs.length}` : ''})</h2>
+              <h2>On The Board ({filteredFilled.length}{filledOwnerFilter ? ` of ${totalOfferExtended}` : ''})</h2>
               <button className="modal-close" onClick={() => setShowFilled(false)}>✕</button>
             </div>
             <div style={{ padding: '0 20px 12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -1205,8 +1212,8 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
                 </tr>
               </thead>
               <tbody>
-                {filteredFilled.map(j => (
-                  <tr key={j.id}>
+                {filteredFilled.map(({ job: j, cand }) => (
+                  <tr key={`${j.id}-${cand.id ?? cand.name}`}>
                     <td>
                       <a
                         href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=JobOrder&id=${j.id}`}
@@ -1219,7 +1226,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
                     </td>
                     <td>{j.title || '—'}</td>
                     <td>{j.client || '—'}</td>
-                    <td>{filledCandidateMap[j.id] || '—'}</td>
+                    <td>{cand.name || '—'}</td>
                     <td>{j.owner || '—'}</td>
                     <EditableSelect
                       value={j.status || ''}
@@ -1249,7 +1256,8 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
               </tbody>
             </table>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* A & B Reqs Modal */}

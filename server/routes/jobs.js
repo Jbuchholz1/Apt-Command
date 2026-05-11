@@ -406,7 +406,7 @@ router.post('/submissions/:id/update', requireRb, async (req, res, next) => {
   }
 });
 
-// GET /api/jobs/offer-out-candidates — Map of jobOrderId → candidate name(s) for subs in Offer Extended
+// GET /api/jobs/offer-out-candidates — Map of jobOrderId → array of { id, name } for subs in Offer Extended
 router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
   try {
     const result = await getOfferExtendedSubmissions();
@@ -417,11 +417,10 @@ router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
       if (!jobId || !c) continue;
       const name = `${c.firstName || ''} ${c.lastName || ''}`.trim();
       if (!name) continue;
-      if (map[jobId]) {
-        // avoid duplicate names
-        if (!map[jobId].split(', ').includes(name)) map[jobId] += ', ' + name;
-      } else {
-        map[jobId] = name;
+      if (!map[jobId]) map[jobId] = [];
+      const key = c.id ?? name;
+      if (!map[jobId].some(x => (x.id ?? x.name) === key)) {
+        map[jobId].push({ id: c.id ?? null, name });
       }
     }
     res.json({ data: map });

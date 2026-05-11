@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.1';
+export const APP_VERSION = '3.29.7';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.7',
+    date: '2026-05-11',
+    title: 'Req Board — On The Board counts candidates + modal renders cleanly',
+    changes: [
+      { type: 'patch', text: 'On The Board now counts candidates in Offer Extended, not unique jobs. A job with two candidates both in Offer Extended (e.g. Scrum Master at Protective Life with Kelly Pierce and Anthony Prince) now contributes 2 to the stat, and the modal shows one row per candidate so the totals match end to end.' },
+      { type: 'patch', text: 'The On The Board modal now renders via a React portal at the document root, fixing the clipping bug where the dim overlay only covered a band of the screen because a parent stacking context was containing position: fixed.' },
+    ],
+  },
   {
     version: '3.29.1',
     date: '2026-05-06',
