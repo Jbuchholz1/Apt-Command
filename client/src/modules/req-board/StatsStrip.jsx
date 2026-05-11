@@ -456,6 +456,13 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
     return rows;
   }, [filledJobs, filledOwnerFilter, filledSort, filledCandidateMap]);
 
+  // Sum of weekly CE spread + perm fee across visible (filtered) On The Board rows.
+  // Each row is one candidate, so two candidates on the same job count the spread twice.
+  const filledSpreadTotal = useMemo(
+    () => filteredFilled.reduce((sum, r) => sum + (r.job.ceSpread || 0) + (r.job.permFee || 0), 0),
+    [filteredFilled]
+  );
+
   // CE Spread sorting
   const handleCeSort = (key) => {
     setCeSort(prev =>
@@ -1180,7 +1187,18 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
           <div className="modal-content contractors-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>On The Board ({filteredFilled.length}{filledOwnerFilter ? ` of ${totalOfferExtended}` : ''})</h2>
-              <button className="modal-close" onClick={() => setShowFilled(false)}>✕</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: 'auto' }}>
+                <div style={{ fontSize: '14px', fontWeight: 600, color: '#7c3aed' }}>
+                  Total Spread: {fmtCurrency(filledSpreadTotal)}/wk
+                  <span className="stat-tooltip-wrap stat-tooltip-below">
+                    <span className="stat-tooltip-icon">&#9432;</span>
+                    <span className="stat-tooltip-text">
+                      Sum of weekly CE spread + perm fee across all candidates shown.
+                    </span>
+                  </span>
+                </div>
+                <button className="modal-close" onClick={() => setShowFilled(false)}>✕</button>
+              </div>
             </div>
             <div style={{ padding: '0 20px 12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <label style={{ fontWeight: 600, fontSize: '13px' }}>Owner:</label>

@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.8';
+export const APP_VERSION = '3.29.9';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.9',
+    date: '2026-05-11',
+    title: 'Req Board — On The Board modal shows total spread',
+    changes: [
+      { type: 'patch', text: 'The On The Board modal now displays "Total Spread: $X/wk" in the header (purple, matching the stat card), summing weekly CE spread + perm fee across every visible candidate row. Two candidates on the same job count the spread twice. Updates live with the Owner filter.' },
+    ],
+  },
   {
     version: '3.29.8',
     date: '2026-05-11',
