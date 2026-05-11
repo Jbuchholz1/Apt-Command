@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.7';
+export const APP_VERSION = '3.29.8';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.8',
+    date: '2026-05-11',
+    title: 'Req Board — On The Board counter matches modal row count',
+    changes: [
+      { type: 'patch', text: 'On The Board now only counts candidates whose jobs are visible on the current board. Previously the stat card summed every Offer Extended submission Bullhorn returned (including ones whose jobs were already closed/archived), which inflated the number (e.g. 49) far beyond the rows shown in the modal (e.g. 3). The stat now equals the modal row count.' },
+    ],
+  },
   {
     version: '3.29.7',
     date: '2026-05-11',

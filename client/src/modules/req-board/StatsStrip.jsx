@@ -138,9 +138,11 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
     [filledCandidateMap]
   );
   const filledJobs = (jobs || []).filter(j => offerExtendedJobIds.has(String(j.id)));
+  // Count candidates only for jobs visible in the current board, so the stat-card number
+  // matches the modal row count (the modal also iterates filledJobs).
   const totalOfferExtended = useMemo(
-    () => Object.values(filledCandidateMap).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0),
-    [filledCandidateMap]
+    () => filledJobs.reduce((sum, j) => sum + ((filledCandidateMap[j.id] || []).length), 0),
+    [filledJobs, filledCandidateMap]
   );
   const missedFollowUps = missedFollowUpJobs.length;
 
