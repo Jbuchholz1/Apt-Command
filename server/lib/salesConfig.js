@@ -15,6 +15,7 @@ const SALES_POINTS = {
   'Solutions Pitch': 10, // "Sol Pitch Meeting" in Canvas
   'Solutions Touch': 1,  // "Sol Touch Points" in Canvas
   'Solutions Opp Uncovered': 4, // "Sol Opp Uncovered" in Canvas
+  'BD Meeting': 3,
 };
 
 // Display labels for activity types (Canvas naming)
@@ -35,6 +36,7 @@ const ACTIVITY_LABELS = {
   'Solutions Pitch': 'Sol Pitch Meeting',
   'Solutions Touch': 'Sol Touch Points',
   'Solutions Opp Uncovered': 'Sol Opp Uncovered',
+  'BD Meeting': 'BD Meeting',
 };
 
 // Ordered list of activity types for display
@@ -42,7 +44,7 @@ const ACTIVITY_ORDER = [
   'Touch Point', 'Virtual Meeting', 'In Person Meeting', 'Coffee',
   'Breakfast', 'Lunch', 'New Meeting', 'Req Qual', 'Referral Meeting',
   'Happy Hour', 'Dinner', 'OOA', 'Discovery', 'Solutions Pitch',
-  'Solutions Touch', 'Solutions Opp Uncovered',
+  'Solutions Touch', 'Solutions Opp Uncovered', 'BD Meeting',
 ];
 
 const TIERS = {

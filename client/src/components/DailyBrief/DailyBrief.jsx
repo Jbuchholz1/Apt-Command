@@ -783,6 +783,7 @@ const ACTIVITY_TYPE_OPTIONS = [
   'Solutions Pitch',
   'Solutions Touch',
   'Solutions Opp Uncovered',
+  'BD Meeting',
 ];
 
 function getDomainFromEmail(email) {

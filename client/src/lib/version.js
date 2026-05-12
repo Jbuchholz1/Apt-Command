@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.9';
+export const APP_VERSION = '3.29.10';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.10',
+    date: '2026-05-12',
+    title: 'MAR Reporting — BD Meeting activity type added',
+    changes: [
+      { type: 'patch', text: '"BD Meeting" is now a first-class activity type across every MAR-driving surface: Sales Dashboard (new column + MAR Total), My Dashboard / individual performance MAR, Client Health AM MAR rollup, and the Daily Brief "Log Activity" dropdown. Worth 3 points per occurrence (same weight as New Meeting). Previously these Bullhorn appointments were silently dropped from totals. Historical BD Meetings appear retroactively in any date range queried — no backfill needed.' },
+    ],
+  },
   {
     version: '3.29.9',
     date: '2026-05-11',
