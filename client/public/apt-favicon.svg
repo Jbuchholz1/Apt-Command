@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- APT gold square -->
+  <rect width="100" height="100" fill="#C5BC1A"/>
+  <!-- White stylized A: two strokes converging to a peak + horizontal crossbar -->
+  <path
+    d="M 25 90 L 50 12 L 75 90 M 36 65 L 64 65"
+    stroke="white"
+    stroke-width="9"
+    stroke-linecap="butt"
+    stroke-linejoin="miter"
+    fill="none"
+  />
+</svg>
