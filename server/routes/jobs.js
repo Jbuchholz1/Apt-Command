@@ -777,6 +777,7 @@ function formatJob(job) {
     city: job.address?.city || null,
     state: job.address?.state || null,
     priority: job.type === 1 ? 'A' : job.type === 2 ? 'B' : job.type === 3 ? 'C' : null,
+    isPublic: typeof job.isPublic === 'number' ? job.isPublic : null,
     dateLastModified: job.dateLastModified ? new Date(job.dateLastModified).toISOString() : null,
     fallingOff: false, // set by route handler for recently-closed jobs
     // assignedUsers → TR initials (Bullhorn source of truth)

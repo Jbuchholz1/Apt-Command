@@ -504,6 +504,18 @@
   color: var(--text-muted);
 }
 
+.req-row.unpublished {
+  box-shadow: inset 4px 0 0 0 #dc2626;
+  background: rgba(220, 38, 38, 0.07);
+}
+.req-row.unpublished:hover {
+  background: rgba(220, 38, 38, 0.12);
+}
+.req-row.unpublished.selected {
+  box-shadow: inset 4px 0 0 0 #dc2626;
+  background: rgba(220, 38, 38, 0.10);
+}
+
 .cell-title {
   font-weight: 600;
   color: var(--navy);

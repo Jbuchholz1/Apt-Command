@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.10';
+export const APP_VERSION = '3.29.11';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.11',
+    date: '2026-05-12',
+    title: 'Req Board — flag rows where the job isn’t published in Bullhorn',
+    changes: [
+      { type: 'patch', text: 'Any row on the Req Board whose underlying job is "Not Published" in Bullhorn (isPublic = 0) now shows a red left bar with a subtle red tint, calling out jobs that are invisible to candidates on the careers page / job boards. Jobs pending publish approval (isPublic = -1) and live jobs (isPublic = 1) are not flagged. The whole-row flag also feeds into the existing red-box filter and count in the FilterBar, alongside missed deadlines, missed follow-ups, and TR-no-sub-in-48hrs.' },
+    ],
+  },
   {
     version: '3.29.10',
     date: '2026-05-12',

@@ -30,6 +30,14 @@ function getDeadlineUrgencyLocal(deadlineStr) {
 }
 
 /**
+ * Returns true if the job is "Not Published" in Bullhorn (isPublic === 0).
+ * Jobs pending approval (isPublic === -1) and live jobs (isPublic === 1) are NOT flagged.
+ */
+export function isUnpublished(job) {
+  return job.isPublic === 0;
+}
+
+/**
  * Returns true if a job has any "red box" condition.
  * Add future red box conditions here.
  */
@@ -40,6 +48,8 @@ export function hasRedBox(job) {
   if (getDeadlineUrgencyLocal(job.deadline) === 'red') return true;
   // TR: 48hrs passed with no client submission
   if (getTrUrgency(job) === 'red') return true;
+  // Job not published in Bullhorn
+  if (isUnpublished(job)) return true;
   // Add future red box conditions here
   return false;
 }

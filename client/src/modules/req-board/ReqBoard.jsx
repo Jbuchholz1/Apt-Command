@@ -7,6 +7,7 @@ import { updateJobOverrides, updateJobInBullhorn, getUsers, getRecruiters, getAc
 import { saveWithToast } from '../../lib/saveWithToast';
 import { useEditing } from './EditingContext';
 import { getDeadlineUrgency, getFollowUpUrgency, getTrUrgency } from './lib/urgency';
+import { isUnpublished } from './lib/redBox';
 
 const PRIORITY_COLORS = {
   A: { bg: '#16a34a', text: '#fff' },
@@ -620,7 +621,7 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
           {sorted.map(job => (
             <tr
               key={job.id}
-              className={`req-row ${selectedJobId === job.id ? 'selected' : ''} ${job.fallingOff ? 'falling-off' : ''}`}
+              className={`req-row ${selectedJobId === job.id ? 'selected' : ''} ${job.fallingOff ? 'falling-off' : ''} ${isUnpublished(job) ? 'unpublished' : ''}`}
               onClick={() => onSelectJob(job.id)}
             >
               {COLUMNS.map(col => renderCell(job, col))}
