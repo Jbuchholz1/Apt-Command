@@ -27,6 +27,9 @@ const STATUS_OPTIONS = [
   'Accepting Candidates', 'Covered', 'Offer Out', 'Placed', 'Filled', 'Lost', 'Wash', 'Archive',
 ].map(s => ({ value: s, label: s }));
 
+// Terminal/closed statuses — excluded from all alert and rollup counters
+const CLOSED_STATUSES = new Set(['Archive', 'Placed', 'Lost', 'Wash', 'Filled']);
+
 function ContractorMultiSelect({ label, options, selected, onChange }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -126,8 +129,11 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, hideOpp
   // Accepting candidates jobs
   const acceptingJobs = (jobs || []).filter(j => j.status === 'Accepting Candidates');
 
-  // Missed follow-ups: no follow-up + past-due follow-ups (red urgency)
-  const missedFollowUpJobs = (jobs || []).filter(j => getFollowUpUrgency(j.followUp) === 'red');
+  // Missed follow-ups: no follow-up + past-due follow-ups (red urgency).
+  // Exclude closed-status jobs — they don't need follow-up.
+  const missedFollowUpJobs = (jobs || []).filter(j =>
+    !CLOSED_STATUSES.has(j.status) && getFollowUpUrgency(j.followUp) === 'red'
+  );
 
   // On The Board: jobs that have at least one candidate in JobSubmission "Offer Extended".
   // Source of truth is filledCandidateMap (loaded eagerly below + refreshed on jobs change),
@@ -201,13 +207,17 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, hideOpp
     return arr;
   }, [calledShotJobs, csOwnerFilter, csTrFilter, csSort]);
 
-  // A + B reqs combined: covered = has an assigned TR
-  const abReqs = (jobs || []).filter(j => j.priority === 'A' || j.priority === 'B');
+  // A + B reqs combined: covered = has an assigned TR. Closed jobs are excluded.
+  const abReqs = (jobs || []).filter(j =>
+    !CLOSED_STATUSES.has(j.status) && (j.priority === 'A' || j.priority === 'B')
+  );
   const abTotal = abReqs.length;
   const abCovered = abReqs.filter(j => { const r = (j.recruiter || '').trim(); return r && r !== '*'; }).length;
 
-  // C reqs only
-  const cReqs = (jobs || []).filter(j => j.priority === 'C');
+  // C reqs only. Closed jobs are excluded.
+  const cReqs = (jobs || []).filter(j =>
+    !CLOSED_STATUSES.has(j.status) && j.priority === 'C'
+  );
   const cReqCount = cReqs.length;
 
   // Potential Spread: Accepting Candidates or Filled jobs with a ceSpread value
