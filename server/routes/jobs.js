@@ -126,8 +126,10 @@ router.get('/', requireRb, async (req, res, next) => {
       }
     }
 
-    // Statuses that should fall off the board (only shown within 12hr window)
-    const FALLOFF_STATUSES = ['Archive', 'Placed', 'Lost', 'Wash'];
+    // Statuses that should fall off the board (only shown within 12hr window).
+    // 'Filled' was added in v3.30.0 alongside the India Req Board feature so
+    // filled reqs don't linger on the active boards forever.
+    const FALLOFF_STATUSES = ['Archive', 'Placed', 'Lost', 'Wash', 'Filled'];
     const cutoffMs = Date.now() - (12 * 60 * 60 * 1000); // 12 hours ago
 
     // Merge open + recently closed + called-shot-only jobs, deduplicate by ID
@@ -167,7 +169,15 @@ router.get('/', requireRb, async (req, res, next) => {
       }
     }
 
-    res.json({ total: allJobs.length, data: allJobs });
+    // Optional India Req Board filter — same endpoint, parameterized.
+    // The India tab in the UI passes ?apt_india=true; everywhere else omits
+    // the param and gets the full board.
+    const aptIndiaOnly = req.query.apt_india === 'true';
+    const finalJobs = aptIndiaOnly
+      ? allJobs.filter(j => j.aptIndia === true)
+      : allJobs;
+
+    res.json({ total: finalJobs.length, data: finalJobs });
   } catch (err) {
     next(err);
   }
@@ -580,7 +590,7 @@ router.patch('/:id/overrides', requireRb, async (req, res, next) => {
       return res.status(400).json({ error: 'Invalid job ID' });
     }
 
-    const { recruiter, notes, follow_up, deadline, coverage_needed, tr_reassigned, tr_assigned_at, called_shot, forty_eight_hr } = req.body;
+    const { recruiter, notes, follow_up, deadline, coverage_needed, tr_reassigned, tr_assigned_at, called_shot, forty_eight_hr, apt_india } = req.body;
     const updatedBy = req.user?.email || req.user?.name || 'unknown';
 
     // Optimistic locking: clients that have been updated can send If-Match
@@ -606,6 +616,7 @@ router.patch('/:id/overrides', requireRb, async (req, res, next) => {
         tr_assigned_at,
         called_shot,
         forty_eight_hr: sanitize(forty_eight_hr),
+        apt_india,
         updated_by: updatedBy,
       }, { expectedVersion });
     } catch (err) {
@@ -677,6 +688,7 @@ function mergeOverrides(job, overridesMap) {
     job.notes = ov.notes || '';
     job.coverageNeeded = ov.coverage_needed || '';
     job.calledShot = ov.called_shot === true || ov.called_shot === 'true';
+    job.aptIndia = ov.apt_india === true || ov.apt_india === 'true';
     job.fortyEightHr = ov.forty_eight_hr || '';
     job.statusChangedAt = ov.status_changed_at || null;
     // Expose the override row's version (if the column exists) so the client
@@ -693,6 +705,7 @@ function mergeOverrides(job, overridesMap) {
     job.notes = job.notes || '';
     job.coverageNeeded = job.coverageNeeded || '';
     job.calledShot = false;
+    job.aptIndia = false;
     job.fortyEightHr = '';
     job.statusChangedAt = null;
     // No override row yet — client sends no If-Match so we insert at v1.

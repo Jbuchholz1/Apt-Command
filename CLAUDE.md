@@ -251,6 +251,8 @@ This protects the user's old "push it" muscle memory by making the default desti
 4. **Pagination** — Default `count` is 20; set to 100+ for req board; handle pagination if needed
 5. **TO_ONE fields** — Must be in the `fields` param as nested e.g. `owner,clientCorporation` — Bullhorn returns the nested object automatically
 6. **isDeleted filter** — Always add `AND isDeleted = false` to queries
+7. **FALLOFF_STATUSES** — `['Archive', 'Placed', 'Lost', 'Wash', 'Filled']` (`server/routes/jobs.js`). Reqs in these statuses disappear from both Req Boards 12h after the status change. Called Shot jobs bypass this rule entirely. `'Filled'` was added in v3.30.0 alongside the India Req Board so filled reqs don't linger forever.
+8. **India Req Board** — A second tab that reuses `ReqBoardModule` with props (`title="India Req Board"`, `apiFilter={{ apt_india: true }}`, `permissionKey="india_req_board"`). Backed by the same `/api/req-board/jobs` and `/api/req-board/stats` endpoints, which accept `?apt_india=true` to filter to jobs whose `apt_india` Supabase override is true. The flag is set via a checkbox column at position 0 on the regular Req Board. Gated by the `india_req_board` module permission — granted per-user via the admin panel; nobody sees it by default. Edits made on either board hit the same Bullhorn record and the same `job_overrides` Supabase row.
 
 ---
 

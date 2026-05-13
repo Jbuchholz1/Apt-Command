@@ -176,7 +176,7 @@ async function upsertOverrides(jobId, updatesInput, options = {}) {
   const {
     recruiter, follow_up, deadline, notes, coverage_needed,
     tr_reassigned, tr_assigned_at, called_shot, forty_eight_hr,
-    status_changed_at, updated_by,
+    apt_india, status_changed_at, updated_by,
   } = updatesInput || {};
   const { expectedVersion } = options;
 
@@ -190,6 +190,7 @@ async function upsertOverrides(jobId, updatesInput, options = {}) {
   if (tr_assigned_at !== undefined) updates.tr_assigned_at = tr_assigned_at;
   if (called_shot !== undefined) updates.called_shot = called_shot;
   if (forty_eight_hr !== undefined) updates.forty_eight_hr = forty_eight_hr;
+  if (apt_india !== undefined) updates.apt_india = apt_india;
   if (status_changed_at !== undefined) updates.status_changed_at = status_changed_at;
   if (updated_by) updates.updated_by = updated_by;
 

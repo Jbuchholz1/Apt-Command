@@ -11,6 +11,7 @@
 
 const MODULES = Object.freeze({
   req_board:             { label: 'Req Board' },
+  india_req_board:       { label: 'India Req Board' },
   org_flow:              { label: 'Org Flow' },
   pipeline:              { label: 'Pipeline' },
   client_health:         { label: 'APT Health' },

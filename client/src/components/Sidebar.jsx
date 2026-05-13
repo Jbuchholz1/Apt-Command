@@ -30,6 +30,7 @@ import './sidebar.css';
 const NAV_ITEMS = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/', exact: true },
   { label: 'Req Board',     icon: ClipboardList, path: '/req-board',  module: 'req_board' },
+  { label: 'India Req Board', icon: ClipboardList, path: '/india-req-board', module: 'india_req_board' },
   { label: 'Org Flow',      icon: GitBranch,     path: '/org-flow',   module: 'org_flow' },
   { label: 'Pipeline',      icon: Users,         path: '/pipeline',   module: 'pipeline' },
   { label: 'APT Health',    icon: Building2,     path: '/clients',    module: 'client_health' },

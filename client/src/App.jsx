@@ -4,6 +4,7 @@ import AppShell from './components/AppShell';
 import LoginPage from './components/LoginPage';
 import HomePage from './components/HomePage';
 import ReqBoardModule from './modules/req-board/ReqBoardModule';
+import IndiaReqBoardModule from './modules/india-req-board/IndiaReqBoardModule';
 import GoalTrackingModule from './modules/goal-tracking/GoalTrackingModule';
 import ReportingModule from './modules/reporting/ReportingModule';
 import ReportingHome from './modules/reporting/ReportingHome';
@@ -61,6 +62,7 @@ function AppRoutes() {
       <Route element={<AppShell />}>
         <Route index element={<HomePage />} />
         <Route path="req-board" element={<ReqBoardModule />} />
+        <Route path="india-req-board" element={<IndiaReqBoardModule />} />
         <Route path="org-flow" element={<OrgFlowModule />} />
         <Route path="pipeline" element={<PipelineModule />}>
           <Route index element={<OpportunityPipeline />} />

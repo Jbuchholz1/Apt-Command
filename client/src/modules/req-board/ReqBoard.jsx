@@ -73,6 +73,7 @@ const REMOTE_OPTIONS = [
 ];
 
 const COLUMNS = [
+  { key: 'aptIndia', label: 'Apt India', sortable: true, width: '70px' },
   { key: 'priority', label: 'Pri', sortable: true, width: '42px' },
   { key: 'calledShot', label: 'CS', sortable: true, width: '36px' },
   { key: 'dateAdded', label: 'Date', sortable: true, width: '70px' },
@@ -103,6 +104,7 @@ const OVERRIDE_FIELD_MAP = {
   coverageNeeded: 'coverage_needed',
   calledShot: 'called_shot',
   fortyEightHr: 'forty_eight_hr',
+  aptIndia: 'apt_india',
 };
 
 const COVERAGE_OPTIONS = [
@@ -543,6 +545,22 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
               onClick={e => e.stopPropagation()}
               title="Called Shot"
               style={{ cursor: 'pointer', accentColor: '#D3BF30' }}
+            />
+          </td>
+        );
+      case 'aptIndia':
+        return (
+          <td key={col.key} style={{ textAlign: 'center' }}>
+            <input
+              type="checkbox"
+              checked={!!job.aptIndia}
+              onChange={(e) => {
+                e.stopPropagation();
+                handleOverrideSave(job.id, 'aptIndia', e.target.checked);
+              }}
+              onClick={e => e.stopPropagation()}
+              title="Apt India — flag this req for the India Req Board"
+              style={{ cursor: 'pointer', accentColor: '#F26B38' }}
             />
           </td>
         );

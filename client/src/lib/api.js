@@ -102,8 +102,23 @@ async function fetchAPI(path, options = {}) {
 
 // --- Read operations ---
 
-export function getJobs() {
-  return fetchAPI('/api/req-board/jobs');
+// Build a query string from an object, skipping empty values. Used by board
+// fetchers that may need to scope results (e.g. apt_india=true for the
+// India Req Board). Existing callers passing nothing get the firm-wide
+// behavior unchanged.
+function buildQS(params) {
+  if (!params) return '';
+  const sp = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined || v === null || v === false || v === '') continue;
+    sp.append(k, String(v));
+  }
+  const s = sp.toString();
+  return s ? `?${s}` : '';
+}
+
+export function getJobs(params) {
+  return fetchAPI(`/api/req-board/jobs${buildQS(params)}`);
 }
 
 export function getAllJobs() {
@@ -122,8 +137,8 @@ export function getOfferOutCandidates() {
   return fetchAPI('/api/req-board/jobs/offer-out-candidates');
 }
 
-export function getStats() {
-  return fetchAPI('/api/req-board/stats');
+export function getStats(params) {
+  return fetchAPI(`/api/req-board/stats${buildQS(params)}`);
 }
 
 // --- Write operations ---

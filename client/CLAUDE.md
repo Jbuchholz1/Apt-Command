@@ -61,6 +61,7 @@ The frontend is organized into feature modules under `src/modules/`. Each module
 | Module | Folder | Purpose |
 |--------|--------|---------|
 | Req Board | `modules/req-board/` | The main requisition board — table with inline editing, filters, stats strip, job detail panel, status badges, splash screen |
+| India Req Board | `modules/india-req-board/` | Thin wrapper that mounts `ReqBoardModule` with `apiFilter={{ apt_india: true }}` and `permissionKey="india_req_board"`. Same UI, filtered to India-flagged jobs only. |
 | Reporting | `modules/reporting/` | Recruiter Dashboard and Sales Dashboard with KPI cards and charts |
 | Performance | `modules/performance/` | Individual "My Dashboard" — personal performance metrics |
 | Pipeline | `modules/pipeline/` | Opportunity/sales pipeline view |

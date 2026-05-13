@@ -15,6 +15,10 @@ GET /api/stats         — Summary counts for stats strip
 GET /api/health        — Health check for Railway
 ```
 
+### Optional query params
+
+- **`/api/req-board/jobs?apt_india=true`** and **`/api/req-board/stats?apt_india=true`** — filter the response to jobs whose `apt_india` override is true. Used by the India Req Board tab. Without the param the endpoints behave exactly as before (firm-wide).
+
 ---
 
 ## Server File Map

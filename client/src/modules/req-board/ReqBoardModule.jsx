@@ -45,7 +45,7 @@ function isFilledAndExpired(job) {
 // This keeps just-saved edits visible while server caches catch up.
 const OVERRIDE_FIELDS = [
   'notes', 'deadline', 'followUp',
-  'coverageNeeded', 'calledShot', 'fortyEightHr',
+  'coverageNeeded', 'calledShot', 'fortyEightHr', 'aptIndia',
   'trReassigned', 'trAssignedAt', 'statusChangedAt',
   'overrideVersion', 'overrideUpdatedBy', 'overrideUpdatedAt',
   'recruiter',
@@ -91,6 +91,7 @@ function applyOverrideRowToJob(job, row) {
     deadline: row.deadline || '',
     coverageNeeded: row.coverage_needed || '',
     calledShot: row.called_shot === true || row.called_shot === 'true',
+    aptIndia: row.apt_india === true || row.apt_india === 'true',
     fortyEightHr: row.forty_eight_hr || '',
     trReassigned: row.tr_reassigned === '1',
     trAssignedAt: row.tr_assigned_at || null,
@@ -108,7 +109,14 @@ function applyOverrideRowToJob(job, row) {
   return next;
 }
 
-export default function ReqBoardModule() {
+// The India Req Board reuses this module with different props:
+//   title="India Req Board"  apiFilter={{ apt_india: true }}  permissionKey="india_req_board"
+// All other behavior is identical, so the two boards stay 1:1 by construction.
+export default function ReqBoardModule({
+  title = 'Req Board',
+  apiFilter = null,
+  permissionKey = 'req_board',
+} = {}) {
   const { hasAccess, loading: roleLoading } = useUserRole();
   const [showSplash, setShowSplash] = useState(true);
 
@@ -142,7 +150,7 @@ export default function ReqBoardModule() {
     try {
       setLoading(true);
       setError(null);
-      const [jobsRes, statsRes] = await Promise.all([getJobs(), getStats()]);
+      const [jobsRes, statsRes] = await Promise.all([getJobs(apiFilter), getStats(apiFilter)]);
       // Per-job version-aware merge: if our local row has a newer override
       // version than the incoming one (e.g. the server's caches haven't
       // caught up to a save we just made), preserve the local override
@@ -283,7 +291,7 @@ export default function ReqBoardModule() {
   }
 
   if (roleLoading) return null;
-  if (!hasAccess('req_board')) return <AccessDenied />;
+  if (!hasAccess(permissionKey)) return <AccessDenied />;
 
   const refreshAge = lastRefresh ? formatRelative(lastRefresh.getTime(), now) : null;
   const pausedReason = isEditing
@@ -298,7 +306,7 @@ export default function ReqBoardModule() {
         <div className="req-board-toolbar">
           <div className="toolbar-left">
             <img src="/apt-logo.jpg" alt="APT" className="toolbar-logo" />
-            <h2 className="toolbar-title">Req Board</h2>
+            <h2 className="toolbar-title">{title}</h2>
           </div>
           <div className="toolbar-right">
             {lastRefresh && (
