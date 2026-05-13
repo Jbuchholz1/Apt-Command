@@ -37,11 +37,15 @@ export function isUnpublished(job) {
   return job.isPublic === 0;
 }
 
+const RED_BOX_EXCLUDED_STATUSES = new Set(['Archive', 'Placed', 'Lost', 'Wash', 'Filled']);
+
 /**
  * Returns true if a job has any "red box" condition.
  * Add future red box conditions here.
  */
 export function hasRedBox(job) {
+  // Closed/terminal-status jobs don't raise alerts even if deadline/followUp went red
+  if (RED_BOX_EXCLUDED_STATUSES.has(job?.status)) return false;
   // Missed or past-due follow-up
   if (getFollowUpUrgency(job.followUp) === 'red') return true;
   // Missed or past-due deadline
