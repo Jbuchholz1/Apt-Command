@@ -210,18 +210,36 @@ Two parallel deployments, one Bullhorn tenant (no separate Bullhorn sandbox avai
 | | Production | Sandbox |
 |---|---|---|
 | Branch | `main` | `staging` |
-| Railway project | APT Req Board | APT Req Board – Sandbox |
+| Railway | `production` environment | `sandbox` environment (same Railway project) |
 | Supabase | prod project | separate sandbox project (full data isolation) |
 | Bullhorn reads | live | live (same MCP server) |
 | Bullhorn writes | live | **blocked** via `READ_ONLY_MODE=true` |
 | Auth | Azure AD SSO | same Azure AD app (sandbox URL added as redirect URI) |
 | UI banner | none | orange "SANDBOX" banner (`VITE_ENV=sandbox`) |
 
-**Workflow:** feature branch → merge to `staging` → auto-deploys to sandbox → validate → merge `staging` → `main` → auto-deploys to prod.
+**Workflow:** feature branch → merge to `staging` → auto-deploys to sandbox → validate → merge `staging` → `main` → auto-deploys to prod. Same commit hash promotes — guaranteed 1:1.
+
+**Default deploy behavior for Claude — IMPORTANT:** When the user says "push it", "ship it", "deploy", or any similar phrase **without explicitly naming a branch or environment**, the default action is:
+1. Commit and push to `staging` (sandbox), **not** `main` (prod).
+2. After pushing, tell the user: *"Pushed to staging — sandbox will redeploy in ~2 min. Test at https://front-end-services-sandbox.up.railway.app, then say 'promote' (or 'ship to prod') once you've confirmed it works."*
+3. Wait for the user to confirm the change works in sandbox. Typical confirmations: "works", "looks good", "promote", "ship it to prod", "push to prod".
+4. Once confirmed, fast-forward merge `staging` → `main` and push, which triggers the prod redeploy. Tell the user: *"Promoted to prod — Railway will redeploy in ~2 min."*
+5. Skip the sandbox **only** when the user explicitly says "push directly to prod", "hotfix to prod", "skip sandbox", or names `main` directly. Even then, briefly confirm before doing it.
+
+This protects the user's old "push it" muscle memory by making the default destination safe. The user's prior workflow was direct-to-prod; the new default is direct-to-sandbox, with promotion as a separate explicit step.
+
+**Testing in sandbox:** push to `staging` → wait ~2 min for Railway to redeploy → open the sandbox frontend URL → log in with the same Azure SSO account as prod → use the app exactly like prod. The orange banner confirms you're in sandbox. Any Bullhorn write attempts surface as a 403 read-only toast; local Supabase writes hit the sandbox DB.
 
 **The READ_ONLY_MODE toggle** (`server/lib/bullhorn.js`): when `true`, blocks `update_entity`, `add_note`, and `create_entity` at the MCP chokepoint. The route error handler (`server/index.js`) surfaces these as `403 READ_ONLY_MODE` so the UI can show a clean toast. Local Supabase writes are unaffected.
 
 **To test write-back specifically** in sandbox: temporarily set `READ_ONLY_MODE=false` on the sandbox api-server, redeploy, run the test against a clearly-marked test record in Bullhorn, then flip back to `true`.
+
+**Sandbox Supabase provisioning:** the sandbox project's initial schema was copied from prod via `scripts/export-prod-schema.sql` — paste that file into the **prod** Supabase SQL Editor, copy the single-cell result, paste into the **sandbox** SQL Editor, run. Reusable any time you need to re-provision a Supabase env from prod's schema. No DB password required (uses the SQL Editor's dashboard auth).
+
+**Refreshing sandbox data from prod:** not yet automated. The sandbox currently builds up its own test data organically. If you want real prod data in sandbox for realistic testing, the path is:
+1. Resolve the Supabase pooler auth issue (DB password reset against the prod project's pooler kept returning "auth failed" — likely needs a Supabase support ticket or comes free when upgrading off the free tier).
+2. Once `pg_dump` against the pooler works, write a fresh refresh script (5-min job for Claude).
+3. Storage buckets (client-logos, support-screenshots) would need manual copy via the dashboard regardless — `pg_dump` doesn't capture Supabase Storage.
 
 ---
 

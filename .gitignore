@@ -2,6 +2,8 @@ node_modules/
 .env
 .env.local
 .env.*.local
+.env.prod-supabase
+.env.sandbox-supabase
 .DS_Store
 dist/
 server/data/
