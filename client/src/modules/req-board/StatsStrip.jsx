@@ -66,7 +66,7 @@ function ContractorMultiSelect({ label, options, selected, onChange }) {
   );
 }
 
-export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
+export default function StatsStrip({ stats, jobs, loading, onJobUpdated, hideOpportunities = false }) {
   const [showContractors, setShowContractors] = useState(false);
   const [showCE, setShowCE] = useState(false);
   const [showPerm, setShowPerm] = useState(false);
@@ -772,7 +772,10 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated }) {
     { label: 'C Reqs', value: cReqCount, color: '#94a3b8', onClick: () => { setCOwnerFilter(''); setCSort({ key: 'id', dir: 'desc' }); setShowC(true); } },
     { label: 'On The Board', value: totalOfferExtended, color: '#7c3aed', tooltip: 'Candidates in Offer Extended', onClick: handleFilledClick },
     { label: 'Called Shots', value: fmtCurrency(calledShotSpreadTotal), color: '#ea580c', tooltip: `Total spread across ${calledShotJobs.length} Called Shot job(s): weekly CE spread + perm fee. Click to see the list.`, onClick: () => { setCsOwnerFilter([]); setCsTrFilter([]); setCsSort({ key: 'id', dir: 'desc' }); setShowCalledShots(true); } },
-    { label: 'Opportunities', value: totalOpportunities, color: '#0369a1', onClick: handleOpportunitiesClick },
+    // Opportunities is hidden on the India Req Board — opportunities are
+    // pre-job and don't have an apt_india concept, so showing firm-wide
+    // numbers there would be misleading.
+    ...(hideOpportunities ? [] : [{ label: 'Opportunities', value: totalOpportunities, color: '#0369a1', onClick: handleOpportunitiesClick }]),
     { label: 'Active Contractors', value: activeContractors, color: '#0d9488', onClick: handleContractorsClick },
     { label: 'Potential CE Spread', value: fmtCurrency(totalCE), color: '#2563eb', onClick: () => setShowCE(true), tooltip: 'W2: (Bill Rate - Pay Rate × 1.25) × 40 | C2C: (Bill Rate - Pay Rate × 1.05) × 40 | A/B priority, Accepting Candidates & Filled jobs only' },
     { label: 'Potential Perm Spread', value: fmtCurrency(totalPerm), color: '#9333ea', onClick: () => setShowPerm(true), tooltip: '(Salary Low × Fee %) ÷ 26 for Accepting Candidates & Filled jobs' },
