@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { getPlacements, getOfferOutCandidates, updateJobInBullhorn, updateJobOverrides, getRecruiters, getOpportunities, updateOpportunityInBullhorn } from '../../lib/api';
+import { getPlacements, getOfferOutCandidates, updateJobInBullhorn, updateJobOverrides, getRecruiters, getOpportunities, updateOpportunityInBullhorn, updateSubmissionInBullhorn } from '../../lib/api';
+import { saveWithToast } from '../../lib/saveWithToast';
 import { getFollowUpUrgency } from './lib/urgency';
 import EditableDate from './EditableDate';
 import EditableSelect from './EditableSelect';
@@ -25,6 +26,15 @@ const REMOTE_OPTIONS = [
 
 const STATUS_OPTIONS = [
   'Accepting Candidates', 'Covered', 'Offer Out', 'Placed', 'Filled', 'Lost', 'Wash', 'Archive',
+].map(s => ({ value: s, label: s }));
+
+// JobSubmission status options for the On The Board modal's per-candidate
+// status edit. Mirrors the SUBMISSION_STATUS_OPTIONS in JobDetail.jsx.
+const SUB_STATUS_OPTIONS = [
+  'Client Submission', 'Internally Submitted', 'Candidate Interested',
+  'Phone Interview', 'Interview Scheduled', 'In Person Interview',
+  'Second Interview', 'Final Interview', 'Interview Feedback',
+  'Client Feedback', 'Offer Extended', 'Backout', 'Placed',
 ].map(s => ({ value: s, label: s }));
 
 // Terminal/closed statuses — excluded from all alert and rollup counters
@@ -452,8 +462,10 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
       rows = rows.filter(r => r.job.owner === filledOwnerFilter);
     }
     rows.sort((a, b) => {
-      let av = filledSort.key === 'candidate' ? a.cand.name : a.job[filledSort.key];
-      let bv = filledSort.key === 'candidate' ? b.cand.name : b.job[filledSort.key];
+      const candKeys = { candidate: 'name', candidateStatus: 'submissionStatus' };
+      const candField = candKeys[filledSort.key];
+      let av = candField ? a.cand[candField] : a.job[filledSort.key];
+      let bv = candField ? b.cand[candField] : b.job[filledSort.key];
       if (av == null && bv == null) return 0;
       if (av == null) return 1;
       if (bv == null) return -1;
@@ -744,6 +756,55 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
     } catch (err) {
       console.error('Failed to update start date:', err);
     }
+  };
+
+  // Update the candidate's JobSubmission status from inside the On The Board modal.
+  // If the new status is anything other than 'Offer Extended', the candidate no
+  // longer belongs in this modal — optimistically remove the row from the local
+  // candidate map so it disappears immediately (the next refresh would otherwise
+  // be the only thing dropping it).
+  const handleCandStatusSave = async (job, cand, newStatus) => {
+    if (!cand?.submissionId) return;
+    const previousStatus = cand.submissionStatus;
+
+    setFilledCandidateMap(prev => {
+      const next = { ...prev };
+      const jobList = (next[job.id] || []).slice();
+      const idx = jobList.findIndex(c => c.submissionId === cand.submissionId);
+      if (idx === -1) return prev;
+      if (newStatus === 'Offer Extended') {
+        jobList[idx] = { ...jobList[idx], submissionStatus: newStatus };
+      } else {
+        jobList.splice(idx, 1);
+      }
+      if (jobList.length === 0) {
+        delete next[job.id];
+      } else {
+        next[job.id] = jobList;
+      }
+      return next;
+    });
+
+    await saveWithToast(
+      () => updateSubmissionInBullhorn(cand.submissionId, { status: newStatus }),
+      {
+        failureMessage: 'Could not update candidate status',
+        onRollback: () => {
+          setFilledCandidateMap(prev => {
+            const next = { ...prev };
+            const jobList = (next[job.id] || []).slice();
+            const existsIdx = jobList.findIndex(c => c.submissionId === cand.submissionId);
+            if (existsIdx >= 0) {
+              jobList[existsIdx] = { ...jobList[existsIdx], submissionStatus: previousStatus };
+            } else {
+              jobList.push({ ...cand, submissionStatus: previousStatus });
+            }
+            next[job.id] = jobList;
+            return next;
+          });
+        },
+      },
+    );
   };
 
   const renderTrCell = (job) => {
@@ -1268,6 +1329,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
                     { key: 'brSalary', label: 'PrBr/Salary LH' },
                     { key: 'ceSpread', label: 'CE $' },
                     { key: 'permFee', label: 'Perm $' },
+                    { key: 'candidateStatus', label: 'Cand Status' },
                   ].map(col => (
                     <th key={col.key} className="sortable" style={{ cursor: 'pointer' }} onClick={() => handleFilledSort(col.key)}>
                       {col.label}<span className="sort-icon">{filledSortIcon(col.key)}</span>
@@ -1327,10 +1389,21 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
                     </td>
                     <td className="cell-money">{j.ceSpread ? fmtCurrency(j.ceSpread) : '—'}</td>
                     <td className="cell-money">{j.permFee ? fmtCurrency(j.permFee) : '—'}</td>
+                    {cand.submissionId ? (
+                      <EditableSelect
+                        value={cand.submissionStatus || ''}
+                        displayValue={cand.submissionStatus || '—'}
+                        options={SUB_STATUS_OPTIONS}
+                        onSave={(val) => handleCandStatusSave(j, cand, val)}
+                        className="cell-editable"
+                      />
+                    ) : (
+                      <td>—</td>
+                    )}
                   </tr>
                 ))}
                 {filteredFilled.length === 0 && (
-                  <tr><td colSpan="12" style={{ textAlign: 'center', padding: '20px' }}>No candidates on the board</td></tr>
+                  <tr><td colSpan="13" style={{ textAlign: 'center', padding: '20px' }}>No candidates on the board</td></tr>
                 )}
               </tbody>
             </table>

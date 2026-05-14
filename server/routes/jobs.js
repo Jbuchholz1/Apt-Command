@@ -460,7 +460,11 @@ router.patch('/submissions/:id/overrides', requireRb, async (req, res, next) => 
   }
 });
 
-// GET /api/jobs/offer-out-candidates — Map of jobOrderId → array of { id, name } for subs in Offer Extended
+// GET /api/jobs/offer-out-candidates — Map of jobOrderId → array of
+// { id, name, submissionId, submissionStatus } for subs in Offer Extended.
+// submissionId + submissionStatus are used by the On The Board modal so the
+// candidate's submission status can be edited inline (e.g. to pull someone
+// off the board by moving them to Backout / Placed / etc.).
 router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
   try {
     const result = await getOfferExtendedSubmissions();
@@ -474,7 +478,12 @@ router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
       if (!map[jobId]) map[jobId] = [];
       const key = c.id ?? name;
       if (!map[jobId].some(x => (x.id ?? x.name) === key)) {
-        map[jobId].push({ id: c.id ?? null, name });
+        map[jobId].push({
+          id: c.id ?? null,
+          name,
+          submissionId: sub.id,
+          submissionStatus: sub.status,
+        });
       }
     }
     res.json({ data: map });
