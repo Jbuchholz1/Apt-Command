@@ -187,69 +187,79 @@ export default function JobDetail({ jobId, onClose }) {
               </div>
             </div>
 
-            <div className="detail-section">
-              <h3>Submissions ({data.submissions?.total || 0})</h3>
-              {data.submissions?.total > 0 ? (
-                <table className="submissions-table">
-                  <thead>
-                    <tr>
-                      <th>Candidate</th>
-                      <th>TR</th>
-                      <th>Status</th>
-                      <th>Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.submissions.data.map(sub => (
-                      <tr key={sub.id}>
-                        <td>{sub.candidate || '—'}</td>
-                        <td>{sub.sendingUser || '—'}</td>
-                        <EditableSelect
-                          value={sub.status || ''}
-                          displayValue={sub.status || '—'}
-                          options={SUBMISSION_STATUS_OPTIONS}
-                          onSave={async (val) => {
-                            // Optimistic: update the row right away so the
-                            // dropdown snaps to the chosen value without lag.
-                            const previousStatus = sub.status;
-                            setData(prev => ({
-                              ...prev,
-                              submissions: {
-                                ...prev.submissions,
-                                data: prev.submissions.data.map(s =>
-                                  s.id === sub.id ? { ...s, status: val } : s
-                                ),
-                              },
-                            }));
-                            await saveWithToast(
-                              () => updateSubmissionInBullhorn(sub.id, { status: val }),
-                              {
-                                failureMessage: 'Could not update submission status',
-                                onRollback: () => {
-                                  setData(prev => ({
-                                    ...prev,
-                                    submissions: {
-                                      ...prev.submissions,
-                                      data: prev.submissions.data.map(s =>
-                                        s.id === sub.id ? { ...s, status: previousStatus } : s
-                                      ),
+            {(() => {
+              // Strict bucket: only candidates currently in 'Client Submission'
+              // status. Interview-stage candidates appear in the Interviews
+              // section below, so the two boxes are mutually exclusive.
+              const clientSubs = (data.submissions?.data || []).filter(
+                s => s.status === 'Client Submission'
+              );
+              return (
+                <div className="detail-section">
+                  <h3>Submissions ({clientSubs.length})</h3>
+                  {clientSubs.length > 0 ? (
+                    <table className="submissions-table">
+                      <thead>
+                        <tr>
+                          <th>Candidate</th>
+                          <th>TR</th>
+                          <th>Status</th>
+                          <th>Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {clientSubs.map(sub => (
+                          <tr key={sub.id}>
+                            <td>{sub.candidate || '—'}</td>
+                            <td>{sub.sendingUser || '—'}</td>
+                            <EditableSelect
+                              value={sub.status || ''}
+                              displayValue={sub.status || '—'}
+                              options={SUBMISSION_STATUS_OPTIONS}
+                              onSave={async (val) => {
+                                // Optimistic: update the row right away so the
+                                // dropdown snaps to the chosen value without lag.
+                                const previousStatus = sub.status;
+                                setData(prev => ({
+                                  ...prev,
+                                  submissions: {
+                                    ...prev.submissions,
+                                    data: prev.submissions.data.map(s =>
+                                      s.id === sub.id ? { ...s, status: val } : s
+                                    ),
+                                  },
+                                }));
+                                await saveWithToast(
+                                  () => updateSubmissionInBullhorn(sub.id, { status: val }),
+                                  {
+                                    failureMessage: 'Could not update submission status',
+                                    onRollback: () => {
+                                      setData(prev => ({
+                                        ...prev,
+                                        submissions: {
+                                          ...prev.submissions,
+                                          data: prev.submissions.data.map(s =>
+                                            s.id === sub.id ? { ...s, status: previousStatus } : s
+                                          ),
+                                        },
+                                      }));
                                     },
-                                  }));
-                                },
-                              },
-                            );
-                          }}
-                          className="cell-editable"
-                        />
-                        <td>{formatDate(sub.dateAdded)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <p className="no-subs">No submissions yet</p>
-              )}
-            </div>
+                                  },
+                                );
+                              }}
+                              className="cell-editable"
+                            />
+                            <td>{formatDate(sub.dateAdded)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p className="no-subs">No submissions yet</p>
+                  )}
+                </div>
+              );
+            })()}
 
             {(() => {
               const interviews = (data.submissions?.data || []).filter(
