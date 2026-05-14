@@ -1173,6 +1173,7 @@ async function createAppointmentAttendee({ appointmentId, clientContactId, candi
 }
 
 module.exports = {
+  CLIENT_SUB_STATUSES,
   getOpenJobs,
   getRecentlyClosedJobs,
   getAllJobs,

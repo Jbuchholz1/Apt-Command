@@ -1,5 +1,5 @@
 const express = require('express');
-const { getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getJobsByIds, getSubmissions, addNoteToJob, addNoteToOpportunity, updateJobField, updateOpportunityField, updateSubmissionField, getCorporateUsers, getOpenOpportunitiesFull, getOpportunityById, getClientContactsForCorp, createJob, getClientSubmissions, getOfferExtendedSubmissions } = require('../lib/bullhorn');
+const { CLIENT_SUB_STATUSES, getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getJobsByIds, getSubmissions, addNoteToJob, addNoteToOpportunity, updateJobField, updateOpportunityField, updateSubmissionField, getCorporateUsers, getOpenOpportunitiesFull, getOpportunityById, getClientContactsForCorp, createJob, getClientSubmissions, getOfferExtendedSubmissions } = require('../lib/bullhorn');
 const {
   getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote,
   enqueueReconciliation, OverrideConflictError,
@@ -498,12 +498,11 @@ router.get('/:id', requireRb, async (req, res, next) => {
 
     const notes = await getNotesForJob(jobId);
 
-    // Status filtering already happens in getSubmissions() at the Bullhorn query level —
-    // this is a defensive safety net matching the same list so behavior stays consistent.
-    const validStatuses = new Set([
-      'Client Submission', 'Interview Scheduled',
-      'Interview Feedback', 'Client Feedback', 'Offer Extended', 'Backout', 'Placed',
-    ]);
+    // Defensive safety net. Sourced from the same constant used by the
+    // upstream Bullhorn WHERE clause so the two can't drift again — a stale
+    // hardcoded list here is exactly why Phone Interview / In Person Interview /
+    // etc. were being silently stripped after we expanded the upstream list.
+    const validStatuses = new Set(CLIENT_SUB_STATUSES);
     const filteredSubs = (subsResult?.data || [])
       .filter(s => validStatuses.has(s.status))
       .map(formatSubmission);
