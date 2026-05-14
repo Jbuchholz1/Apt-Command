@@ -261,6 +261,15 @@ export function updateSubmissionInBullhorn(id, fields) {
   });
 }
 
+// Local-only per-submission flags (e.g. `rejected` for the Interviews box).
+// Does not touch Bullhorn — lives in Supabase submission_overrides.
+export function updateSubmissionOverride(id, overrides) {
+  return fetchAPI(`/api/req-board/jobs/submissions/${id}/overrides`, {
+    method: 'PATCH',
+    body: overrides,
+  });
+}
+
 export function getAnnouncement() {
   return fetchAPI('/api/users/announcement');
 }

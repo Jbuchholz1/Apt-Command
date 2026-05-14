@@ -808,6 +808,20 @@
   border-bottom: 1px solid #f1f5f9;
 }
 
+/* Rejected interview row — visually deprioritize without hiding */
+.submissions-table tr.sub-rejected td {
+  color: #94a3b8;
+  text-decoration: line-through;
+  background-color: #f8fafc;
+}
+.submissions-table tr.sub-rejected .editable-cell {
+  color: #94a3b8;
+}
+/* Keep the Rejected checkbox itself crisp so it can be unchecked */
+.submissions-table tr.sub-rejected td:last-child {
+  text-decoration: none;
+}
+
 .no-subs {
   color: var(--text-light);
   font-size: 12px;

@@ -97,6 +97,26 @@ async function ensureSchema() {
     } else {
       console.log('[db] Reconciliation queue disabled — apply migration 002_concurrency_safety.sql to enable');
     }
+
+    // submission_overrides: per-JobSubmission local UI flags (currently just
+    // "rejected" for the Interviews box). Auto-created if missing.
+    const { error: soErr } = await supabase.from('submission_overrides').select('submission_id').limit(1);
+    if (soErr && soErr.message.toLowerCase().includes('submission_overrides')) {
+      console.log('[db] Creating submission_overrides table...');
+      const { error: rpcErr } = await supabase.rpc('exec_sql', {
+        query: `CREATE TABLE IF NOT EXISTS submission_overrides (
+          submission_id BIGINT PRIMARY KEY,
+          rejected BOOLEAN NOT NULL DEFAULT FALSE,
+          updated_by TEXT,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );`,
+      });
+      if (rpcErr) {
+        console.warn('[db] Could not auto-create submission_overrides — create manually:', rpcErr.message);
+      } else {
+        console.log('[db] submission_overrides table created successfully');
+      }
+    }
   } catch (err) {
     console.warn('[db] Schema check failed:', err.message);
   }
@@ -1775,12 +1795,62 @@ async function listMyPriorityIds(userEmail, period) {
     .map(r => r.goal_id);
 }
 
+/**
+ * Bulk-fetch submission_overrides rows for the given submission IDs.
+ * Returns a Map keyed by submission_id. Missing rows = no overrides yet
+ * (treat as defaults: rejected=false).
+ */
+async function getSubmissionOverridesMap(submissionIds) {
+  if (!supabase || !Array.isArray(submissionIds) || submissionIds.length === 0) {
+    return new Map();
+  }
+  const ids = submissionIds.map(n => Number(n)).filter(n => Number.isFinite(n));
+  if (ids.length === 0) return new Map();
+  const { data, error } = await supabase
+    .from('submission_overrides')
+    .select('*')
+    .in('submission_id', ids);
+  if (error) {
+    console.error('[db] getSubmissionOverridesMap error:', error.message);
+    return new Map();
+  }
+  const map = new Map();
+  for (const row of (data || [])) {
+    map.set(row.submission_id, row);
+  }
+  return map;
+}
+
+/**
+ * Upsert the rejected flag (and any future fields) for a single submission.
+ * Returns the updated row or null on failure.
+ */
+async function upsertSubmissionOverride(submissionId, { rejected, updated_by } = {}) {
+  if (!supabase) return null;
+  const id = Number(submissionId);
+  if (!Number.isFinite(id)) return null;
+  const row = { submission_id: id, updated_at: new Date().toISOString() };
+  if (rejected !== undefined) row.rejected = !!rejected;
+  if (updated_by) row.updated_by = updated_by;
+  const { data, error } = await supabase
+    .from('submission_overrides')
+    .upsert(row, { onConflict: 'submission_id' })
+    .select()
+    .maybeSingle();
+  if (error) {
+    console.error('[db] upsertSubmissionOverride error:', error.message);
+    throw error;
+  }
+  return data;
+}
+
 module.exports = {
   supabase, // Shared client — import this instead of creating your own
   getSchemaFeatures,
   OverrideConflictError,
   enqueueReconciliation, listReconciliationQueue,
   getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote,
+  getSubmissionOverridesMap, upsertSubmissionOverride,
   getAllPlacementChecklist, getPlacementChecklist, upsertPlacementChecklist,
   // COI Tracking
   getAllCOIRecords, createCOIRecord, updateCOIRecord, deleteCOIRecord,

@@ -3,6 +3,7 @@ const { CLIENT_SUB_STATUSES, getOpenJobs, getRecentlyClosedJobs, getAllJobs, get
 const {
   getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote,
   enqueueReconciliation, OverrideConflictError,
+  getSubmissionOverridesMap, upsertSubmissionOverride,
 } = require('../lib/db');
 const { buildReqBoardWorkbook } = require('../lib/exporters');
 const { requireModule } = require('../middleware/adminAuth');
@@ -439,6 +440,26 @@ router.post('/submissions/:id/update', requireRb, async (req, res, next) => {
   }
 });
 
+// PATCH /api/jobs/submissions/:id/overrides — Update local-only per-submission flags
+// (currently just `rejected` for the Interviews box). Does not touch Bullhorn.
+router.patch('/submissions/:id/overrides', requireRb, async (req, res, next) => {
+  try {
+    const subId = parseInt(req.params.id, 10);
+    if (isNaN(subId) || subId <= 0) {
+      return res.status(400).json({ error: 'Invalid submission ID' });
+    }
+    const { rejected } = req.body || {};
+    if (rejected === undefined) {
+      return res.status(400).json({ error: 'rejected is required' });
+    }
+    const updatedBy = req.user?.email || req.user?.name || 'unknown';
+    const row = await upsertSubmissionOverride(subId, { rejected: !!rejected, updated_by: updatedBy });
+    res.json({ success: true, data: row });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/jobs/offer-out-candidates — Map of jobOrderId → array of { id, name } for subs in Offer Extended
 router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
   try {
@@ -506,6 +527,14 @@ router.get('/:id', requireRb, async (req, res, next) => {
     const filteredSubs = (subsResult?.data || [])
       .filter(s => validStatuses.has(s.status))
       .map(formatSubmission);
+
+    // Merge per-submission overrides (currently just `rejected` for the
+    // Interviews box). Missing rows default to rejected=false.
+    const overrideMap = await getSubmissionOverridesMap(filteredSubs.map(s => s.id));
+    for (const s of filteredSubs) {
+      const ov = overrideMap.get(s.id);
+      s.rejected = !!(ov && ov.rejected);
+    }
 
     res.json({
       job: formatted,

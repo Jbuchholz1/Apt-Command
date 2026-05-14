@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { getJobDetail, addJobNote, updateSubmissionInBullhorn, updateJobInBullhorn } from '../../lib/api';
+import { getJobDetail, addJobNote, updateSubmissionInBullhorn, updateJobInBullhorn, updateSubmissionOverride } from '../../lib/api';
 import { saveWithToast } from '../../lib/saveWithToast';
 import { useEditingSignal } from './EditingContext';
 import StatusBadge from './StatusBadge';
@@ -265,6 +265,35 @@ export default function JobDetail({ jobId, onClose }) {
               const interviews = (data.submissions?.data || []).filter(
                 s => INTERVIEW_STATUS_SET.has(s.status)
               );
+              const toggleRejected = async (sub, next) => {
+                const previousRejected = !!sub.rejected;
+                setData(prev => ({
+                  ...prev,
+                  submissions: {
+                    ...prev.submissions,
+                    data: prev.submissions.data.map(s =>
+                      s.id === sub.id ? { ...s, rejected: next } : s
+                    ),
+                  },
+                }));
+                await saveWithToast(
+                  () => updateSubmissionOverride(sub.id, { rejected: next }),
+                  {
+                    failureMessage: 'Could not update Rejected flag',
+                    onRollback: () => {
+                      setData(prev => ({
+                        ...prev,
+                        submissions: {
+                          ...prev.submissions,
+                          data: prev.submissions.data.map(s =>
+                            s.id === sub.id ? { ...s, rejected: previousRejected } : s
+                          ),
+                        },
+                      }));
+                    },
+                  },
+                );
+              };
               return (
                 <div className="detail-section">
                   <h3>Interviews ({interviews.length})</h3>
@@ -276,11 +305,15 @@ export default function JobDetail({ jobId, onClose }) {
                           <th>TR</th>
                           <th>Status</th>
                           <th>Date</th>
+                          <th style={{ width: '70px', textAlign: 'center' }}>Rejected</th>
                         </tr>
                       </thead>
                       <tbody>
                         {interviews.map(sub => (
-                          <tr key={sub.id}>
+                          <tr
+                            key={sub.id}
+                            className={sub.rejected ? 'sub-rejected' : ''}
+                          >
                             <td>{sub.candidate || '—'}</td>
                             <td>{sub.sendingUser || '—'}</td>
                             <EditableSelect
@@ -319,6 +352,15 @@ export default function JobDetail({ jobId, onClose }) {
                               className="cell-editable"
                             />
                             <td>{formatDate(sub.dateAdded)}</td>
+                            <td style={{ textAlign: 'center' }}>
+                              <input
+                                type="checkbox"
+                                checked={!!sub.rejected}
+                                onChange={e => toggleRejected(sub, e.target.checked)}
+                                title="Mark this candidate as rejected — row will be greyed out"
+                                style={{ cursor: 'pointer' }}
+                              />
+                            </td>
                           </tr>
                         ))}
                       </tbody>
