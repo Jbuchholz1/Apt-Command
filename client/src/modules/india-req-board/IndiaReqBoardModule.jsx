@@ -17,6 +17,7 @@ export default function IndiaReqBoardModule() {
       apiFilter={{ apt_india: true }}
       permissionKey="india_req_board"
       hideOpportunities
+      indiaMode
     />
   );
 }

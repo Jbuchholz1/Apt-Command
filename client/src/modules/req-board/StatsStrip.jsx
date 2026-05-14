@@ -69,7 +69,7 @@ function ContractorMultiSelect({ label, options, selected, onChange }) {
   );
 }
 
-export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelectJob, hideOpportunities = false }) {
+export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelectJob, hideOpportunities = false, indiaMode = false, placements: placementsProp = null }) {
   const [showContractors, setShowContractors] = useState(false);
   const [showCE, setShowCE] = useState(false);
   const [showPerm, setShowPerm] = useState(false);
@@ -776,7 +776,32 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
     });
   };
 
-  const items = [
+  // India Req Board funnel counters. Strict 'Client Submission' status only
+  // (not the full client-pipeline `clientSubs` used by the # CS column).
+  // Interviews use the same status set as the JobDetail Interviews section.
+  // Placements are sourced from the parent's already-loaded firm-wide
+  // placements array and filtered to India jobs by jobOrderId.
+  const indiaJobIds = useMemo(() => new Set((jobs || []).map(j => j.id)), [jobs]);
+  const indiaTotalClientSubs = useMemo(
+    () => (jobs || []).reduce((s, j) => s + (j.clientSubsStrict || 0), 0),
+    [jobs],
+  );
+  const indiaTotalInterviews = useMemo(
+    () => (jobs || []).reduce((s, j) => s + (j.interviewSubs || 0), 0),
+    [jobs],
+  );
+  const indiaTotalPlacements = useMemo(() => {
+    if (!Array.isArray(placementsProp)) return 0;
+    return placementsProp.filter(p => p?.jobOrderId && indiaJobIds.has(p.jobOrderId)).length;
+  }, [placementsProp, indiaJobIds]);
+
+  const items = indiaMode ? [
+    { label: 'Accepting Candidates', value: acceptingCandidates, color: '#16a34a', onClick: () => { setAccOwnerFilter(''); setAccSort({ key: 'id', dir: 'desc' }); setShowAccepting(true); } },
+    { label: 'Missed Follow Ups', value: missedFollowUps, color: '#dc2626', onClick: () => setShowMissedFollowUps(true) },
+    { label: 'Total Client Submissions', value: indiaTotalClientSubs, color: '#2563eb', tooltip: "Sum of candidates currently in 'Client Submission' status across all India reqs." },
+    { label: 'Total Interviews', value: indiaTotalInterviews, color: '#7c3aed', tooltip: "Sum of candidates in 'Interview Scheduled' or 'Interview Feedback' across all India reqs." },
+    { label: 'Total Placements', value: indiaTotalPlacements, color: '#0d9488', tooltip: 'Active contractors currently placed on India reqs.' },
+  ] : [
     { label: 'Accepting Candidates', value: acceptingCandidates, color: '#16a34a', onClick: () => { setAccOwnerFilter(''); setAccSort({ key: 'id', dir: 'desc' }); setShowAccepting(true); } },
     { label: 'Missed Follow Ups', value: missedFollowUps, color: '#dc2626', onClick: () => setShowMissedFollowUps(true) },
     { label: 'A/B Covered', value: `${abCovered} / ${abTotal}`, color: '#c9a227', onClick: () => { setAbOwnerFilter(''); setAbSort({ key: 'id', dir: 'desc' }); setShowAB(true); } },

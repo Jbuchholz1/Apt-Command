@@ -112,13 +112,23 @@ router.get('/', requireRb, async (req, res, next) => {
     ];
     const clientSubsResult = await getClientSubmissions(boardJobIds);
 
-    // Build client submission count and latest date maps by jobOrder ID
+    // Build client submission count and latest date maps by jobOrder ID.
+    // Also bucket strict-status counts for the India Req Board's funnel-style
+    // counters (Total Client Submissions vs Total Interviews — mutually exclusive).
     const clientSubCounts = {};
+    const clientSubsStrictCounts = {};
+    const interviewSubCounts = {};
     const latestClientSubDate = {};
+    const INTERVIEW_STATUSES = new Set(['Interview Scheduled', 'Interview Feedback']);
     for (const sub of (clientSubsResult?.data || [])) {
       const jobId = sub.jobOrder?.id;
       if (jobId) {
         clientSubCounts[jobId] = (clientSubCounts[jobId] || 0) + 1;
+        if (sub.status === 'Client Submission') {
+          clientSubsStrictCounts[jobId] = (clientSubsStrictCounts[jobId] || 0) + 1;
+        } else if (INTERVIEW_STATUSES.has(sub.status)) {
+          interviewSubCounts[jobId] = (interviewSubCounts[jobId] || 0) + 1;
+        }
         const subDate = sub.dateAdded || 0;
         if (!latestClientSubDate[jobId] || subDate > latestClientSubDate[jobId]) {
           latestClientSubDate[jobId] = subDate;
@@ -157,6 +167,8 @@ router.get('/', requireRb, async (req, res, next) => {
 
         const formatted = formatJob(j);
         formatted.clientSubs = clientSubCounts[j.id] || 0;
+        formatted.clientSubsStrict = clientSubsStrictCounts[j.id] || 0;
+        formatted.interviewSubs = interviewSubCounts[j.id] || 0;
         formatted.latestClientSubDate = latestClientSubDate[j.id]
           ? new Date(latestClientSubDate[j.id]).toISOString()
           : null;

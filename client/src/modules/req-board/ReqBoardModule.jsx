@@ -117,6 +117,7 @@ export default function ReqBoardModule({
   apiFilter = null,
   permissionKey = 'req_board',
   hideOpportunities = false,
+  indiaMode = false,
 } = {}) {
   const { hasAccess, loading: roleLoading } = useUserRole();
   const [showSplash, setShowSplash] = useState(true);
@@ -359,7 +360,7 @@ export default function ReqBoardModule({
           </div>
         )}
 
-        <StatsStrip stats={stats} jobs={jobs} loading={loading} onJobUpdated={handleJobUpdated} onSelectJob={setSelectedJobId} hideOpportunities={hideOpportunities} />
+        <StatsStrip stats={stats} jobs={jobs} loading={loading} onJobUpdated={handleJobUpdated} onSelectJob={setSelectedJobId} hideOpportunities={hideOpportunities} indiaMode={indiaMode} placements={placements} />
 
         <FilterBar filters={filters} onChange={setFilters} jobs={jobs} redBoxCount={redBoxCount} />
 
