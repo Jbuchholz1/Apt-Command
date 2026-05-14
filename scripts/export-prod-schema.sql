@@ -12,8 +12,14 @@
 -- 8. Paste and Run
 --
 -- Covers: CREATE TABLE (with columns, types, defaults, NOT NULL, PRIMARY KEY),
--- CREATE INDEX, ADD FOREIGN KEY. Skips CHECK constraints (rare; the app's
--- ensureSchema() handles drift gracefully if anything is missed).
+-- CREATE INDEX, ADD FOREIGN KEY, GRANTs to service_role + future-table
+-- default privileges. Skips CHECK constraints (rare; the app's ensureSchema()
+-- handles drift gracefully if anything is missed).
+--
+-- The GRANT phase is required after Supabase's 2026-10-30 rollout removes
+-- the legacy default that auto-granted Data API access. Without these, a
+-- freshly-provisioned sandbox would return 42501 on every supabase-js call.
+-- See server/migrations/014_explicit_grants.sql for the standalone version.
 -- ============================================================
 
 WITH columns_agg AS (
@@ -98,6 +104,36 @@ all_ddl AS (
     ON tc.constraint_name = ccu.constraint_name AND tc.table_schema = ccu.table_schema
   WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_schema = 'public'
   GROUP BY tc.table_name, tc.constraint_name
+
+  UNION ALL
+
+  -- GRANTs for service_role on every base table (Supabase Data API access).
+  -- Required because Supabase is dropping the legacy auto-grant default on
+  -- 2026-10-30 — without these, PostgREST returns 42501 on supabase-js calls.
+  SELECT 4, t.table_name,
+    format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.%I TO service_role;', t.table_name)
+  FROM information_schema.tables t
+  WHERE t.table_schema = 'public' AND t.table_type = 'BASE TABLE'
+
+  UNION ALL
+
+  -- GRANTs on sequences (bigserial/serial columns need USAGE+SELECT).
+  SELECT 4, s.sequence_name,
+    format('GRANT USAGE, SELECT ON SEQUENCE public.%I TO service_role;', s.sequence_name)
+  FROM information_schema.sequences s
+  WHERE s.sequence_schema = 'public'
+
+  UNION ALL
+
+  -- ALTER DEFAULT PRIVILEGES — auto-grant future tables created by postgres.
+  -- Fixed strings, single row each; placed last so they appear at the end.
+  SELECT 5, '_default_priv_tables',
+    'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO service_role;'
+
+  UNION ALL
+
+  SELECT 5, '_default_priv_sequences',
+    'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO service_role;'
 )
 SELECT string_agg(sql, E'\n\n' ORDER BY phase, srt) AS schema_sql
 FROM all_ddl;
