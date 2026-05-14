@@ -119,7 +119,18 @@ router.get('/', requireRb, async (req, res, next) => {
     const clientSubsStrictCounts = {};
     const interviewSubCounts = {};
     const latestClientSubDate = {};
-    const INTERVIEW_STATUSES = new Set(['Interview Scheduled', 'Interview Feedback']);
+    // Mirrors the interview-flavor subset of CLIENT_SUB_STATUSES — any new
+    // interview-style status added in bullhorn.js should also be added here
+    // so it counts toward the "Total Interviews" funnel counter.
+    const INTERVIEW_STATUSES = new Set([
+      'Phone Interview',
+      'Interview Scheduled',
+      'Interview Feedback',
+      'In Person Interview',
+      'Final Interview',
+      'Second Interview',
+      'AI Interview Complete',
+    ]);
     for (const sub of (clientSubsResult?.data || [])) {
       const jobId = sub.jobOrder?.id;
       if (jobId) {

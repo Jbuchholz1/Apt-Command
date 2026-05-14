@@ -7,8 +7,22 @@ import EditableSelect from './EditableSelect';
 
 const SUBMISSION_STATUS_OPTIONS = [
   'Client Submission', 'Internally Submitted', 'Candidate Interested',
-  'Client Feedback', 'Interview Feedback', 'Offer Extended', 'Backout',
+  'Phone Interview', 'Interview Scheduled', 'In Person Interview',
+  'Second Interview', 'Final Interview', 'Interview Feedback',
+  'Client Feedback', 'Offer Extended', 'Backout', 'Placed',
 ].map(s => ({ value: s, label: s }));
+
+// Mirrors INTERVIEW_STATUSES on the server (server/routes/jobs.js). Keep
+// both in sync when a new interview-flavor status is added in Bullhorn.
+const INTERVIEW_STATUS_SET = new Set([
+  'Phone Interview',
+  'Interview Scheduled',
+  'Interview Feedback',
+  'In Person Interview',
+  'Final Interview',
+  'Second Interview',
+  'AI Interview Complete',
+]);
 
 function formatDate(iso) {
   if (!iso) return '—';
@@ -239,7 +253,7 @@ export default function JobDetail({ jobId, onClose }) {
 
             {(() => {
               const interviews = (data.submissions?.data || []).filter(
-                s => s.status === 'Interview Scheduled' || s.status === 'Interview Feedback'
+                s => INTERVIEW_STATUS_SET.has(s.status)
               );
               return (
                 <div className="detail-section">

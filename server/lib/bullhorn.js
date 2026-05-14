@@ -204,10 +204,22 @@ async function getJobById(id) {
 // still appear in counts and detail views.
 // Upstream-only statuses (New Lead, Candidate Interested, Internally Submitted —
 // the last being the recruiter's internal pre-client review) are intentionally excluded.
+//
+// APT actually uses several interview-flavor statuses beyond the canonical
+// "Interview Scheduled" / "Interview Feedback" — Phone Interview, In Person
+// Interview, Final Interview, Second Interview. Missing any of these from
+// this list silently undercounts # CS and Total Interviews, because the
+// upstream Bullhorn WHERE clause filters them out entirely.
 const CLIENT_SUB_STATUSES = [
   'Client Submission',
+  'New Submission',
+  'Phone Interview',
   'Interview Scheduled',
   'Interview Feedback',
+  'In Person Interview',
+  'Final Interview',
+  'Second Interview',
+  'AI Interview Complete',
   'Client Feedback',
   'Offer Extended',
   'Backout',
