@@ -1,3 +1,5 @@
+import { memo } from 'react';
+
 const STATUS_COLORS = {
   'Accepting Candidates': { bg: '#16a34a', text: '#fff' },
   'Covered':             { bg: '#2563eb', text: '#fff' },
@@ -20,7 +22,7 @@ const STATUS_ABBREV = {
   'Archive': 'AR',
 };
 
-export default function StatusBadge({ status }) {
+function StatusBadge({ status }) {
   const colors = STATUS_COLORS[status] || { bg: '#6b7280', text: '#fff' };
   const abbrev = STATUS_ABBREV[status] || status || '—';
   return (
@@ -33,3 +35,5 @@ export default function StatusBadge({ status }) {
     </span>
   );
 }
+
+export default memo(StatusBadge);

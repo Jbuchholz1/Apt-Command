@@ -1,10 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 
 /**
  * Inline-editable table cell with a date picker.
  * Click to open date input, change to save, blur/Escape to cancel.
  */
-export default function EditableDate({ value, onSave, className }) {
+function EditableDate({ value, onSave, className }) {
   const [editing, setEditing] = useState(false);
   const inputRef = useRef(null);
 
@@ -79,3 +79,5 @@ export default function EditableDate({ value, onSave, className }) {
     </td>
   );
 }
+
+export default memo(EditableDate);

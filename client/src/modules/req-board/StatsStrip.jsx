@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { getPlacements, getOfferOutCandidates, updateJobInBullhorn, updateJobOverrides, getRecruiters, getOpportunities, updateOpportunityInBullhorn, updateSubmissionInBullhorn } from '../../lib/api';
+import { getPlacements, getOfferOutCandidates, updateJobInBullhorn, updateJobOverrides, getOpportunities, updateOpportunityInBullhorn, updateSubmissionInBullhorn } from '../../lib/api';
+import { useUserLookups } from '../../lib/useUserLookups';
 import { saveWithToast } from '../../lib/saveWithToast';
 import { getFollowUpUrgency } from './lib/urgency';
 import EditableDate from './EditableDate';
@@ -101,7 +102,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
   const [showOpportunities, setShowOpportunities] = useState(false);
   const [opportunities, setOpportunities] = useState([]);
   const [opportunitiesLoading, setOpportunitiesLoading] = useState(false);
-  const [recruiters, setRecruiters] = useState([]);
+  const { recruiters } = useUserLookups();
   const [oppOwnerFilter, setOppOwnerFilter] = useState('');
   const [oppSort, setOppSort] = useState({ key: 'id', dir: 'desc' });
   const [accOwnerFilter, setAccOwnerFilter] = useState('');
@@ -115,10 +116,6 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
   const [ceSort, setCeSort] = useState({ key: 'id', dir: 'desc' });
   const [permSort, setPermSort] = useState({ key: 'id', dir: 'desc' });
   const [missedSort, setMissedSort] = useState({ key: 'id', dir: 'desc' });
-
-  useEffect(() => {
-    getRecruiters().then(res => setRecruiters(res.data || [])).catch(() => {});
-  }, []);
 
   // Keep the On The Board candidate map fresh: load on mount and re-load whenever
   // the parent refreshes jobs (auto-refresh ticks every 5 min).

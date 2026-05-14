@@ -1,9 +1,10 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import StatusBadge from './StatusBadge';
 import EditableCell from './EditableCell';
 import EditableSelect from './EditableSelect';
 import EditableDate from './EditableDate';
-import { updateJobOverrides, updateJobInBullhorn, getUsers, getRecruiters, getAccountManagers } from '../../lib/api';
+import { updateJobOverrides, updateJobInBullhorn } from '../../lib/api';
+import { useUserLookups } from '../../lib/useUserLookups';
 import { saveWithToast } from '../../lib/saveWithToast';
 import { useEditing } from './EditingContext';
 import { getDeadlineUrgency, getFollowUpUrgency, getTrUrgency } from './lib/urgency';
@@ -120,9 +121,7 @@ const COVERAGE_OPTIONS = [
 
 export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, onJobUpdated, onOverrideVersionUpdated, onConflict }) {
   const [sort, setSort] = useState({ key: 'dateAdded', dir: 'desc' });
-  const [users, setUsers] = useState([]);
-  const [recruiters, setRecruiters] = useState([]);
-  const [accountManagers, setAccountManagers] = useState([]);
+  const { users, recruiters, accountManagers } = useUserLookups();
 
   const { startEditing, stopEditing } = useEditing();
 
@@ -165,7 +164,7 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
   // Queue work per-job so same-row edits serialize naturally. Different
   // jobs still save in parallel. We also flag the board-wide EditingContext
   // so the auto-refresh skips ticks while saves are draining.
-  const chainPerJob = (jobId, fn) => {
+  const chainPerJob = useCallback((jobId, fn) => {
     inFlightCountRef.current += 1;
     if (inFlightCountRef.current === 1) startEditing();
     const prev = saveChainsRef.current.get(jobId) || Promise.resolve();
@@ -177,23 +176,17 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
       }
     });
     saveChainsRef.current.set(jobId, next);
-  };
+  }, [startEditing, stopEditing]);
 
-  useEffect(() => {
-    getUsers().then(res => setUsers(res.data || [])).catch(() => {});
-    getRecruiters().then(res => setRecruiters(res.data || [])).catch(() => {});
-    getAccountManagers().then(res => setAccountManagers(res.data || [])).catch(() => {});
-  }, []);
-
-  const handleSort = (key) => {
+  const handleSort = useCallback((key) => {
     setSort(prev =>
       prev.key === key
         ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
         : { key, dir: 'asc' }
     );
-  };
+  }, []);
 
-  const handleOverrideSave = (jobId, field, value) => {
+  const handleOverrideSave = useCallback((jobId, field, value) => {
     const apiField = OVERRIDE_FIELD_MAP[field];
     if (!apiField) return;
 
@@ -236,9 +229,9 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
         if (onOverrideVersionUpdated) onOverrideVersionUpdated(jobId, error.current);
       }
     });
-  };
+  }, [jobs, onJobUpdated, onOverrideVersionUpdated, onConflict, chainPerJob]);
 
-  const handleBullhornSave = (job, col, rawValue) => {
+  const handleBullhornSave = useCallback((job, col, rawValue) => {
     const bhField = col.bullhornField;
     if (!bhField) return;
 
@@ -382,10 +375,10 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
         }
       });
     }
-  };
+  }, [recruiters, users, onJobUpdated, onOverrideVersionUpdated, onConflict, chainPerJob]);
 
   // Priority is JobOrder.type — int 1/2/3 in Bullhorn, displayed as A/B/C.
-  const handlePrioritySave = (job, rawValue) => {
+  const handlePrioritySave = useCallback((job, rawValue) => {
     const typeNum = rawValue ? parseInt(rawValue, 10) : null;
     const letterMap = { 1: 'A', 2: 'B', 3: 'C' };
     const newLetter = typeNum ? letterMap[typeNum] : null;
@@ -407,7 +400,23 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
         onJobUpdated(job.id, 'priority', newLetter);
       }
     });
-  };
+  }, [onJobUpdated, chainPerJob]);
+
+  // Pre-build the per-row option arrays once per user-list change. Without
+  // these, every row's renderCell rebuilds a fresh array on every render —
+  // which busts React.memo on the underlying EditableSelect.
+  const recruiterOptions = useMemo(
+    () => [
+      ...recruiters.map(u => ({ value: String(u.id), label: u.initials })),
+      { value: 'ZZ', label: 'ZZ' },
+      { value: '*', label: '*' },
+    ],
+    [recruiters],
+  );
+  const accountManagerOptions = useMemo(
+    () => accountManagers.map(u => ({ value: String(u.id), label: u.initials })),
+    [accountManagers],
+  );
 
   const sorted = useMemo(() => {
     if (!jobs) return [];
@@ -492,11 +501,7 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
     if (col.editType === 'select') {
       let options, currentValue, displayValue;
       if (col.bullhornField === 'assignedUsers') {
-        options = [
-          ...recruiters.map(u => ({ value: String(u.id), label: u.initials })),
-          { value: 'ZZ', label: 'ZZ' },
-          { value: '*', label: '*' },
-        ];
+        options = recruiterOptions;
         if (job.recruiter === 'ZZ' || job.recruiter === '*') {
           currentValue = job.recruiter;
         } else {
@@ -505,7 +510,7 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
         }
         displayValue = job.recruiter || '—';
       } else if (col.bullhornField === 'owner') {
-        options = accountManagers.map(u => ({ value: String(u.id), label: u.initials }));
+        options = accountManagerOptions;
         currentValue = String(job.ownerId || '');
         displayValue = job.ownerInitials || '—';
       } else if (col.bullhornField === 'status') {

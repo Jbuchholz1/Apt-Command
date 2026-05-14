@@ -180,61 +180,103 @@ export default function ReqBoardModule({
     fetchData();
   }, [fetchData]);
 
+  // Combined poll + ticker + SSE lifecycle, gated by tab visibility.
+  //
+  // When the tab is hidden we pause all three: there's no point polling /
+  // ticking / holding an SSE connection open if nobody's looking. When the
+  // tab comes back into view we re-subscribe to SSE and fire one immediate
+  // fetchData() to catch up on whatever we missed — same recovery path as
+  // the existing SSE onReconnect handler. The poll and ticker intervals
+  // resume from their next tick.
   useEffect(() => {
-    const interval = setInterval(() => {
-      // Skip the auto-refresh while the user is actively editing a cell or
-      // has the job detail panel open — we don't want to clobber an in-flight
-      // draft or interrupt a focused task. The manual Refresh button still
-      // works in both states.
-      if (editingRef.current > 0) return;
-      if (selectedJobIdRef.current) return;
-      fetchData();
-    }, REFRESH_INTERVAL);
-    return () => clearInterval(interval);
-  }, [fetchData, editingRef]);
+    let pollInterval = null;
+    let tickerInterval = null;
+    let unsubscribe = null;
 
-  // Real-time push: subscribe to the server's SSE stream of override + note
-  // changes. Peers' edits land in our jobs array within ~500ms of being
-  // saved, instead of waiting on the 20s poll. The poll stays as a safety
-  // net for Bullhorn-only fields (status, owner, AM, etc.) and for catching
-  // up after a transient disconnect.
-  useEffect(() => {
-    const unsubscribe = subscribeEventStream('/api/req-board/jobs/events', {
-      onMessage: (event) => {
-        if (!event || !event.type) return;
-        if (event.type === 'override' && event.row) {
-          const row = event.row;
-          if (row.job_id === undefined) return;
-          setJobs(prev => prev.map(j =>
-            j.id === row.job_id ? applyOverrideRowToJob(j, row) : j,
-          ));
-        }
-        // 'note' events are ignored at the board level — JobDetail re-fetches
-        // on open, which is fine; cross-user note visibility through the
-        // detail panel can be added later if needed.
-      },
-      onReconnect: () => {
-        // While we were disconnected we may have missed events. A single
-        // refresh re-syncs both jobs and stats.
+    const startPoll = () => {
+      if (pollInterval) return;
+      pollInterval = setInterval(() => {
+        // Skip the auto-refresh while the user is actively editing a cell or
+        // has the job detail panel open — we don't want to clobber an in-flight
+        // draft or interrupt a focused task. The manual Refresh button still
+        // works in both states.
+        if (editingRef.current > 0) return;
+        if (selectedJobIdRef.current) return;
         fetchData();
-      },
-      onError: (err) => {
-        // Don't spam the console on every reconnect attempt.
-        if (err && err.status && err.status !== 401) {
-          console.warn('[req-board] event stream error:', err.message);
-        }
-      },
-    });
-    return unsubscribe;
-  }, [fetchData]);
+      }, REFRESH_INTERVAL);
+    };
+    const startTicker = () => {
+      if (tickerInterval) return;
+      tickerInterval = setInterval(() => setNow(Date.now()), REFRESH_TICK_MS);
+    };
+    const startSse = () => {
+      if (unsubscribe) return;
+      unsubscribe = subscribeEventStream('/api/req-board/jobs/events', {
+        onMessage: (event) => {
+          if (!event || !event.type) return;
+          if (event.type === 'override' && event.row) {
+            const row = event.row;
+            if (row.job_id === undefined) return;
+            setJobs(prev => prev.map(j =>
+              j.id === row.job_id ? applyOverrideRowToJob(j, row) : j,
+            ));
+          }
+          // 'note' events are ignored at the board level — JobDetail re-fetches
+          // on open, which is fine; cross-user note visibility through the
+          // detail panel can be added later if needed.
+        },
+        onReconnect: () => {
+          // While we were disconnected we may have missed events. A single
+          // refresh re-syncs both jobs and stats.
+          fetchData();
+        },
+        onError: (err) => {
+          // Don't spam the console on every reconnect attempt.
+          if (err && err.status && err.status !== 401) {
+            console.warn('[req-board] event stream error:', err.message);
+          }
+        },
+      });
+    };
 
-  // Ticker for the "Updated Xs ago" pill. Only runs while the page is mounted
-  // and uses a generous 15s cadence so the UI doesn't cause re-renders every
-  // second.
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), REFRESH_TICK_MS);
-    return () => clearInterval(t);
-  }, []);
+    const stopPoll = () => {
+      if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+    };
+    const stopTicker = () => {
+      if (tickerInterval) { clearInterval(tickerInterval); tickerInterval = null; }
+    };
+    const stopSse = () => {
+      if (unsubscribe) { try { unsubscribe(); } catch { /* already aborted */ } unsubscribe = null; }
+    };
+
+    const handleVisibility = () => {
+      if (document.hidden) {
+        stopPoll();
+        stopTicker();
+        stopSse();
+      } else {
+        // Catch up on anything we missed while hidden, then resume background work.
+        fetchData();
+        setNow(Date.now());
+        startPoll();
+        startTicker();
+        startSse();
+      }
+    };
+
+    if (!document.hidden) {
+      startPoll();
+      startTicker();
+      startSse();
+    }
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      stopPoll();
+      stopTicker();
+      stopSse();
+    };
+  }, [fetchData, editingRef]);
 
   // Jobs whose active contractor's end date is in the past — feeds the
   // "expired contractor" red-box condition.

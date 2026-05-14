@@ -1,11 +1,11 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 import { useEditingSignal } from './EditingContext';
 
 /**
  * Inline-editable table cell with a dropdown select.
  * Click to open dropdown, select to save, blur/Escape to cancel.
  */
-export default function EditableSelect({ value, displayValue, options, onSave, className, cellStyle }) {
+function EditableSelect({ value, displayValue, options, onSave, className, cellStyle }) {
   const [editing, setEditing] = useState(false);
   const selectRef = useRef(null);
   useEditingSignal(editing);
@@ -60,3 +60,5 @@ export default function EditableSelect({ value, displayValue, options, onSave, c
     </td>
   );
 }
+
+export default memo(EditableSelect);

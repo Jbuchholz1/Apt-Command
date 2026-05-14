@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 import { useEditingSignal } from './EditingContext';
 
 /**
@@ -6,7 +6,7 @@ import { useEditingSignal } from './EditingContext';
  * Accepts optional cellStyle for background color overrides (e.g. deadline urgency).
  * When multiline=true, renders a textarea. Enter saves; Shift+Enter inserts a newline.
  */
-export default function EditableCell({ value, onSave, placeholder, className, cellStyle, defaultText, noValueStyle, multiline }) {
+function EditableCell({ value, onSave, placeholder, className, cellStyle, defaultText, noValueStyle, multiline }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value || '');
   // Locally-committed value rendered immediately after blur/Enter so the
@@ -115,3 +115,5 @@ export default function EditableCell({ value, onSave, placeholder, className, ce
     </td>
   );
 }
+
+export default memo(EditableCell);
