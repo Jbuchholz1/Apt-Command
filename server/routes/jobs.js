@@ -4,6 +4,7 @@ const {
   getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote,
   enqueueReconciliation, OverrideConflictError,
   getSubmissionOverridesMap, upsertSubmissionOverride,
+  getOpportunityOverridesMap, upsertOpportunityOverride,
 } = require('../lib/db');
 const { buildReqBoardWorkbook } = require('../lib/exporters');
 const { requireModule } = require('../middleware/adminAuth');
@@ -268,6 +269,14 @@ router.get('/opportunities', requirePipeline, async (req, res, next) => {
       dealValue: o.dealValue || null,
       weightedDealValue: o.weightedDealValue || null,
     }));
+
+    // Merge local per-opportunity overrides (currently just `note`).
+    const overrideMap = await getOpportunityOverridesMap(opportunities.map(o => o.id));
+    for (const o of opportunities) {
+      const ov = overrideMap.get(o.id);
+      o.note = (ov && ov.note) || '';
+    }
+
     res.json({ total: opportunities.length, data: opportunities });
   } catch (err) {
     next(err);
@@ -301,6 +310,29 @@ router.post('/opportunities/:id/update', requirePipeline, async (req, res, next)
 
     await updateOpportunityField(oppId, sanitized);
     res.json({ success: true, id: oppId, updated: sanitized });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/jobs/opportunities/:id/overrides — Update local-only opportunity
+// fields (currently just `note` for the Pipeline tab). Doesn't touch Bullhorn.
+router.patch('/opportunities/:id/overrides', requirePipeline, async (req, res, next) => {
+  try {
+    const oppId = parseInt(req.params.id, 10);
+    if (isNaN(oppId) || oppId <= 0) {
+      return res.status(400).json({ error: 'Invalid opportunity ID' });
+    }
+    const { note } = req.body || {};
+    if (note === undefined) {
+      return res.status(400).json({ error: 'note is required' });
+    }
+    const updatedBy = req.user?.email || req.user?.name || 'unknown';
+    const row = await upsertOpportunityOverride(oppId, {
+      note: typeof note === 'string' ? note : String(note ?? ''),
+      updated_by: updatedBy,
+    });
+    res.json({ success: true, data: row });
   } catch (err) {
     next(err);
   }

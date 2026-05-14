@@ -83,3 +83,11 @@
 .convert-modal-primary { background: var(--gold); color: var(--navy); }
 .convert-modal-primary:hover:not(:disabled) { background: var(--gold-light); }
 .convert-modal-primary:disabled, .convert-modal-cancel:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Red highlight for past or missing Expected Close. Mirrors the same class
+   used in req-board.css so styling is consistent across boards. */
+.pipeline-table td.editable-cell.cell-date-expired { background-color: #dc2626; color: #fff; }
+.pipeline-table td.editable-cell.cell-date-expired .editable-placeholder { color: #fff; }
+
+/* Free-text Note column — give it enough room without crowding Deal Value. */
+.pipeline-table td.pipeline-note-cell { min-width: 180px; max-width: 260px; white-space: normal; word-wrap: break-word; cursor: text; }

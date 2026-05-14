@@ -117,6 +117,27 @@ async function ensureSchema() {
         console.log('[db] submission_overrides table created successfully');
       }
     }
+
+    // opportunity_overrides: per-Opportunity local fields (currently just a
+    // free-text `note` for the Pipeline tab). Same pattern as job_overrides,
+    // scoped to Opportunity entity IDs from Bullhorn.
+    const { error: ooErr } = await supabase.from('opportunity_overrides').select('opportunity_id').limit(1);
+    if (ooErr && ooErr.message.toLowerCase().includes('opportunity_overrides')) {
+      console.log('[db] Creating opportunity_overrides table...');
+      const { error: rpcErr } = await supabase.rpc('exec_sql', {
+        query: `CREATE TABLE IF NOT EXISTS opportunity_overrides (
+          opportunity_id BIGINT PRIMARY KEY,
+          note TEXT,
+          updated_by TEXT,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );`,
+      });
+      if (rpcErr) {
+        console.warn('[db] Could not auto-create opportunity_overrides — create manually:', rpcErr.message);
+      } else {
+        console.log('[db] opportunity_overrides table created successfully');
+      }
+    }
   } catch (err) {
     console.warn('[db] Schema check failed:', err.message);
   }
@@ -1844,6 +1865,53 @@ async function upsertSubmissionOverride(submissionId, { rejected, updated_by } =
   return data;
 }
 
+/**
+ * Bulk-fetch opportunity_overrides for the given opportunity IDs.
+ * Returns a Map keyed by opportunity_id. Missing rows = no overrides yet.
+ */
+async function getOpportunityOverridesMap(opportunityIds) {
+  if (!supabase || !Array.isArray(opportunityIds) || opportunityIds.length === 0) {
+    return new Map();
+  }
+  const ids = opportunityIds.map(n => Number(n)).filter(n => Number.isFinite(n));
+  if (ids.length === 0) return new Map();
+  const { data, error } = await supabase
+    .from('opportunity_overrides')
+    .select('*')
+    .in('opportunity_id', ids);
+  if (error) {
+    console.error('[db] getOpportunityOverridesMap error:', error.message);
+    return new Map();
+  }
+  const map = new Map();
+  for (const row of (data || [])) {
+    map.set(row.opportunity_id, row);
+  }
+  return map;
+}
+
+/**
+ * Upsert the note (and any future fields) for a single opportunity.
+ */
+async function upsertOpportunityOverride(opportunityId, { note, updated_by } = {}) {
+  if (!supabase) return null;
+  const id = Number(opportunityId);
+  if (!Number.isFinite(id)) return null;
+  const row = { opportunity_id: id, updated_at: new Date().toISOString() };
+  if (note !== undefined) row.note = note;
+  if (updated_by) row.updated_by = updated_by;
+  const { data, error } = await supabase
+    .from('opportunity_overrides')
+    .upsert(row, { onConflict: 'opportunity_id' })
+    .select()
+    .maybeSingle();
+  if (error) {
+    console.error('[db] upsertOpportunityOverride error:', error.message);
+    throw error;
+  }
+  return data;
+}
+
 module.exports = {
   supabase, // Shared client — import this instead of creating your own
   getSchemaFeatures,
@@ -1851,6 +1919,7 @@ module.exports = {
   enqueueReconciliation, listReconciliationQueue,
   getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote,
   getSubmissionOverridesMap, upsertSubmissionOverride,
+  getOpportunityOverridesMap, upsertOpportunityOverride,
   getAllPlacementChecklist, getPlacementChecklist, upsertPlacementChecklist,
   // COI Tracking
   getAllCOIRecords, createCOIRecord, updateCOIRecord, deleteCOIRecord,

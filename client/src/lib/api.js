@@ -243,6 +243,14 @@ export function updateOpportunityInBullhorn(id, fields) {
   });
 }
 
+// Local-only per-opportunity overrides (currently just `note` for the Pipeline tab).
+export function updateOpportunityOverride(id, overrides) {
+  return fetchAPI(`/api/req-board/jobs/opportunities/${id}/overrides`, {
+    method: 'PATCH',
+    body: overrides,
+  });
+}
+
 export function convertOpportunityToJob(oppId, body) {
   return fetchAPI(`/api/req-board/jobs/opportunities/${oppId}/convert`, {
     method: 'POST',

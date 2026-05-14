@@ -1,8 +1,20 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { getOpportunities, updateOpportunityInBullhorn } from '../../lib/api';
+import { getOpportunities, updateOpportunityInBullhorn, updateOpportunityOverride } from '../../lib/api';
 import EditableDate from '../req-board/EditableDate';
 import EditableSelect from '../req-board/EditableSelect';
+import EditableCell from '../req-board/EditableCell';
 import ConvertToJobModal from './ConvertToJobModal';
+
+// "Past or missing" for the Expected Close date — red-highlights the cell so
+// stale or never-set close dates jump out in the Pipeline tab.
+function isExpCloseRed(val) {
+  if (!val) return true;
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return true;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return d < today;
+}
 
 function MultiSelect({ label, options, selected, onChange }) {
   const [open, setOpen] = useState(false);
@@ -178,6 +190,7 @@ export default function OpportunityPipeline() {
                   <th onClick={() => toggleSort('owner')}>Owner{sortIcon('owner')}</th>
                   <th onClick={() => toggleSort('status')}>Status{sortIcon('status')}</th>
                   <th onClick={() => toggleSort('expectedCloseDate')}>Exp Close{sortIcon('expectedCloseDate')}</th>
+                  <th style={{ cursor: 'default' }}>Note</th>
                   <th onClick={() => toggleSort('dealValue')}>Deal Value{sortIcon('dealValue')}</th>
                   <th onClick={() => toggleSort('weightedDealValue')}>Weighted{sortIcon('weightedDealValue')}</th>
                   <th style={{ cursor: 'default' }}>Actions</th>
@@ -212,6 +225,7 @@ export default function OpportunityPipeline() {
                     />
                     <EditableDate
                       value={o.expectedCloseDate}
+                      className={isExpCloseRed(o.expectedCloseDate) ? 'cell-date-expired' : ''}
                       onSave={async (tsValue) => {
                         try {
                           await updateOpportunityInBullhorn(o.id, { expectedCloseDate: tsValue });
@@ -220,6 +234,26 @@ export default function OpportunityPipeline() {
                           ));
                         } catch (err) {
                           console.error('Failed to update expected close date:', err);
+                        }
+                      }}
+                    />
+                    <EditableCell
+                      value={o.note || ''}
+                      placeholder="Note"
+                      multiline
+                      className="pipeline-note-cell"
+                      onSave={async (val) => {
+                        const previousNote = o.note;
+                        setOpportunities(prev => prev.map(op =>
+                          op.id === o.id ? { ...op, note: val } : op
+                        ));
+                        try {
+                          await updateOpportunityOverride(o.id, { note: val });
+                        } catch (err) {
+                          console.error('Failed to save opportunity note:', err);
+                          setOpportunities(prev => prev.map(op =>
+                            op.id === o.id ? { ...op, note: previousNote } : op
+                          ));
                         }
                       }}
                     />
@@ -239,14 +273,14 @@ export default function OpportunityPipeline() {
                 ))}
                 {filtered.length > 0 && (
                   <tr className="pipeline-total-row">
-                    <td colSpan="6" style={{ textAlign: 'right', fontWeight: 700 }}>Totals</td>
+                    <td colSpan="7" style={{ textAlign: 'right', fontWeight: 700 }}>Totals</td>
                     <td className="pipeline-money" style={{ fontWeight: 700 }}>{fmtCurrency(totalDeal)}</td>
                     <td className="pipeline-money" style={{ fontWeight: 700 }}>{fmtCurrency(totalWeighted)}</td>
                     <td></td>
                   </tr>
                 )}
                 {filtered.length === 0 && (
-                  <tr><td colSpan="9" className="pipeline-empty">No opportunities found</td></tr>
+                  <tr><td colSpan="10" className="pipeline-empty">No opportunities found</td></tr>
                 )}
               </tbody>
             </table>
