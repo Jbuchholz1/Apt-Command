@@ -45,8 +45,11 @@ function mergeOverrides(job, overridesMap) {
     job.notes = ov.notes || '';
     job.fortyEightHr = ov.forty_eight_hr || '';
     job.calledShot = ov.called_shot === true || ov.called_shot === 'true';
+    job.aptIndia = ov.apt_india === true || ov.apt_india === 'true';
   } else {
     job.recruiter = job.recruiter || '*';
+    job.calledShot = false;
+    job.aptIndia = false;
   }
   return job;
 }
@@ -152,7 +155,9 @@ async function buildReqBoardWorkbook() {
   const sheet = workbook.addWorksheet('Req Board');
 
   sheet.columns = [
+    { header: 'Apt India', key: 'aptIndia', width: 9 },
     { header: 'Pri', key: 'priority', width: 5 },
+    { header: 'CS', key: 'calledShot', width: 5 },
     { header: 'Req#', key: 'id', width: 7 },
     { header: 'Date', key: 'dateAdded', width: 10 },
     { header: 'AM', key: 'ownerInitials', width: 5 },
@@ -178,7 +183,9 @@ async function buildReqBoardWorkbook() {
 
   for (const job of jobs) {
     sheet.addRow(sanitizeRow({
+      aptIndia: job.aptIndia ? 'Y' : '',
       priority: job.priority || '',
+      calledShot: job.calledShot ? 'Y' : '',
       id: job.id,
       dateAdded: formatDateMMDDYY(job.dateAdded),
       ownerInitials: job.ownerInitials || '',
@@ -204,7 +211,7 @@ async function buildReqBoardWorkbook() {
   sheet.getColumn('ceSpread').numFmt = '$#,##0';
   sheet.getColumn('permFee').numFmt = '$#,##0';
 
-  autofilterAndFreeze(sheet, 'T', jobs.length);
+  autofilterAndFreeze(sheet, 'V', jobs.length);
 
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
@@ -299,7 +306,17 @@ async function fetchAllEmployees(clientIds) {
 
 async function buildPipelineWorkbook() {
   const result = await getOpenOpportunitiesFull();
-  const opportunities = (result?.data || []).map(o => ({
+  const rawOpps = result?.data || [];
+
+  // Merge local per-opportunity overrides (currently just `note`). Mirrors the
+  // logic in routes/jobs.js GET /api/jobs/opportunities so the export matches
+  // what users see in the Pipeline tab.
+  const oppIds = rawOpps.map(o => o.id).filter(Boolean);
+  const overrideMap = oppIds.length
+    ? await db.getOpportunityOverridesMap(oppIds)
+    : new Map();
+
+  const opportunities = rawOpps.map(o => ({
     id: o.id,
     title: o.title || '',
     status: o.status || '',
@@ -307,6 +324,7 @@ async function buildPipelineWorkbook() {
     client: o.clientCorporation?.name || '',
     dateAdded: formatDateISO(o.dateAdded),
     expectedCloseDate: formatDateISO(o.expectedCloseDate),
+    note: (overrideMap.get(o.id) || {}).note || '',
     dealValue: o.dealValue || 0,
     weightedDealValue: o.weightedDealValue || 0,
   }));
@@ -322,6 +340,7 @@ async function buildPipelineWorkbook() {
     { header: 'Client', key: 'client', width: 24 },
     { header: 'Date Added', key: 'dateAdded', width: 12 },
     { header: 'Expected Close', key: 'expectedCloseDate', width: 14 },
+    { header: 'Note', key: 'note', width: 40 },
     { header: 'Deal Value', key: 'dealValue', width: 14 },
     { header: 'Weighted Deal Value', key: 'weightedDealValue', width: 18 },
   ];
@@ -334,7 +353,7 @@ async function buildPipelineWorkbook() {
   sheet.getColumn('dealValue').numFmt = '$#,##0';
   sheet.getColumn('weightedDealValue').numFmt = '$#,##0';
 
-  autofilterAndFreeze(sheet, 'I', opportunities.length);
+  autofilterAndFreeze(sheet, 'J', opportunities.length);
 
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
