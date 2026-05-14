@@ -237,6 +237,75 @@ export default function JobDetail({ jobId, onClose }) {
               )}
             </div>
 
+            {(() => {
+              const interviews = (data.submissions?.data || []).filter(
+                s => s.status === 'Interview Scheduled' || s.status === 'Interview Feedback'
+              );
+              return (
+                <div className="detail-section">
+                  <h3>Interviews ({interviews.length})</h3>
+                  {interviews.length > 0 ? (
+                    <table className="submissions-table">
+                      <thead>
+                        <tr>
+                          <th>Candidate</th>
+                          <th>TR</th>
+                          <th>Status</th>
+                          <th>Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {interviews.map(sub => (
+                          <tr key={sub.id}>
+                            <td>{sub.candidate || '—'}</td>
+                            <td>{sub.sendingUser || '—'}</td>
+                            <EditableSelect
+                              value={sub.status || ''}
+                              displayValue={sub.status || '—'}
+                              options={SUBMISSION_STATUS_OPTIONS}
+                              onSave={async (val) => {
+                                const previousStatus = sub.status;
+                                setData(prev => ({
+                                  ...prev,
+                                  submissions: {
+                                    ...prev.submissions,
+                                    data: prev.submissions.data.map(s =>
+                                      s.id === sub.id ? { ...s, status: val } : s
+                                    ),
+                                  },
+                                }));
+                                await saveWithToast(
+                                  () => updateSubmissionInBullhorn(sub.id, { status: val }),
+                                  {
+                                    failureMessage: 'Could not update interview status',
+                                    onRollback: () => {
+                                      setData(prev => ({
+                                        ...prev,
+                                        submissions: {
+                                          ...prev.submissions,
+                                          data: prev.submissions.data.map(s =>
+                                            s.id === sub.id ? { ...s, status: previousStatus } : s
+                                          ),
+                                        },
+                                      }));
+                                    },
+                                  },
+                                );
+                              }}
+                              className="cell-editable"
+                            />
+                            <td>{formatDate(sub.dateAdded)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p className="no-subs">No interviews yet</p>
+                  )}
+                </div>
+              );
+            })()}
+
             <div className="detail-section">
               <h3>Notes</h3>
               <textarea

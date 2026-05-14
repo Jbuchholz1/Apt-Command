@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import './req-board.css';
-import { getJobs, getStats, exportJobs } from '../../lib/api';
+import { getJobs, getStats, exportJobs, getPlacements } from '../../lib/api';
 import { useUserRole } from '../../lib/UserRoleContext';
 import AccessDenied from '../../components/AccessDenied';
 import StatsStrip from './StatsStrip';
@@ -123,6 +123,7 @@ export default function ReqBoardModule({
 
   const [jobs, setJobs] = useState([]);
   const [stats, setStats] = useState(null);
+  const [placements, setPlacements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastRefresh, setLastRefresh] = useState(null);
@@ -151,7 +152,13 @@ export default function ReqBoardModule({
     try {
       setLoading(true);
       setError(null);
-      const [jobsRes, statsRes] = await Promise.all([getJobs(apiFilter), getStats(apiFilter)]);
+      const [jobsRes, statsRes, placementsRes] = await Promise.all([
+        getJobs(apiFilter),
+        getStats(apiFilter),
+        // Placements feed the red-box "expired contractor" check; failure here
+        // should not block the board, so we swallow errors and keep the array empty.
+        getPlacements().catch(() => ({ data: [] })),
+      ]);
       // Per-job version-aware merge: if our local row has a newer override
       // version than the incoming one (e.g. the server's caches haven't
       // caught up to a save we just made), preserve the local override
@@ -159,6 +166,7 @@ export default function ReqBoardModule({
       // come from the incoming row.
       setJobs(prev => mergeIncomingJobs(prev, jobsRes.data || []));
       setStats(statsRes);
+      setPlacements(placementsRes?.data || []);
       setLastRefresh(new Date());
     } catch (err) {
       setError(err.message);
@@ -227,7 +235,23 @@ export default function ReqBoardModule({
     return () => clearInterval(t);
   }, []);
 
-  const redBoxCount = useMemo(() => jobs.filter(hasRedBox).length, [jobs]);
+  // Jobs whose active contractor's end date is in the past — feeds the
+  // "expired contractor" red-box condition.
+  const expiredJobIds = useMemo(() => {
+    const now = Date.now();
+    const set = new Set();
+    for (const p of placements) {
+      if (!p?.dateEnd || !p?.jobOrderId) continue;
+      const ts = new Date(p.dateEnd).getTime();
+      if (!isNaN(ts) && ts < now) set.add(p.jobOrderId);
+    }
+    return set;
+  }, [placements]);
+
+  const redBoxCount = useMemo(
+    () => jobs.filter(j => hasRedBox(j, expiredJobIds)).length,
+    [jobs, expiredJobIds],
+  );
 
   const filteredJobs = useMemo(() => {
     return jobs.filter(job => {
@@ -242,10 +266,10 @@ export default function ReqBoardModule({
         if (r !== filters.remote.toLowerCase()) return false;
       }
       if (filters.calledShot === 'yes' && !job.calledShot) return false;
-      if (filters.redBoxes === 'red' && !hasRedBox(job)) return false;
+      if (filters.redBoxes === 'red' && !hasRedBox(job, expiredJobIds)) return false;
       return true;
     });
-  }, [jobs, filters]);
+  }, [jobs, filters, expiredJobIds]);
 
   const handleJobUpdated = (jobId, field, value) => {
     setJobs(prev => prev.map(j =>
@@ -335,7 +359,7 @@ export default function ReqBoardModule({
           </div>
         )}
 
-        <StatsStrip stats={stats} jobs={jobs} loading={loading} onJobUpdated={handleJobUpdated} hideOpportunities={hideOpportunities} />
+        <StatsStrip stats={stats} jobs={jobs} loading={loading} onJobUpdated={handleJobUpdated} onSelectJob={setSelectedJobId} hideOpportunities={hideOpportunities} />
 
         <FilterBar filters={filters} onChange={setFilters} jobs={jobs} redBoxCount={redBoxCount} />
 

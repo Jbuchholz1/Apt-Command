@@ -72,6 +72,12 @@ const REMOTE_OPTIONS = [
   { value: 'Hybrid', label: 'Hybrid' },
 ];
 
+const PRIORITY_OPTIONS = [
+  { value: '1', label: 'A' },
+  { value: '2', label: 'B' },
+  { value: '3', label: 'C' },
+];
+
 const COLUMNS = [
   { key: 'aptIndia', label: 'Apt India', sortable: true, width: '70px' },
   { key: 'priority', label: 'Pri', sortable: true, width: '42px' },
@@ -378,6 +384,31 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
     }
   };
 
+  // Priority is JobOrder.type — int 1/2/3 in Bullhorn, displayed as A/B/C.
+  const handlePrioritySave = (job, rawValue) => {
+    const typeNum = rawValue ? parseInt(rawValue, 10) : null;
+    const letterMap = { 1: 'A', 2: 'B', 3: 'C' };
+    const newLetter = typeNum ? letterMap[typeNum] : null;
+    const previousLetter = job.priority;
+
+    if (onJobUpdated) onJobUpdated(job.id, 'priority', newLetter);
+
+    chainPerJob(job.id, async () => {
+      const { ok } = await saveWithToast(
+        () => updateJobInBullhorn(job.id, { type: typeNum }),
+        {
+          failureMessage: 'Could not update priority',
+          onRollback: () => {
+            if (onJobUpdated) onJobUpdated(job.id, 'priority', previousLetter);
+          },
+        },
+      );
+      if (ok && onJobUpdated) {
+        onJobUpdated(job.id, 'priority', newLetter);
+      }
+    });
+  };
+
   const sorted = useMemo(() => {
     if (!jobs) return [];
     const arr = [...jobs];
@@ -521,17 +552,25 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
 
     // Static cells
     switch (col.key) {
-      case 'priority':
+      case 'priority': {
+        const priorityNum = job.priority === 'A' ? '1' : job.priority === 'B' ? '2' : job.priority === 'C' ? '3' : '';
+        const priorityDisplay = job.priority ? (
+          <span className="priority-badge" style={{
+            backgroundColor: PRIORITY_COLORS[job.priority]?.bg || '#94a3b8',
+            color: PRIORITY_COLORS[job.priority]?.text || '#fff',
+          }}>{job.priority}</span>
+        ) : '—';
         return (
-          <td key={col.key}>
-            {job.priority && (
-              <span className="priority-badge" style={{
-                backgroundColor: PRIORITY_COLORS[job.priority]?.bg || '#94a3b8',
-                color: PRIORITY_COLORS[job.priority]?.text || '#fff',
-              }}>{job.priority}</span>
-            )}
-          </td>
+          <EditableSelect
+            key={col.key}
+            value={priorityNum}
+            displayValue={priorityDisplay}
+            options={PRIORITY_OPTIONS}
+            onSave={(val) => handlePrioritySave(job, val)}
+            className="cell-editable"
+          />
         );
+      }
       case 'calledShot':
         return (
           <td key={col.key} style={{ textAlign: 'center' }}>

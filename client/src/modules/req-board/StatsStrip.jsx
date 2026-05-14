@@ -69,7 +69,7 @@ function ContractorMultiSelect({ label, options, selected, onChange }) {
   );
 }
 
-export default function StatsStrip({ stats, jobs, loading, onJobUpdated, hideOpportunities = false }) {
+export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelectJob, hideOpportunities = false }) {
   const [showContractors, setShowContractors] = useState(false);
   const [showCE, setShowCE] = useState(false);
   const [showPerm, setShowPerm] = useState(false);
@@ -643,12 +643,13 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, hideOpp
   }, [placements, contractorAmFilter, contractorTrFilter, contractorTypeFilter, contractorSort]);
 
   // Sum of weekly spread: contractors use (BillRate - PayRate×1.25) × 40;
-  // Direct Hire placements add amortized perm fee = (Salary × Fee) / 52
+  // Direct Hire placements add amortized perm fee = (Salary × Fee) / 26
+  // (canonical divisor matches formatJob() in server/routes/jobs.js)
   const filteredSpreadTotal = useMemo(() => {
     return filteredPlacements.reduce((sum, p) => {
       if (p.employmentType === 'Direct Hire') {
         if (!p.salary || !p.fee) return sum;
-        const perm = Math.round((p.salary * p.fee) / 52);
+        const perm = Math.round((p.salary * p.fee) / 26);
         return sum + perm;
       }
       if (!p.billRate || !p.payRate) return sum;
@@ -829,7 +830,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, hideOpp
                   <span className="stat-tooltip-wrap stat-tooltip-below">
                     <span className="stat-tooltip-icon">&#9432;</span>
                     <span className="stat-tooltip-text">
-                      Contract: (Pay Rate × 1.25 − Bill Rate) × 40 × −1. Direct Hire: (Salary × Fee %) ÷ 52. Sum of all visible (filtered) contractors.
+                      Contract: (Pay Rate × 1.25 − Bill Rate) × 40 × −1. Direct Hire: (Salary × Fee %) ÷ 26. Sum of all visible (filtered) contractors.
                     </span>
                   </span>
                 </div>
@@ -892,11 +893,13 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, hideOpp
                         <EditableDate
                           value={p.dateEnd}
                           onSave={(val) => handlePlacementDateSave(idx, 'dateEnd', val)}
-                          className="cell-editable cell-date"
+                          className={`cell-editable cell-date${p.dateEnd && new Date(p.dateEnd) < new Date() ? ' cell-date-expired' : ''}`}
                         />
                         <td className="cell-money">
                           {p.employmentType === 'Direct Hire'
-                            ? (p.payRate ? `Perm` : '—')
+                            ? (p.salary && p.fee
+                              ? `$${Math.round(p.salary * p.fee / 26).toLocaleString('en-US')} Perm`
+                              : '—')
                             : (p.billRate && p.payRate
                               ? `$${Math.round(((p.payRate * 1.25 - p.billRate) * 40 * -1)).toLocaleString('en-US')} CE`
                               : '—')}
@@ -1237,6 +1240,9 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, hideOpp
                     { key: 'recruiter', label: 'TR' },
                     { key: 'employmentType', label: 'Type' },
                     { key: 'startDate', label: 'Start' },
+                    { key: 'brSalary', label: 'PrBr/Salary LH' },
+                    { key: 'ceSpread', label: 'CE $' },
+                    { key: 'permFee', label: 'Perm $' },
                   ].map(col => (
                     <th key={col.key} className="sortable" style={{ cursor: 'pointer' }} onClick={() => handleFilledSort(col.key)}>
                       {col.label}<span className="sort-icon">{filledSortIcon(col.key)}</span>
@@ -1281,10 +1287,25 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, hideOpp
                       onSave={(val) => handleStartDateSave(j, val)}
                       className="cell-editable cell-date"
                     />
+                    <td
+                      className="cell-money cell-prbr-clickable"
+                      title="Click to edit PrBr / Salary in the job detail panel"
+                      style={{ cursor: onSelectJob ? 'pointer' : 'default', textDecoration: onSelectJob ? 'underline dotted' : 'none' }}
+                      onClick={() => {
+                        if (onSelectJob) {
+                          setShowFilled(false);
+                          onSelectJob(j.id);
+                        }
+                      }}
+                    >
+                      {j.brSalary || '—'}
+                    </td>
+                    <td className="cell-money">{j.ceSpread ? fmtCurrency(j.ceSpread) : '—'}</td>
+                    <td className="cell-money">{j.permFee ? fmtCurrency(j.permFee) : '—'}</td>
                   </tr>
                 ))}
                 {filteredFilled.length === 0 && (
-                  <tr><td colSpan="9" style={{ textAlign: 'center', padding: '20px' }}>No candidates on the board</td></tr>
+                  <tr><td colSpan="12" style={{ textAlign: 'center', padding: '20px' }}>No candidates on the board</td></tr>
                 )}
               </tbody>
             </table>

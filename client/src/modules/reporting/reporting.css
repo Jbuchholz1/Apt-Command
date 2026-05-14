@@ -761,6 +761,7 @@
 .tag-followup { background: #fef3c7; color: #92400e; }
 .tag-deadline { background: #fee2e2; color: #991b1b; }
 .tag-checkin { background: #dbeafe; color: #1e40af; }
+.tag-expired { background: #dc2626; color: #fff; }
 
 .team-alert-detail {
   border-top: 1px solid var(--border);

@@ -42,10 +42,16 @@ const RED_BOX_EXCLUDED_STATUSES = new Set(['Archive', 'Placed', 'Lost', 'Wash', 
 /**
  * Returns true if a job has any "red box" condition.
  * Add future red box conditions here.
+ *
+ * @param {Object} job
+ * @param {Set<number>} [expiredJobIds] - optional Set of jobIds whose active
+ *   contractor has an end date in the past. O(1) lookup.
  */
-export function hasRedBox(job) {
+export function hasRedBox(job, expiredJobIds) {
   // Closed/terminal-status jobs don't raise alerts even if deadline/followUp went red
   if (RED_BOX_EXCLUDED_STATUSES.has(job?.status)) return false;
+  // Active contractor on this job has an expired end date
+  if (expiredJobIds && expiredJobIds.has(job.id)) return true;
   // Missed or past-due follow-up
   if (getFollowUpUrgency(job.followUp) === 'red') return true;
   // Missed or past-due deadline

@@ -68,6 +68,9 @@ export default function TeamAlerts({ team, forceExpanded = false }) {
                   {user.overdueCheckins.length > 0 && (
                     <span className="team-alert-tag tag-checkin">{user.overdueCheckins.length} Check-In{user.overdueCheckins.length !== 1 ? 's' : ''}</span>
                   )}
+                  {user.expiredEndDates?.length > 0 && (
+                    <span className="team-alert-tag tag-expired">{user.expiredEndDates.length} Expired End Date{user.expiredEndDates.length !== 1 ? 's' : ''}</span>
+                  )}
                 </div>
                 {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
               </button>
@@ -110,6 +113,21 @@ export default function TeamAlerts({ team, forceExpanded = false }) {
                           <span className="team-alert-job">{a.candidate}</span>
                           <span className="team-alert-client">{a.client}</span>
                           <span className="team-alert-value">{a.reason}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {user.expiredEndDates?.length > 0 && (
+                    <div className="team-alert-group">
+                      <div className="team-alert-group-title">Expired End Dates</div>
+                      {user.expiredEndDates.map((a, i) => (
+                        <div key={i} className="team-alert-row">
+                          {a.candidateId && (
+                            <a href={`${BH_BASE}?Entity=Candidate&id=${a.candidateId}`} target="_blank" rel="noopener noreferrer" className="team-alert-link">{a.candidateId}</a>
+                          )}
+                          <span className="team-alert-job">{a.candidate}</span>
+                          <span className="team-alert-client">{a.client}</span>
+                          <span className="team-alert-value">{a.value}</span>
                         </div>
                       ))}
                     </div>

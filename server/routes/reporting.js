@@ -841,7 +841,7 @@ router.get('/team-alerts', requireTeamAlertsAccess, async (req, res, next) => {
     for (const user of users) {
       const userId = user.id;
       const userName = `${user.firstName} ${user.lastName}`;
-      const userAlerts = { name: userName, overdueFollowUps: [], missedDeadlines: [], overdueCheckins: [] };
+      const userAlerts = { name: userName, overdueFollowUps: [], missedDeadlines: [], overdueCheckins: [], expiredEndDates: [] };
 
       // Check jobs for overdue follow-ups and deadlines
       for (const job of jobs) {
@@ -901,7 +901,31 @@ router.get('/team-alerts', requireTeamAlertsAccess, async (req, res, next) => {
         });
       }
 
-      const total = userAlerts.overdueFollowUps.length + userAlerts.missedDeadlines.length + userAlerts.overdueCheckins.length;
+      // Check placements for expired end dates (separate from check-in alerts)
+      for (const p of activePlacements) {
+        if (!p.dateEnd) continue;
+        const endTs = typeof p.dateEnd === 'number' ? p.dateEnd : new Date(p.dateEnd).getTime();
+        if (isNaN(endTs) || endTs >= now) continue;
+
+        const ownerMatch = team === 'recruiting'
+          ? p.candidate?.owner?.id === userId
+          : p.jobOrder?.owner?.id === userId;
+        if (!ownerMatch) continue;
+
+        const candidateId = p.candidate?.id;
+        const candName = p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '';
+        const endDate = new Date(endTs);
+        const endStr = `${String(endDate.getMonth() + 1).padStart(2, '0')}/${String(endDate.getDate()).padStart(2, '0')}/${String(endDate.getFullYear()).slice(-2)}`;
+
+        userAlerts.expiredEndDates.push({
+          candidateId,
+          candidate: candName,
+          client: p.jobOrder?.clientCorporation?.name || '',
+          value: endStr,
+        });
+      }
+
+      const total = userAlerts.overdueFollowUps.length + userAlerts.missedDeadlines.length + userAlerts.overdueCheckins.length + userAlerts.expiredEndDates.length;
       if (total > 0) {
         alerts.push({ ...userAlerts, total });
       }

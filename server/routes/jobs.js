@@ -517,10 +517,12 @@ router.post('/:id/bullhorn-update', requireRb, async (req, res, next) => {
       'startDate', 'estimatedEndDate', 'assignedUsers',
       // PrBr/Salary LH compensation fields
       'payRate', 'clientBillRate', 'salary', 'customFloat1',
+      // Priority (1=A, 2=B, 3=C)
+      'type',
     ]);
 
     // Numeric fields — coerce string input to number or null
-    const NUMERIC_FIELDS = new Set(['payRate', 'clientBillRate', 'salary', 'customFloat1']);
+    const NUMERIC_FIELDS = new Set(['payRate', 'clientBillRate', 'salary', 'customFloat1', 'type']);
 
     const sanitized = {};
     for (const [key, value] of Object.entries(fields)) {
