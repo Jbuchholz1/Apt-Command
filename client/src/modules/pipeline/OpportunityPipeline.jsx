@@ -5,9 +5,9 @@ import EditableSelect from '../req-board/EditableSelect';
 import EditableCell from '../req-board/EditableCell';
 import ConvertToJobModal from './ConvertToJobModal';
 
-// "Past or missing" for the Expected Close date — red-highlights the cell so
-// stale or never-set close dates jump out in the Pipeline tab.
-function isExpCloseRed(val) {
+// "Past or missing" — red-highlights date cells (Exp Close, Next Activity)
+// so stale or never-set dates jump out in the Pipeline tab.
+function isPastOrMissing(val) {
   if (!val) return true;
   const d = new Date(val);
   if (isNaN(d.getTime())) return true;
@@ -228,6 +228,7 @@ export default function OpportunityPipeline() {
                     />
                     <EditableDate
                       value={o.nextActivity}
+                      className={isPastOrMissing(o.nextActivity) ? 'cell-date-expired' : ''}
                       onSave={async (tsValue) => {
                         try {
                           await updateOpportunityInBullhorn(o.id, { nextActivity: tsValue });
@@ -241,7 +242,7 @@ export default function OpportunityPipeline() {
                     />
                     <EditableDate
                       value={o.expectedCloseDate}
-                      className={isExpCloseRed(o.expectedCloseDate) ? 'cell-date-expired' : ''}
+                      className={isPastOrMissing(o.expectedCloseDate) ? 'cell-date-expired' : ''}
                       onSave={async (tsValue) => {
                         try {
                           await updateOpportunityInBullhorn(o.id, { expectedCloseDate: tsValue });
