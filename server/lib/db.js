@@ -964,11 +964,16 @@ async function getEmployeesForClientIds(clientIds) {
 
 // Single bulk insert for the contact sync. Each row is { client_id, name,
 // email, bullhorn_contact_id, ... }. No upsert path — the sync only inserts
-// rows that passed dedupe upstream.
+// rows that passed dedupe upstream. Chunked because one giant INSERT exceeds
+// Supabase's 30s statement timeout once ~500+ new contacts accumulate.
 async function bulkInsertEmployees(rows) {
   if (!supabase || !rows?.length) return { inserted: 0 };
-  const { error } = await supabase.from('employees').insert(rows);
-  if (error) throw error;
+  const CHUNK = 200;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const slice = rows.slice(i, i + CHUNK);
+    const { error } = await supabase.from('employees').insert(slice);
+    if (error) throw error;
+  }
   return { inserted: rows.length };
 }
 

@@ -149,9 +149,14 @@ export default function ReqBoardModule({
   const selectedJobIdRef = useRef(null);
   selectedJobIdRef.current = selectedJobId;
 
-  const fetchData = useCallback(async () => {
+  // `silent: true` is for background callers (poll, visibility-resume) — when
+  // the user already has data on screen, a transient MSAL `timed_out` or
+  // network blip should NOT flash a red banner. The next 20-sec tick almost
+  // always recovers. The "updated Xs ago" label is the soft warning if it
+  // keeps failing. Initial mount and the manual Refresh button stay loud.
+  const fetchData = useCallback(async ({ silent = false } = {}) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError(null);
       const [jobsRes, statsRes, placementsRes] = await Promise.all([
         getJobs(apiFilter),
@@ -170,9 +175,13 @@ export default function ReqBoardModule({
       setPlacements(placementsRes?.data || []);
       setLastRefresh(new Date());
     } catch (err) {
-      setError(err.message);
+      if (silent) {
+        console.warn('[req-board] auto-refresh failed (keeping stale data):', err?.message);
+      } else {
+        setError(err.message);
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -202,7 +211,7 @@ export default function ReqBoardModule({
         // works in both states.
         if (editingRef.current > 0) return;
         if (selectedJobIdRef.current) return;
-        fetchData();
+        fetchData({ silent: true });
       }, REFRESH_INTERVAL);
     };
     const startTicker = () => {
@@ -228,7 +237,7 @@ export default function ReqBoardModule({
         onReconnect: () => {
           // While we were disconnected we may have missed events. A single
           // refresh re-syncs both jobs and stats.
-          fetchData();
+          fetchData({ silent: true });
         },
         onError: (err) => {
           // Don't spam the console on every reconnect attempt.
@@ -256,7 +265,7 @@ export default function ReqBoardModule({
         stopSse();
       } else {
         // Catch up on anything we missed while hidden, then resume background work.
-        fetchData();
+        fetchData({ silent: true });
         setNow(Date.now());
         startPoll();
         startTicker();
