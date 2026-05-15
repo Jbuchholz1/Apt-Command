@@ -267,7 +267,7 @@ router.get('/opportunities', requirePipeline, async (req, res, next) => {
       clientContact: o.clientContact
         ? `${(o.clientContact.firstName || '')[0] || ''}. ${o.clientContact.lastName || ''}`.trim()
         : null,
-      nextActivity: o.customDate2 ? new Date(o.customDate2).toISOString() : null,
+      nextActivity: o.customDate1 ? new Date(o.customDate1).toISOString() : null,
       dateAdded: o.dateAdded ? new Date(o.dateAdded).toISOString() : null,
       expectedCloseDate: o.expectedCloseDate ? new Date(o.expectedCloseDate).toISOString() : null,
       dealValue: o.dealValue || null,
@@ -302,12 +302,12 @@ router.post('/opportunities/:id/update', requirePipeline, async (req, res, next)
     }
 
     // Whitelist: only allow safe fields. `nextActivity` is a clean API alias
-    // for the underlying Bullhorn `customDate2` field.
+    // for the underlying Bullhorn `customDate1` field.
     const ALLOWED = new Set(['status', 'expectedCloseDate', 'nextActivity']);
     const sanitized = {};
     for (const [key, val] of Object.entries(fields)) {
       if (!ALLOWED.has(key)) continue;
-      if (key === 'nextActivity') sanitized.customDate2 = val;
+      if (key === 'nextActivity') sanitized.customDate1 = val;
       else sanitized[key] = val;
     }
 
