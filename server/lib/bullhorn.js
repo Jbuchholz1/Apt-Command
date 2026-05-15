@@ -398,18 +398,62 @@ async function getClientContactsForCorp(clientCorpId) {
   });
 }
 
-// Bulk fetch ClientContacts for many corps in one call. Used by the Org Flow
-// contact sync; caller chunks corp ids (the Bullhorn `count` cap is the only
-// real limit). Same WHERE pattern as clientHealth.js's bulk lookup.
+// Bulk fetch ClientContacts for many corps. Used by the Org Flow contact
+// sync; caller chunks corp ids. Paginates by id cursor because a single
+// query is capped (Bullhorn returns 500 max, APT's MCP often caps shorter)
+// and a chunk of 20 corps can easily exceed that. Mirrors the pattern in
+// getActiveClientCorporations: order by id, advance lastId, stop on empty
+// page (not short page — MCP returns short pages mid-stream).
 async function getClientContactsForCorps(corpIds) {
   const numeric = (corpIds || []).map(i => parseInt(i, 10)).filter(Boolean);
   if (numeric.length === 0) return { data: [] };
-  return callTool('query_entity', {
-    entityType: 'ClientContact',
-    where: `clientCorporation.id IN (${numeric.join(',')}) AND isDeleted = false`,
-    fields: 'id,firstName,lastName,email,clientCorporation(id)',
-    count: 500,
-  });
+  const PAGE_SIZE = 500;
+  const baseWhere = `clientCorporation.id IN (${numeric.join(',')}) AND isDeleted = false`;
+  const fields = 'id,firstName,lastName,email,clientCorporation(id)';
+
+  const all = [];
+  let lastId = 0;
+  let pages = 0;
+  while (true) {
+    let result;
+    try {
+      result = await callTool('query_entity', {
+        entityType: 'ClientContact',
+        where: `${baseWhere} AND id > ${lastId}`,
+        fields,
+        orderBy: 'id',
+        count: PAGE_SIZE,
+      });
+    } catch (err) {
+      console.warn(`[bullhorn] getClientContactsForCorps page ${pages + 1} (id > ${lastId}) failed, retrying: ${err.message}`);
+      try {
+        result = await callTool('query_entity', {
+          entityType: 'ClientContact',
+          where: `${baseWhere} AND id > ${lastId}`,
+          fields,
+          orderBy: 'id',
+          count: PAGE_SIZE,
+        });
+      } catch (retryErr) {
+        console.warn(`[bullhorn] getClientContactsForCorps retry failed: ${retryErr.message} — returning partial result`);
+        break;
+      }
+    }
+    if (result?.message && !Array.isArray(result?.data)) {
+      console.warn(`[bullhorn] getClientContactsForCorps page ${pages + 1} non-JSON: ${String(result.message).slice(0, 200)}`);
+      break;
+    }
+    const contacts = result?.data || [];
+    pages++;
+    if (contacts.length === 0) break;
+    all.push(...contacts);
+    lastId = contacts[contacts.length - 1].id;
+    if (pages >= 50) {
+      console.warn('[bullhorn] getClientContactsForCorps hit 50-page safety cap');
+      break;
+    }
+  }
+  return { data: all };
 }
 
 async function createJob(fields) {

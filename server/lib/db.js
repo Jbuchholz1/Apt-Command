@@ -941,14 +941,25 @@ async function getEmployeesByClient(clientId) {
 
 // Bulk dedupe-source for the Bullhorn contact sync. Pulls just the columns
 // the sync needs to decide insert-vs-skip across many clients in one query.
+// Chunks the .in() call because PostgREST puts the values in the URL, and
+// passing many UUIDs at once blows past the URL-length cap → 400 Bad Request.
 async function getEmployeesForClientIds(clientIds) {
   if (!supabase || !clientIds?.length) return [];
-  const { data, error } = await supabase
-    .from('employees')
-    .select('id, client_id, email, bullhorn_contact_id')
-    .in('client_id', clientIds);
-  if (error) { console.error('[db] getEmployeesForClientIds error:', error.message); return []; }
-  return data || [];
+  const CHUNK = 200;
+  const out = [];
+  for (let i = 0; i < clientIds.length; i += CHUNK) {
+    const chunk = clientIds.slice(i, i + CHUNK);
+    const { data, error } = await supabase
+      .from('employees')
+      .select('id, client_id, email, bullhorn_contact_id')
+      .in('client_id', chunk);
+    if (error) {
+      console.error('[db] getEmployeesForClientIds error:', error.message);
+      throw error;
+    }
+    if (data) out.push(...data);
+  }
+  return out;
 }
 
 // Single bulk insert for the contact sync. Each row is { client_id, name,
