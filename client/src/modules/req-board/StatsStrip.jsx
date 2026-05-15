@@ -117,26 +117,12 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
   const [permSort, setPermSort] = useState({ key: 'id', dir: 'desc' });
   const [missedSort, setMissedSort] = useState({ key: 'id', dir: 'desc' });
 
-  // Keep the On The Board data fresh: load on mount and re-load whenever
+  // Keep the On The Board candidate map fresh: load on mount and re-load whenever
   // the parent refreshes jobs (auto-refresh ticks every 5 min).
-  // Response shape: { candidates: { [jobId]: [...] }, jobs: [...] }
-  // The jobs list lets us render rows for jobs that have fallen off the main
-  // Req Board (closed-status jobs past their 12hr fall-off window).
   useEffect(() => {
     let cancelled = false;
     getOfferOutCandidates()
-      .then(res => {
-        if (cancelled) return;
-        const payload = res.data || {};
-        if (payload && typeof payload === 'object' && 'candidates' in payload) {
-          setFilledCandidateMap(payload.candidates || {});
-          setFilledPhantomJobs(Array.isArray(payload.jobs) ? payload.jobs : []);
-        } else {
-          // Backwards-compat: older server returned the candidate map directly.
-          setFilledCandidateMap(payload);
-          setFilledPhantomJobs([]);
-        }
-      })
+      .then(res => { if (!cancelled) setFilledCandidateMap(res.data || {}); })
       .catch(err => console.error('Failed to load offer-out candidates:', err));
     return () => { cancelled = true; };
   }, [jobs]);
@@ -159,26 +145,12 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
   // On The Board: jobs that have at least one candidate in JobSubmission "Offer Extended".
   // Source of truth is filledCandidateMap (loaded eagerly below + refreshed on jobs change),
   // not JobOrder.status === 'Filled'. Map shape: { [jobId]: [{ id, name }, ...] }.
-  // filledPhantomJobs covers jobs that have fallen off the main Req Board (e.g.
-  // status moved to "Placed" >12hrs ago) but still have an unresolved Offer Extended
-  // submission with no Approved/Active Placement. The main jobs array is preferred
-  // when both exist so we don't lose the extra fields the main route attaches
-  // (clientSubs counts, fallingOff flag, etc.).
   const [filledCandidateMap, setFilledCandidateMap] = useState({});
-  const [filledPhantomJobs, setFilledPhantomJobs] = useState([]);
   const offerExtendedJobIds = useMemo(
     () => new Set(Object.keys(filledCandidateMap).map(String)),
     [filledCandidateMap]
   );
-  const filledJobs = useMemo(() => {
-    const byId = new Map();
-    for (const j of (jobs || [])) byId.set(String(j.id), j);
-    for (const j of filledPhantomJobs) {
-      const key = String(j.id);
-      if (!byId.has(key)) byId.set(key, j);
-    }
-    return [...byId.values()].filter(j => offerExtendedJobIds.has(String(j.id)));
-  }, [jobs, filledPhantomJobs, offerExtendedJobIds]);
+  const filledJobs = (jobs || []).filter(j => offerExtendedJobIds.has(String(j.id)));
   // Count candidates only for jobs visible in the current board, so the stat-card number
   // matches the modal row count (the modal also iterates filledJobs).
   const totalOfferExtended = useMemo(
