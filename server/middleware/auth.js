@@ -25,10 +25,18 @@ function getSigningKey(header, callback) {
  * Rejects requests with missing or invalid tokens with 401.
  */
 function requireAuth(req, res, next) {
-  // Skip auth if env vars are not configured (local dev only — blocked in production)
+  // Skip auth if env vars are not configured (local dev only — fail-secure for
+  // anything that isn't an explicit local-dev environment). The previous check
+  // (NODE_ENV !== 'production') would silently bypass auth on any unrecognized
+  // env string — including an accidentally-unset or mistyped NODE_ENV on a
+  // Railway service. Now: bypass only when NODE_ENV is empty (typical local
+  // run with no .env) or exactly 'development'. Any other value with missing
+  // Azure creds → 500 instead of an open door.
   if (!TENANT_ID || !CLIENT_ID) {
-    if (process.env.NODE_ENV === 'production') {
-      console.error('[AUTH] FATAL: AZURE_TENANT_ID and AZURE_CLIENT_ID must be set in production');
+    const nodeEnv = process.env.NODE_ENV;
+    const isLocalDev = !nodeEnv || nodeEnv === 'development';
+    if (!isLocalDev) {
+      console.error(`[AUTH] FATAL: AZURE_TENANT_ID and AZURE_CLIENT_ID must be set when NODE_ENV='${nodeEnv}'`);
       return res.status(500).json({ error: 'Server misconfigured — authentication not available' });
     }
     console.warn('[AUTH] Azure credentials not configured — skipping auth (dev mode)');

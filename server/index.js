@@ -43,15 +43,17 @@ console.log(`CORS: ${allowedOrigins.length} origin(s) configured`);
 // --- Security headers ---
 //
 // CSP_MODE controls Content-Security-Policy enforcement:
-//   off          (default) — header not sent; current behavior
-//   report-only  — Content-Security-Policy-Report-Only header sent; violations
-//                  POST to /api/csp-report but nothing is blocked
+//   off          — header not sent
+//   report-only  (default) — Content-Security-Policy-Report-Only header sent;
+//                  violations POST to /api/csp-report but nothing is blocked
 //   enforce      — Content-Security-Policy header sent; violations blocked
 //
 // Phase 1 inventory (2026-04-29) confirmed zero inline <script>/<style> blocks
 // in the build, no eval/new Function, no runtime DOM injection. 'unsafe-inline'
 // in style-src is required only for React runtime style="..." attributes.
-const CSP_MODE = (process.env.CSP_MODE || 'off').toLowerCase();
+// Default is report-only so violations are observable without blocking; set
+// CSP_MODE=enforce in Railway once the report logs are clean for 5–7 days.
+const CSP_MODE = (process.env.CSP_MODE || 'report-only').toLowerCase();
 const CSP_ENABLED = CSP_MODE === 'report-only' || CSP_MODE === 'enforce';
 const CSP_DIRECTIVES = {
   defaultSrc: ["'self'"],
@@ -142,7 +144,12 @@ app.use(cors({
     callback(null, false);
   },
   methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
-  credentials: true, // Allow Authorization header
+  // Vestigial: the Bearer-header flow does not require this — `credentials`
+  // gates cookies, not Authorization headers. Kept to avoid a behavior change
+  // in CORS preflight responses. See server/CLAUDE.md Rule 7: no session
+  // cookies, no `credentials: 'include'`. Do not introduce cookie auth here
+  // without adding CSRF protection.
+  credentials: true,
 }));
 
 app.use(express.json());

@@ -39,6 +39,12 @@ function getSchemaFeatures() {
 
 // Auto-migrate: ensure status_changed_at column exists on job_overrides,
 // and detect the optional optimistic-locking + reconciliation features.
+//
+// SECURITY: the `exec_sql` calls below use string literals only — they must
+// never receive any user-controlled input. `exec_sql` is a custom Supabase
+// RPC that executes arbitrary DDL/DML with elevated privileges; passing a
+// string built from a request body or query param would be instant pwn.
+// If you add a new probe here, hardcode the SQL.
 async function ensureSchema() {
   if (!supabase) return;
   try {
