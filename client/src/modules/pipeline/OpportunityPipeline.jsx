@@ -187,8 +187,10 @@ export default function OpportunityPipeline() {
                   <th onClick={() => toggleSort('id')}>ID{sortIcon('id')}</th>
                   <th onClick={() => toggleSort('title')}>Title{sortIcon('title')}</th>
                   <th onClick={() => toggleSort('client')}>Client{sortIcon('client')}</th>
+                  <th onClick={() => toggleSort('clientContact')}>Contact{sortIcon('clientContact')}</th>
                   <th onClick={() => toggleSort('owner')}>Owner{sortIcon('owner')}</th>
                   <th onClick={() => toggleSort('status')}>Status{sortIcon('status')}</th>
+                  <th onClick={() => toggleSort('nextActivity')}>Next Activity{sortIcon('nextActivity')}</th>
                   <th onClick={() => toggleSort('expectedCloseDate')}>Exp Close{sortIcon('expectedCloseDate')}</th>
                   <th style={{ cursor: 'default' }}>Note</th>
                   <th onClick={() => toggleSort('dealValue')}>Deal Value{sortIcon('dealValue')}</th>
@@ -202,6 +204,7 @@ export default function OpportunityPipeline() {
                     <td><a href={`${BH_BASE}?Entity=Opportunity&id=${o.id}`} target="_blank" rel="noopener noreferrer" className="pipeline-bh-link">{o.id}</a></td>
                     <td>{o.title || '—'}</td>
                     <td>{o.client || '—'}</td>
+                    <td>{o.clientContact || '—'}</td>
                     <td>{o.owner || '—'}</td>
                     <EditableSelect
                       value={o.status || ''}
@@ -220,6 +223,19 @@ export default function OpportunityPipeline() {
                           ));
                         } catch (err) {
                           console.error('Failed to update opportunity status:', err);
+                        }
+                      }}
+                    />
+                    <EditableDate
+                      value={o.nextActivity}
+                      onSave={async (tsValue) => {
+                        try {
+                          await updateOpportunityInBullhorn(o.id, { nextActivity: tsValue });
+                          setOpportunities(prev => prev.map(op =>
+                            op.id === o.id ? { ...op, nextActivity: tsValue ? new Date(tsValue).toISOString() : null } : op
+                          ));
+                        } catch (err) {
+                          console.error('Failed to update next activity:', err);
                         }
                       }}
                     />
@@ -273,14 +289,14 @@ export default function OpportunityPipeline() {
                 ))}
                 {filtered.length > 0 && (
                   <tr className="pipeline-total-row">
-                    <td colSpan="7" style={{ textAlign: 'right', fontWeight: 700 }}>Totals</td>
+                    <td colSpan="9" style={{ textAlign: 'right', fontWeight: 700 }}>Totals</td>
                     <td className="pipeline-money" style={{ fontWeight: 700 }}>{fmtCurrency(totalDeal)}</td>
                     <td className="pipeline-money" style={{ fontWeight: 700 }}>{fmtCurrency(totalWeighted)}</td>
                     <td></td>
                   </tr>
                 )}
                 {filtered.length === 0 && (
-                  <tr><td colSpan="10" className="pipeline-empty">No opportunities found</td></tr>
+                  <tr><td colSpan="12" className="pipeline-empty">No opportunities found</td></tr>
                 )}
               </tbody>
             </table>

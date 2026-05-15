@@ -398,7 +398,7 @@ async function getOpenOpportunitiesFull() {
   return callTool('query_entity', {
     entityType: 'Opportunity',
     where: "isDeleted = false",
-    fields: 'id,title,status,owner,clientCorporation,dateAdded,expectedCloseDate,dealValue,weightedDealValue',
+    fields: 'id,title,status,owner,clientCorporation,clientContact,customDate2,dateAdded,expectedCloseDate,dealValue,weightedDealValue',
     orderBy: '-dateAdded',
     count: 500,
   });
@@ -408,7 +408,7 @@ async function getOpportunityById(opportunityId) {
   return callTool('query_entity', {
     entityType: 'Opportunity',
     where: `id = ${parseInt(opportunityId, 10)} AND isDeleted = false`,
-    fields: 'id,title,status,owner,clientCorporation,dateAdded,expectedCloseDate,dealValue,weightedDealValue',
+    fields: 'id,title,status,owner,clientCorporation,clientContact,customDate2,dateAdded,expectedCloseDate,dealValue,weightedDealValue',
     count: 1,
   });
 }
