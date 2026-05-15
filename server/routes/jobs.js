@@ -1,5 +1,5 @@
 const express = require('express');
-const { CLIENT_SUB_STATUSES, getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getJobsByIds, getSubmissions, addNoteToJob, addNoteToOpportunity, updateJobField, updateOpportunityField, updateSubmissionField, getCorporateUsers, getOpenOpportunitiesFull, getOpportunityById, getClientContactsForCorp, createJob, getClientSubmissions, getOfferExtendedSubmissions } = require('../lib/bullhorn');
+const { CLIENT_SUB_STATUSES, getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getJobsByIds, getSubmissions, addNoteToJob, addNoteToOpportunity, updateJobField, updateOpportunityField, updateSubmissionField, getCorporateUsers, getOpenOpportunitiesFull, getOpportunityById, getClientContactsForCorp, createJob, getClientSubmissions, getOfferExtendedSubmissions, getActivePlacements } = require('../lib/bullhorn');
 const {
   getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote,
   enqueueReconciliation, OverrideConflictError,
@@ -492,19 +492,42 @@ router.patch('/submissions/:id/overrides', requireRb, async (req, res, next) => 
   }
 });
 
-// GET /api/jobs/offer-out-candidates — Map of jobOrderId → array of
-// { id, name, submissionId, submissionStatus } for subs in Offer Extended.
+// GET /api/jobs/offer-out-candidates — On the Board view data.
+// Returns { candidates, jobs }:
+//   candidates: { [jobOrderId]: [{ id, name, submissionId, submissionStatus }] }
+//     for every JobSubmission in "Offer Extended" status whose candidate+job
+//     pair does NOT already have an Approved/Active Placement.
+//   jobs: formatted JobOrder records for every job referenced in `candidates`,
+//     so the modal can render jobs that have fallen off the main Req Board
+//     (closed-status jobs past their 12hr fall-off window). The client merges
+//     these into its filledJobs view without affecting the main board.
 // submissionId + submissionStatus are used by the On The Board modal so the
 // candidate's submission status can be edited inline (e.g. to pull someone
 // off the board by moving them to Backout / Placed / etc.).
 router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
   try {
-    const result = await getOfferExtendedSubmissions();
+    const [subsResult, placementsResult, overrides] = await Promise.all([
+      getOfferExtendedSubmissions(),
+      getActivePlacements(),
+      getAllOverrides(),
+    ]);
+
+    // Candidates whose Placement is already Approved/Active have effectively
+    // moved off the board — exclude them in case the JobSubmission status
+    // wasn't auto-flipped from "Offer Extended" to "Placed".
+    const placedKeys = new Set();
+    for (const p of (placementsResult?.data || [])) {
+      const candId = p.candidate?.id;
+      const jobId = p.jobOrder?.id;
+      if (candId && jobId) placedKeys.add(`${candId}-${jobId}`);
+    }
+
     const map = {};
-    for (const sub of (result?.data || [])) {
+    for (const sub of (subsResult?.data || [])) {
       const jobId = sub.jobOrder?.id;
       const c = sub.candidate;
       if (!jobId || !c) continue;
+      if (c.id && placedKeys.has(`${c.id}-${jobId}`)) continue;
       const name = `${c.firstName || ''} ${c.lastName || ''}`.trim();
       if (!name) continue;
       if (!map[jobId]) map[jobId] = [];
@@ -518,7 +541,15 @@ router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
         });
       }
     }
-    res.json({ data: map });
+
+    const jobIds = Object.keys(map).map(id => parseInt(id, 10)).filter(id => !Number.isNaN(id));
+    let jobs = [];
+    if (jobIds.length > 0) {
+      const jobsResult = await getJobsByIds(jobIds);
+      jobs = (jobsResult?.data || []).map(j => mergeOverrides(formatJob(j), overrides));
+    }
+
+    res.json({ data: { candidates: map, jobs } });
   } catch (err) {
     next(err);
   }
