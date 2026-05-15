@@ -237,23 +237,48 @@ async function getSubmissions(jobOrderId) {
   });
 }
 
+// Walks all pages of a Placement query so the result is never silently
+// truncated. Guards against an MCP server that ignores `start` by checking
+// whether page N+1 starts with the same record as page 0 — if so, we stop
+// rather than loop forever. Also stops at MAX as a runaway safety net.
+async function paginatePlacementQuery(label, baseArgs) {
+  const PAGE = 500;
+  const MAX = 5000;
+  const all = [];
+  let start = 0;
+  let firstSeenId = null;
+  while (start < MAX) {
+    const page = await callTool('query_entity', { ...baseArgs, count: PAGE, start });
+    const rows = page?.data || [];
+    if (start === 0) {
+      firstSeenId = rows[0]?.id ?? null;
+    } else if (rows.length > 0 && rows[0].id === firstSeenId) {
+      console.warn(`[${label}] MCP ignored \`start\` offset — pagination not honored. Returning first page only.`);
+      return { data: all };
+    }
+    all.push(...rows);
+    if (rows.length < PAGE) return { data: all };
+    start += PAGE;
+  }
+  console.warn(`[${label}] Hit ${MAX}-record sanity cap — Bullhorn may have more rows beyond this point`);
+  return { data: all };
+}
+
 async function getActivePlacements() {
-  return callTool('query_entity', {
+  return paginatePlacementQuery('getActivePlacements', {
     entityType: 'Placement',
     where: "status = 'Approved' OR status = 'Active'",
     fields: 'id,candidate(id,firstName,lastName),jobOrder(id,title,employmentType,owner(id,firstName,lastName)),dateBegin,dateEnd,payRate,clientBillRate,status,employmentType,salary,fee',
     orderBy: '-dateBegin',
-    count: 200,
   });
 }
 
 async function getPendingApprovedPlacements() {
-  return callTool('query_entity', {
+  return paginatePlacementQuery('getPendingApprovedPlacements', {
     entityType: 'Placement',
     where: "status = 'Pending' OR status = 'Approved'",
     fields: 'id,candidate(id,firstName,lastName),jobOrder(id,title,owner(id,firstName,lastName),clientCorporation(id,name)),dateBegin,status,employmentType',
     orderBy: '-dateBegin',
-    count: 500,
   });
 }
 
