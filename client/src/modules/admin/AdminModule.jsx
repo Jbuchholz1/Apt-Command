@@ -8,10 +8,11 @@ import {
   runExportNow,
   createExternalUser,
   adminResetExternalPassword,
+  deleteExternalUser,
 } from '../../lib/api';
 import { useMsal } from '@azure/msal-react';
 import { showToast } from '../../lib/toast';
-import { Shield, Search, Settings, UserPlus, KeyRound, Copy } from 'lucide-react';
+import { Shield, Search, Settings, UserPlus, KeyRound, Copy, Trash2 } from 'lucide-react';
 import { MODULES, MODULE_KEYS } from '../../lib/modules';
 import AccessDenied from '../../components/AccessDenied';
 import './admin.css';
@@ -40,6 +41,7 @@ export default function AdminModule() {
   const [exportResult, setExportResult] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [resetUser, setResetUser] = useState(null);
+  const [deleteUser, setDeleteUser] = useState(null);
 
   const canRead = hasAccess('admin');
   const canManage = hasAccess('admin', 'admin');
@@ -309,6 +311,18 @@ export default function AdminModule() {
                             Reset PW
                           </button>
                         )}
+                        {user.auth_provider === 'external' && canManage && !isSelf && (
+                          <button
+                            type="button"
+                            className="admin-role-select"
+                            title="Delete this external user"
+                            style={{ color: '#b91c1c', borderColor: '#fecaca' }}
+                            onClick={() => setDeleteUser(user)}
+                          >
+                            <Trash2 size={12} style={{ verticalAlign: '-2px', marginRight: 4 }} />
+                            Delete
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -343,6 +357,14 @@ export default function AdminModule() {
         <ResetPasswordModal
           user={resetUser}
           onClose={() => setResetUser(null)}
+        />
+      )}
+
+      {deleteUser && (
+        <DeleteUserModal
+          user={deleteUser}
+          onClose={() => setDeleteUser(null)}
+          onDeleted={() => { setDeleteUser(null); loadUsers(); }}
         />
       )}
     </div>
@@ -777,6 +799,54 @@ function ResetPasswordModal({ user, onClose }) {
           </button>
         </div>
       </form>
+    </ModalShell>
+  );
+}
+
+function DeleteUserModal({ user, onClose, onDeleted }) {
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleConfirm = async () => {
+    setSubmitting(true);
+    setError('');
+    try {
+      await deleteExternalUser(user.id);
+      showToast(`Deleted ${user.full_name || user.email}`, 'success');
+      onDeleted();
+    } catch (err) {
+      setError(err?.message || 'Failed to delete user');
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <ModalShell onClose={onClose} width={440}>
+      <h2 style={{ margin: 0, fontSize: 18, color: '#0f172a' }}>Delete external user?</h2>
+      <p style={{ margin: '8px 0 16px', fontSize: 13, color: '#475569' }}>
+        This permanently removes <strong>{user.full_name || user.email}</strong> ({user.email})
+        and all of their per-module permissions. Their current session is invalidated immediately.
+        This cannot be undone.
+      </p>
+
+      {error && (
+        <div style={{ color: '#dc2626', fontSize: 12, marginTop: 8 }}>{error}</div>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+        <button type="button" className="admin-role-select" onClick={onClose} disabled={submitting}>
+          Cancel
+        </button>
+        <button
+          type="button"
+          className="admin-role-select"
+          style={{ background: '#b91c1c', color: '#fff', borderColor: '#b91c1c' }}
+          onClick={handleConfirm}
+          disabled={submitting}
+        >
+          {submitting ? 'Deleting…' : 'Delete user'}
+        </button>
+      </div>
     </ModalShell>
   );
 }

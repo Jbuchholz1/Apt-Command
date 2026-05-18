@@ -376,6 +376,12 @@ export function adminResetExternalPassword(userId, newPassword) {
   });
 }
 
+export function deleteExternalUser(userId) {
+  return fetchAPI(`/api/admin/users/${userId}`, {
+    method: 'DELETE',
+  });
+}
+
 // --- User Management ---
 
 export function getCurrentUser() {

@@ -303,6 +303,49 @@ router.post('/users/external', requireModule('admin', 'admin'), async (req, res,
   }
 });
 
+// DELETE /api/admin/users/:id — Remove an external user. Refuses Azure users
+// (they're managed in Entra) and self-delete. Also cleans up the user's
+// per-module permission grants, which are keyed by email and would otherwise
+// linger as orphans.
+router.delete('/users/:id', requireModule('admin', 'admin'), async (req, res, next) => {
+  try {
+    if (!supabase) return res.status(503).json({ error: 'Database not configured' });
+
+    const { id } = req.params;
+    const { data: target, error: tErr } = await supabase
+      .from('user_profiles')
+      .select('id, email, auth_provider')
+      .eq('id', id)
+      .maybeSingle();
+    if (tErr) throw tErr;
+    if (!target) return res.status(404).json({ error: 'User not found' });
+    if (target.auth_provider !== 'external') {
+      return res.status(400).json({ error: 'Only external users can be deleted here — Azure users are managed in Entra' });
+    }
+
+    const requesterEmail = (req.user?.email || '').toLowerCase();
+    if ((target.email || '').toLowerCase() === requesterEmail) {
+      return res.status(400).json({ error: 'You cannot delete your own account' });
+    }
+
+    // Clean up permission grants first (FK-free but keyed by email).
+    await supabase
+      .from('user_module_permissions')
+      .delete()
+      .ilike('user_email', (target.email || '').toLowerCase());
+
+    const { error: delErr } = await supabase
+      .from('user_profiles')
+      .delete()
+      .eq('id', id);
+    if (delErr) throw delErr;
+
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // PUT /api/admin/users/:id/password — Admin password reset for an external user.
 // Body: { new_password }
 // Only allowed when the target row is auth_provider='external'.
