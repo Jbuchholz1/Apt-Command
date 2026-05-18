@@ -117,12 +117,14 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
   const [permSort, setPermSort] = useState({ key: 'id', dir: 'desc' });
   const [missedSort, setMissedSort] = useState({ key: 'id', dir: 'desc' });
 
-  // Keep the On The Board candidate map fresh: load on mount and re-load whenever
-  // the parent refreshes jobs (auto-refresh ticks every 5 min).
+  // Keep the On The Board rows fresh: load on mount and re-load whenever the
+  // parent refreshes jobs (auto-refresh ticks every 5 min). Rows are
+  // self-contained (server hydrates the job payload), so this counter is
+  // independent of the board's current filter/visibility state.
   useEffect(() => {
     let cancelled = false;
     getOfferOutCandidates()
-      .then(res => { if (!cancelled) setFilledCandidateMap(res.data || {}); })
+      .then(res => { if (!cancelled) setFilledRows(res.data || []); })
       .catch(err => console.error('Failed to load offer-out candidates:', err));
     return () => { cancelled = true; };
   }, [jobs]);
@@ -142,21 +144,16 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
     !CLOSED_STATUSES.has(j.status) && getFollowUpUrgency(j.followUp) === 'red'
   );
 
-  // On The Board: jobs that have at least one candidate in JobSubmission "Offer Extended".
-  // Source of truth is filledCandidateMap (loaded eagerly below + refreshed on jobs change),
-  // not JobOrder.status === 'Filled'. Map shape: { [jobId]: [{ id, name }, ...] }.
-  const [filledCandidateMap, setFilledCandidateMap] = useState({});
-  const offerExtendedJobIds = useMemo(
-    () => new Set(Object.keys(filledCandidateMap).map(String)),
-    [filledCandidateMap]
-  );
-  const filledJobs = (jobs || []).filter(j => offerExtendedJobIds.has(String(j.id)));
-  // Count candidates only for jobs visible in the current board, so the stat-card number
-  // matches the modal row count (the modal also iterates filledJobs).
-  const totalOfferExtended = useMemo(
-    () => filledJobs.reduce((sum, j) => sum + ((filledCandidateMap[j.id] || []).length), 0),
-    [filledJobs, filledCandidateMap]
-  );
+  // On The Board: candidates in the offer / pending-placement pipeline. Includes:
+  //   1. JobSubmission.status = 'Offer Extended' (offer pending acceptance)
+  //   2. Placement.status = 'Pending' (offer accepted, awaiting final approval)
+  // Source of truth is filledRows from the server, NOT JobOrder.status or the
+  // board's visible jobs array — so candidates don't disappear when their job
+  // falls off the board, and board filters don't shrink the count.
+  // Row shape: { job: <formatted+overrides>, cand: { id, name, submissionId,
+  // submissionStatus, placementId, placementStatus, source } }.
+  const [filledRows, setFilledRows] = useState([]);
+  const totalOfferExtended = filledRows.length;
   const missedFollowUps = missedFollowUpJobs.length;
 
   // Called Shots — jobs flagged as called_shot in overrides
@@ -425,7 +422,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
     // Defensive refresh on open so the modal is current between auto-refresh ticks.
     try {
       const res = await getOfferOutCandidates();
-      setFilledCandidateMap(res.data || {});
+      setFilledRows(res.data || []);
     } catch (err) {
       console.error('Failed to load offer-out candidates:', err);
     }
@@ -433,9 +430,9 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
 
   const filledOwners = useMemo(() => {
     const set = new Set();
-    filledJobs.forEach(j => { if (j.owner) set.add(j.owner); });
+    filledRows.forEach(r => { if (r.job?.owner) set.add(r.job.owner); });
     return [...set].sort();
-  }, [filledJobs]);
+  }, [filledRows]);
 
   const handleFilledSort = (key) => {
     setFilledSort(prev =>
@@ -450,14 +447,13 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
     return filledSort.dir === 'asc' ? ' ↑' : ' ↓';
   };
 
-  // One row per (job, candidate-in-Offer-Extended). Matches the stat-card count.
+  // One row per candidate (each row is already {job, cand} from the server).
   const filteredFilled = useMemo(() => {
-    let rows = filledJobs.flatMap(j =>
-      (filledCandidateMap[j.id] || []).map(cand => ({ job: j, cand }))
-    );
+    let rows = filledRows;
     if (filledOwnerFilter) {
-      rows = rows.filter(r => r.job.owner === filledOwnerFilter);
+      rows = rows.filter(r => r.job?.owner === filledOwnerFilter);
     }
+    rows = [...rows];
     rows.sort((a, b) => {
       const candKeys = { candidate: 'name', candidateStatus: 'submissionStatus' };
       const candField = candKeys[filledSort.key];
@@ -473,7 +469,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
       return filledSort.dir === 'asc' ? cmp : -cmp;
     });
     return rows;
-  }, [filledJobs, filledOwnerFilter, filledSort, filledCandidateMap]);
+  }, [filledRows, filledOwnerFilter, filledSort]);
 
   // Sum of weekly CE spread + perm fee across visible (filtered) On The Board rows.
   // Each row is one candidate, so two candidates on the same job count the spread twice.
@@ -756,30 +752,26 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
   };
 
   // Update the candidate's JobSubmission status from inside the On The Board modal.
-  // If the new status is anything other than 'Offer Extended', the candidate no
-  // longer belongs in this modal — optimistically remove the row from the local
-  // candidate map so it disappears immediately (the next refresh would otherwise
-  // be the only thing dropping it).
+  // If the new status moves the candidate out of the offer pipeline (anything
+  // other than 'Offer Extended' or 'Placed'), optimistically remove the row so
+  // it disappears immediately rather than waiting for the next refresh. 'Placed'
+  // is kept because Bullhorn typically creates a Pending Placement on that
+  // transition, which means the candidate should stay visible until the
+  // placement is approved.
   const handleCandStatusSave = async (job, cand, newStatus) => {
     if (!cand?.submissionId) return;
     const previousStatus = cand.submissionStatus;
+    const keepsRow = newStatus === 'Offer Extended' || newStatus === 'Placed';
 
-    setFilledCandidateMap(prev => {
-      const next = { ...prev };
-      const jobList = (next[job.id] || []).slice();
-      const idx = jobList.findIndex(c => c.submissionId === cand.submissionId);
+    setFilledRows(prev => {
+      const idx = prev.findIndex(r => r.cand.submissionId === cand.submissionId);
       if (idx === -1) return prev;
-      if (newStatus === 'Offer Extended') {
-        jobList[idx] = { ...jobList[idx], submissionStatus: newStatus };
-      } else {
-        jobList.splice(idx, 1);
+      if (keepsRow) {
+        const next = prev.slice();
+        next[idx] = { ...next[idx], cand: { ...next[idx].cand, submissionStatus: newStatus } };
+        return next;
       }
-      if (jobList.length === 0) {
-        delete next[job.id];
-      } else {
-        next[job.id] = jobList;
-      }
-      return next;
+      return prev.filter((_, i) => i !== idx);
     });
 
     await saveWithToast(
@@ -787,17 +779,15 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
       {
         failureMessage: 'Could not update candidate status',
         onRollback: () => {
-          setFilledCandidateMap(prev => {
-            const next = { ...prev };
-            const jobList = (next[job.id] || []).slice();
-            const existsIdx = jobList.findIndex(c => c.submissionId === cand.submissionId);
-            if (existsIdx >= 0) {
-              jobList[existsIdx] = { ...jobList[existsIdx], submissionStatus: previousStatus };
-            } else {
-              jobList.push({ ...cand, submissionStatus: previousStatus });
+          setFilledRows(prev => {
+            const idx = prev.findIndex(r => r.cand.submissionId === cand.submissionId);
+            if (idx >= 0) {
+              const next = prev.slice();
+              next[idx] = { ...next[idx], cand: { ...next[idx].cand, submissionStatus: previousStatus } };
+              return next;
             }
-            next[job.id] = jobList;
-            return next;
+            // Row was removed optimistically — put it back.
+            return [...prev, { job, cand: { ...cand, submissionStatus: previousStatus } }];
           });
         },
       },
@@ -864,7 +854,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
     { label: 'Missed Follow Ups', value: missedFollowUps, color: '#dc2626', onClick: () => setShowMissedFollowUps(true) },
     { label: 'A/B Covered', value: `${abCovered} / ${abTotal}`, color: '#c9a227', onClick: () => { setAbOwnerFilter(''); setAbSort({ key: 'id', dir: 'desc' }); setShowAB(true); } },
     { label: 'C Reqs', value: cReqCount, color: '#94a3b8', onClick: () => { setCOwnerFilter(''); setCSort({ key: 'id', dir: 'desc' }); setShowC(true); } },
-    { label: 'On The Board', value: totalOfferExtended, color: '#7c3aed', tooltip: 'Candidates in Offer Extended', onClick: handleFilledClick },
+    { label: 'On The Board', value: totalOfferExtended, color: '#7c3aed', tooltip: 'Candidates in Offer Extended or with a Pending placement awaiting approval. Counts firm-wide regardless of board filters.', onClick: handleFilledClick },
     { label: 'Called Shots', value: fmtCurrency(calledShotSpreadTotal), color: '#ea580c', tooltip: `Total spread across ${calledShotJobs.length} Called Shot job(s): weekly CE spread + perm fee. Click to see the list.`, onClick: () => { setCsOwnerFilter([]); setCsTrFilter([]); setCsSort({ key: 'id', dir: 'desc' }); setShowCalledShots(true); } },
     // Opportunities is hidden on the India Req Board — opportunities are
     // pre-job and don't have an apt_india concept, so showing firm-wide
@@ -1395,7 +1385,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
                         className="cell-editable"
                       />
                     ) : (
-                      <td>—</td>
+                      <td>{cand.placementStatus ? `Placed (${cand.placementStatus})` : '—'}</td>
                     )}
                   </tr>
                 ))}

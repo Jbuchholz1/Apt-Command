@@ -1,5 +1,5 @@
 const express = require('express');
-const { CLIENT_SUB_STATUSES, getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getJobsByIds, getSubmissions, addNoteToJob, addNoteToOpportunity, updateJobField, updateOpportunityField, updateSubmissionField, getCorporateUsers, getOpenOpportunitiesFull, getOpportunityById, getClientContactsForCorp, createJob, getClientSubmissions, getOfferExtendedSubmissions } = require('../lib/bullhorn');
+const { CLIENT_SUB_STATUSES, getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getJobsByIds, getSubmissions, addNoteToJob, addNoteToOpportunity, updateJobField, updateOpportunityField, updateSubmissionField, getCorporateUsers, getOpenOpportunitiesFull, getOpportunityById, getClientContactsForCorp, createJob, getClientSubmissions, getOfferExtendedSubmissions, getPendingPlacements } = require('../lib/bullhorn');
 const {
   getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote,
   enqueueReconciliation, OverrideConflictError,
@@ -499,33 +499,85 @@ router.patch('/submissions/:id/overrides', requireRb, async (req, res, next) => 
   }
 });
 
-// GET /api/jobs/offer-out-candidates — Map of jobOrderId → array of
-// { id, name, submissionId, submissionStatus } for subs in Offer Extended.
-// submissionId + submissionStatus are used by the On The Board modal so the
-// candidate's submission status can be edited inline (e.g. to pull someone
-// off the board by moving them to Backout / Placed / etc.).
+// GET /api/jobs/offer-out-candidates — Flat array of On The Board rows:
+//   [{ job: <formatted+overrides>, cand: { id, name, submissionId, submissionStatus, placementId, placementStatus, source } }, ...]
+// Includes candidates in two pipeline states:
+//   1. JobSubmission.status = 'Offer Extended' (offer pending acceptance)
+//   2. Placement.status = 'Pending' (offer accepted, awaiting final approval)
+// The job payload is self-contained — the client does NOT join against the
+// req-board's `jobs` array — so the counter is independent of board filters
+// and stays accurate when a job has fallen off the board's 12h window.
 router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
   try {
-    const result = await getOfferExtendedSubmissions();
-    const map = {};
-    for (const sub of (result?.data || [])) {
+    const [subsResult, placementsResult, overrides] = await Promise.all([
+      getOfferExtendedSubmissions(),
+      getPendingPlacements(),
+      getAllOverrides(),
+    ]);
+
+    // Dedupe by (candidateId|jobId). Placement wins if both exist for the
+    // same pair, since it's later in the workflow.
+    const rowsByKey = new Map();
+
+    for (const sub of (subsResult?.data || [])) {
       const jobId = sub.jobOrder?.id;
       const c = sub.candidate;
       if (!jobId || !c) continue;
       const name = `${c.firstName || ''} ${c.lastName || ''}`.trim();
       if (!name) continue;
-      if (!map[jobId]) map[jobId] = [];
-      const key = c.id ?? name;
-      if (!map[jobId].some(x => (x.id ?? x.name) === key)) {
-        map[jobId].push({
+      const key = `${c.id ?? name}|${jobId}`;
+      rowsByKey.set(key, {
+        jobId,
+        cand: {
           id: c.id ?? null,
           name,
           submissionId: sub.id,
           submissionStatus: sub.status,
-        });
-      }
+          placementId: null,
+          placementStatus: null,
+          source: 'submission',
+        },
+      });
     }
-    res.json({ data: map });
+
+    for (const pl of (placementsResult?.data || [])) {
+      const jobId = pl.jobOrder?.id;
+      const c = pl.candidate;
+      if (!jobId || !c) continue;
+      const name = `${c.firstName || ''} ${c.lastName || ''}`.trim();
+      if (!name) continue;
+      const key = `${c.id ?? name}|${jobId}`;
+      rowsByKey.set(key, {
+        jobId,
+        cand: {
+          id: c.id ?? null,
+          name,
+          submissionId: null,
+          submissionStatus: null,
+          placementId: pl.id,
+          placementStatus: pl.status,
+          source: 'placement',
+        },
+      });
+    }
+
+    // Hydrate job data for every referenced jobId. We use getJobsByIds so the
+    // payload doesn't depend on which jobs are currently visible on the board.
+    const jobIds = [...new Set([...rowsByKey.values()].map(r => r.jobId))];
+    const jobsResult = jobIds.length ? await getJobsByIds(jobIds) : { data: [] };
+    const jobsById = new Map();
+    for (const j of (jobsResult?.data || [])) {
+      jobsById.set(j.id, mergeOverrides(formatJob(j), overrides));
+    }
+
+    const rows = [];
+    for (const { jobId, cand } of rowsByKey.values()) {
+      const job = jobsById.get(jobId);
+      if (!job) continue; // job was deleted or otherwise unfetchable — skip defensively
+      rows.push({ job, cand });
+    }
+
+    res.json({ data: rows });
   } catch (err) {
     next(err);
   }

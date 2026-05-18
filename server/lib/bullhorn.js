@@ -328,6 +328,18 @@ async function getOfferExtendedSubmissions() {
   });
 }
 
+// Placements that haven't reached final approval yet. Used by the On The Board
+// modal so a candidate stays visible through the offer→placed→approved window,
+// not just while the submission is in Offer Extended.
+async function getPendingPlacements() {
+  return paginatePlacementQuery('getPendingPlacements', {
+    entityType: 'Placement',
+    where: "status = 'Pending' AND isDeleted = false",
+    fields: 'id,candidate(id,firstName,lastName),jobOrder(id),status,dateBegin',
+    orderBy: '-dateBegin',
+  });
+}
+
 async function getOpenOpportunities() {
   return callTool('query_entity', {
     entityType: 'Opportunity',
@@ -1252,6 +1264,7 @@ module.exports = {
   getActivePlacements,
   getClientSubmissions,
   getOfferExtendedSubmissions,
+  getPendingPlacements,
   getOpenOpportunities,
   getOpenOpportunitiesFull,
   getOpportunityById,
