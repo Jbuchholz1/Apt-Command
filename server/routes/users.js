@@ -11,14 +11,33 @@ const { getCorporateUserByEmail } = require('../lib/bullhorn');
 // CorporateUser id, so the client can render role-aware dashboards
 // without a second round-trip. Fail-soft: if the Bullhorn lookup fails
 // (outage, missing user), bullhorn is null and the app still loads.
+//
+// External users (auth_provider='external') skip the Bullhorn lookup
+// entirely and surface `password_must_change` so the client can show the
+// forced-change modal.
 router.get('/me', async (req, res, next) => {
   try {
     const email = req.user?.email || '';
     const name = req.user?.name || '';
+    const provider = req.user?.provider || 'azure';
     const { role, permissions } = await resolvePermissions(email);
 
+    let authProvider = provider;
+    let passwordMustChange = false;
+    if (supabase && email) {
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('auth_provider, password_must_change')
+        .ilike('email', email)
+        .maybeSingle();
+      if (profile) {
+        authProvider = profile.auth_provider || provider;
+        passwordMustChange = !!profile.password_must_change;
+      }
+    }
+
     let bullhorn = null;
-    if (email) {
+    if (email && authProvider !== 'external') {
       try {
         const corpUser = await getCorporateUserByEmail(email);
         if (corpUser) {
@@ -33,7 +52,15 @@ router.get('/me', async (req, res, next) => {
       }
     }
 
-    res.json({ email, name, role, permissions, bullhorn });
+    res.json({
+      email,
+      name,
+      role,
+      permissions,
+      bullhorn,
+      auth_provider: authProvider,
+      password_must_change: passwordMustChange,
+    });
   } catch (err) {
     next(err);
   }

@@ -14,6 +14,9 @@ const UserRoleContext = createContext({
   bullhornRole: '',
   bullhornUserId: null,
   bullhornName: '',
+  authProvider: 'azure',
+  passwordMustChange: false,
+  acknowledgePasswordChange: () => {},
 });
 
 const RETRY_DELAYS_MS = [400, 1200, 3000];
@@ -43,6 +46,8 @@ export function UserRoleProvider({ children }) {
   const [bullhornRole, setBullhornRole] = useState('');
   const [bullhornUserId, setBullhornUserId] = useState(null);
   const [bullhornName, setBullhornName] = useState('');
+  const [authProvider, setAuthProvider] = useState('azure');
+  const [passwordMustChange, setPasswordMustChange] = useState(false);
 
   useEffect(() => {
     fetchCurrentUserWithRetry()
@@ -59,6 +64,8 @@ export function UserRoleProvider({ children }) {
         setBullhornRole(data?.bullhorn?.role || '');
         setBullhornUserId(data?.bullhorn?.userId ?? null);
         setBullhornName(data?.bullhorn?.name || '');
+        setAuthProvider(data?.auth_provider || 'azure');
+        setPasswordMustChange(!!data?.password_must_change);
       })
       .catch((err) => {
         setRole('basic');
@@ -89,13 +96,16 @@ export function UserRoleProvider({ children }) {
     [permissions, isAdmin],
   );
 
+  const acknowledgePasswordChange = useCallback(() => setPasswordMustChange(false), []);
+
   const value = useMemo(
     () => ({
       role, email, name, loading, isAdmin, isManager,
       permissions, hasAccess,
       bullhornRole, bullhornUserId, bullhornName,
+      authProvider, passwordMustChange, acknowledgePasswordChange,
     }),
-    [role, email, name, loading, isAdmin, isManager, permissions, hasAccess, bullhornRole, bullhornUserId, bullhornName],
+    [role, email, name, loading, isAdmin, isManager, permissions, hasAccess, bullhornRole, bullhornUserId, bullhornName, authProvider, passwordMustChange, acknowledgePasswordChange],
   );
 
   return (

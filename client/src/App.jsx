@@ -1,8 +1,7 @@
 import { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { AuthenticatedTemplate, UnauthenticatedTemplate } from '@azure/msal-react';
 import AppShell from './components/AppShell';
-import LoginPage from './components/LoginPage';
+import RequireAuth from './components/RequireAuth';
 import HomePage from './components/HomePage';
 // Req Board + India Req Board are eager: they're the landing destination
 // for ~all users, and adding a Suspense flicker on the most-trafficked
@@ -141,14 +140,9 @@ export default function App() {
   return (
     <ErrorBoundary>
       <SandboxBanner />
-      <UnauthenticatedTemplate>
-        <Routes>
-          <Route path="*" element={<LoginPage />} />
-        </Routes>
-      </UnauthenticatedTemplate>
-      <AuthenticatedTemplate>
+      <RequireAuth>
         <AppRoutes />
-      </AuthenticatedTemplate>
+      </RequireAuth>
     </ErrorBoundary>
   );
 }

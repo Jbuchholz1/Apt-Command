@@ -1,5 +1,6 @@
 import { InteractionRequiredAuthError } from '@azure/msal-browser';
 import { loginRequest } from './authConfig';
+import { getExternalToken, hasExternalSession, clearExternalToken } from './externalAuth';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
@@ -9,31 +10,49 @@ export function initApi(instance) {
   msalInstance = instance;
 }
 
+// Returns the active session token. External (localStorage) sessions take
+// precedence — if a user logged in as external, we don't want a stale
+// MSAL cache to override their session. Returns { token, source } so the
+// 401 handler can route the re-login appropriately.
 async function getToken() {
-  if (!msalInstance) return null;
+  if (hasExternalSession()) {
+    return { token: getExternalToken(), source: 'external' };
+  }
+
+  if (!msalInstance) return { token: null, source: null };
   const accounts = msalInstance.getAllAccounts();
-  if (accounts.length === 0) return null;
+  if (accounts.length === 0) return { token: null, source: null };
 
   try {
     const response = await msalInstance.acquireTokenSilent({
       ...loginRequest,
       account: accounts[0],
     });
-    return response.idToken;
+    return { token: response.idToken, source: 'azure' };
   } catch (err) {
     if (err instanceof InteractionRequiredAuthError) {
       msalInstance.acquireTokenRedirect(loginRequest);
-      return null;
+      return { token: null, source: null };
     }
     throw err;
   }
+}
+
+function handle401(source) {
+  if (source === 'external') {
+    clearExternalToken();
+    window.location.href = '/';
+    return;
+  }
+  if (msalInstance) msalInstance.acquireTokenRedirect(loginRequest);
 }
 
 // Exported for non-fetchAPI consumers — most notably the SSE event stream,
 // which uses fetch-streaming (not native EventSource) so it can pass the
 // Bearer token via Authorization header.
 export async function getApiToken() {
-  return getToken();
+  const { token } = await getToken();
+  return token;
 }
 
 export function getApiBaseUrl() {
@@ -57,7 +76,7 @@ function apiError(message, status, body) {
 }
 
 async function fetchAPI(path, options = {}) {
-  const token = await getToken();
+  const { token, source } = await getToken();
   const headers = { ...options.headers };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -70,7 +89,7 @@ async function fetchAPI(path, options = {}) {
   const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
 
   if (res.status === 401) {
-    if (msalInstance) msalInstance.acquireTokenRedirect(loginRequest);
+    handle401(source);
     throw apiError('Session expired — redirecting to login', 401);
   }
 
@@ -327,6 +346,36 @@ export function logMeetingActivity(payload) {
   });
 }
 
+// --- External user auth ---
+
+export function loginExternalUser({ email, password }) {
+  return fetchAPI('/api/auth/external/login', {
+    method: 'POST',
+    body: { email, password },
+  });
+}
+
+export function changeExternalPassword({ currentPassword, newPassword }) {
+  return fetchAPI('/api/auth/external/change-password', {
+    method: 'POST',
+    body: { currentPassword, newPassword },
+  });
+}
+
+export function createExternalUser({ email, full_name, initial_password }) {
+  return fetchAPI('/api/admin/users/external', {
+    method: 'POST',
+    body: { email, full_name, initial_password },
+  });
+}
+
+export function adminResetExternalPassword(userId, newPassword) {
+  return fetchAPI(`/api/admin/users/${userId}/password`, {
+    method: 'PUT',
+    body: { new_password: newPassword },
+  });
+}
+
 // --- User Management ---
 
 export function getCurrentUser() {
@@ -381,7 +430,7 @@ export function getCompanyKPIs(startDate, endDate, clientIds) {
 import { showToast } from './toast';
 
 async function downloadExcel(path, filename) {
-  const token = await getToken();
+  const { token } = await getToken();
   const headers = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
   const res = await fetch(`${BASE_URL}${path}`, { headers });
@@ -519,7 +568,7 @@ export function syncBullhornClients() {
 }
 
 export async function uploadClientLogo(clientId, file) {
-  const token = await getToken();
+  const { token, source } = await getToken();
   const formData = new FormData();
   formData.append('logo', file);
 
@@ -533,7 +582,7 @@ export async function uploadClientLogo(clientId, file) {
   });
 
   if (res.status === 401) {
-    if (msalInstance) msalInstance.acquireTokenRedirect(loginRequest);
+    handle401(source);
     throw new Error('Session expired — redirecting to login');
   }
   if (res.status === 429) {
@@ -644,7 +693,7 @@ export function getSupportTickets(mine = false, email = null) {
 }
 
 export async function submitSupportTicket(formData) {
-  const token = await getToken();
+  const { token, source } = await getToken();
   const headers = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
@@ -655,7 +704,7 @@ export async function submitSupportTicket(formData) {
   });
 
   if (res.status === 401) {
-    if (msalInstance) msalInstance.acquireTokenRedirect(loginRequest);
+    handle401(source);
     throw new Error('Session expired — redirecting to login');
   }
   if (res.status === 429) {
@@ -890,7 +939,7 @@ export function pmDeleteComment(commentId) {
 }
 
 export async function exportJobs() {
-  const token = await getToken();
+  const { token } = await getToken();
   const headers = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
 

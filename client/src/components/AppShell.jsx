@@ -4,16 +4,26 @@ import { useMsal } from '@azure/msal-react';
 import { Menu } from 'lucide-react';
 import Sidebar from './Sidebar';
 import UniversalSearch from './UniversalSearch/UniversalSearch';
-import { UserRoleProvider } from '../lib/UserRoleContext';
+import ForcePasswordChangeModal from './ForcePasswordChangeModal';
+import { UserRoleProvider, useUserRole } from '../lib/UserRoleContext';
+import { hasExternalSession, clearExternalToken } from '../lib/externalAuth';
 
 function AppShellInner() {
   const { instance, accounts } = useMsal();
+  const { name: contextName, email: contextEmail } = useUserRole();
   const location = useLocation();
-  const userName = accounts[0]?.name || accounts[0]?.username || '';
+  // External users have no MSAL account, so fall back to the profile name
+  // we already loaded from /api/users/me.
+  const userName = accounts[0]?.name || accounts[0]?.username || contextName || contextEmail || '';
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
   const handleLogout = () => {
+    if (hasExternalSession()) {
+      clearExternalToken();
+      window.location.href = '/';
+      return;
+    }
     instance.logoutRedirect({ postLogoutRedirectUri: window.location.origin });
   };
 
@@ -54,6 +64,7 @@ function AppShellInner() {
         <Outlet />
       </div>
       <UniversalSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
+      <ForcePasswordChangeModal />
     </div>
   );
 }

@@ -15,6 +15,7 @@ const performanceRouter = require('./routes/performance');
 const orgflowRouter = require('./routes/orgflow');
 const usersRouter = require('./routes/users');
 const adminRouter = require('./routes/admin');
+const authRouter = require('./routes/auth');
 const operationsRouter = require('./routes/operations');
 const supportRouter = require('./routes/support');
 const goalsRouter = require('./routes/goals');
@@ -195,6 +196,12 @@ app.post(
     res.status(204).end();
   }
 );
+
+// --- Public auth routes (external user login) — must precede requireAuth ---
+// The external login endpoint hashes/verifies credentials and issues an
+// app-signed JWT. The change-password endpoint inside this router applies
+// requireAuth inline.
+app.use('/api/auth', authRouter);
 
 // --- Auth middleware: all /api/* routes below require a valid Microsoft token ---
 app.use('/api', requireAuth);

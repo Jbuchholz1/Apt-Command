@@ -4,6 +4,7 @@ const { supabase, listReconciliationQueue, getSchemaFeatures } = require('../lib
 const { requireModule } = require('../middleware/adminAuth');
 const { VALID_ROLES } = require('../lib/roles');
 const { isValidModuleKey, isValidAccessLevel, MODULE_KEYS } = require('../lib/modules');
+const { hashPassword, validatePasswordStrength } = require('../lib/passwords');
 
 // Admin module = any user with admin:basic can read; admin:admin needed
 // for mutations (role changes, permission grants, announcement edits).
@@ -16,7 +17,7 @@ router.get('/users', async (req, res, next) => {
 
     const { data, error } = await supabase
       .from('user_profiles')
-      .select('id, email, full_name, is_active, role')
+      .select('id, email, full_name, is_active, role, auth_provider')
       .order('full_name', { nullsFirst: false });
 
     if (error) throw error;
@@ -225,6 +226,118 @@ router.put('/users/:id/permissions', requireModule('admin', 'admin'), async (req
       .ilike('user_email', targetEmail);
 
     res.json({ permissions: updated || [] });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/admin/users/external — Create a new external (non-Azure) user.
+// Body: { email, full_name, initial_password }
+// On success: returns the new user row. The password is set with
+// password_must_change=true so the user must rotate it on first login.
+router.post('/users/external', requireModule('admin', 'admin'), async (req, res, next) => {
+  try {
+    if (!supabase) return res.status(503).json({ error: 'Database not configured' });
+
+    const rawEmail = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
+    const fullName = typeof req.body?.full_name === 'string' ? req.body.full_name.trim() : '';
+    const initialPassword = typeof req.body?.initial_password === 'string' ? req.body.initial_password : '';
+
+    if (!rawEmail || !rawEmail.includes('@')) {
+      return res.status(400).json({ error: 'A valid email is required' });
+    }
+    if (!fullName) {
+      return res.status(400).json({ error: 'Full name is required' });
+    }
+    try {
+      validatePasswordStrength(initialPassword);
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
+
+    const email = rawEmail.toLowerCase();
+
+    // Pre-flight: surface a clear message when colliding with an existing
+    // Azure user (the unique index would also catch this, but with a less
+    // friendly error).
+    const { data: existing } = await supabase
+      .from('user_profiles')
+      .select('id, auth_provider')
+      .ilike('email', email)
+      .maybeSingle();
+    if (existing) {
+      if (existing.auth_provider === 'azure') {
+        return res.status(409).json({ error: 'This email already exists as a Microsoft user' });
+      }
+      return res.status(409).json({ error: 'A user with this email already exists' });
+    }
+
+    const passwordHash = await hashPassword(initialPassword);
+    const nowIso = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .insert({
+        email,
+        full_name: fullName,
+        is_active: true,
+        role: 'basic',
+        auth_provider: 'external',
+        password_hash: passwordHash,
+        password_updated_at: nowIso,
+        password_must_change: true,
+        failed_login_count: 0,
+      })
+      .select('id, email, full_name, is_active, role, auth_provider')
+      .single();
+    if (error) throw error;
+
+    res.status(201).json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/admin/users/:id/password — Admin password reset for an external user.
+// Body: { new_password }
+// Only allowed when the target row is auth_provider='external'.
+router.put('/users/:id/password', requireModule('admin', 'admin'), async (req, res, next) => {
+  try {
+    if (!supabase) return res.status(503).json({ error: 'Database not configured' });
+
+    const { id } = req.params;
+    const newPassword = typeof req.body?.new_password === 'string' ? req.body.new_password : '';
+    try {
+      validatePasswordStrength(newPassword);
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
+
+    const { data: target, error: tErr } = await supabase
+      .from('user_profiles')
+      .select('id, auth_provider')
+      .eq('id', id)
+      .maybeSingle();
+    if (tErr) throw tErr;
+    if (!target) return res.status(404).json({ error: 'User not found' });
+    if (target.auth_provider !== 'external') {
+      return res.status(400).json({ error: 'Only external users have app-managed passwords' });
+    }
+
+    const passwordHash = await hashPassword(newPassword);
+    const { error: updErr } = await supabase
+      .from('user_profiles')
+      .update({
+        password_hash: passwordHash,
+        password_updated_at: new Date().toISOString(),
+        password_must_change: true,
+        failed_login_count: 0,
+        locked_until: null,
+      })
+      .eq('id', id);
+    if (updErr) throw updErr;
+
+    res.json({ ok: true });
   } catch (err) {
     next(err);
   }
