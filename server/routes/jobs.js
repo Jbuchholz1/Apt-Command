@@ -1,5 +1,5 @@
 const express = require('express');
-const { CLIENT_SUB_STATUSES, getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getJobsByIds, getSubmissions, addNoteToJob, addNoteToOpportunity, updateJobField, updateOpportunityField, updateSubmissionField, getCorporateUsers, getOpenOpportunitiesFull, getOpportunityById, getClientContactsForCorp, createJob, getClientSubmissions, getOfferExtendedSubmissions, getPendingPlacements } = require('../lib/bullhorn');
+const { CLIENT_SUB_STATUSES, getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getJobsByIds, getSubmissions, addNoteToJob, addNoteToOpportunity, updateJobField, updateOpportunityField, updateSubmissionField, getCorporateUsers, getOpenOpportunitiesFull, getOpportunityById, getClientContactsForCorp, createJob, getClientSubmissions, getOfferExtendedSubmissions, getPendingPlacements, getActivePlacements } = require('../lib/bullhorn');
 const {
   getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote,
   enqueueReconciliation, OverrideConflictError,
@@ -504,16 +504,32 @@ router.patch('/submissions/:id/overrides', requireRb, async (req, res, next) => 
 // Includes candidates in two pipeline states:
 //   1. JobSubmission.status = 'Offer Extended' (offer pending acceptance)
 //   2. Placement.status = 'Pending' (offer accepted, awaiting final approval)
+// Excludes any (candidate, job) pair that has a Placement in Approved or
+// Active status — those have cleared the approval cycle. This handles the
+// case where Bullhorn doesn't cascade the submission status off "Offer
+// Extended" after a placement is approved, which would otherwise leave the
+// candidate stuck on the counter forever.
 // The job payload is self-contained — the client does NOT join against the
 // req-board's `jobs` array — so the counter is independent of board filters
 // and stays accurate when a job has fallen off the board's 12h window.
 router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
   try {
-    const [subsResult, placementsResult, overrides] = await Promise.all([
+    const [subsResult, placementsResult, approvedResult, overrides] = await Promise.all([
       getOfferExtendedSubmissions(),
       getPendingPlacements(),
+      getActivePlacements(),
       getAllOverrides(),
     ]);
+
+    // (candidateId|jobId) pairs that have a placement past the Pending stage.
+    // Anyone in this set falls off the board even if their submission is
+    // still in "Offer Extended".
+    const finalizedKeys = new Set();
+    for (const pl of (approvedResult?.data || [])) {
+      const jId = pl.jobOrder?.id;
+      const cId = pl.candidate?.id;
+      if (jId && cId) finalizedKeys.add(`${cId}|${jId}`);
+    }
 
     // Dedupe by (candidateId|jobId). Placement wins if both exist for the
     // same pair, since it's later in the workflow.
@@ -559,6 +575,13 @@ router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
           source: 'placement',
         },
       });
+    }
+
+    // Drop any (candidate, job) pair that already has an Approved/Active
+    // placement — that candidate has cleared the approval cycle and shouldn't
+    // count anymore, regardless of submission status.
+    for (const key of [...rowsByKey.keys()]) {
+      if (finalizedKeys.has(key)) rowsByKey.delete(key);
     }
 
     // Hydrate job data for every referenced jobId. We use getJobsByIds so the
