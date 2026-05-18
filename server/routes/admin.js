@@ -1,4 +1,5 @@
 const express = require('express');
+const { randomUUID } = require('crypto');
 const router = express.Router();
 const { supabase, listReconciliationQueue, getSchemaFeatures } = require('../lib/db');
 const { requireModule } = require('../middleware/adminAuth');
@@ -275,9 +276,13 @@ router.post('/users/external', requireModule('admin', 'admin'), async (req, res,
     const passwordHash = await hashPassword(initialPassword);
     const nowIso = new Date().toISOString();
 
+    // user_profiles.id is NOT NULL with no default (Azure users get their
+    // `oid` written here on first login). Generate a UUID server-side for
+    // external rows so the insert satisfies the constraint.
     const { data, error } = await supabase
       .from('user_profiles')
       .insert({
+        id: randomUUID(),
         email,
         full_name: fullName,
         is_active: true,
