@@ -47,7 +47,7 @@ function EditableDate({ value, onSave, className }) {
     if (!val) return null;
     try {
       return new Date(val).toLocaleDateString('en-US', {
-        month: 'short', day: 'numeric', timeZone: 'America/Chicago',
+        month: 'short', day: 'numeric', timeZone: 'UTC',
       });
     } catch {
       return null;
