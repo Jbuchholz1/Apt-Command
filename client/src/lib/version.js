@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.15';
+export const APP_VERSION = '3.29.16';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.16',
+    date: '2026-05-19',
+    title: 'Active Contractors — date edits now hit the right placement',
+    changes: [
+      { type: 'patch', text: 'The date-save handler was looking up the placement by its row index, but filteredPlacements sorts and filters the underlying list — so the index from the clicked row pointed at a different placement than the one the user saw. Edits either silently went to the wrong record or appeared to revert. The handler now receives the placement object directly and matches by id, so the write lands on the exact placement the user clicked.' },
+    ],
+  },
   {
     version: '3.29.15',
     date: '2026-05-19',

@@ -806,21 +806,22 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
   // Edit dates on the Placement record directly (dateBegin/dateEnd) instead of
   // proxying through the JobOrder's startDate/estimatedEndDate. Writing to the
   // job worked once but the next refetch read the unchanged Placement back,
-  // so the edit visibly reverted.
-  const handlePlacementDateSave = async (placementIndex, field, tsValue) => {
-    const p = placements[placementIndex];
-    if (!p || !p.id) return;
-    const previousValue = p[field];
-    setPlacements(prev => prev.map((pl, i) =>
-      i === placementIndex ? { ...pl, [field]: tsValue ? new Date(tsValue).toISOString() : null } : pl
+  // so the edit visibly reverted. Match by placement.id, not by row index —
+  // filteredPlacements sorts/filters, so the row's index doesn't line up with
+  // the unfiltered placements array and edits would land on the wrong record.
+  const handlePlacementDateSave = async (placement, field, tsValue) => {
+    if (!placement || !placement.id) return;
+    const previousValue = placement[field];
+    setPlacements(prev => prev.map(pl =>
+      pl.id === placement.id ? { ...pl, [field]: tsValue ? new Date(tsValue).toISOString() : null } : pl
     ));
     await saveWithToast(
-      () => updatePlacementInBullhorn(p.id, { [field]: tsValue }),
+      () => updatePlacementInBullhorn(placement.id, { [field]: tsValue }),
       {
         failureMessage: 'Could not update placement date',
         onRollback: () => {
-          setPlacements(prev => prev.map((pl, i) =>
-            i === placementIndex ? { ...pl, [field]: previousValue } : pl
+          setPlacements(prev => prev.map(pl =>
+            pl.id === placement.id ? { ...pl, [field]: previousValue } : pl
           ));
         },
       },
@@ -1156,12 +1157,12 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
                         <td>{p.employmentType || '—'}</td>
                         <EditableDate
                           value={p.dateBegin}
-                          onSave={(val) => handlePlacementDateSave(idx, 'dateBegin', val)}
+                          onSave={(val) => handlePlacementDateSave(p, 'dateBegin', val)}
                           className="cell-editable cell-date"
                         />
                         <EditableDate
                           value={p.dateEnd}
-                          onSave={(val) => handlePlacementDateSave(idx, 'dateEnd', val)}
+                          onSave={(val) => handlePlacementDateSave(p, 'dateEnd', val)}
                           className={`cell-editable cell-date${p.dateEnd && new Date(p.dateEnd) < new Date() ? ' cell-date-expired' : ''}`}
                         />
                         <td className="cell-money">
