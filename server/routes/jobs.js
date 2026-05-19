@@ -508,7 +508,8 @@ router.post('/placements/:id/update', requireRb, async (req, res, next) => {
       return res.status(400).json({ error: 'fields object is required' });
     }
 
-    const ALLOWED_FIELDS = new Set(['payRate', 'clientBillRate', 'salary', 'fee']);
+    // dateBegin/dateEnd are sent as Unix ms timestamps (numbers) by the client.
+    const ALLOWED_FIELDS = new Set(['payRate', 'clientBillRate', 'salary', 'fee', 'dateBegin', 'dateEnd']);
     const NUMERIC_FIELDS = ALLOWED_FIELDS;
     const sanitized = {};
     for (const [key, value] of Object.entries(fields)) {

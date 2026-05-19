@@ -803,19 +803,28 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
     }
   };
 
+  // Edit dates on the Placement record directly (dateBegin/dateEnd) instead of
+  // proxying through the JobOrder's startDate/estimatedEndDate. Writing to the
+  // job worked once but the next refetch read the unchanged Placement back,
+  // so the edit visibly reverted.
   const handlePlacementDateSave = async (placementIndex, field, tsValue) => {
     const p = placements[placementIndex];
-    if (!p || !p.jobOrderId) return;
-    const bhField = field === 'dateBegin' ? 'startDate' : 'estimatedEndDate';
-    try {
-      await updateJobInBullhorn(p.jobOrderId, { [bhField]: tsValue });
-      // Update local state
-      setPlacements(prev => prev.map((pl, i) =>
-        i === placementIndex ? { ...pl, [field]: tsValue ? new Date(tsValue).toISOString() : null } : pl
-      ));
-    } catch (err) {
-      console.error('Failed to update placement date:', err);
-    }
+    if (!p || !p.id) return;
+    const previousValue = p[field];
+    setPlacements(prev => prev.map((pl, i) =>
+      i === placementIndex ? { ...pl, [field]: tsValue ? new Date(tsValue).toISOString() : null } : pl
+    ));
+    await saveWithToast(
+      () => updatePlacementInBullhorn(p.id, { [field]: tsValue }),
+      {
+        failureMessage: 'Could not update placement date',
+        onRollback: () => {
+          setPlacements(prev => prev.map((pl, i) =>
+            i === placementIndex ? { ...pl, [field]: previousValue } : pl
+          ));
+        },
+      },
+    );
   };
 
   const trOptions = [

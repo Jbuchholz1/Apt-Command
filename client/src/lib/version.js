@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.14';
+export const APP_VERSION = '3.29.15';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.15',
+    date: '2026-05-19',
+    title: 'Active Contractors — placement date edits now persist',
+    changes: [
+      { type: 'patch', text: 'Editing Start or End date on the Active Contractors modal was writing to the underlying JobOrder\'s startDate / estimatedEndDate instead of the Placement\'s dateBegin / dateEnd, so the change vanished on next refresh. Now writes directly to the Placement record. Same /api/jobs/placements/:id/update endpoint added in v3.29.14 now also accepts dateBegin and dateEnd.' },
+    ],
+  },
   {
     version: '3.29.14',
     date: '2026-05-19',
