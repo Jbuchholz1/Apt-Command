@@ -9,17 +9,9 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.12';
+export const APP_VERSION = '3.29.11';
 
 export const CHANGELOG = [
-  {
-    version: '3.29.12',
-    date: '2026-05-19',
-    title: 'On the Board — split CE/Perm spread across openings',
-    changes: [
-      { type: 'patch', text: 'On the Board modal: when multiple candidates are pending on the same req, each row now shows its share of the job spread (job ceSpread / numOpenings) instead of the full per-position spread. Total Spread sums those shares, so a 2-opening req with 2 candidates on the board no longer double-counts the job\'s weekly CE. Previously both candidates displayed the full $X/wk and the header total summed to 2× the actual pipeline value.' },
-    ],
-  },
   {
     version: '3.29.11',
     date: '2026-05-12',
