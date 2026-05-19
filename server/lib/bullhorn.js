@@ -353,6 +353,19 @@ async function getOffBoardPlacements() {
   });
 }
 
+// Placements in the 'Submitted' state — earliest stage of the placement
+// lifecycle. Used by the On The Board counter to keep candidates visible
+// after the JobSubmission/JobOrder have flipped to Placed but the placement
+// record itself hasn't reached Pending → Approved yet.
+async function getSubmittedPlacements() {
+  return paginatePlacementQuery('getSubmittedPlacements', {
+    entityType: 'Placement',
+    where: "status = 'Submitted' AND isDeleted = false",
+    fields: 'id,candidate(id,firstName,lastName),jobOrder(id),status,dateBegin',
+    orderBy: '-dateBegin',
+  });
+}
+
 async function getOpenOpportunities() {
   return callTool('query_entity', {
     entityType: 'Opportunity',
@@ -1279,6 +1292,7 @@ module.exports = {
   getOfferExtendedSubmissions,
   getPendingPlacements,
   getOffBoardPlacements,
+  getSubmittedPlacements,
   getOpenOpportunities,
   getOpenOpportunitiesFull,
   getOpportunityById,

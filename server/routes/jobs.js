@@ -1,5 +1,5 @@
 const express = require('express');
-const { CLIENT_SUB_STATUSES, getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getJobsByIds, getSubmissions, addNoteToJob, addNoteToOpportunity, updateJobField, updateOpportunityField, updateSubmissionField, getCorporateUsers, getOpenOpportunitiesFull, getOpportunityById, getClientContactsForCorp, createJob, getClientSubmissions, getOfferExtendedSubmissions, getPendingPlacements, getOffBoardPlacements } = require('../lib/bullhorn');
+const { CLIENT_SUB_STATUSES, getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getJobsByIds, getSubmissions, addNoteToJob, addNoteToOpportunity, updateJobField, updateOpportunityField, updateSubmissionField, getCorporateUsers, getOpenOpportunitiesFull, getOpportunityById, getClientContactsForCorp, createJob, getClientSubmissions, getOfferExtendedSubmissions, getPendingPlacements, getOffBoardPlacements, getSubmittedPlacements } = require('../lib/bullhorn');
 const {
   getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote,
   enqueueReconciliation, OverrideConflictError,
@@ -501,27 +501,31 @@ router.patch('/submissions/:id/overrides', requireRb, async (req, res, next) => 
 
 // GET /api/jobs/offer-out-candidates — Flat array of On The Board rows:
 //   [{ job: <formatted+overrides>, cand: { id, name, submissionId, submissionStatus, placementId, placementStatus, source } }, ...]
-// Includes candidates in two pipeline states:
+// Includes candidates in three pipeline states:
 //   1. JobSubmission.status = 'Offer Extended' (offer pending acceptance)
 //   2. Placement.status = 'Pending' (offer accepted, awaiting final approval)
+//   3. Placement.status = 'Submitted' (placement record created, paperwork in flight)
 // Excludes any (candidate, job) pair that has a Placement in a terminal
 // status (Approved, Active, Rejected, Completed, Terminated). Approved/Active
 // mean the candidate cleared the approval cycle; Rejected/Completed/Terminated
 // mean they exited the pipeline. This handles the case where Bullhorn doesn't
 // cascade the submission status off "Offer Extended" after a placement moves
 // on, which would otherwise leave the candidate stuck on the counter forever.
-// Also excludes any row whose job is closed (isOpen=false) — that covers
-// Lost / Wash / Archive / Placed / Filled and anything else Bullhorn marks
-// closed. The candidate isn't actually on the board if the job is dead.
+// Excludes rows whose job is closed (isOpen=false — Lost / Wash / Archive /
+// Placed / Filled) UNLESS the row has a Submitted placement. Submitted
+// placements specifically need to ride through a closed job, since Bullhorn
+// flips the JobOrder to Placed before the placement record advances past
+// Submitted — dropping those would make candidates vanish in the gap.
 // The job payload is self-contained — the client does NOT join against the
 // req-board's `jobs` array — so the counter is independent of board filters
 // and stays accurate when a job has fallen off the board's 12h window.
 router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
   try {
-    const [subsResult, placementsResult, offBoardResult, overrides] = await Promise.all([
+    const [subsResult, placementsResult, offBoardResult, submittedResult, overrides] = await Promise.all([
       getOfferExtendedSubmissions(),
       getPendingPlacements(),
       getOffBoardPlacements(),
+      getSubmittedPlacements(),
       getAllOverrides(),
     ]);
 
@@ -582,9 +586,35 @@ router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
       });
     }
 
-    // Drop any (candidate, job) pair that already has an Approved/Active
-    // placement — that candidate has cleared the approval cycle and shouldn't
-    // count anymore, regardless of submission status.
+    // (candidateId|jobId) pairs that have a Submitted placement. These rows
+    // ride through closed-job filters below — Bullhorn often flips the job
+    // to Placed (isOpen=false) before the placement advances past Submitted.
+    const submittedKeys = new Set();
+    for (const pl of (submittedResult?.data || [])) {
+      const jobId = pl.jobOrder?.id;
+      const c = pl.candidate;
+      if (!jobId || !c) continue;
+      const name = `${c.firstName || ''} ${c.lastName || ''}`.trim();
+      if (!name) continue;
+      const key = `${c.id ?? name}|${jobId}`;
+      submittedKeys.add(key);
+      rowsByKey.set(key, {
+        jobId,
+        cand: {
+          id: c.id ?? null,
+          name,
+          submissionId: null,
+          submissionStatus: null,
+          placementId: pl.id,
+          placementStatus: pl.status,
+          source: 'placement',
+        },
+      });
+    }
+
+    // Drop any (candidate, job) pair that already has a terminal placement —
+    // Approved/Active/Rejected/Completed/Terminated. Terminal wins even over
+    // Submitted, so a Submitted+Rejected pair still drops.
     for (const key of [...rowsByKey.keys()]) {
       if (finalizedKeys.has(key)) rowsByKey.delete(key);
     }
@@ -600,11 +630,14 @@ router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
 
     const EXCLUDED_JOB_STATUSES = new Set(['Lost', 'Wash', 'Archive']);
     const rows = [];
-    for (const { jobId, cand } of rowsByKey.values()) {
+    for (const [key, { jobId, cand }] of rowsByKey.entries()) {
       const job = jobsById.get(jobId);
       if (!job) continue; // job was deleted or otherwise unfetchable — skip defensively
-      if (job.isOpen === false) continue; // closed jobs don't belong on the counter
-      if (EXCLUDED_JOB_STATUSES.has(job.status)) continue; // belt-and-suspenders if isOpen is stale
+      // Submitted placements ride through closed-job filters by design.
+      if (!submittedKeys.has(key)) {
+        if (job.isOpen === false) continue; // closed jobs don't belong on the counter
+        if (EXCLUDED_JOB_STATUSES.has(job.status)) continue; // belt-and-suspenders if isOpen is stale
+      }
       rows.push({ job, cand });
     }
 
