@@ -511,6 +511,9 @@ router.patch('/submissions/:id/overrides', requireRb, async (req, res, next) => 
 // mean they exited the pipeline. This handles the case where Bullhorn doesn't
 // cascade the submission status off "Offer Extended" after a placement moves
 // on, which would otherwise leave the candidate stuck on the counter forever.
+// Additionally, any candidate with an Approved/Active placement on ANY job
+// is dropped firm-wide — they're already placed somewhere, so stale Offer
+// Extended submissions on other reqs shouldn't keep them visible.
 // Excludes rows whose job is closed (isOpen=false — Lost / Wash / Archive /
 // Placed / Filled) UNLESS the row has a Submitted placement. Submitted
 // placements specifically need to ride through a closed job, since Bullhorn
@@ -534,10 +537,19 @@ router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
     // (left the pipeline). Anyone in this set falls off the board even if
     // their submission is still in "Offer Extended".
     const finalizedKeys = new Set();
+    // candidateIds that are placed somewhere (Approved/Active on any job).
+    // These candidates fall off the board firm-wide — they can't be "on the
+    // board" anywhere if they're already taking another role. Catches stale
+    // Offer Extended submissions that nobody updated when the candidate
+    // moved to a different req.
+    const placedCandidateIds = new Set();
     for (const pl of (offBoardResult?.data || [])) {
       const jId = pl.jobOrder?.id;
       const cId = pl.candidate?.id;
       if (jId && cId) finalizedKeys.add(`${cId}|${jId}`);
+      if (cId && (pl.status === 'Approved' || pl.status === 'Active')) {
+        placedCandidateIds.add(cId);
+      }
     }
 
     // Dedupe by (candidateId|jobId). Placement wins if both exist for the
@@ -617,6 +629,13 @@ router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
     // Submitted, so a Submitted+Rejected pair still drops.
     for (const key of [...rowsByKey.keys()]) {
       if (finalizedKeys.has(key)) rowsByKey.delete(key);
+    }
+
+    // Drop any row whose candidate is already placed somewhere (Approved or
+    // Active on any job). Firm-wide drop catches stale Offer Extended rows
+    // that survive on req A after the candidate took a placement on req B.
+    for (const [key, { cand }] of [...rowsByKey.entries()]) {
+      if (cand.id != null && placedCandidateIds.has(cand.id)) rowsByKey.delete(key);
     }
 
     // Hydrate job data for every referenced jobId. We use getJobsByIds so the
