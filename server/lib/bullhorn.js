@@ -340,6 +340,19 @@ async function getPendingPlacements() {
   });
 }
 
+// Placements that have left the "On The Board" pipeline — either accepted
+// (Approved/Active) or terminated (Rejected/Completed/Terminated). Used to
+// drop matching (candidate, job) pairs from the On The Board counter so a
+// candidate doesn't linger after their placement reaches a terminal state.
+async function getOffBoardPlacements() {
+  return paginatePlacementQuery('getOffBoardPlacements', {
+    entityType: 'Placement',
+    where: "(status = 'Approved' OR status = 'Active' OR status = 'Rejected' OR status = 'Completed' OR status = 'Terminated') AND isDeleted = false",
+    fields: 'id,candidate(id),jobOrder(id),status',
+    orderBy: '-dateBegin',
+  });
+}
+
 async function getOpenOpportunities() {
   return callTool('query_entity', {
     entityType: 'Opportunity',
@@ -1265,6 +1278,7 @@ module.exports = {
   getClientSubmissions,
   getOfferExtendedSubmissions,
   getPendingPlacements,
+  getOffBoardPlacements,
   getOpenOpportunities,
   getOpenOpportunitiesFull,
   getOpportunityById,

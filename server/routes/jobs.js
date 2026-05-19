@@ -1,5 +1,5 @@
 const express = require('express');
-const { CLIENT_SUB_STATUSES, getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getJobsByIds, getSubmissions, addNoteToJob, addNoteToOpportunity, updateJobField, updateOpportunityField, updateSubmissionField, getCorporateUsers, getOpenOpportunitiesFull, getOpportunityById, getClientContactsForCorp, createJob, getClientSubmissions, getOfferExtendedSubmissions, getPendingPlacements, getActivePlacements } = require('../lib/bullhorn');
+const { CLIENT_SUB_STATUSES, getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getJobsByIds, getSubmissions, addNoteToJob, addNoteToOpportunity, updateJobField, updateOpportunityField, updateSubmissionField, getCorporateUsers, getOpenOpportunitiesFull, getOpportunityById, getClientContactsForCorp, createJob, getClientSubmissions, getOfferExtendedSubmissions, getPendingPlacements, getOffBoardPlacements } = require('../lib/bullhorn');
 const {
   getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote,
   enqueueReconciliation, OverrideConflictError,
@@ -504,28 +504,32 @@ router.patch('/submissions/:id/overrides', requireRb, async (req, res, next) => 
 // Includes candidates in two pipeline states:
 //   1. JobSubmission.status = 'Offer Extended' (offer pending acceptance)
 //   2. Placement.status = 'Pending' (offer accepted, awaiting final approval)
-// Excludes any (candidate, job) pair that has a Placement in Approved or
-// Active status — those have cleared the approval cycle. This handles the
-// case where Bullhorn doesn't cascade the submission status off "Offer
-// Extended" after a placement is approved, which would otherwise leave the
-// candidate stuck on the counter forever.
+// Excludes any (candidate, job) pair that has a Placement in a terminal
+// status (Approved, Active, Rejected, Completed, Terminated). Approved/Active
+// mean the candidate cleared the approval cycle; Rejected/Completed/Terminated
+// mean they exited the pipeline. This handles the case where Bullhorn doesn't
+// cascade the submission status off "Offer Extended" after a placement moves
+// on, which would otherwise leave the candidate stuck on the counter forever.
+// Also excludes any row whose job is in Lost / Wash / Archive — those jobs
+// are dead, the candidate isn't actually on the board.
 // The job payload is self-contained — the client does NOT join against the
 // req-board's `jobs` array — so the counter is independent of board filters
 // and stays accurate when a job has fallen off the board's 12h window.
 router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
   try {
-    const [subsResult, placementsResult, approvedResult, overrides] = await Promise.all([
+    const [subsResult, placementsResult, offBoardResult, overrides] = await Promise.all([
       getOfferExtendedSubmissions(),
       getPendingPlacements(),
-      getActivePlacements(),
+      getOffBoardPlacements(),
       getAllOverrides(),
     ]);
 
-    // (candidateId|jobId) pairs that have a placement past the Pending stage.
-    // Anyone in this set falls off the board even if their submission is
-    // still in "Offer Extended".
+    // (candidateId|jobId) pairs that have a placement in a terminal status —
+    // Approved/Active (cleared approval) or Rejected/Completed/Terminated
+    // (left the pipeline). Anyone in this set falls off the board even if
+    // their submission is still in "Offer Extended".
     const finalizedKeys = new Set();
-    for (const pl of (approvedResult?.data || [])) {
+    for (const pl of (offBoardResult?.data || [])) {
       const jId = pl.jobOrder?.id;
       const cId = pl.candidate?.id;
       if (jId && cId) finalizedKeys.add(`${cId}|${jId}`);
@@ -593,10 +597,12 @@ router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
       jobsById.set(j.id, mergeOverrides(formatJob(j), overrides));
     }
 
+    const EXCLUDED_JOB_STATUSES = new Set(['Lost', 'Wash', 'Archive']);
     const rows = [];
     for (const { jobId, cand } of rowsByKey.values()) {
       const job = jobsById.get(jobId);
       if (!job) continue; // job was deleted or otherwise unfetchable — skip defensively
+      if (EXCLUDED_JOB_STATUSES.has(job.status)) continue;
       rows.push({ job, cand });
     }
 
