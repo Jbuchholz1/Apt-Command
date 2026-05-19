@@ -510,8 +510,9 @@ router.patch('/submissions/:id/overrides', requireRb, async (req, res, next) => 
 // mean they exited the pipeline. This handles the case where Bullhorn doesn't
 // cascade the submission status off "Offer Extended" after a placement moves
 // on, which would otherwise leave the candidate stuck on the counter forever.
-// Also excludes any row whose job is in Lost / Wash / Archive — those jobs
-// are dead, the candidate isn't actually on the board.
+// Also excludes any row whose job is closed (isOpen=false) — that covers
+// Lost / Wash / Archive / Placed / Filled and anything else Bullhorn marks
+// closed. The candidate isn't actually on the board if the job is dead.
 // The job payload is self-contained — the client does NOT join against the
 // req-board's `jobs` array — so the counter is independent of board filters
 // and stays accurate when a job has fallen off the board's 12h window.
@@ -602,7 +603,8 @@ router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
     for (const { jobId, cand } of rowsByKey.values()) {
       const job = jobsById.get(jobId);
       if (!job) continue; // job was deleted or otherwise unfetchable — skip defensively
-      if (EXCLUDED_JOB_STATUSES.has(job.status)) continue;
+      if (job.isOpen === false) continue; // closed jobs don't belong on the counter
+      if (EXCLUDED_JOB_STATUSES.has(job.status)) continue; // belt-and-suspenders if isOpen is stale
       rows.push({ job, cand });
     }
 
@@ -973,6 +975,7 @@ function formatJob(job) {
     state: job.address?.state || null,
     priority: job.type === 1 ? 'A' : job.type === 2 ? 'B' : job.type === 3 ? 'C' : null,
     isPublic: typeof job.isPublic === 'number' ? job.isPublic : null,
+    isOpen: typeof job.isOpen === 'boolean' ? job.isOpen : null,
     dateLastModified: job.dateLastModified ? new Date(job.dateLastModified).toISOString() : null,
     fallingOff: false, // set by route handler for recently-closed jobs
     // assignedUsers → TR initials (Bullhorn source of truth)

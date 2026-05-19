@@ -141,7 +141,7 @@ const JOB_FIELDS = [
   'customFloat1', 'customFloat2',
   'customText1', 'customText2', 'customText3', 'customText4', 'customText5', 'customText40',
   'dateAdded', 'startDate', 'estimatedEndDate', 'dateLastModified', 'address', 'assignedUsers', 'type',
-  'isPublic',
+  'isPublic', 'isOpen',
 ].join(',');
 
 async function getOpenJobs() {
