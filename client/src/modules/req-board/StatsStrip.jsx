@@ -472,7 +472,9 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
   }, [filledRows, filledOwnerFilter, filledSort]);
 
   // Sum of weekly CE spread + perm fee across visible (filtered) On The Board rows.
-  // Each row is one candidate, so two candidates on the same job count the spread twice.
+  // Server delivers each row's ceSpread/permFee as the per-candidate amount —
+  // placement/submission rates when set, else job rates ÷ numOpenings — so the
+  // sum is a straight reduce without any per-row division here.
   const filledSpreadTotal = useMemo(
     () => filteredFilled.reduce((sum, r) => sum + (r.job.ceSpread || 0) + (r.job.permFee || 0), 0),
     [filteredFilled]

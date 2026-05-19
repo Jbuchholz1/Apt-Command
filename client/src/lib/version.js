@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.12';
+export const APP_VERSION = '3.29.13';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.13',
+    date: '2026-05-19',
+    title: 'On the Board — use placement/submission rates, not job rates',
+    changes: [
+      { type: 'patch', text: 'Each candidate row on the On the Board counter now reflects that candidate\'s actual deal — pay rate, bill rate, CE spread, and perm fee come from the placement or submission record instead of the job order. Real-world placements often negotiate above the job\'s posted rate (e.g., a job posted at $31/$48.05 with the actual placement at $44.28/$68.63). When the underlying record has placeholder rates (Bullhorn\'s default $1 values) or no rates set, the row falls back to the job\'s rates divided by # openings to give a per-candidate share, preserving the v3.29.12-style fix for multi-opening reqs.' },
+    ],
+  },
   {
     version: '3.29.12',
     date: '2026-05-19',

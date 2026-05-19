@@ -577,6 +577,10 @@ router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
           placementStatus: null,
           source: 'submission',
           dateAdded: sub.dateAdded || 0,
+          recordPayRate: sub.payRate ?? null,
+          recordBillRate: sub.billRate ?? null,
+          recordSalary: sub.salary ?? null,
+          recordFee: null,
         },
       });
     }
@@ -598,6 +602,10 @@ router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
           placementId: pl.id,
           placementStatus: pl.status,
           source: 'placement',
+          recordPayRate: pl.payRate ?? null,
+          recordBillRate: pl.clientBillRate ?? null,
+          recordSalary: pl.salary ?? null,
+          recordFee: pl.fee ?? null,
         },
       });
     }
@@ -624,6 +632,10 @@ router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
           placementId: pl.id,
           placementStatus: pl.status,
           source: 'placement',
+          recordPayRate: pl.payRate ?? null,
+          recordBillRate: pl.clientBillRate ?? null,
+          recordSalary: pl.salary ?? null,
+          recordFee: pl.fee ?? null,
         },
       });
     }
@@ -670,7 +682,34 @@ router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
         if (job.isOpen === false) continue; // closed jobs don't belong on the counter
         if (EXCLUDED_JOB_STATUSES.has(job.status)) continue; // belt-and-suspenders if isOpen is stale
       }
-      rows.push({ job, cand });
+      // Each row reflects ONE candidate's deal. Prefer the placement/submission's
+      // own rates over the job's — placements often negotiate above the job's
+      // posted rate. Threshold >1 skips Bullhorn's `1` placeholder. When falling
+      // back to job rates (placeholder/missing record rates), divide CE/permFee
+      // by numOpenings so the per-candidate share is shown instead of the job
+      // aggregate. Cloned job avoids leaking per-row overrides into other rows
+      // that share the same underlying jobId.
+      const useRecordRates = (cand.recordPayRate || 0) > 1 && (cand.recordBillRate || 0) > 1;
+      const useRecordSalary = (cand.recordSalary || 0) > 0;
+      const openings = job.numOpenings > 0 ? job.numOpenings : 1;
+      const rowJob = { ...job };
+      if (useRecordRates) {
+        const multiplier = (job.employmentType || '').toLowerCase() === 'corp-to-corp' ? 1.05 : 1.25;
+        const ce = Math.round((cand.recordBillRate - cand.recordPayRate * multiplier) * 40 * 100) / 100;
+        rowJob.payRate = cand.recordPayRate;
+        rowJob.billRate = cand.recordBillRate;
+        rowJob.brSalary = `$${cand.recordPayRate}/$${cand.recordBillRate}`;
+        rowJob.ceSpread = ce > 0 ? ce : null;
+      } else {
+        rowJob.ceSpread = job.ceSpread ? Math.round((job.ceSpread / openings) * 100) / 100 : null;
+      }
+      if (useRecordSalary && (cand.recordFee || job.feePercent)) {
+        const feePct = cand.recordFee || job.feePercent;
+        rowJob.permFee = Math.round((cand.recordSalary * feePct / 26) * 100) / 100;
+      } else if (job.permFee) {
+        rowJob.permFee = Math.round((job.permFee / openings) * 100) / 100;
+      }
+      rows.push({ job: rowJob, cand });
     }
 
     res.json({ data: rows });

@@ -322,7 +322,7 @@ async function getOfferExtendedSubmissions() {
   return callTool('query_entity', {
     entityType: 'JobSubmission',
     where: "status = 'Offer Extended' AND isDeleted = false",
-    fields: 'id,candidate,jobOrder,status,dateAdded',
+    fields: 'id,candidate,jobOrder,status,dateAdded,payRate,billRate,salary',
     orderBy: '-dateAdded',
     count: 500,
   });
@@ -338,7 +338,7 @@ async function getPendingPlacements() {
   return paginatePlacementQuery('getPendingPlacements', {
     entityType: 'Placement',
     where: "status = 'Pending'",
-    fields: 'id,candidate(id,firstName,lastName),jobOrder(id),status,dateBegin',
+    fields: 'id,candidate(id,firstName,lastName),jobOrder(id),status,dateBegin,payRate,clientBillRate,salary,fee',
     orderBy: '-dateBegin',
   });
 }
@@ -364,7 +364,7 @@ async function getSubmittedPlacements() {
   return paginatePlacementQuery('getSubmittedPlacements', {
     entityType: 'Placement',
     where: "status = 'Submitted'",
-    fields: 'id,candidate(id,firstName,lastName),jobOrder(id),status,dateBegin',
+    fields: 'id,candidate(id,firstName,lastName),jobOrder(id),status,dateBegin,payRate,clientBillRate,salary,fee',
     orderBy: '-dateBegin',
   });
 }
