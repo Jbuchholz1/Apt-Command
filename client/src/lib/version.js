@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.16';
+export const APP_VERSION = '3.29.17';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.17',
+    date: '2026-05-19',
+    title: 'Active Contractors — lock Start date, keep End editable',
+    changes: [
+      { type: 'patch', text: 'The Start column on the Active Contractors modal is now read-only — start dates rarely change once a contractor is on the board, and accidental edits there were a real risk. End date remains inline-editable for extensions / early-outs.' },
+    ],
+  },
   {
     version: '3.29.16',
     date: '2026-05-19',

@@ -1155,11 +1155,11 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
                         <td>{p.am || '—'}</td>
                         <td>{p.tr || '—'}</td>
                         <td>{p.employmentType || '—'}</td>
-                        <EditableDate
-                          value={p.dateBegin}
-                          onSave={(val) => handlePlacementDateSave(p, 'dateBegin', val)}
-                          className="cell-editable cell-date"
-                        />
+                        <td className="cell-date">
+                          {p.dateBegin
+                            ? new Date(p.dateBegin).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+                            : '—'}
+                        </td>
                         <EditableDate
                           value={p.dateEnd}
                           onSave={(val) => handlePlacementDateSave(p, 'dateEnd', val)}
