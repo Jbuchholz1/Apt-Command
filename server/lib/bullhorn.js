@@ -331,10 +331,13 @@ async function getOfferExtendedSubmissions() {
 // Placements that haven't reached final approval yet. Used by the On The Board
 // modal so a candidate stays visible through the offer→placed→approved window,
 // not just while the submission is in Offer Extended.
+// NOTE: Placement entity does not expose `isDeleted` as a queryable field —
+// adding it 400s the whole query. The CLAUDE.md `AND isDeleted = false` rule
+// does not apply here.
 async function getPendingPlacements() {
   return paginatePlacementQuery('getPendingPlacements', {
     entityType: 'Placement',
-    where: "status = 'Pending' AND isDeleted = false",
+    where: "status = 'Pending'",
     fields: 'id,candidate(id,firstName,lastName),jobOrder(id),status,dateBegin',
     orderBy: '-dateBegin',
   });
@@ -347,7 +350,7 @@ async function getPendingPlacements() {
 async function getOffBoardPlacements() {
   return paginatePlacementQuery('getOffBoardPlacements', {
     entityType: 'Placement',
-    where: "(status = 'Approved' OR status = 'Active' OR status = 'Rejected' OR status = 'Completed' OR status = 'Terminated') AND isDeleted = false",
+    where: "status = 'Approved' OR status = 'Active' OR status = 'Rejected' OR status = 'Completed' OR status = 'Terminated'",
     fields: 'id,candidate(id),jobOrder(id),status',
     orderBy: '-dateBegin',
   });
@@ -360,7 +363,7 @@ async function getOffBoardPlacements() {
 async function getSubmittedPlacements() {
   return paginatePlacementQuery('getSubmittedPlacements', {
     entityType: 'Placement',
-    where: "status = 'Submitted' AND isDeleted = false",
+    where: "status = 'Submitted'",
     fields: 'id,candidate(id,firstName,lastName),jobOrder(id),status,dateBegin',
     orderBy: '-dateBegin',
   });
