@@ -351,7 +351,7 @@ async function getOffBoardPlacements() {
   return paginatePlacementQuery('getOffBoardPlacements', {
     entityType: 'Placement',
     where: "status = 'Approved' OR status = 'Active' OR status = 'Rejected' OR status = 'Completed' OR status = 'Terminated'",
-    fields: 'id,candidate(id),jobOrder(id),status',
+    fields: 'id,candidate(id),jobOrder(id),status,dateAdded',
     orderBy: '-dateBegin',
   });
 }

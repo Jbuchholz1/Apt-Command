@@ -537,18 +537,21 @@ router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
     // (left the pipeline). Anyone in this set falls off the board even if
     // their submission is still in "Offer Extended".
     const finalizedKeys = new Set();
-    // candidateIds that are placed somewhere (Approved/Active on any job).
-    // These candidates fall off the board firm-wide — they can't be "on the
-    // board" anywhere if they're already taking another role. Catches stale
-    // Offer Extended submissions that nobody updated when the candidate
-    // moved to a different req.
-    const placedCandidateIds = new Set();
+    // candidateId -> latest dateAdded across that candidate's Approved/Active
+    // placements. Used to drop *stale* Offer Extended submissions that linger
+    // after a candidate took a different role — but only when the placement
+    // is newer than the submission. A current contractor with an Active
+    // placement can legitimately be Offer Extended for their next role; the
+    // date comparison keeps that pipeline visible.
+    const placedCandidateLatestDate = new Map();
     for (const pl of (offBoardResult?.data || [])) {
       const jId = pl.jobOrder?.id;
       const cId = pl.candidate?.id;
       if (jId && cId) finalizedKeys.add(`${cId}|${jId}`);
       if (cId && (pl.status === 'Approved' || pl.status === 'Active')) {
-        placedCandidateIds.add(cId);
+        const dt = pl.dateAdded || 0;
+        const prev = placedCandidateLatestDate.get(cId) || 0;
+        if (dt > prev) placedCandidateLatestDate.set(cId, dt);
       }
     }
 
@@ -573,6 +576,7 @@ router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
           placementId: null,
           placementStatus: null,
           source: 'submission',
+          dateAdded: sub.dateAdded || 0,
         },
       });
     }
@@ -631,11 +635,20 @@ router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
       if (finalizedKeys.has(key)) rowsByKey.delete(key);
     }
 
-    // Drop any row whose candidate is already placed somewhere (Approved or
-    // Active on any job). Firm-wide drop catches stale Offer Extended rows
-    // that survive on req A after the candidate took a placement on req B.
+    // Firm-wide drop for stale Offer Extended submissions. Only applies to
+    // submission-source rows (real new placements are inherently fresh and
+    // shouldn't drop just because the candidate is still Active on a prior
+    // contract). Even for submissions, we only drop when the candidate's
+    // existing Approved/Active placement is newer than the submission —
+    // otherwise the submission represents a current contractor's next-role
+    // pipeline, which is legitimate.
     for (const [key, { cand }] of [...rowsByKey.entries()]) {
-      if (cand.id != null && placedCandidateIds.has(cand.id)) rowsByKey.delete(key);
+      if (cand.id == null) continue;
+      if (cand.source !== 'submission') continue;
+      const placedDate = placedCandidateLatestDate.get(cand.id);
+      if (placedDate == null) continue;
+      if ((cand.dateAdded || 0) > placedDate) continue; // submission is the freshest signal
+      rowsByKey.delete(key);
     }
 
     // Hydrate job data for every referenced jobId. We use getJobsByIds so the

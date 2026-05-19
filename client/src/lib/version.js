@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.11';
+export const APP_VERSION = '3.29.12';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.12',
+    date: '2026-05-19',
+    title: 'On the Board — keep current contractors visible for next-role pipeline',
+    changes: [
+      { type: 'patch', text: 'The firm-wide drop that scrubbed stale Offer Extended submissions after a candidate took a placement elsewhere was firing too aggressively — it removed current contractors (Active/Approved placement) any time they picked up a fresh Offer Extended for their next role. Now the drop only fires when the existing placement was added more recently than the submission, so a contractor wrapping up one contract and getting offered the next one stays on the board. Real "stale" cases (submission older than the replacing placement) still drop as before. Placement-source rows (Submitted/Pending) bypass the firm-wide drop entirely — those are genuine new pipeline entries.' },
+    ],
+  },
   {
     version: '3.29.11',
     date: '2026-05-12',
