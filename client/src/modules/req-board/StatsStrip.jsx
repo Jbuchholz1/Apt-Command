@@ -472,9 +472,13 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
   }, [filledRows, filledOwnerFilter, filledSort]);
 
   // Sum of weekly CE spread + perm fee across visible (filtered) On The Board rows.
-  // Each row is one candidate, so two candidates on the same job count the spread twice.
+  // Each candidate gets their per-opening share of the job's spread — without the divide,
+  // two candidates on a 2-opening req would double-count and inflate the total.
   const filledSpreadTotal = useMemo(
-    () => filteredFilled.reduce((sum, r) => sum + (r.job.ceSpread || 0) + (r.job.permFee || 0), 0),
+    () => filteredFilled.reduce((sum, r) => {
+      const openings = r.job.numOpenings > 0 ? r.job.numOpenings : 1;
+      return sum + (r.job.ceSpread || 0) / openings + (r.job.permFee || 0) / openings;
+    }, 0),
     [filteredFilled]
   );
 
@@ -1374,8 +1378,8 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
                     >
                       {j.brSalary || '—'}
                     </td>
-                    <td className="cell-money">{j.ceSpread ? fmtCurrency(j.ceSpread) : '—'}</td>
-                    <td className="cell-money">{j.permFee ? fmtCurrency(j.permFee) : '—'}</td>
+                    <td className="cell-money">{j.ceSpread ? fmtCurrency(j.ceSpread / (j.numOpenings > 0 ? j.numOpenings : 1)) : '—'}</td>
+                    <td className="cell-money">{j.permFee ? fmtCurrency(j.permFee / (j.numOpenings > 0 ? j.numOpenings : 1)) : '—'}</td>
                     {cand.submissionId ? (
                       <EditableSelect
                         value={cand.submissionStatus || ''}
