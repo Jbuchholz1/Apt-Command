@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { getPlacements, getOfferOutCandidates, updateJobInBullhorn, updateJobOverrides, getOpportunities, updateOpportunityInBullhorn, updateSubmissionInBullhorn } from '../../lib/api';
+import { getPlacements, getOfferOutCandidates, updateJobInBullhorn, updateJobOverrides, getOpportunities, updateOpportunityInBullhorn, updateSubmissionInBullhorn, updatePlacementInBullhorn } from '../../lib/api';
 import { useUserLookups } from '../../lib/useUserLookups';
 import { saveWithToast } from '../../lib/saveWithToast';
 import { getFollowUpUrgency } from './lib/urgency';
@@ -77,6 +77,129 @@ function ContractorMultiSelect({ label, options, selected, onChange }) {
         </div>
       )}
     </div>
+  );
+}
+
+// Inline editor for the On the Board "PrBr/Salary LH" cell. Writes to the
+// underlying placement (Pending/Submitted) or submission (Offer Extended)
+// record rather than the JobOrder, so per-candidate negotiated rates land
+// on the right entity in Bullhorn.
+function EditableRates({ job, cand, onSave, fallbackClick }) {
+  const isDirectHire = job.employmentType === 'Direct Hire';
+  const [editing, setEditing] = useState(false);
+  const [pay, setPay] = useState('');
+  const [bill, setBill] = useState('');
+  const [salary, setSalary] = useState('');
+  const firstInputRef = useRef(null);
+  const blurTimerRef = useRef(null);
+
+  useEffect(() => {
+    if (editing) {
+      setPay(job.payRate != null ? String(job.payRate) : '');
+      setBill(job.billRate != null ? String(job.billRate) : '');
+      setSalary(job.salary != null ? String(job.salary) : '');
+      const t = setTimeout(() => {
+        firstInputRef.current?.focus();
+        firstInputRef.current?.select();
+      }, 0);
+      return () => clearTimeout(t);
+    }
+  }, [editing, job.payRate, job.billRate, job.salary]);
+
+  const targetId = cand.placementId || cand.submissionId;
+  const editable = !!targetId;
+
+  const commit = () => {
+    setEditing(false);
+    if (isDirectHire) {
+      const s = parseFloat(salary);
+      if (Number.isNaN(s) || s === (job.salary || 0)) return;
+      onSave({ salary: s });
+    } else {
+      const p = parseFloat(pay);
+      const b = parseFloat(bill);
+      if (Number.isNaN(p) || Number.isNaN(b)) return;
+      if (p === (job.payRate || 0) && b === (job.billRate || 0)) return;
+      onSave({ payRate: p, billRate: b });
+    }
+  };
+
+  // Use a deferred blur so clicking between the two inputs doesn't fire commit.
+  const handleBlur = () => {
+    blurTimerRef.current = setTimeout(commit, 100);
+  };
+  const cancelBlur = () => {
+    if (blurTimerRef.current) clearTimeout(blurTimerRef.current);
+    blurTimerRef.current = null;
+  };
+
+  const handleKey = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    else if (e.key === 'Escape') { setEditing(false); }
+  };
+
+  if (editing) {
+    return (
+      <td className="cell-money" onClick={e => e.stopPropagation()}>
+        {isDirectHire ? (
+          <input
+            ref={firstInputRef}
+            type="number"
+            step="0.01"
+            value={salary}
+            onChange={e => setSalary(e.target.value)}
+            onBlur={commit}
+            onKeyDown={handleKey}
+            style={{ width: '90px', padding: '2px 4px', fontSize: '13px' }}
+          />
+        ) : (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+            <span>$</span>
+            <input
+              ref={firstInputRef}
+              type="number"
+              step="0.01"
+              value={pay}
+              onChange={e => setPay(e.target.value)}
+              onBlur={handleBlur}
+              onFocus={cancelBlur}
+              onKeyDown={handleKey}
+              style={{ width: '55px', padding: '2px 4px', fontSize: '13px' }}
+            />
+            <span>/$</span>
+            <input
+              type="number"
+              step="0.01"
+              value={bill}
+              onChange={e => setBill(e.target.value)}
+              onBlur={handleBlur}
+              onFocus={cancelBlur}
+              onKeyDown={handleKey}
+              style={{ width: '55px', padding: '2px 4px', fontSize: '13px' }}
+            />
+          </span>
+        )}
+      </td>
+    );
+  }
+
+  const title = editable
+    ? `Click to edit ${cand.placementId ? 'placement' : 'submission'} rates for ${cand.name}`
+    : 'Click to edit PrBr / Salary in the job detail panel';
+
+  return (
+    <td
+      className="cell-money cell-prbr-clickable"
+      title={title}
+      style={{ cursor: 'pointer', textDecoration: 'underline dotted' }}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (editable) setEditing(true);
+        else if (fallbackClick) fallbackClick();
+      }}
+    >
+      {job.brSalary || '—'}
+    </td>
   );
 }
 
@@ -760,6 +883,68 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
   // is kept because Bullhorn typically creates a Pending Placement on that
   // transition, which means the candidate should stay visible until the
   // placement is approved.
+  // Save per-candidate rates from the On the Board modal. Routes to the
+  // placement record when the row is backed by one (Pending/Submitted), else
+  // to the submission record (Offer Extended). The displayed ceSpread and
+  // brSalary are recomputed optimistically with the same multipliers the
+  // server uses, so the row updates in-frame.
+  const handleRatesSave = async (job, cand, fields) => {
+    const isPlacement = !!cand.placementId;
+    const targetId = isPlacement ? cand.placementId : cand.submissionId;
+    if (!targetId) return;
+
+    const matchRow = (r) => isPlacement
+      ? r.cand.placementId === cand.placementId
+      : r.cand.submissionId === cand.submissionId;
+    const prevJobSnapshot = { ...job };
+
+    const newPay = fields.payRate != null ? fields.payRate : job.payRate;
+    const newBill = fields.billRate != null ? fields.billRate : job.billRate;
+    const newSalary = fields.salary != null ? fields.salary : job.salary;
+    const empType = (job.employmentType || '').toLowerCase();
+    const multiplier = empType === 'corp-to-corp' ? 1.05 : 1.25;
+    let newCe = job.ceSpread;
+    let newBrSalary = job.brSalary;
+    if (newPay > 1 && newBill > 1) {
+      const ce = Math.round((newBill - newPay * multiplier) * 40 * 100) / 100;
+      newCe = ce > 0 ? ce : null;
+      newBrSalary = `$${newPay}/$${newBill}`;
+    } else if (newSalary && job.feePercent) {
+      newBrSalary = `$${Number(newSalary).toLocaleString('en-US')}`;
+    }
+
+    setFilledRows(prev => prev.map(r => matchRow(r)
+      ? { ...r, job: { ...r.job, payRate: newPay, billRate: newBill, salary: newSalary, brSalary: newBrSalary, ceSpread: newCe } }
+      : r,
+    ));
+
+    const payload = {};
+    if (isPlacement) {
+      if (fields.payRate != null) payload.payRate = fields.payRate;
+      if (fields.billRate != null) payload.clientBillRate = fields.billRate;
+      if (fields.salary != null) payload.salary = fields.salary;
+    } else {
+      if (fields.payRate != null) payload.payRate = fields.payRate;
+      if (fields.billRate != null) payload.billRate = fields.billRate;
+      if (fields.salary != null) payload.salary = fields.salary;
+    }
+
+    await saveWithToast(
+      () => isPlacement
+        ? updatePlacementInBullhorn(targetId, payload)
+        : updateSubmissionInBullhorn(targetId, payload),
+      {
+        failureMessage: 'Could not update candidate rates',
+        onRollback: () => {
+          setFilledRows(prev => prev.map(r => matchRow(r)
+            ? { ...r, job: prevJobSnapshot }
+            : r,
+          ));
+        },
+      },
+    );
+  };
+
   const handleCandStatusSave = async (job, cand, newStatus) => {
     if (!cand?.submissionId) return;
     const previousStatus = cand.submissionStatus;
@@ -1363,19 +1548,12 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
                       onSave={(val) => handleStartDateSave(j, val)}
                       className="cell-editable cell-date"
                     />
-                    <td
-                      className="cell-money cell-prbr-clickable"
-                      title="Click to edit PrBr / Salary in the job detail panel"
-                      style={{ cursor: onSelectJob ? 'pointer' : 'default', textDecoration: onSelectJob ? 'underline dotted' : 'none' }}
-                      onClick={() => {
-                        if (onSelectJob) {
-                          setShowFilled(false);
-                          onSelectJob(j.id);
-                        }
-                      }}
-                    >
-                      {j.brSalary || '—'}
-                    </td>
+                    <EditableRates
+                      job={j}
+                      cand={cand}
+                      onSave={(fields) => handleRatesSave(j, cand, fields)}
+                      fallbackClick={onSelectJob ? () => { setShowFilled(false); onSelectJob(j.id); } : null}
+                    />
                     <td className="cell-money">{j.ceSpread ? fmtCurrency(j.ceSpread) : '—'}</td>
                     <td className="cell-money">{j.permFee ? fmtCurrency(j.permFee) : '—'}</td>
                     {cand.submissionId ? (

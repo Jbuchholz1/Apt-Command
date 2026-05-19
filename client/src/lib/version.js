@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.13';
+export const APP_VERSION = '3.29.14';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.14',
+    date: '2026-05-19',
+    title: 'On the Board — edit per-candidate rates inline',
+    changes: [
+      { type: 'patch', text: 'Clicking the PrBr/Salary cell on the On the Board modal now opens an inline editor that writes pay rate and bill rate directly to the placement (Pending/Submitted) or submission (Offer Extended) record in Bullhorn — not the JobOrder. Pairs with v3.29.13: now that displayed rates come from the per-candidate record, editing has to land on the same record so the change persists where the display is sourced. Direct Hire rows edit salary. Falls back to the job detail panel for rows with no underlying placement/submission target.' },
+    ],
+  },
   {
     version: '3.29.13',
     date: '2026-05-19',

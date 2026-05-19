@@ -1,5 +1,5 @@
 const express = require('express');
-const { CLIENT_SUB_STATUSES, getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getJobsByIds, getSubmissions, addNoteToJob, addNoteToOpportunity, updateJobField, updateOpportunityField, updateSubmissionField, getCorporateUsers, getOpenOpportunitiesFull, getOpportunityById, getClientContactsForCorp, createJob, getClientSubmissions, getOfferExtendedSubmissions, getPendingPlacements, getOffBoardPlacements, getSubmittedPlacements } = require('../lib/bullhorn');
+const { CLIENT_SUB_STATUSES, getOpenJobs, getRecentlyClosedJobs, getAllJobs, getJobById, getJobsByIds, getSubmissions, addNoteToJob, addNoteToOpportunity, updateJobField, updateOpportunityField, updateSubmissionField, updatePlacementField, getCorporateUsers, getOpenOpportunitiesFull, getOpportunityById, getClientContactsForCorp, createJob, getClientSubmissions, getOfferExtendedSubmissions, getPendingPlacements, getOffBoardPlacements, getSubmittedPlacements } = require('../lib/bullhorn');
 const {
   getAllOverrides, getOverrides, upsertOverrides, getNotesForJob, addNote,
   enqueueReconciliation, OverrideConflictError,
@@ -463,16 +463,74 @@ router.post('/submissions/:id/update', requireRb, async (req, res, next) => {
       return res.status(400).json({ error: 'fields object is required' });
     }
 
-    const ALLOWED_FIELDS = new Set(['status']);
+    const ALLOWED_FIELDS = new Set(['status', 'payRate', 'billRate', 'salary']);
+    const NUMERIC_FIELDS = new Set(['payRate', 'billRate', 'salary']);
     const sanitized = {};
     for (const [key, value] of Object.entries(fields)) {
       if (!ALLOWED_FIELDS.has(key)) {
         return res.status(400).json({ error: `Field "${key}" is not allowed` });
       }
-      sanitized[key] = value;
+      if (NUMERIC_FIELDS.has(key)) {
+        if (value === '' || value === null || value === undefined) {
+          sanitized[key] = null;
+        } else {
+          const num = Number(value);
+          if (Number.isNaN(num)) {
+            return res.status(400).json({ error: `Field "${key}" must be numeric` });
+          }
+          sanitized[key] = num;
+        }
+      } else {
+        sanitized[key] = value;
+      }
     }
 
     const result = await updateSubmissionField(subId, sanitized);
+    res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/jobs/placements/:id/update — Update placement rate/salary fields
+// in Bullhorn. On the Board rows backed by a Placement (Pending/Submitted)
+// edit through this route so per-candidate rates persist on the placement
+// record itself, not the underlying JobOrder.
+router.post('/placements/:id/update', requireRb, async (req, res, next) => {
+  try {
+    const placementId = parseInt(req.params.id, 10);
+    if (isNaN(placementId)) {
+      return res.status(400).json({ error: 'Invalid placement ID' });
+    }
+
+    const { fields } = req.body;
+    if (!fields || typeof fields !== 'object' || Object.keys(fields).length === 0) {
+      return res.status(400).json({ error: 'fields object is required' });
+    }
+
+    const ALLOWED_FIELDS = new Set(['payRate', 'clientBillRate', 'salary', 'fee']);
+    const NUMERIC_FIELDS = ALLOWED_FIELDS;
+    const sanitized = {};
+    for (const [key, value] of Object.entries(fields)) {
+      if (!ALLOWED_FIELDS.has(key)) {
+        return res.status(400).json({ error: `Field "${key}" is not allowed` });
+      }
+      if (NUMERIC_FIELDS.has(key)) {
+        if (value === '' || value === null || value === undefined) {
+          sanitized[key] = null;
+        } else {
+          const num = Number(value);
+          if (Number.isNaN(num)) {
+            return res.status(400).json({ error: `Field "${key}" must be numeric` });
+          }
+          sanitized[key] = num;
+        }
+      } else {
+        sanitized[key] = value;
+      }
+    }
+
+    const result = await updatePlacementField(placementId, sanitized);
     res.json({ success: true, data: result });
   } catch (err) {
     next(err);
