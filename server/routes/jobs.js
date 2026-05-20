@@ -741,16 +741,14 @@ router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
         if (job.isOpen === false) continue; // closed jobs don't belong on the counter
         if (EXCLUDED_JOB_STATUSES.has(job.status)) continue; // belt-and-suspenders if isOpen is stale
       }
-      // Each row reflects ONE candidate's deal. Prefer the placement/submission's
-      // own rates over the job's — placements often negotiate above the job's
-      // posted rate. Threshold >1 skips Bullhorn's `1` placeholder. When falling
-      // back to job rates (placeholder/missing record rates), divide CE/permFee
-      // by numOpenings so the per-candidate share is shown instead of the job
-      // aggregate. Cloned job avoids leaking per-row overrides into other rows
-      // that share the same underlying jobId.
+      // Each row reflects ONE candidate's deal. CE/permFee come from the
+      // placement/submission record only — no fallback to the job order's
+      // posted rates. Threshold >1 skips Bullhorn's `1` placeholder. If the
+      // record is missing rates, the cell stays blank rather than inferring
+      // from the job aggregate. Cloned job avoids leaking per-row overrides
+      // into other rows that share the same underlying jobId.
       const useRecordRates = (cand.recordPayRate || 0) > 1 && (cand.recordBillRate || 0) > 1;
       const useRecordSalary = (cand.recordSalary || 0) > 0;
-      const openings = job.numOpenings > 0 ? job.numOpenings : 1;
       const rowJob = { ...job };
       if (useRecordRates) {
         const multiplier = (job.employmentType || '').toLowerCase() === 'corp-to-corp' ? 1.05 : 1.25;
@@ -760,13 +758,12 @@ router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
         rowJob.brSalary = `$${cand.recordPayRate}/$${cand.recordBillRate}`;
         rowJob.ceSpread = ce > 0 ? ce : null;
       } else {
-        rowJob.ceSpread = job.ceSpread ? Math.round((job.ceSpread / openings) * 100) / 100 : null;
+        rowJob.ceSpread = null;
       }
-      if (useRecordSalary && (cand.recordFee || job.feePercent)) {
-        const feePct = cand.recordFee || job.feePercent;
-        rowJob.permFee = Math.round((cand.recordSalary * feePct / 26) * 100) / 100;
-      } else if (job.permFee) {
-        rowJob.permFee = Math.round((job.permFee / openings) * 100) / 100;
+      if (useRecordSalary && cand.recordFee) {
+        rowJob.permFee = Math.round((cand.recordSalary * cand.recordFee / 26) * 100) / 100;
+      } else {
+        rowJob.permFee = null;
       }
       rows.push({ job: rowJob, cand });
     }
