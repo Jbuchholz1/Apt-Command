@@ -44,11 +44,11 @@ function mergeOverrides(job, overridesMap) {
     job.deadline = ov.deadline || '';
     job.notes = ov.notes || '';
     job.fortyEightHr = ov.forty_eight_hr || '';
-    job.calledShot = ov.called_shot === true || ov.called_shot === 'true';
+    job.calledShotCount = Number(ov.called_shot_count) | 0;
     job.aptIndia = ov.apt_india === true || ov.apt_india === 'true';
   } else {
     job.recruiter = job.recruiter || '*';
-    job.calledShot = false;
+    job.calledShotCount = 0;
     job.aptIndia = false;
   }
   return job;
@@ -157,7 +157,7 @@ async function buildReqBoardWorkbook() {
   sheet.columns = [
     { header: 'Apt India', key: 'aptIndia', width: 9 },
     { header: 'Pri', key: 'priority', width: 5 },
-    { header: 'CS', key: 'calledShot', width: 5 },
+    { header: 'CS', key: 'calledShotCount', width: 5 },
     { header: 'Req#', key: 'id', width: 7 },
     { header: 'Date', key: 'dateAdded', width: 10 },
     { header: 'AM', key: 'ownerInitials', width: 5 },
@@ -185,7 +185,7 @@ async function buildReqBoardWorkbook() {
     sheet.addRow(sanitizeRow({
       aptIndia: job.aptIndia ? 'Y' : '',
       priority: job.priority || '',
-      calledShot: job.calledShot ? 'Y' : '',
+      calledShotCount: job.calledShotCount > 0 ? job.calledShotCount : '',
       id: job.id,
       dateAdded: formatDateMMDDYY(job.dateAdded),
       ownerInitials: job.ownerInitials || '',

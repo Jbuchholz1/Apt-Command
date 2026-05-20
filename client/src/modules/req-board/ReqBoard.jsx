@@ -82,7 +82,7 @@ const PRIORITY_OPTIONS = [
 const COLUMNS = [
   { key: 'aptIndia', label: 'Apt India', sortable: true, width: '70px' },
   { key: 'priority', label: 'Pri', sortable: true, width: '42px' },
-  { key: 'calledShot', label: 'CS', sortable: true, width: '36px' },
+  { key: 'calledShotCount', label: 'CS', sortable: true, width: '64px' },
   { key: 'dateAdded', label: 'Date', sortable: true, width: '70px' },
   { key: 'ownerInitials', label: 'AM', sortable: true, width: '50px', editType: 'select', bullhornField: 'owner' },
   { key: 'recruiter', label: 'TR', sortable: true, width: '60px', editType: 'select', bullhornField: 'assignedUsers' },
@@ -109,7 +109,7 @@ const OVERRIDE_FIELD_MAP = {
   followUp: 'follow_up',
   deadline: 'deadline',
   coverageNeeded: 'coverage_needed',
-  calledShot: 'called_shot',
+  calledShotCount: 'called_shot_count',
   fortyEightHr: 'forty_eight_hr',
   aptIndia: 'apt_india',
 };
@@ -576,22 +576,47 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
           />
         );
       }
-      case 'calledShot':
+      case 'calledShotCount': {
+        const count = job.calledShotCount || 0;
+        const cap = job.numOpenings || 1;
+        const btnStyle = {
+          width: '18px',
+          height: '18px',
+          padding: 0,
+          border: '1px solid #D3BF30',
+          background: '#fff',
+          color: '#333',
+          cursor: 'pointer',
+          fontWeight: 'bold',
+          lineHeight: '14px',
+          borderRadius: '3px',
+        };
         return (
-          <td key={col.key} style={{ textAlign: 'center' }}>
-            <input
-              type="checkbox"
-              checked={!!job.calledShot}
-              onChange={(e) => {
+          <td key={col.key} style={{ textAlign: 'center', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+            <button
+              type="button"
+              disabled={count <= 0}
+              onClick={(e) => {
                 e.stopPropagation();
-                handleOverrideSave(job.id, 'calledShot', e.target.checked);
+                handleOverrideSave(job.id, 'calledShotCount', Math.max(0, count - 1));
               }}
-              onClick={e => e.stopPropagation()}
-              title="Called Shot"
-              style={{ cursor: 'pointer', accentColor: '#D3BF30' }}
-            />
+              style={{ ...btnStyle, opacity: count <= 0 ? 0.4 : 1 }}
+              title="Decrement called shots"
+            >−</button>
+            <span style={{ display: 'inline-block', minWidth: '14px', fontWeight: 'bold', margin: '0 4px' }}>{count}</span>
+            <button
+              type="button"
+              disabled={count >= cap}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleOverrideSave(job.id, 'calledShotCount', Math.min(cap, count + 1));
+              }}
+              style={{ ...btnStyle, opacity: count >= cap ? 0.4 : 1 }}
+              title={count >= cap ? `Capped at ${cap} opening${cap === 1 ? '' : 's'}` : 'Increment called shots'}
+            >+</button>
           </td>
         );
+      }
       case 'aptIndia':
         return (
           <td key={col.key} style={{ textAlign: 'center' }}>

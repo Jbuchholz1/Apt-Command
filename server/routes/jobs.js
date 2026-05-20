@@ -93,7 +93,7 @@ router.get('/', requireRb, async (req, res, next) => {
     // Called Shots persist on the board regardless of status or time window.
     // Pull any flagged jobs that aren't already in the open/closed result sets.
     const calledShotIds = Object.entries(overrides)
-      .filter(([, ov]) => ov.called_shot === true || ov.called_shot === 'true')
+      .filter(([, ov]) => Number(ov.called_shot_count) > 0)
       .map(([jobId]) => parseInt(jobId, 10))
       .filter(id => !Number.isNaN(id));
     const existingIds = new Set([
@@ -167,7 +167,7 @@ router.get('/', requireRb, async (req, res, next) => {
         seen.add(j.id);
         const status = Array.isArray(j.status) ? j.status[0] : j.status;
         const ov = overrides[j.id];
-        const isCalledShot = ov?.called_shot === true || ov?.called_shot === 'true';
+        const isCalledShot = Number(ov?.called_shot_count) > 0;
 
         // For fall-off statuses, use our tracked status_changed_at (precise),
         // falling back to Bullhorn dateLastModified (less reliable — any edit resets it).
@@ -934,7 +934,7 @@ router.patch('/:id/overrides', requireRb, async (req, res, next) => {
       return res.status(400).json({ error: 'Invalid job ID' });
     }
 
-    const { recruiter, notes, follow_up, deadline, coverage_needed, tr_reassigned, tr_assigned_at, called_shot, forty_eight_hr, apt_india } = req.body;
+    const { recruiter, notes, follow_up, deadline, coverage_needed, tr_reassigned, tr_assigned_at, called_shot_count, forty_eight_hr, apt_india } = req.body;
     const updatedBy = req.user?.email || req.user?.name || 'unknown';
 
     // Optimistic locking: clients that have been updated can send If-Match
@@ -958,7 +958,7 @@ router.patch('/:id/overrides', requireRb, async (req, res, next) => {
         coverage_needed,
         tr_reassigned,
         tr_assigned_at,
-        called_shot,
+        called_shot_count,
         forty_eight_hr: sanitize(forty_eight_hr),
         apt_india,
         updated_by: updatedBy,
@@ -1031,7 +1031,7 @@ function mergeOverrides(job, overridesMap) {
     job.deadline = ov.deadline || '';
     job.notes = ov.notes || '';
     job.coverageNeeded = ov.coverage_needed || '';
-    job.calledShot = ov.called_shot === true || ov.called_shot === 'true';
+    job.calledShotCount = Number(ov.called_shot_count) | 0;
     job.aptIndia = ov.apt_india === true || ov.apt_india === 'true';
     job.fortyEightHr = ov.forty_eight_hr || '';
     job.statusChangedAt = ov.status_changed_at || null;
@@ -1048,7 +1048,7 @@ function mergeOverrides(job, overridesMap) {
     job.deadline = job.deadline || '';
     job.notes = job.notes || '';
     job.coverageNeeded = job.coverageNeeded || '';
-    job.calledShot = false;
+    job.calledShotCount = 0;
     job.aptIndia = false;
     job.fortyEightHr = '';
     job.statusChangedAt = null;

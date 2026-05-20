@@ -279,12 +279,14 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
   const totalOfferExtended = filledRows.length;
   const missedFollowUps = missedFollowUpJobs.length;
 
-  // Called Shots — jobs flagged as called_shot in overrides
-  const calledShotJobs = (jobs || []).filter(j => j.calledShot);
+  // Called Shots — jobs with one or more shots called in overrides
+  const calledShotJobs = (jobs || []).filter(j => (j.calledShotCount || 0) > 0);
 
-  // Total spread across Called Shots: weekly CE spread + perm fee (matches other spread stats)
+  // Total spread across Called Shots: weekly CE spread + perm fee × count.
+  // ceSpread/permFee are per-opening (see server/routes/jobs.js:1072-1084),
+  // so a 2-shot call on a $1,200 spread job contributes $2,400.
   const calledShotSpreadTotal = calledShotJobs.reduce(
-    (sum, j) => sum + (j.ceSpread || 0) + (j.permFee || 0),
+    (sum, j) => sum + (j.calledShotCount || 0) * ((j.ceSpread || 0) + (j.permFee || 0)),
     0
   );
 
@@ -1055,7 +1057,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
     { label: 'A/B Covered', value: `${abCovered} / ${abTotal}`, color: '#c9a227', onClick: () => { setAbOwnerFilter(''); setAbSort({ key: 'id', dir: 'desc' }); setShowAB(true); } },
     { label: 'C Reqs', value: cReqCount, color: '#94a3b8', onClick: () => { setCOwnerFilter(''); setCSort({ key: 'id', dir: 'desc' }); setShowC(true); } },
     { label: 'On The Board', value: totalOfferExtended, color: '#7c3aed', tooltip: 'Candidates in Offer Extended or with a Pending placement awaiting approval. Counts firm-wide regardless of board filters.', onClick: handleFilledClick },
-    { label: 'Called Shots', value: fmtCurrency(calledShotSpreadTotal), color: '#ea580c', tooltip: `Total spread across ${calledShotJobs.length} Called Shot job(s): weekly CE spread + perm fee. Click to see the list.`, onClick: () => { setCsOwnerFilter([]); setCsTrFilter([]); setCsSort({ key: 'id', dir: 'desc' }); setShowCalledShots(true); } },
+    { label: 'Called Shots', value: fmtCurrency(calledShotSpreadTotal), color: '#ea580c', tooltip: `Total spread across ${calledShotJobs.length} Called Shot job(s): (weekly CE spread + perm fee) × # of shots called per job. Click to see the list.`, onClick: () => { setCsOwnerFilter([]); setCsTrFilter([]); setCsSort({ key: 'id', dir: 'desc' }); setShowCalledShots(true); } },
     // Opportunities is hidden on the India Req Board — opportunities are
     // pre-job and don't have an apt_india concept, so showing firm-wide
     // numbers there would be misleading.
@@ -1766,6 +1768,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
                     { key: 'owner', label: 'Owner' },
                     { key: 'recruiter', label: 'TR' },
                     { key: 'employmentType', label: 'Type' },
+                    { key: 'calledShotCount', label: '# Shots' },
                   ].map(col => (
                     <th key={col.key} className="sortable" style={{ cursor: 'pointer' }} onClick={() => handleCsSort(col.key)}>
                       {col.label}<span className="sort-icon">{csSortIcon(col.key)}</span>
@@ -1795,10 +1798,11 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
                       onSave={(val) => handleTypeSave(j, val)}
                       className="cell-editable"
                     />
+                    <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{j.calledShotCount || 0}</td>
                   </tr>
                 ))}
                 {filteredCalledShots.length === 0 && (
-                  <tr><td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>No called shots</td></tr>
+                  <tr><td colSpan="8" style={{ textAlign: 'center', padding: '20px' }}>No called shots</td></tr>
                 )}
               </tbody>
             </table>

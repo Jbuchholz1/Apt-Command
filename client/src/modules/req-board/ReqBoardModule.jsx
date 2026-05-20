@@ -45,7 +45,7 @@ function isFilledAndExpired(job) {
 // This keeps just-saved edits visible while server caches catch up.
 const OVERRIDE_FIELDS = [
   'notes', 'deadline', 'followUp',
-  'coverageNeeded', 'calledShot', 'fortyEightHr', 'aptIndia',
+  'coverageNeeded', 'calledShotCount', 'fortyEightHr', 'aptIndia',
   'trReassigned', 'trAssignedAt', 'statusChangedAt',
   'overrideVersion', 'overrideUpdatedBy', 'overrideUpdatedAt',
   'recruiter',
@@ -90,7 +90,7 @@ function applyOverrideRowToJob(job, row) {
     followUp: row.follow_up || '',
     deadline: row.deadline || '',
     coverageNeeded: row.coverage_needed || '',
-    calledShot: row.called_shot === true || row.called_shot === 'true',
+    calledShotCount: Number(row.called_shot_count) | 0,
     aptIndia: row.apt_india === true || row.apt_india === 'true',
     fortyEightHr: row.forty_eight_hr || '',
     trReassigned: row.tr_reassigned === '1',
@@ -317,7 +317,7 @@ export default function ReqBoardModule({
         const r = (job.remote || '').toLowerCase();
         if (r !== filters.remote.toLowerCase()) return false;
       }
-      if (filters.calledShot === 'yes' && !job.calledShot) return false;
+      if (filters.calledShot === 'yes' && !(job.calledShotCount > 0)) return false;
       if (filters.redBoxes === 'red' && !hasRedBox(job, expiredJobIds)) return false;
       return true;
     });
