@@ -82,7 +82,7 @@ const PRIORITY_OPTIONS = [
 const COLUMNS = [
   { key: 'aptIndia', label: 'Apt India', sortable: true, width: '70px' },
   { key: 'priority', label: 'Pri', sortable: true, width: '42px' },
-  { key: 'calledShotCount', label: 'CS', sortable: true, width: '64px' },
+  { key: 'calledShotCount', label: 'CS', sortable: true, width: '64px', centered: true },
   { key: 'dateAdded', label: 'Date', sortable: true, width: '70px' },
   { key: 'ownerInitials', label: 'AM', sortable: true, width: '50px', editType: 'select', bullhornField: 'owner' },
   { key: 'recruiter', label: 'TR', sortable: true, width: '60px', editType: 'select', bullhornField: 'assignedUsers' },
@@ -694,7 +694,10 @@ export default function ReqBoard({ jobs, loading, onSelectJob, selectedJobId, on
             {COLUMNS.map(col => (
               <th
                 key={col.key}
-                style={col.width ? { width: col.width } : undefined}
+                style={{
+                  ...(col.width ? { width: col.width } : null),
+                  ...(col.centered ? { textAlign: 'center' } : null),
+                }}
                 className={`${col.sortable ? 'sortable' : ''} ${col.editable ? 'editable-header' : ''}`}
                 onClick={() => col.sortable && handleSort(col.key)}
               >
