@@ -267,7 +267,7 @@ async function paginatePlacementQuery(label, baseArgs) {
 async function getActivePlacements() {
   return paginatePlacementQuery('getActivePlacements', {
     entityType: 'Placement',
-    where: "status = 'Approved' OR status = 'Active'",
+    where: "status = 'Approved' OR status = 'Active' OR status = 'Sabatical'",
     fields: 'id,candidate(id,firstName,lastName),jobOrder(id,title,employmentType,owner(id,firstName,lastName)),dateBegin,dateEnd,payRate,clientBillRate,status,employmentType,salary,fee',
     orderBy: '-dateBegin',
   });

@@ -774,9 +774,12 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
 
   // Sum of weekly spread: contractors use (BillRate - PayRate×1.25) × 40;
   // Direct Hire placements add amortized perm fee = (Salary × Fee) / 26
-  // (canonical divisor matches formatJob() in server/routes/jobs.js)
+  // (canonical divisor matches formatJob() in server/routes/jobs.js).
+  // Sabatical contractors still appear in the list but don't count toward
+  // the total since they aren't actively billing.
   const filteredSpreadTotal = useMemo(() => {
     return filteredPlacements.reduce((sum, p) => {
+      if (p.status === 'Sabatical') return sum;
       if (p.employmentType === 'Direct Hire') {
         if (!p.salary || !p.fee) return sum;
         const perm = Math.round((p.salary * p.fee) / 26);
@@ -1138,7 +1141,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
                   </thead>
                   <tbody>
                     {filteredPlacements.map((p, idx) => (
-                      <tr key={p.id}>
+                      <tr key={p.id} style={p.status === 'Sabatical' ? { opacity: 0.5, color: '#6b7280' } : undefined}>
                         <td>
                           {p.id ? (
                             <a
