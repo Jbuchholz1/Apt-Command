@@ -1098,14 +1098,19 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
             <div className="modal-header">
               <h2>Active Contractors ({filteredPlacements.length}{(contractorAmFilter.length || contractorTrFilter.length || contractorTypeFilter.length) ? ` of ${placements.length}` : ''})</h2>
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: 'auto' }}>
-                <div style={{ fontSize: '14px', fontWeight: 600, color: '#0d9488' }}>
-                  Total Spread: {fmtCurrency(filteredSpreadTotal)}/wk
-                  <span className="stat-tooltip-wrap stat-tooltip-below">
-                    <span className="stat-tooltip-icon">&#9432;</span>
-                    <span className="stat-tooltip-text">
-                      Contract: (Pay Rate × 1.25 − Bill Rate) × 40 × −1. Direct Hire: (Salary × Fee %) ÷ 26. Sum of all visible (filtered) contractors.
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#0d9488' }}>
+                    Total Spread: {fmtCurrency(filteredSpreadTotal)}/wk
+                    <span className="stat-tooltip-wrap stat-tooltip-below">
+                      <span className="stat-tooltip-icon">&#9432;</span>
+                      <span className="stat-tooltip-text">
+                        Contract: (Pay Rate × 1.25 − Bill Rate) × 40 × −1. Direct Hire: (Salary × Fee %) ÷ 26. Sum of all visible (filtered) contractors.
+                      </span>
                     </span>
-                  </span>
+                  </div>
+                  <div style={{ fontSize: '12px', fontWeight: 700, color: '#dc2626' }}>
+                    Total spread does not factor in VMS or Referral Fees
+                  </div>
                 </div>
                 <button className="modal-close" onClick={() => setShowContractors(false)}>✕</button>
               </div>
