@@ -320,7 +320,11 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
     let result = calledShotJobs;
     if (csOwnerFilter.length > 0) result = result.filter(j => csOwnerFilter.includes(j.owner));
     if (csTrFilter.length > 0) result = result.filter(j => csTrFilter.includes(j.recruiter));
-    const arr = [...result];
+    // Attach per-job spread so the column can both display and sort on it.
+    const arr = result.map(j => ({
+      ...j,
+      csSpread: (j.calledShotCount || 0) * ((j.ceSpread || 0) + (j.permFee || 0)),
+    }));
     arr.sort((a, b) => {
       let av = a[csSort.key];
       let bv = b[csSort.key];
@@ -1769,6 +1773,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
                     { key: 'recruiter', label: 'TR' },
                     { key: 'employmentType', label: 'Type' },
                     { key: 'calledShotCount', label: '# Shots' },
+                    { key: 'csSpread', label: 'Spread' },
                   ].map(col => (
                     <th key={col.key} className="sortable" style={{ cursor: 'pointer' }} onClick={() => handleCsSort(col.key)}>
                       {col.label}<span className="sort-icon">{csSortIcon(col.key)}</span>
@@ -1799,10 +1804,11 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
                       className="cell-editable"
                     />
                     <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{j.calledShotCount || 0}</td>
+                    <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{j.csSpread > 0 ? fmtCurrency(j.csSpread) : '—'}</td>
                   </tr>
                 ))}
                 {filteredCalledShots.length === 0 && (
-                  <tr><td colSpan="8" style={{ textAlign: 'center', padding: '20px' }}>No called shots</td></tr>
+                  <tr><td colSpan="9" style={{ textAlign: 'center', padding: '20px' }}>No called shots</td></tr>
                 )}
               </tbody>
             </table>
