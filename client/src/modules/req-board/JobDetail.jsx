@@ -79,6 +79,47 @@ export default function JobDetail({ jobId, onClose }) {
     );
   };
 
+  // Save a non-negative integer count field back to Bullhorn.
+  // asString=true serializes the payload as a String for Bullhorn customText* fields.
+  const handleIntSave = async (bullhornField, displayKey, rawValue, { asString = false } = {}) => {
+    const trimmed = (rawValue ?? '').toString().trim();
+    let payload;
+    if (trimmed === '') {
+      payload = asString ? '' : null;
+    } else {
+      const n = Number(trimmed);
+      if (!Number.isInteger(n) || n < 0) return; // ignore invalid draft
+      payload = asString ? String(n) : n;
+    }
+    const previousValue = data?.job ? data.job[displayKey] : null;
+    setData(prev => ({ ...prev, job: { ...prev.job, [displayKey]: payload } }));
+    await saveWithToast(
+      () => updateJobInBullhorn(jobId, { [bullhornField]: payload }),
+      {
+        failureMessage: `Could not save ${bullhornField}`,
+        onRollback: () => {
+          setData(prev => ({ ...prev, job: { ...prev.job, [displayKey]: previousValue } }));
+        },
+      },
+    );
+  };
+
+  // Toggle the Bullhorn isOpen boolean. Closing causes the row to vanish from
+  // the main board on next refresh, since /api/req-board/jobs filters on isOpen=true.
+  const handleOpenClosedSave = async (nextIsOpen) => {
+    const previous = data?.job?.isOpen;
+    setData(prev => ({ ...prev, job: { ...prev.job, isOpen: nextIsOpen } }));
+    await saveWithToast(
+      () => updateJobInBullhorn(jobId, { isOpen: nextIsOpen }),
+      {
+        failureMessage: 'Could not change Open/Closed',
+        onRollback: () => {
+          setData(prev => ({ ...prev, job: { ...prev.job, isOpen: previous } }));
+        },
+      },
+    );
+  };
+
   const handleAddNote = async () => {
     if (!noteText.trim() || noteSaving) return;
     setNoteSaving(true);
@@ -137,10 +178,32 @@ export default function JobDetail({ jobId, onClose }) {
                 [data.job.city, data.job.state].filter(Boolean).join(', ') || '—'
               } />
               <DetailRow label="Remote" value={data.job.remote} />
-              <DetailRow label="# Openings" value={data.job.numOpenings} />
-              <DetailRow label="# Filled" value={data.job.filled} />
-              <DetailRow label="# Washed" value={data.job.washed} />
-              <DetailRow label="# Lost" value={data.job.lost} />
+              <EditableSelectRow
+                label="Open / Closed"
+                value={data.job.isOpen ? 'Open' : 'Closed'}
+                options={[{ value: 'Open', label: 'Open' }, { value: 'Closed', label: 'Closed' }]}
+                onSave={(v) => handleOpenClosedSave(v === 'Open')}
+              />
+              <EditableIntRow
+                label="# Openings"
+                value={data.job.numOpenings}
+                onSave={(v) => handleIntSave('numOpenings', 'numOpenings', v)}
+              />
+              <EditableIntRow
+                label="# Filled"
+                value={data.job.filled}
+                onSave={(v) => handleIntSave('customText2', 'filled', v, { asString: true })}
+              />
+              <EditableIntRow
+                label="# Washed"
+                value={data.job.washed}
+                onSave={(v) => handleIntSave('customText3', 'washed', v, { asString: true })}
+              />
+              <EditableIntRow
+                label="# Lost"
+                value={data.job.lost}
+                onSave={(v) => handleIntSave('customText4', 'lost', v, { asString: true })}
+              />
               <DetailRow label="Category" value={data.job.staffingOrProject} />
               <DetailRow label="Follow Up" value={data.job.followUp || '—'} />
               <DetailRow label="Deadline" value={data.job.deadline || '—'} />
@@ -479,6 +542,130 @@ function EditableNumberRow({ label, value, suffix, onSave }) {
           onClick={() => setEditing(true)}
         >
           {display}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Click-to-edit row for non-negative integer counts (# Openings / Filled / Washed / Lost).
+ * Same UX as EditableNumberRow but with integer-only input and no currency formatting.
+ */
+function EditableIntRow({ label, value, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value == null ? '' : String(value));
+  const inputRef = useRef(null);
+  useEditingSignal(editing);
+
+  useEffect(() => {
+    setDraft(value == null ? '' : String(value));
+  }, [value]);
+
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editing]);
+
+  const commit = () => {
+    setEditing(false);
+    const originalStr = value == null ? '' : String(value);
+    if (draft === originalStr) return;
+    if (draft !== '') {
+      const n = Number(draft);
+      if (!Number.isInteger(n) || n < 0) {
+        setDraft(originalStr);
+        return;
+      }
+    }
+    onSave(draft);
+  };
+
+  const handleKey = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    else if (e.key === 'Escape') { setDraft(value == null ? '' : String(value)); setEditing(false); }
+  };
+
+  return (
+    <div className="detail-row">
+      <span className="detail-label">{label}</span>
+      {editing ? (
+        <input
+          ref={inputRef}
+          type="number"
+          min="0"
+          step="1"
+          className="detail-edit-input"
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={handleKey}
+        />
+      ) : (
+        <span
+          className="detail-value detail-editable"
+          title="Click to edit"
+          onClick={() => setEditing(true)}
+        >
+          {value ?? '—'}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Click-to-edit dropdown row for the detail grid.
+ * Unlike the table-cell EditableSelect, this renders div-based rows that fit
+ * the detail-grid layout.
+ */
+function EditableSelectRow({ label, value, options, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const selectRef = useRef(null);
+  useEditingSignal(editing);
+
+  useEffect(() => {
+    if (editing && selectRef.current) {
+      selectRef.current.focus();
+    }
+  }, [editing]);
+
+  const commit = (newValue) => {
+    setEditing(false);
+    if (newValue !== value) onSave(newValue);
+  };
+
+  const handleKey = (e) => {
+    if (e.key === 'Escape') setEditing(false);
+  };
+
+  const displayLabel = options.find(o => o.value === value)?.label ?? '—';
+
+  return (
+    <div className="detail-row">
+      <span className="detail-label">{label}</span>
+      {editing ? (
+        <select
+          ref={selectRef}
+          className="detail-edit-input"
+          value={value ?? ''}
+          onChange={e => commit(e.target.value)}
+          onBlur={() => setEditing(false)}
+          onKeyDown={handleKey}
+        >
+          {options.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      ) : (
+        <span
+          className="detail-value detail-editable"
+          title="Click to edit"
+          onClick={() => setEditing(true)}
+        >
+          {displayLabel}
         </span>
       )}
     </div>

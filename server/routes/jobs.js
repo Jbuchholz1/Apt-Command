@@ -861,10 +861,18 @@ router.post('/:id/bullhorn-update', requireRb, async (req, res, next) => {
       'payRate', 'clientBillRate', 'salary', 'customFloat1',
       // Priority (1=A, 2=B, 3=C)
       'type',
+      // Headcount counters
+      'numOpenings', 'customText2', 'customText3', 'customText4',
+      // Open/Closed toggle (separate from descriptive status)
+      'isOpen',
     ]);
 
     // Numeric fields — coerce string input to number or null
-    const NUMERIC_FIELDS = new Set(['payRate', 'clientBillRate', 'salary', 'customFloat1', 'type']);
+    const NUMERIC_FIELDS = new Set(['payRate', 'clientBillRate', 'salary', 'customFloat1', 'type', 'numOpenings']);
+    // Integer-as-string fields — Bullhorn stores as String, but we accept non-negative ints
+    const INT_STRING_FIELDS = new Set(['customText2', 'customText3', 'customText4']);
+    // Boolean fields — accept literal true/false only
+    const BOOLEAN_FIELDS = new Set(['isOpen']);
 
     const sanitized = {};
     for (const [key, value] of Object.entries(fields)) {
@@ -879,8 +887,26 @@ router.post('/:id/bullhorn-update', requireRb, async (req, res, next) => {
           if (Number.isNaN(num)) {
             return res.status(400).json({ error: `Field "${key}" must be numeric` });
           }
+          if (key === 'numOpenings' && (!Number.isInteger(num) || num < 0)) {
+            return res.status(400).json({ error: `Field "${key}" must be a non-negative integer` });
+          }
           sanitized[key] = num;
         }
+      } else if (INT_STRING_FIELDS.has(key)) {
+        if (value === '' || value === null || value === undefined) {
+          sanitized[key] = '';
+        } else {
+          const num = Number(value);
+          if (!Number.isInteger(num) || num < 0) {
+            return res.status(400).json({ error: `Field "${key}" must be a non-negative integer` });
+          }
+          sanitized[key] = String(num);
+        }
+      } else if (BOOLEAN_FIELDS.has(key)) {
+        if (value !== true && value !== false) {
+          return res.status(400).json({ error: `Field "${key}" must be a boolean` });
+        }
+        sanitized[key] = value;
       } else {
         sanitized[key] = value;
       }
