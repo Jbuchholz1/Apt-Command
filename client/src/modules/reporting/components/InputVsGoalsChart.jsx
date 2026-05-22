@@ -6,7 +6,7 @@ export default function InputVsGoalsChart({ recruiters, startDate, endDate }) {
 
   // Pacing: spread goal is a quarterly (13-week) target.
   // The pacing line shows what fraction of the goal the selected date range represents.
-  // E.g., 2-week range = 2/13 ≈ 15.4% of goal.
+  // E.g., 2-week range = 2/13 ≈ 15.4% of goal; YTD ≈ 21 weeks ≈ 161% of goal.
   const QUARTER_WEEKS = 13;
   let pacingFraction = 1;
   if (startDate && endDate) {
@@ -14,7 +14,7 @@ export default function InputVsGoalsChart({ recruiters, startDate, endDate }) {
     const end = new Date(endDate + 'T23:59:59').getTime();
     const rangeMs = end - start;
     const rangeWeeks = rangeMs / (7 * 24 * 60 * 60 * 1000);
-    pacingFraction = Math.min(1, rangeWeeks / QUARTER_WEEKS);
+    pacingFraction = Math.max(0, rangeWeeks / QUARTER_WEEKS);
   }
 
   const data = recruiters.map(r => ({

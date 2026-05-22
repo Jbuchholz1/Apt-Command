@@ -9,12 +9,13 @@ export default function GoalPointsChart({ recruiters, startDate, endDate, weekly
   const quarterGoal = weeklyTarget * QUARTER_WEEKS;
 
   // Pacing: what fraction of the 13-week quarter does the selected range represent?
+  // Scales above 100% when the range exceeds a quarter (e.g. YTD ≈ 21 weeks → ~161%).
   let pacingFraction = 1;
   if (startDate && endDate) {
     const s = new Date(startDate + 'T00:00:00').getTime();
     const e = new Date(endDate + 'T23:59:59').getTime();
     const rangeWeeks = (e - s) / (7 * 24 * 60 * 60 * 1000);
-    pacingFraction = Math.min(1, rangeWeeks / QUARTER_WEEKS);
+    pacingFraction = Math.max(0, rangeWeeks / QUARTER_WEEKS);
   }
 
   const pacingPct = Math.round(pacingFraction * 100);

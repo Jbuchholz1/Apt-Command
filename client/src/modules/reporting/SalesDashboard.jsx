@@ -136,12 +136,13 @@ export default function SalesDashboard() {
   const AM_QUARTERLY_MAR = 30 * 13; // Static quarterly goal
 
   // Pacing: spread goal is quarterly (13 weeks). Show what fraction the selected range represents.
+  // Scales above 100% when the range exceeds a quarter (e.g. YTD ≈ 21 weeks → ~161%).
   const QUARTER_WEEKS = 13;
   const pacingFraction = useMemo(() => {
     const s = new Date(startDate + 'T00:00:00').getTime();
     const e = new Date(endDate + 'T23:59:59').getTime();
     const rangeWeeks = (e - s) / (7 * 24 * 60 * 60 * 1000);
-    return Math.min(1, rangeWeeks / QUARTER_WEEKS);
+    return Math.max(0, rangeWeeks / QUARTER_WEEKS);
   }, [startDate, endDate]);
 
   const pacingPct = Math.round(pacingFraction * 100);
