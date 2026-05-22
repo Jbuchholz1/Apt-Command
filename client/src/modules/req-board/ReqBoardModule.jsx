@@ -382,7 +382,7 @@ export default function ReqBoardModule({
       <div className="req-board-module">
         <div className="req-board-toolbar">
           <div className="toolbar-left">
-            <img src="/apt-logo.jpg" alt="APT" className="toolbar-logo" />
+            <img src="/apt-logo.jpg" alt="Apt" className="toolbar-logo" />
             <h2 className="toolbar-title">{title}</h2>
           </div>
           <div className="toolbar-right">

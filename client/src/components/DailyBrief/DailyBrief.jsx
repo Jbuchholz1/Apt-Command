@@ -196,7 +196,7 @@ function formatTime(d) {
 
 function parseAnnouncement(data) {
   if (!data?.text) {
-    return { title: '', bullets: [], author: 'APT COMMAND', postedAt: '' };
+    return { title: '', bullets: [], author: 'Apt Command', postedAt: '' };
   }
   const lines = data.text.split('\n').map((l) => l.trim()).filter(Boolean);
   const title = lines[0] || '';
@@ -205,7 +205,7 @@ function parseAnnouncement(data) {
     .filter((l) => l.startsWith('-'))
     .map((l) => l.replace(/^-\s*/, ''));
   const rawAuthor = (data.updated_by || '').trim();
-  const author = rawAuthor ? rawAuthor.toUpperCase() : 'APT COMMAND';
+  const author = rawAuthor || 'Apt Command';
   const postedAt = data.updated_at ? formatAnnouncementTime(data.updated_at) : '';
   return { title, bullets, author, postedAt };
 }

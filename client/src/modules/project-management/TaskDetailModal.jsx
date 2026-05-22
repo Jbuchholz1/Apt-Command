@@ -140,7 +140,7 @@ export default function TaskDetailModal({ task, columns, onClose, onUpdated, onD
         <div className="pm-modal-body">
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 14, marginLeft: 6 }}>
             in list <strong style={{ color: 'var(--text)' }}>{currentColumn?.name || '—'}</strong>
-            {saving && <span style={{ marginLeft: 10, color: 'var(--gold)' }}>Saving…</span>}
+            {saving && <span style={{ marginLeft: 10, color: 'var(--apt-gold-700)' }}>Saving…</span>}
           </div>
 
           <div className="pm-task-modal-grid">

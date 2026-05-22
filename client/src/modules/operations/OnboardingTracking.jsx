@@ -33,7 +33,7 @@ export default function OnboardingTracking() {
       <div className="ops-toolbar">
         <div className="ops-toolbar-left">
           <Link to="/operations" className="ops-back-btn"><ArrowLeft size={14} /> Operations</Link>
-          <img src="/apt-logo.jpg" alt="APT" className="ops-toolbar-logo" />
+          <img src="/apt-logo.jpg" alt="Apt" className="ops-toolbar-logo" />
           <h1 className="ops-toolbar-title">Onboarding Tracking</h1>
         </div>
         <div className="ops-toolbar-right">

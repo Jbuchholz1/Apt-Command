@@ -70,7 +70,7 @@ export const FAQ_SECTIONS = [
     ],
   },
   {
-    module: 'APT Health',
+    module: 'Apt Health',
     items: [
       {
         question: 'What do the health gauges measure?',
@@ -171,10 +171,10 @@ export const FAQ_SECTIONS = [
 
 export const TRAINING_VIDEOS = [
   {
-    title: 'APT Command Overview',
+    title: 'Apt Command Overview',
     module: 'General',
     url: '',
-    description: 'A quick walkthrough of the entire APT Command platform — navigation, key modules, and how to get started.',
+    description: 'A quick walkthrough of the entire Apt Command platform — navigation, key modules, and how to get started.',
   },
   {
     title: 'Req Board Deep Dive',

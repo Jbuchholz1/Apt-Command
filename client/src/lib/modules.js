@@ -6,7 +6,7 @@ export const MODULES = {
   india_req_board:       { label: 'India Req Board' },
   org_flow:              { label: 'Org Flow' },
   pipeline:              { label: 'Pipeline' },
-  client_health:         { label: 'APT Health' },
+  client_health:         { label: 'Apt Health' },
   reporting_recruiter:   { label: 'Recruiter Dashboard',  parent: 'reporting' },
   reporting_sales:       { label: 'Sales Dashboard',      parent: 'reporting' },
   reporting_executive:   { label: 'Executive Dashboard',  parent: 'reporting' },

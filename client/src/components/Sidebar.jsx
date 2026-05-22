@@ -33,7 +33,7 @@ const NAV_ITEMS = [
   { label: 'India Req Board', icon: ClipboardList, path: '/india-req-board', module: 'india_req_board' },
   { label: 'Org Flow',      icon: GitBranch,     path: '/org-flow',   module: 'org_flow' },
   { label: 'Pipeline',      icon: Users,         path: '/pipeline',   module: 'pipeline' },
-  { label: 'APT Health',    icon: Building2,     path: '/clients',    module: 'client_health' },
+  { label: 'Apt Health',    icon: Building2,     path: '/clients',    module: 'client_health' },
   { label: 'Reporting',     icon: BarChart3,     path: '/reporting',  modulesAny: REPORTING_SUB_KEYS },
   { label: 'Goal Tracking', icon: Target,        path: '/goals',      module: 'goal_tracking' },
   { label: 'Support',       icon: LifeBuoy,      path: '/support',    module: 'support' },
@@ -77,8 +77,8 @@ export default function Sidebar({ userName, onLogout, mobileOpen, onOpenSearch }
       <aside className={`sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
         {/* Brand */}
         <Link to="/" className="sidebar-brand">
-          <img src="/apt-logo.jpg" alt="APT" className="sidebar-logo" />
-          <span className="sidebar-brand-text">APT Command</span>
+          <img src="/apt-logo.jpg" alt="Apt" className="sidebar-logo" />
+          <span className="sidebar-brand-text">Apt Command</span>
         </Link>
 
         {/* Navigation */}

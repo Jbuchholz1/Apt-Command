@@ -484,7 +484,7 @@
   font-weight: 600;
   font-size: 10.5px;
   letter-spacing: var(--tracking-widest);
-  color: var(--apt-gold);
+  color: var(--apt-gold-700);
   text-transform: uppercase;
   position: relative;
 }

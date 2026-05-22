@@ -38,10 +38,10 @@ export default function LoginPage() {
   return (
     <div className="login-page">
       <div className="login-card">
-        <h1 className="login-title">APT Command</h1>
+        <h1 className="login-title">Apt Command</h1>
         <p className="login-subtitle">Operations Platform</p>
         <p className="login-desc">
-          Sign in with your APT Microsoft account to access the platform.
+          Sign in with your Apt Microsoft account to access the platform.
         </p>
         <button className="login-btn" onClick={handleLogin}>
           <svg width="20" height="20" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">

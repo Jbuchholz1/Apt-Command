@@ -133,13 +133,13 @@ export default function ContractTracking() {
       const totalYearly = active.reduce((sum, c) => sum + (Number(c.yearly_cost) || 0), 0);
       const expiringCount = active.filter(c => isExpiringSoon(c)).length;
 
-      // Title block — APT navy + gold
+      // Title block — Apt navy + gold
       doc.setFillColor(4, 20, 79);
       doc.rect(0, 0, pageWidth, 56, 'F');
       doc.setTextColor(211, 191, 48);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(18);
-      doc.text('APT Vendor Contracts', 36, 28);
+      doc.text('Apt Vendor Contracts', 36, 28);
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
@@ -212,13 +212,13 @@ export default function ContractTracking() {
           const pageNum = doc.internal.getNumberOfPages();
           doc.setFontSize(8);
           doc.setTextColor(107, 114, 128);
-          doc.text('APT Companies — Confidential', 36, pageHeight - 18);
+          doc.text('Apt Companies — Confidential', 36, pageHeight - 18);
           doc.text(`Page ${data.pageNumber} of ${pageNum}`, pageWidth - 36, pageHeight - 18, { align: 'right' });
         },
       });
 
       const today = new Date().toISOString().slice(0, 10);
-      doc.save(`APT_Contracts_${today}.pdf`);
+      doc.save(`Apt_Contracts_${today}.pdf`);
     } catch (err) {
       console.error('[ContractTracking] PDF export error:', err);
       window.alert(`PDF export failed: ${err.message || err}`);
@@ -255,7 +255,7 @@ export default function ContractTracking() {
         'Contract Link': '',
       },
     ];
-    await writeExcelFile(templateRows, 'Contracts', 'APT_Contracts_Template.xlsx');
+    await writeExcelFile(templateRows, 'Contracts', 'Apt_Contracts_Template.xlsx');
   }, []);
 
   const handleImportClick = useCallback(() => {
@@ -389,7 +389,7 @@ export default function ContractTracking() {
       <div className="ops-toolbar">
         <div className="ops-toolbar-left">
           <Link to="/operations" className="ops-back-btn"><ArrowLeft size={14} /> Operations</Link>
-          <img src="/apt-logo.jpg" alt="APT" className="ops-toolbar-logo" />
+          <img src="/apt-logo.jpg" alt="Apt" className="ops-toolbar-logo" />
           <h1 className="ops-toolbar-title">Contract Tracking</h1>
         </div>
         <div className="ops-toolbar-right">

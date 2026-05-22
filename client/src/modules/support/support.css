@@ -154,7 +154,7 @@
   margin: 0;
 }
 .support-coming-soon a {
-  color: var(--gold);
+  color: var(--apt-gold-700);
 }
 
 .support-empty {
@@ -219,7 +219,7 @@
 }
 .playbook-link:hover {
   border-color: var(--gold);
-  color: var(--gold);
+  color: var(--apt-gold-700);
 }
 .playbook-link.placeholder {
   color: var(--text-muted);
@@ -376,7 +376,7 @@
   flex-shrink: 0;
 }
 .it-contact-row a {
-  color: var(--gold);
+  color: var(--apt-gold-700);
   text-decoration: none;
 }
 .it-contact-row a:hover {
@@ -1564,7 +1564,7 @@
   align-items: center;
   gap: 4px;
   font-size: 11px;
-  color: var(--gold);
+  color: var(--apt-gold-700);
   text-decoration: none;
   margin-top: 6px;
 }
@@ -1617,7 +1617,7 @@
   font-size: 13px;
   color: #166534;
 }
-.it-ticket-success a { color: var(--gold); }
+.it-ticket-success a { color: var(--apt-gold-700); }
 
 .it-another-btn {
   margin-top: 10px;

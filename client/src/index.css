@@ -165,7 +165,7 @@ button:active:not(:disabled) { transform: scale(0.97); }
 .home-tagline {
   font-size: 15px;
   font-weight: 600;
-  color: var(--gold);
+  color: var(--apt-gold-700);
   margin: 0 0 36px;
   letter-spacing: 0.3px;
 }
@@ -610,7 +610,7 @@ button:active:not(:disabled) { transform: scale(0.97); }
 }
 .resource-link:hover {
   background: rgba(4, 20, 79, 0.06);
-  color: var(--gold);
+  color: var(--apt-gold-700);
   box-shadow: 0 2px 6px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.06);
 }
 
@@ -643,7 +643,7 @@ button:active:not(:disabled) { transform: scale(0.97); }
 }
 
 .coming-soon-back {
-  color: var(--gold);
+  color: var(--apt-gold-700);
   text-decoration: none;
   font-size: 13px;
   font-weight: 600;

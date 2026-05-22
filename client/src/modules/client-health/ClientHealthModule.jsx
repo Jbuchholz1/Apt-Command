@@ -238,7 +238,7 @@ export default function ClientHealthModule() {
   return (
     <div className="client-health-module">
       <div className="ch-toolbar">
-        <h2 className="ch-toolbar-title">APT Health</h2>
+        <h2 className="ch-toolbar-title">Apt Health</h2>
         <div className="ch-toolbar-right">
           <DateRangePicker
             startDate={startDate}

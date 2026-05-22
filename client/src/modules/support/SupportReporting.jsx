@@ -295,7 +295,7 @@ export default function SupportReporting({ tickets }) {
             showKpi('Tickets This Month', t => new Date(t.created_at) >= start);
           }}
         >
-          <UserCircle size={18} className="support-kpi-icon" style={{ color: '#D3BF30' }} />
+          <UserCircle size={18} className="support-kpi-icon" style={{ color: 'var(--apt-gold-700)' }} />
           <div>
             <div className="support-kpi-label">This Month</div>
             <div className="support-kpi-value">{kpis.thisMonth}</div>

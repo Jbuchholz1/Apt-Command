@@ -106,7 +106,7 @@
   background: rgba(211,191,48,0.06);
 }
 .perf-pill-gold .perf-pill-value {
-  color: var(--gold);
+  color: var(--apt-gold-700);
 }
 
 .perf-pill-green .perf-pill-value {
@@ -199,7 +199,7 @@
   font-weight: 500;
 }
 .my-tickets-table .my-tickets-title-link:hover {
-  color: var(--gold);
+  color: var(--apt-gold-700);
   text-decoration: underline;
 }
 

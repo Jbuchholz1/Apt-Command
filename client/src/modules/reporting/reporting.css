@@ -658,7 +658,7 @@
 }
 
 .bh-detail-link {
-  color: var(--gold);
+  color: var(--apt-gold-700);
   text-decoration: none;
   font-weight: 600;
   font-family: var(--mono);
@@ -899,7 +899,7 @@
 }
 .exec-kpi-hint {
   font-size: 11px;
-  color: var(--gold);
+  color: var(--apt-gold-700);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;

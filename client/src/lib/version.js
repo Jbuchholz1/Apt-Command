@@ -181,7 +181,7 @@ export const CHANGELOG = [
     date: '2026-05-06',
     title: 'Operations — Contract Tracking: PDF Export',
     changes: [
-      { type: 'patch', text: 'Added an "Export PDF" button to the Contract Tracking toolbar (next to Export Excel). Generates a clean landscape one-pager (or multi-page for long lists) with an APT-branded navy + gold header, generation timestamp, and a summary line showing total / active / cancelled / expiring counts plus aggregate monthly + yearly cost across non-cancelled contracts. The table renders the same nine columns as the Excel export, with cancelled rows greyed out + italicized and "Expiring Soon" end-dates highlighted in orange. Each page footer carries "APT Companies — Confidential" and a page counter. Generated client-side via jsPDF + jspdf-autotable, so no server round-trip.' },
+      { type: 'patch', text: 'Added an "Export PDF" button to the Contract Tracking toolbar (next to Export Excel). Generates a clean landscape one-pager (or multi-page for long lists) with an Apt-branded navy + gold header, generation timestamp, and a summary line showing total / active / cancelled / expiring counts plus aggregate monthly + yearly cost across non-cancelled contracts. The table renders the same nine columns as the Excel export, with cancelled rows greyed out + italicized and "Expiring Soon" end-dates highlighted in orange. Each page footer carries "Apt Companies — Confidential" and a page counter. Generated client-side via jsPDF + jspdf-autotable, so no server round-trip.' },
     ],
   },
   {
@@ -261,7 +261,7 @@ export const CHANGELOG = [
     date: '2026-05-04',
     title: 'Org Flow — Surface Missing-Column Error + Parallelize Bulk Update',
     changes: [
-      { type: 'patch', text: 'Three follow-ups after Railway logs revealed the real cause of the sync failures: the auto-migrate could not run because the user\'s Supabase project does not expose the exec_sql RPC, so the clients.status column was never added — every status read/write was failing silently. (1) The route now translates that specific Supabase error into a clear actionable message ("clients.status column is missing in Supabase — run migration 008") instead of an opaque 500. (2) The bulk client update during sync now parallelizes within chunks of 50, dropping the post-pagination write phase from minutes to seconds. (3) Pagination no longer stops when a page returns less than the requested count (APT\'s MCP capped at 200 even when 500 was requested), so the full scan now continues until a page returns zero results. Run migration 008 in the Supabase SQL editor before retrying — see commit notes.' },
+      { type: 'patch', text: 'Three follow-ups after Railway logs revealed the real cause of the sync failures: the auto-migrate could not run because the user\'s Supabase project does not expose the exec_sql RPC, so the clients.status column was never added — every status read/write was failing silently. (1) The route now translates that specific Supabase error into a clear actionable message ("clients.status column is missing in Supabase — run migration 008") instead of an opaque 500. (2) The bulk client update during sync now parallelizes within chunks of 50, dropping the post-pagination write phase from minutes to seconds. (3) Pagination no longer stops when a page returns less than the requested count (Apt\'s MCP capped at 200 even when 500 was requested), so the full scan now continues until a page returns zero results. Run migration 008 in the Supabase SQL editor before retrying — see commit notes.' },
     ],
   },
   {
@@ -269,7 +269,7 @@ export const CHANGELOG = [
     date: '2026-05-04',
     title: 'Org Flow — Manual Sync Skips Contacts + Maps Legacy "Active" Status',
     changes: [
-      { type: 'patch', text: 'Three follow-ups for the manual "Sync from Bullhorn" button. (1) The button now passes skipContacts: true to the sync, so it finishes well within the HTTP request timeout — the contact sync continues to run on the 30-minute cron where time isn\'t a constraint. (2) The paginated full scan retries each page once on transient MCP errors and returns a partial result instead of bubbling a hard 500 if a page still fails. (3) Many older Bullhorn ClientCorporations carry a legacy status value of "Active" that APT renamed to "Active Account" — the sync now translates "Active" to "Active Account" before writing to Supabase, and any other unrecognized values surface in the dropdown as "(legacy)" so they\'re visible instead of silently displaying as Unqualified.' },
+      { type: 'patch', text: 'Three follow-ups for the manual "Sync from Bullhorn" button. (1) The button now passes skipContacts: true to the sync, so it finishes well within the HTTP request timeout — the contact sync continues to run on the 30-minute cron where time isn\'t a constraint. (2) The paginated full scan retries each page once on transient MCP errors and returns a partial result instead of bubbling a hard 500 if a page still fails. (3) Many older Bullhorn ClientCorporations carry a legacy status value of "Active" that Apt renamed to "Active Account" — the sync now translates "Active" to "Active Account" before writing to Supabase, and any other unrecognized values surface in the dropdown as "(legacy)" so they\'re visible instead of silently displaying as Unqualified.' },
     ],
   },
   {
@@ -277,7 +277,7 @@ export const CHANGELOG = [
     date: '2026-05-04',
     title: 'Org Flow — Full Sync Now Paginates Past 500 Clients',
     changes: [
-      { type: 'patch', text: 'After v3.22.14 the full sync still left most cards on Unqualified because Bullhorn caps query results at 500 per call, and the APT tenant has thousands of ClientCorporations — only the 500 newest came back, every other corp\'s status went unchanged. The full scan now paginates by id ascending and keeps fetching until a page returns less than 500, so every linked client gets its real Bullhorn status copied down. Click "Sync from Bullhorn" once after the redeploy and the Railway log line "[bullhorn] full ClientCorporation scan: <N> corps in <P> pages" will tell you how many came through.' },
+      { type: 'patch', text: 'After v3.22.14 the full sync still left most cards on Unqualified because Bullhorn caps query results at 500 per call, and the Apt tenant has thousands of ClientCorporations — only the 500 newest came back, every other corp\'s status went unchanged. The full scan now paginates by id ascending and keeps fetching until a page returns less than 500, so every linked client gets its real Bullhorn status copied down. Click "Sync from Bullhorn" once after the redeploy and the Railway log line "[bullhorn] full ClientCorporation scan: <N> corps in <P> pages" will tell you how many came through.' },
     ],
   },
   {
@@ -285,7 +285,7 @@ export const CHANGELOG = [
     date: '2026-05-04',
     title: 'Org Flow — Manual Sync Now Forces A Full Scan',
     changes: [
-      { type: 'patch', text: 'Confirmed via direct Bullhorn query that ClientCorporation.status returns the right values (Unqualified / Qualified Lead / Active Account / etc.) — but the sync was incremental, filtering to dateLastModified > last successful sync. Most APT clients haven\'t been touched in months, so they never came back in the sync, and their Supabase row kept the column default. Clicking "Sync from Bullhorn" now forces a full scan (sinceMs = 0) so every linked corp gets its real Bullhorn status copied down. The 30-minute cron stays incremental — the heavier full pass only runs when you ask for it.' },
+      { type: 'patch', text: 'Confirmed via direct Bullhorn query that ClientCorporation.status returns the right values (Unqualified / Qualified Lead / Active Account / etc.) — but the sync was incremental, filtering to dateLastModified > last successful sync. Most Apt clients haven\'t been touched in months, so they never came back in the sync, and their Supabase row kept the column default. Clicking "Sync from Bullhorn" now forces a full scan (sinceMs = 0) so every linked corp gets its real Bullhorn status copied down. The 30-minute cron stays incremental — the heavier full pass only runs when you ask for it.' },
     ],
   },
   {
@@ -397,7 +397,7 @@ export const CHANGELOG = [
     date: '2026-04-28',
     title: 'Org Flow — Auto-Create Employee Cards From Bullhorn Contacts',
     changes: [
-      { type: 'minor', text: 'Every linked Org Flow client (those with a bullhorn_client_id) now pulls its ClientContacts from Bullhorn on each sync run and inserts them as employees. Dedupe is two-tiered: by bullhorn_contact_id, and by (client_id, lower(email)) so manually-typed contacts get linked instead of duplicated. Manager hierarchy is left blank — APT\'s Bullhorn doesn\'t expose reportsTo to this app, so all imported employees land "disconnected" and can be wired up via the existing OrgChart drag-and-drop. The "Sync from Bullhorn" alert now shows the new contact count alongside client counts.' },
+      { type: 'minor', text: 'Every linked Org Flow client (those with a bullhorn_client_id) now pulls its ClientContacts from Bullhorn on each sync run and inserts them as employees. Dedupe is two-tiered: by bullhorn_contact_id, and by (client_id, lower(email)) so manually-typed contacts get linked instead of duplicated. Manager hierarchy is left blank — Apt\'s Bullhorn doesn\'t expose reportsTo to this app, so all imported employees land "disconnected" and can be wired up via the existing OrgChart drag-and-drop. The "Sync from Bullhorn" alert now shows the new contact count alongside client counts.' },
       { type: 'patch', text: 'New migration server/migrations/006_orgflow_employees_bullhorn_contact_id.sql (apply in Supabase before deploy) adds the bullhorn_contact_id column on employees plus a partial unique index. Bulk fetch is chunked at 20 corps per Bullhorn call; if any chunk hits the 500-row count cap a warning logs to Railway so we know to paginate.' },
     ],
   },
@@ -414,7 +414,7 @@ export const CHANGELOG = [
     date: '2026-04-28',
     title: 'Daily Brief — Dual-Write Appointment + Note for Contact-Activity Visibility',
     changes: [
-      { type: 'patch', text: 'Chris confirmed: he opened ClientContact 28051 (Brian Somerford) directly and the Appointment was NOT on his Activity tab — even though the Appointment was created with the right Subject, dateAdded, clientContactReference, and an AppointmentAttendee junction. APT\'s Bullhorn Activity tab renders Notes, not Appointments. Dual-write fix: keep creating the Appointment (drives MAR via the AM dashboard\'s clientContactReference query) AND also create a Bullhorn Note attached to the contact with action=meeting type and subject/comments, which is what surfaces on the Activity tab. Required updating bullhorn-mcp\'s add_note to accept ClientContact (was Candidate/JobOrder only).' },
+      { type: 'patch', text: 'Chris confirmed: he opened ClientContact 28051 (Brian Somerford) directly and the Appointment was NOT on his Activity tab — even though the Appointment was created with the right Subject, dateAdded, clientContactReference, and an AppointmentAttendee junction. Apt\'s Bullhorn Activity tab renders Notes, not Appointments. Dual-write fix: keep creating the Appointment (drives MAR via the AM dashboard\'s clientContactReference query) AND also create a Bullhorn Note attached to the contact with action=meeting type and subject/comments, which is what surfaces on the Activity tab. Required updating bullhorn-mcp\'s add_note to accept ClientContact (was Candidate/JobOrder only).' },
     ],
   },
   {
@@ -502,7 +502,7 @@ export const CHANGELOG = [
     date: '2026-04-27',
     title: 'Org Flow — Bullhorn Sync Status Filter Removed',
     changes: [
-      { type: 'patch', text: 'First sync after deploy returned 0 fetched / 0 inserted / 0 linked because the WHERE clause used a literal status = "Active" that did not match APT\'s tenant. Dropped the status filter so the sync now pulls every non-deleted ClientCorporation. Trade-off: archived / inactive corps will surface as Org Flow cards on the next run — delete them from Org Flow as needed, or we can re-add a status filter later once we know the exact value(s) APT uses.' },
+      { type: 'patch', text: 'First sync after deploy returned 0 fetched / 0 inserted / 0 linked because the WHERE clause used a literal status = "Active" that did not match Apt\'s tenant. Dropped the status filter so the sync now pulls every non-deleted ClientCorporation. Trade-off: archived / inactive corps will surface as Org Flow cards on the next run — delete them from Org Flow as needed, or we can re-add a status filter later once we know the exact value(s) Apt uses.' },
     ],
   },
   {
@@ -596,7 +596,7 @@ export const CHANGELOG = [
   {
     version: '3.17.0',
     date: '2026-04-23',
-    title: 'APT Health \u2014 Drill Into Activity & Real Meeting Counts',
+    title: 'Apt Health \u2014 Drill Into Activity & Real Meeting Counts',
     changes: [
       { type: 'minor', text: 'Activities (14d) and Real Mtg. (90d) cells on the client health table are now clickable. Click opens a sortable modal listing the underlying Bullhorn appointments (ID link, Type, Subject, Date, Owner, Contact). The Activities view shows all appointment types in the 14-day window; the Real Meetings view shows only the eight BD types (In Person Meetings, New Meeting, Req Qual, Referral Meeting, OOA, Dinner, Sol Disc Meeting, Sol Pitch Meeting) in the 90-day window. Appointment IDs link directly to the record in Bullhorn.' },
       { type: 'patch', text: 'Bullhorn appointment query extended to include Subject and owner first/last name so the modal can render useful context without follow-up lookups.' },
@@ -605,7 +605,7 @@ export const CHANGELOG = [
   {
     version: '3.16.3',
     date: '2026-04-23',
-    title: 'APT Health \u2014 In-Person Type List Aligned',
+    title: 'Apt Health \u2014 In-Person Type List Aligned',
     changes: [
       { type: 'patch', text: 'HEALTH_CONFIG.IN_PERSON_TYPES now uses the same eight confirmed BD appointment types as REAL_MEETING_TYPES. Used by the Higher Up tier\u2019s in-person-months check, which will activate once org-tree data lands.' },
     ],
@@ -613,15 +613,15 @@ export const CHANGELOG = [
   {
     version: '3.16.2',
     date: '2026-04-23',
-    title: 'APT Health \u2014 Real Meeting Types Confirmed',
+    title: 'Apt Health \u2014 Real Meeting Types Confirmed',
     changes: [
-      { type: 'patch', text: 'Swapped the placeholder real-meeting whitelist for the confirmed APT appointment types: In Person Meetings, New Meeting, Req Qual, Referral Meeting, OOA, Dinner, Sol Disc Meeting, Sol Pitch Meeting. Real Mtg. (90d) counts and new-scoring thresholds now count exactly these eight types. In-person subset (used by the Higher Up tier) still uses placeholder values \u2014 Higher Up remains inert until org-tree data lands, so no live impact yet.' },
+      { type: 'patch', text: 'Swapped the placeholder real-meeting whitelist for the confirmed Apt appointment types: In Person Meetings, New Meeting, Req Qual, Referral Meeting, OOA, Dinner, Sol Disc Meeting, Sol Pitch Meeting. Real Mtg. (90d) counts and new-scoring thresholds now count exactly these eight types. In-person subset (used by the Higher Up tier) still uses placeholder values \u2014 Higher Up remains inert until org-tree data lands, so no live impact yet.' },
     ],
   },
   {
     version: '3.16.1',
     date: '2026-04-23',
-    title: 'APT Health \u2014 Column Labels',
+    title: 'Apt Health \u2014 Column Labels',
     changes: [
       { type: 'patch', text: 'Renamed the Health column to "Old Scoring" and the Framework column to "New Scoring" on the client health table \u2014 makes the parallel-rollout intent explicit. Tooltip prefixes updated to match.' },
     ],
@@ -629,7 +629,7 @@ export const CHANGELOG = [
   {
     version: '3.16.0',
     date: '2026-04-23',
-    title: 'APT Health \u2014 Framework Scoring (Parallel Rollout)',
+    title: 'Apt Health \u2014 Framework Scoring (Parallel Rollout)',
     changes: [
       { type: 'minor', text: 'New client health framework runs alongside the existing score during validation. Each row now shows a Tier (Onboarding / Hiring Manager / Higher Up / Outlier), a Framework dot (green/yellow/red or \u2014 for Onboarding) with a direction arrow (\u2193 cooling / \u2191 warming) on yellow rows, and a Real Mtg. (90d) count filtered to real appointment types only. Old Health, Activities (14d), and Score columns are unchanged.' },
       { type: 'minor', text: 'Hover any score in the table to see how it was derived \u2014 tooltips on Health, Score, Tier, Framework, and Real Mtg. (90d) list the exact inputs and the tier-specific thresholds that produced the result.' },
@@ -669,7 +669,7 @@ export const CHANGELOG = [
     title: 'Daily Brief — Stale Clients Drawer',
     changes: [
       { type: 'patch', text: 'Renamed the AM "Stale client contacts" tile to "Stale clients" for brevity.' },
-      { type: 'minor', text: 'Clicking the Stale clients tile now opens an inline drawer on the Daily Brief listing the contacts (name, client, email, direct Bullhorn link) instead of navigating away to APT Health. Sorted by client then last name so you can work through multiple contacts at the same company back-to-back. Contact emails are clickable (mailto:) and the Bullhorn button opens the contact record in a new tab.' },
+      { type: 'minor', text: 'Clicking the Stale clients tile now opens an inline drawer on the Daily Brief listing the contacts (name, client, email, direct Bullhorn link) instead of navigating away to Apt Health. Sorted by client then last name so you can work through multiple contacts at the same company back-to-back. Contact emails are clickable (mailto:) and the Bullhorn button opens the contact record in a new tab.' },
     ],
   },
   {
@@ -957,7 +957,7 @@ export const CHANGELOG = [
     date: '2026-04-20',
     title: 'Executive Reporting — Current & Potential New Input',
     changes: [
-      { type: 'minor', text: 'Executive Reporting dashboard now live (admin only) — two KPI tiles: Current New Input (same calc as APT Health Input gauge) and Potential New Input (open reqs × ((Bill−Pay)×1.25)×2080 × # Openings)' },
+      { type: 'minor', text: 'Executive Reporting dashboard now live (admin only) — two KPI tiles: Current New Input (same calc as Apt Health Input gauge) and Potential New Input (open reqs × ((Bill−Pay)×1.25)×2080 × # Openings)' },
       { type: 'minor', text: 'Click either KPI for a per-placement or per-req breakdown modal' },
       { type: 'minor', text: 'Date range picker drives Current New Input; Potential is a live snapshot of all open reqs with bill and pay set' },
     ],
@@ -1621,7 +1621,7 @@ export const CHANGELOG = [
     date: '2026-04-01',
     title: 'Initial Release',
     changes: [
-      { type: 'major', text: 'APT Command platform launch with Req Board, Org Flow, Pipeline, Apt Health, Reporting, and Individual Performance modules' },
+      { type: 'major', text: 'Apt Command platform launch with Req Board, Org Flow, Pipeline, Apt Health, Reporting, and Individual Performance modules' },
       { type: 'major', text: 'Live Bullhorn CRM integration via MCP server' },
       { type: 'minor', text: 'Called Shot checkbox and filter on Req Board' },
       { type: 'minor', text: 'Quick Links bar on home screen' },

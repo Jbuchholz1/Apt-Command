@@ -180,7 +180,7 @@
 
 .ops-export-btn {
   background: transparent;
-  color: var(--gold);
+  color: var(--apt-gold-700);
   border: 1px solid var(--gold);
   padding: 6px 16px;
   border-radius: 4px;
@@ -402,7 +402,7 @@
   transition: color 0.15s;
 }
 .ops-bh-link:hover {
-  color: var(--gold);
+  color: var(--apt-gold-700);
   text-decoration: underline;
 }
 

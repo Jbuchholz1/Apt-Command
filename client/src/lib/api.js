@@ -474,7 +474,7 @@ export function updatePlacementChecklist(placementId, data) {
 }
 
 export function exportOperationsPlacements() {
-  return downloadExcel('/api/operations/placements/export', `APT_Placements_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  return downloadExcel('/api/operations/placements/export', `Apt_Placements_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
 export function updatePlacementBullhorn(placementId, fields) {
@@ -521,7 +521,7 @@ export function deleteContract(id) {
 }
 
 export function exportContracts() {
-  return downloadExcel('/api/operations/contracts/export', `APT_Contracts_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  return downloadExcel('/api/operations/contracts/export', `Apt_Contracts_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
 export function importContracts(rows) {
@@ -680,7 +680,7 @@ export function deleteClientAssignment(assignmentId) {
 }
 
 export function exportHealthDashboard() {
-  return downloadExcel('/api/client-health/export', `APT_Health_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  return downloadExcel('/api/client-health/export', `Apt_Health_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
 export function exportRecruiterDashboard(startDate, endDate) {
@@ -963,7 +963,7 @@ export async function exportJobs() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `APT_Req_Board_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  a.download = `Apt_Req_Board_${new Date().toISOString().slice(0, 10)}.xlsx`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
