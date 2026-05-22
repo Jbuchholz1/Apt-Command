@@ -741,30 +741,46 @@ router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
         if (job.isOpen === false) continue; // closed jobs don't belong on the counter
         if (EXCLUDED_JOB_STATUSES.has(job.status)) continue; // belt-and-suspenders if isOpen is stale
       }
-      // Each row reflects ONE candidate's deal. CE/permFee come from the
-      // placement/submission record only — no fallback to the job order's
-      // posted rates. Threshold >1 skips Bullhorn's `1` placeholder. If the
-      // record is missing rates, the cell stays blank rather than inferring
-      // from the job aggregate. Cloned job avoids leaking per-row overrides
+      // Each row reflects ONE candidate's deal. payRate / billRate / salary /
+      // brSalary come from the candidate's submission or placement record
+      // (the source of truth in Bullhorn) — no fallback to the JobOrder's
+      // posted rates. A blank record yields a blank cell so recruiters
+      // see at a glance that the per-candidate values still need to be
+      // entered, and an unchanged save can't silently copy the JobOrder's
+      // posted rates onto the submission. Threshold >1 still applies to
+      // ceSpread/permFee so Bullhorn's "1" placeholder doesn't produce
+      // nonsense calculations. Cloned job avoids leaking per-row overrides
       // into other rows that share the same underlying jobId.
-      const useRecordRates = (cand.recordPayRate || 0) > 1 && (cand.recordBillRate || 0) > 1;
-      const useRecordSalary = (cand.recordSalary || 0) > 0;
       const rowJob = { ...job };
-      if (useRecordRates) {
+      const isDirectHire = (job.employmentType || '') === 'Direct Hire';
+      rowJob.payRate = cand.recordPayRate;
+      rowJob.billRate = cand.recordBillRate;
+      rowJob.salary = cand.recordSalary;
+
+      if (isDirectHire) {
+        rowJob.brSalary = (cand.recordSalary || 0) > 0
+          ? `$${Number(cand.recordSalary).toLocaleString('en-US')}`
+          : null;
+      } else {
+        rowJob.brSalary = ((cand.recordPayRate || 0) > 0 && (cand.recordBillRate || 0) > 0)
+          ? `$${cand.recordPayRate}/$${cand.recordBillRate}`
+          : null;
+      }
+
+      if ((cand.recordPayRate || 0) > 1 && (cand.recordBillRate || 0) > 1) {
         const multiplier = (job.employmentType || '').toLowerCase() === 'corp-to-corp' ? 1.05 : 1.25;
         const ce = Math.round((cand.recordBillRate - cand.recordPayRate * multiplier) * 40 * 100) / 100;
-        rowJob.payRate = cand.recordPayRate;
-        rowJob.billRate = cand.recordBillRate;
-        rowJob.brSalary = `$${cand.recordPayRate}/$${cand.recordBillRate}`;
         rowJob.ceSpread = ce > 0 ? ce : null;
       } else {
         rowJob.ceSpread = null;
       }
-      if (useRecordSalary && cand.recordFee) {
+
+      if ((cand.recordSalary || 0) > 0 && cand.recordFee) {
         rowJob.permFee = Math.round((cand.recordSalary * cand.recordFee / 26) * 100) / 100;
       } else {
         rowJob.permFee = null;
       }
+
       rows.push({ job: rowJob, cand });
     }
 

@@ -916,24 +916,34 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
       ? r.cand.placementId === cand.placementId
       : r.cand.submissionId === cand.submissionId;
     const prevJobSnapshot = { ...job };
+    const prevCandSnapshot = { ...cand };
 
     const newPay = fields.payRate != null ? fields.payRate : job.payRate;
     const newBill = fields.billRate != null ? fields.billRate : job.billRate;
     const newSalary = fields.salary != null ? fields.salary : job.salary;
     const empType = (job.employmentType || '').toLowerCase();
+    const isDirectHire = empType === 'direct hire';
     const multiplier = empType === 'corp-to-corp' ? 1.05 : 1.25;
-    let newCe = job.ceSpread;
-    let newBrSalary = job.brSalary;
-    if (newPay > 1 && newBill > 1) {
+
+    let newBrSalary = null;
+    if (isDirectHire) {
+      if ((newSalary || 0) > 0) newBrSalary = `$${Number(newSalary).toLocaleString('en-US')}`;
+    } else if ((newPay || 0) > 0 && (newBill || 0) > 0) {
+      newBrSalary = `$${newPay}/$${newBill}`;
+    }
+
+    let newCe = null;
+    if ((newPay || 0) > 1 && (newBill || 0) > 1) {
       const ce = Math.round((newBill - newPay * multiplier) * 40 * 100) / 100;
       newCe = ce > 0 ? ce : null;
-      newBrSalary = `$${newPay}/$${newBill}`;
-    } else if (newSalary && job.feePercent) {
-      newBrSalary = `$${Number(newSalary).toLocaleString('en-US')}`;
     }
 
     setFilledRows(prev => prev.map(r => matchRow(r)
-      ? { ...r, job: { ...r.job, payRate: newPay, billRate: newBill, salary: newSalary, brSalary: newBrSalary, ceSpread: newCe } }
+      ? {
+          ...r,
+          job: { ...r.job, payRate: newPay, billRate: newBill, salary: newSalary, brSalary: newBrSalary, ceSpread: newCe },
+          cand: { ...r.cand, recordPayRate: newPay, recordBillRate: newBill, recordSalary: newSalary },
+        }
       : r,
     ));
 
@@ -956,7 +966,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
         failureMessage: 'Could not update candidate rates',
         onRollback: () => {
           setFilledRows(prev => prev.map(r => matchRow(r)
-            ? { ...r, job: prevJobSnapshot }
+            ? { ...r, job: prevJobSnapshot, cand: prevCandSnapshot }
             : r,
           ));
         },
