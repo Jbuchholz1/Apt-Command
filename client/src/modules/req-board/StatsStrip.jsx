@@ -1774,6 +1774,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
                     { key: 'employmentType', label: 'Type' },
                     { key: 'calledShotCount', label: '# Shots' },
                     { key: 'csSpread', label: 'Spread' },
+                    { key: 'notes', label: 'Notes' },
                   ].map(col => (
                     <th key={col.key} className="sortable" style={{ cursor: 'pointer' }} onClick={() => handleCsSort(col.key)}>
                       {col.label}<span className="sort-icon">{csSortIcon(col.key)}</span>
@@ -1805,10 +1806,11 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
                     />
                     <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{j.calledShotCount || 0}</td>
                     <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{j.csSpread > 0 ? fmtCurrency(j.csSpread) : '—'}</td>
+                    <td style={{ maxWidth: '320px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: j.notes ? '#1f2937' : '#9ca3af' }} title={j.notes || ''}>{j.notes || '—'}</td>
                   </tr>
                 ))}
                 {filteredCalledShots.length === 0 && (
-                  <tr><td colSpan="9" style={{ textAlign: 'center', padding: '20px' }}>No called shots</td></tr>
+                  <tr><td colSpan="10" style={{ textAlign: 'center', padding: '20px' }}>No called shots</td></tr>
                 )}
               </tbody>
             </table>
