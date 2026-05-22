@@ -17,13 +17,16 @@ export default function InputVsGoalsChart({ recruiters, startDate, endDate }) {
     pacingFraction = Math.max(0, rangeWeeks / QUARTER_WEEKS);
   }
 
-  const data = recruiters.map(r => ({
-    name: r.name,
-    tier: `Tier ${r.tier}`,
-    goal: r.spreadGoal,
-    actual: r.metrics.newInput,
-    pacing: Math.round(r.spreadGoal * pacingFraction),
-  }));
+  const data = recruiters.map(r => {
+    const scaledGoal = Math.round(r.spreadGoal * pacingFraction);
+    return {
+      name: r.name,
+      tier: `Tier ${r.tier}`,
+      goal: scaledGoal,
+      actual: r.metrics.newInput,
+      pacing: scaledGoal,
+    };
+  });
 
   const formatDollar = (val) => `$${Number(val).toLocaleString()}`;
   const pacingPct = Math.round(pacingFraction * 100);

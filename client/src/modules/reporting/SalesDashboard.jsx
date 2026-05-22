@@ -147,22 +147,25 @@ export default function SalesDashboard() {
 
   const pacingPct = Math.round(pacingFraction * 100);
 
-  // Bonus tracker chart data (New Input vs Goal)
+  // Bonus tracker chart data (New Input vs Goal) — Goal scales with the selected range.
   const bonusData = useMemo(() => {
-    return filteredAms.map(am => ({
-      name: am.name,
-      'Spread Goal': am.spreadGoal,
-      'New Input': am.newInput,
-      'pacing': Math.round(am.spreadGoal * pacingFraction),
-    }));
+    return filteredAms.map(am => {
+      const scaledGoal = Math.round(am.spreadGoal * pacingFraction);
+      return {
+        name: am.name,
+        'Spread Goal': scaledGoal,
+        'New Input': am.newInput,
+        'pacing': scaledGoal,
+      };
+    });
   }, [filteredAms, pacingFraction]);
 
-  // MAR chart data — static quarterly goal with pacing line
+  // MAR chart data — Goal scales with the selected range.
   const marPacingTarget = Math.round(AM_QUARTERLY_MAR * pacingFraction);
   const marData = useMemo(() => {
     return filteredAms.map(am => ({
       name: am.name,
-      'Goal': AM_QUARTERLY_MAR,
+      'Goal': marPacingTarget,
       'MAR Points': am.mar,
       'pacing': marPacingTarget,
     }));

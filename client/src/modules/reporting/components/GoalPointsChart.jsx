@@ -23,7 +23,7 @@ export default function GoalPointsChart({ recruiters, startDate, endDate, weekly
 
   const data = recruiters.map(r => ({
     name: r.name,
-    'Goal': quarterGoal,
+    'Goal': pacingTarget,
     'MAR Points': r.points?.total ?? r.mar ?? 0,
     'pacing': pacingTarget,
   }));
