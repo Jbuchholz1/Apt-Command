@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.18';
+export const APP_VERSION = '3.29.19';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.19',
+    date: '2026-05-22',
+    title: 'Dependency security sweep — Dependabot cleared',
+    changes: [
+      { type: 'patch', text: 'Upgraded bcrypt 5.1.1 → 6.0.0 (clears 5 high-severity tar CVEs via the node-pre-gyp build chain). Upgraded @supabase/supabase-js 2.103.0 → 2.106.1 (clears a ws memory-disclosure CVE). Added uuid and qs overrides in both package.json files to clear the remaining moderate CVEs that exceljs and express still pin to old transitive versions. npm audit now reports 0 vulnerabilities in both server and client. (Audit ref DRB-SEC-005.)' },
+    ],
+  },
   {
     version: '3.29.18',
     date: '2026-05-22',

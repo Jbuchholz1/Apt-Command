@@ -39,7 +39,7 @@ ID convention: `DRB-SEC-NNN` numbers are continuous across cycles. Cycle 1 cover
 | DRB-SEC-002 | File-upload mimetype-only | ✅ FIXED | Magic-byte verification + SVG denylist via `server/lib/imageUpload.js`. |
 | DRB-SEC-003 | Full datasets to all users | 🔴 OPEN | Per-route role-scoping not started. Same as April. |
 | DRB-SEC-004 | Hardcoded admin bootstrap | ✅ FIXED | `BOOTSTRAP_ADMIN_EMAILS` env var. |
-| DRB-SEC-005 | `uuid <14.0.0` CVE via exceljs | 🔴 OPEN | `npm audit` still flags it. |
+| DRB-SEC-005 | `uuid <14.0.0` CVE via exceljs | ✅ FIXED | `package.json` overrides force `uuid ^14.0.0` (server + client). Fixed in v3.29.19 alongside a broader dep sweep that also cleared 5 high-sev `tar` CVEs (via `bcrypt` 5.1.1 → 6.0.0) and a `ws` memory-disclosure CVE (via `@supabase/supabase-js` 2.103.0 → 2.106.1). `npm audit`: 0 vulns. |
 | DRB-SEC-006 | Lucene partial escape on email | ✅ FIXED | Strict regex validator at `server/lib/bullhorn.js:802-820`. |
 | DRB-SEC-007 | PII in MCP debug logs | 🔴 OPEN | Appointment payloads still logged in full at `server/lib/bullhorn.js` (lines ~626, 634, 648, 669, 692, 705). |
 | DRB-SEC-008 | No CSRF token (mitigated) | ✅ FIXED | Documented as Rule 2/7 in `server/CLAUDE.md`. |
