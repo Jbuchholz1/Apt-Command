@@ -1387,6 +1387,18 @@ async function markTicketViewed({ ticketId, userEmail }) {
 async function getUnreadCounts(userEmail) {
   if (!supabase) return { my_tickets: 0, my_queue: 0 };
 
+  // Defense-in-depth: userEmail flows into a PostgREST .or() filter string
+  // below. The value comes from a verified JWT (req.user.email), so it
+  // can't be tampered with today — but emails containing PostgREST-special
+  // characters (parens, commas) could produce malformed filters, and a
+  // future change that lets userEmail flow from request input would become
+  // a filter-injection vector. Refuse anything that doesn't look like a
+  // normal address. See SECURITY_AUDIT.md DRB-SEC-015.
+  if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(userEmail || '')) {
+    console.warn('[db] getUnreadCounts: refusing non-standard email');
+    return { my_tickets: 0, my_queue: 0 };
+  }
+
   // Load tickets where user is submitter or assignee
   const { data: tickets, error: tErr } = await supabase
     .from('support_tickets')
