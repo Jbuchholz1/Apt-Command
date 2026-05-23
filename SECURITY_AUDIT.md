@@ -41,7 +41,7 @@ ID convention: `DRB-SEC-NNN` numbers are continuous across cycles. Cycle 1 cover
 | DRB-SEC-004 | Hardcoded admin bootstrap | ✅ FIXED | `BOOTSTRAP_ADMIN_EMAILS` env var. |
 | DRB-SEC-005 | `uuid <14.0.0` CVE via exceljs | ✅ FIXED | `package.json` overrides force `uuid ^14.0.0` (server + client). Fixed in v3.29.19 alongside a broader dep sweep that also cleared 5 high-sev `tar` CVEs (via `bcrypt` 5.1.1 → 6.0.0) and a `ws` memory-disclosure CVE (via `@supabase/supabase-js` 2.103.0 → 2.106.1). `npm audit`: 0 vulns. |
 | DRB-SEC-006 | Lucene partial escape on email | ✅ FIXED | Strict regex validator at `server/lib/bullhorn.js:802-820`. |
-| DRB-SEC-007 | PII in MCP debug logs | 🔴 OPEN | Appointment payloads still logged in full at `server/lib/bullhorn.js` (lines ~626, 634, 648, 669, 692, 705). |
+| DRB-SEC-007 | PII in MCP debug logs | ✅ FIXED | `redactForLog()` helper added to `server/lib/bullhorn.js`. Strips `subject` / `description` / `comments` / `body` / `note` / `noteBody` from logged objects (recursive, array-aware), replaces with `[N chars redacted]` length marker. Applied to 5 PII-bearing log call sites in `createAppointment` and `createMeetingNote`. |
 | DRB-SEC-008 | No CSRF token (mitigated) | ✅ FIXED | Documented as Rule 2/7 in `server/CLAUDE.md`. |
 | DRB-SEC-009 | Graph token client-supplied | ℹ️ INFO | Unchanged; design choice still appropriate. |
 | DRB-SEC-010 | No branch protection / CI gates | ℹ️ INFO | Unchanged. |
@@ -107,24 +107,17 @@ Net: 5 fixed, 3 still open (DRB-SEC-001 partial, -003, -005, -007), 3 informatio
 
 ### LOW
 
-#### DRB-SEC-014 — CORS `credentials: true` is vestigial but still set
+#### DRB-SEC-014 — CORS `credentials: true` is vestigial but still set ✅ FIXED
 
 - **Where:** [server/index.js:153](server/index.js#L153).
-- **What:** The CORS config sets `credentials: true` even though the app uses bearer-only auth. The inline comment correctly notes this is vestigial.
-- **Why it matters today:** nothing — no cookies are sent. But it primes the system for a footgun if cookies are ever added later without also adding CSRF protection.
-- **Fix sketch:** set `credentials: false` and update the comment. Cross-reference with Rule 2 in [server/CLAUDE.md](server/CLAUDE.md). One-liner; safe.
+- **What:** The CORS config set `credentials: true` even though the app uses bearer-only auth.
+- **Fix shipped:** set to `credentials: false`. Verified before the flip via grep: no `credentials:` references in `client/src/`, no `Set-Cookie` or `res.cookie` in `server/`. No behavior change for the running app — only the CORS preflight response header changes (`Access-Control-Allow-Credentials` is no longer sent).
 
-#### DRB-SEC-015 — `userEmail` interpolated into Supabase `.or()` filter
+#### DRB-SEC-015 — `userEmail` interpolated into Supabase `.or()` filter ✅ FIXED
 
-- **Where:** [server/lib/db.js:1384](server/lib/db.js#L1384) in `getUnreadCounts(userEmail)`:
-
-  ```js
-  .or(`submitted_by.eq.${userEmail},assigned_to.eq.${userEmail}`);
-  ```
-
-- **What:** Same pattern as DRB-SEC-012, but `userEmail` comes from the JWT (`req.user.email`), which is verified server-side. So it's only attacker-controlled if the IdP is compromised.
-- **Why it still matters:** if a future change makes `userEmail` flow from request input, this becomes injectable. Even today, an email with PostgREST-special characters (parens, commas) could produce malformed filters.
-- **Fix sketch:** validate email against a strict regex before interpolation, or pre-resolve to the user's profile ID and use `.in('submitted_by', [id])`.
+- **Where:** [server/lib/db.js:1384](server/lib/db.js#L1384) in `getUnreadCounts(userEmail)`.
+- **What:** A PostgREST `.or()` filter built by string-interpolating the user's email. Today the value comes from a verified JWT, but the pattern was a future-injection footgun (same shape as DRB-SEC-012).
+- **Fix shipped:** route-boundary regex check `/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/` rejects garbage / injection attempts before the filter is built. Validated against corporate emails, plus-tagged emails, subdomain emails, .co.uk — all accepted; empty/null/`noatsign`/PostgREST-injection payloads — all rejected. Failure mode for a (hypothetical) user with a malformed email row: support-ticket unread badge shows 0 for them, no other impact.
 
 #### DRB-SEC-016 — No audit log for admin role / permission changes
 
@@ -218,9 +211,9 @@ For each finding, an estimate of "likelihood that fixing it breaks something" �
 | P0 (this week) | DRB-SEC-021 | S | Add CSP at the frontend layer (`client/serve.json`) so the policy actually reaches the browser. Start in report-only, observe, then enforce. The api-server `CSP_MODE=enforce` env var is already set on both envs (2026-05-22) and can stay — once relocated, the directives are correct. |
 | P0 (this week) | DRB-SEC-005 | S | Upgrade `exceljs` (or `package.json` override pinning `uuid >= 14`) |
 | P1 (this month) | DRB-SEC-013 | M | Decide Option A vs B for MCP URL leak; recommend B (rotate URL/key) |
-| P1 (this month) | DRB-SEC-007 | XS | Redact appointment payloads from `console.log` calls in `lib/bullhorn.js` |
-| P1 (this month) | DRB-SEC-014 | XS | Set `credentials: false` in CORS |
-| P1 (this month) | DRB-SEC-015 | XS | Validate or parameterize `userEmail` in `getUnreadCounts` |
+| ✅ DONE | DRB-SEC-007 | XS | ~~Redact appointment payloads from `console.log` calls in `lib/bullhorn.js`~~ — shipped v3.29.20 |
+| ✅ DONE | DRB-SEC-014 | XS | ~~Set `credentials: false` in CORS~~ — shipped v3.29.20 |
+| ✅ DONE | DRB-SEC-015 | XS | ~~Validate or parameterize `userEmail` in `getUnreadCounts`~~ — shipped v3.29.20 |
 | P2 (this quarter) | DRB-SEC-016 | M | Add `admin_audit_log` table + writes |
 | P2 (this quarter) | DRB-SEC-017 | M | Per-entity write rate limit |
 | P2 (this quarter) | DRB-SEC-003 | M-L | Per-route role-scoping of dataset routes (still open from cycle 1) |

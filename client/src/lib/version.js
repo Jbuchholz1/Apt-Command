@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.19';
+export const APP_VERSION = '3.29.20';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.20',
+    date: '2026-05-22',
+    title: 'Security hardening — three defense-in-depth fixes',
+    changes: [
+      { type: 'patch', text: 'Three small security fixes, none with user-visible changes. (1) Bullhorn appointment and meeting-note logs now strip subject/description/comments before writing — no more PII sitting in Railway log retention. (2) CORS credentials flag turned off — was vestigial under bearer-only auth, but removes a footgun for any future change that introduces cookies. (3) Support-ticket unread-count query now validates the email format before building its database filter — closes a defense-in-depth gap of the same shape as the v3.29.18 Org Flow fix. (Audit refs DRB-SEC-007, DRB-SEC-014, DRB-SEC-015.)' },
+    ],
+  },
   {
     version: '3.29.19',
     date: '2026-05-22',
