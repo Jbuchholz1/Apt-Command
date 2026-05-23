@@ -145,12 +145,13 @@ app.use(cors({
     callback(null, false);
   },
   methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
-  // Vestigial: the Bearer-header flow does not require this — `credentials`
-  // gates cookies, not Authorization headers. Kept to avoid a behavior change
-  // in CORS preflight responses. See server/CLAUDE.md Rule 7: no session
-  // cookies, no `credentials: 'include'`. Do not introduce cookie auth here
-  // without adding CSRF protection.
-  credentials: true,
+  // false: this app is Bearer-only — no cookies, no `credentials: 'include'`
+  // anywhere in the client. See server/CLAUDE.md Rule 2. Setting credentials
+  // to true here is a no-op for the running app but primes a footgun if
+  // cookie auth is ever introduced without also adding CSRF protection.
+  // Verified by grep before flipping: no `credentials:` in client/src/, no
+  // `Set-Cookie` in server/. See SECURITY_AUDIT.md DRB-SEC-014.
+  credentials: false,
 }));
 
 app.use(express.json());
