@@ -32,6 +32,27 @@ if (READ_ONLY_MODE) {
   console.warn('[MCP] READ_ONLY_MODE=true — Bullhorn writes (update_entity, add_note, create_entity) will be blocked');
 }
 
+// Strip free-text fields that may contain PII (meeting subjects, note bodies,
+// comments) before logging. Keeps IDs / dates / type for diagnostic value but
+// replaces the string content with a length marker. Used by the appointment
+// and meeting-note helpers below — see SECURITY_AUDIT.md DRB-SEC-007.
+const PII_LOG_KEYS = new Set(['subject', 'description', 'comments', 'body', 'note', 'noteBody']);
+function redactForLog(obj) {
+  if (!obj || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(redactForLog);
+  const out = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (PII_LOG_KEYS.has(k) && typeof v === 'string') {
+      out[k] = v.length > 0 ? `[${v.length} chars redacted]` : '';
+    } else if (v && typeof v === 'object') {
+      out[k] = redactForLog(v);
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+
 /**
  * Call a tool on the Bullhorn MCP server via JSON-RPC over SSE.
  * Used by the convenience wrappers below and exported for health checks.
@@ -1104,12 +1125,12 @@ async function createAppointment({
     fields.description = comments;
   }
 
-  console.log('[createAppointment] payload:', JSON.stringify(fields));
+  console.log('[createAppointment] payload:', JSON.stringify(redactForLog(fields)));
   const result = await callTool('create_entity', {
     entityType: 'Appointment',
     fields,
   });
-  console.log('[createAppointment] full MCP result:', JSON.stringify(result));
+  console.log('[createAppointment] full MCP result:', JSON.stringify(redactForLog(result)));
 
   // Bullhorn's create response varies. We accept changedEntityType/Id pairs
   // when present so we can also confirm the entity TYPE matches — a
@@ -1155,7 +1176,7 @@ async function createAppointment({
       `for [createAppointment] full MCP result.`,
     );
   }
-  console.log('[createAppointment] verified appointment:', JSON.stringify(verifiedRow));
+  console.log('[createAppointment] verified appointment:', JSON.stringify(redactForLog(verifiedRow)));
 
   // Create the AppointmentAttendee junction so the new appointment appears on
   // the linked contact/candidate's Activity tab in Bullhorn. Setting
@@ -1228,9 +1249,9 @@ async function createMeetingNote({
   if (commentingPersonId) {
     payload.commentingPersonId = parseInt(commentingPersonId, 10);
   }
-  console.log('[createMeetingNote] payload:', JSON.stringify(payload));
+  console.log('[createMeetingNote] payload:', JSON.stringify(redactForLog(payload)));
   const result = await callTool('add_note', payload);
-  console.log('[createMeetingNote] full MCP result:', JSON.stringify(result));
+  console.log('[createMeetingNote] full MCP result:', JSON.stringify(redactForLog(result)));
 
   const noteId = result?.changedEntityId || result?.data?.changedEntityId || null;
   if (!noteId) {
