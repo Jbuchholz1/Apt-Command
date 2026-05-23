@@ -15,31 +15,37 @@ Both are deployed on **Railway**.
 ## Architecture
 
 ```
-Browser (React SPA)
+Browser (React SPA, Vite build)
         │
         ▼
-Railway Service A: Frontend (React, static or served via Express)
+Railway Service A: Frontend (static, served by Express)
         │
         ▼
 Railway Service B: API Server (Node.js/Express)
-        │
-        ▼
-Bullhorn MCP Server (already running on Railway)
-URL: https://your-mcp-server.up.railway.app/mcp
-        │
-        ▼
-Bullhorn REST API (rest42.bullhornstaffing.com)
+        │           │              │              │
+        ▼           ▼              ▼              ▼
+   Bullhorn      Supabase     Microsoft Entra   SharePoint
+   MCP Server    (overrides,  ID (Azure AD     (nightly export
+   (Railway)     notes,       SSO + Graph)     cron, lib/
+       │         users,                        scheduledExport.js)
+       ▼         perms)
+   Bullhorn
+   REST API
 ```
 
-> **Why a separate API server?** The Bullhorn MCP URL requires auth credentials that must never be exposed to the browser. The Node.js API server keeps all MCP calls server-side.
+> **Why a separate API server?** The Bullhorn MCP URL requires auth credentials that must never be exposed to the browser. The Node.js API server keeps all MCP calls server-side. The API server also fans out to Supabase (overrides + app-owned data), Microsoft Graph (SharePoint export), and Microsoft Entra (auth validation).
+
+> **Live URLs**: not hard-coded here. The sandbox frontend is `https://front-end-services-sandbox.up.railway.app` (referenced in the deploy workflow below). Prod URLs and the MCP server URL live in Railway env vars per service — check the Railway dashboard for current values.
 
 ---
 
 ## Bullhorn MCP Server
 
-- **URL:** `https://your-mcp-server.up.railway.app/mcp`
-- **Protocol:** MCP (Model Context Protocol) over SSE or HTTP
-- **Auth:** Check `.env` for `BULLHORN_MCP_API_KEY` or existing Railway env vars
+- **URL:** `BULLHORN_MCP_URL` env var on the api-server Railway service (do not hard-code)
+- **Protocol:** MCP (Model Context Protocol) over SSE; response is line-based event stream parsed in `server/lib/bullhorn.js`
+- **Auth:** Bearer token via `BULLHORN_MCP_API_KEY` env var
+- **Resilience:** `server/lib/mcpBreaker.js` is a circuit breaker that trips after repeated failures, protecting the API from cascading Bullhorn outages. 30s per-call timeout.
+- **Read-only sandbox mode:** when `READ_ONLY_MODE=true`, mutating tools (`update_entity`, `add_note`, `create_entity`) are blocked at the MCP wrapper and surface as `403 READ_ONLY_MODE` to the client.
 
 ### Available MCP Tools
 
@@ -51,6 +57,9 @@ Bullhorn REST API (rest42.bullhornstaffing.com)
 | `get_candidate` | Look up a candidate by name or ID |
 | `search_candidates` | Search candidates by skill, status, keyword |
 | `get_entity_fields` | Get metadata/schema for any entity type |
+| `update_entity` | Write to any entity (blocked in sandbox via READ_ONLY_MODE) |
+| `add_note` | Add a Note record (blocked in sandbox) |
+| `create_entity` | Create a new entity record (blocked in sandbox) |
 
 ---
 
@@ -135,59 +144,101 @@ Never manually calculate from raw ms values.
 
 ---
 
-## Project File Structure (Recommended)
+## Project File Structure (Actual)
 
 ```
 digital-req-board/
-├── CLAUDE.md                  ← This file
+├── CLAUDE.md                  ← This file (project-wide brief)
 ├── README.md
-├── .env.example
-├── .gitignore
+├── .env.example               ← Full env var template (server + client)
+├── scripts/                   ← One-off SQL exports, manual test harnesses
 │
-├── server/                    ← Railway Service 1: API
-│   ├── CLAUDE.md              ← Server-specific instructions
-│   ├── package.json
-│   ├── index.js               ← Express server
-│   ├── routes/
-│   │   ├── jobs.js
-│   │   ├── placements.js
-│   │   └── stats.js
-│   └── lib/
-│       └── bullhorn.js        ← MCP client wrapper
+├── server/                    ← Railway Service: api-server
+│   ├── CLAUDE.md              ← Server-specific: endpoints, gotchas, recipes
+│   ├── index.js               ← Express entry — routes, CORS, rate limits
+│   ├── routes/                ← 16 route files (jobs, auth, admin, reporting, etc.)
+│   ├── lib/                   ← 18 helpers (bullhorn MCP, db, cache, mcpBreaker,
+│   │                            realtimeBroadcast, sharepoint, scheduledExport, ...)
+│   ├── middleware/            ← auth.js (Entra + external JWT), adminAuth.js
+│   └── migrations/            ← Supabase schema migrations (numbered SQL files)
 │
-└── client/                    ← Railway Service 2: React app
-    ├── CLAUDE.md              ← Client-specific instructions
-    ├── package.json
+└── client/                    ← Railway Service: frontend
+    ├── CLAUDE.md              ← Client-specific: modules, components, edit patterns
     ├── vite.config.js
-    ├── index.html
     └── src/
+        ├── App.jsx            ← Routing + sandbox banner + auth gating
         ├── main.jsx
-        ├── App.jsx
-        ├── components/
-        │   ├── ReqBoard.jsx   ← Main table
-        │   ├── StatsStrip.jsx
-        │   ├── FilterBar.jsx
-        │   ├── JobDetail.jsx  ← Slide-out panel
-        │   └── StatusBadge.jsx
-        └── lib/
-            └── api.js         ← Fetch wrapper for API server
+        ├── components/        ← AppShell, Sidebar, LoginPage, HomePage,
+        │                        UniversalSearch/, ChangelogModal, ...
+        ├── modules/           ← Feature modules — each self-contained:
+        │   ├── req-board/     ← Main board (ReqBoardModule, JobDetail,
+        │   │                    StatusBadge, FilterBar, ConflictDialog, ...)
+        │   ├── india-req-board/  ← Thin wrapper over ReqBoardModule
+        │   ├── reporting/     ← Recruiter/Sales/Exec dashboards
+        │   ├── performance/   ← Individual "My Dashboard"
+        │   ├── pipeline/      ← Opportunities + Convert-to-Job
+        │   ├── admin/         ← User roles, permissions, ad-hoc export
+        │   ├── org-flow/      ← Org chart / workflow
+        │   ├── client-health/ ← Client relationship gauges
+        │   ├── goal-tracking/ ← Goals + pacing
+        │   ├── operations/    ← Operations module
+        │   ├── project-management/
+        │   └── support/       ← Support ticket UI
+        ├── hooks/             ← Shared React hooks
+        └── lib/               ← api.js, UserRoleContext, authConfig, toast, version
 ```
 
 ---
 
 ## Environment Variables
 
-### Server `.env`
+Authoritative template lives in `/.env.example` (single file, server + client sections). Set per-service in the Railway dashboard.
+
+### Server (api-server Railway service)
 ```
 PORT=3001
-BULLHORN_MCP_URL=https://your-mcp-server.up.railway.app/mcp
-BULLHORN_MCP_API_KEY=           # from Railway env vars on existing MCP service
-NODE_ENV=production
+NODE_ENV=production|development
+
+# Bullhorn MCP
+BULLHORN_MCP_URL=<MCP server URL>
+BULLHORN_MCP_API_KEY=<bearer token>
+
+# Sandbox guard — blocks update_entity/add_note/create_entity at the MCP wrapper.
+# Set to 'true' on sandbox; unset/false in prod.
+READ_ONLY_MODE=false
+
+# Background crons (always on in prod; opt-in for dev)
+ENABLE_SYNC_CRON=false          # Org Flow sync every 30 min
+ENABLE_EXPORT_CRON=false        # Nightly SharePoint export at 23:00 CT
+
+# Microsoft Entra (Azure AD) — SSO + Graph
+AZURE_TENANT_ID=
+AZURE_CLIENT_ID=
+AZURE_CLIENT_SECRET=            # required for SharePoint export (app-only Graph)
+
+# SharePoint export target — set ONE
+SHAREPOINT_DRIVE_ID=            # preferred (any library on any site)
+SHAREPOINT_SITE_ID=             # fallback (default "Documents" library only)
+SHAREPOINT_FOLDER_PATH=Daily Backups
+
+# CORS + Supabase
+FRONTEND_URL=                   # frontend Railway URL (for CORS allowlist)
+SUPABASE_URL=
+SUPABASE_SERVICE_KEY=           # service-role key
+
+# Auth bootstrap + CSP
+BOOTSTRAP_ADMIN_EMAILS=         # comma-separated; resolve to admin even without
+                                # a user_profiles row. Critical for first-run.
+CSP_MODE=report-only            # off | report-only | enforce
 ```
 
-### Client `.env`
+### Client (frontend Railway service)
 ```
-VITE_API_BASE_URL=https://your-api-server.railway.app
+VITE_API_BASE_URL=              # api-server Railway URL
+VITE_AZURE_TENANT_ID=
+VITE_AZURE_CLIENT_ID=
+VITE_DEV_BYPASS_AUTH=           # local dev only — skip MSAL; backend still requires real token
+VITE_ENV=sandbox                # renders orange SANDBOX banner; leave unset in prod
 ```
 
 ---
@@ -243,48 +294,41 @@ This protects the user's old "push it" muscle memory by making the default desti
 
 ---
 
-## Key Technical Notes
+## Architectural Rules
 
-1. **MCP calls are server-side only** — never call the MCP URL from the browser
-2. **CORS** — API server must allow requests from the frontend Railway domain
-3. **Timestamps** — Always use `new Date(ms)` for Bullhorn timestamp fields
-4. **Pagination** — Default `count` is 20; set to 100+ for req board; handle pagination if needed
-5. **TO_ONE fields** — Must be in the `fields` param as nested e.g. `owner,clientCorporation` — Bullhorn returns the nested object automatically
-6. **isDeleted filter** — Always add `AND isDeleted = false` to queries
-7. **FALLOFF_STATUSES** — `['Archive', 'Placed', 'Lost', 'Wash', 'Filled']` (`server/routes/jobs.js`). Reqs in these statuses disappear from both Req Boards 12h after the status change. Called Shot jobs bypass this rule entirely. `'Filled'` was added in v3.30.0 alongside the India Req Board so filled reqs don't linger forever.
-8. **India Req Board** — A second tab that reuses `ReqBoardModule` with props (`title="India Req Board"`, `apiFilter={{ apt_india: true }}`, `permissionKey="india_req_board"`). Backed by the same `/api/req-board/jobs` and `/api/req-board/stats` endpoints, which accept `?apt_india=true` to filter to jobs whose `apt_india` Supabase override is true. The flag is set via a checkbox column at position 0 on the regular Req Board. Gated by the `india_req_board` module permission — granted per-user via the admin panel; nobody sees it by default. Edits made on either board hit the same Bullhorn record and the same `job_overrides` Supabase row.
+1. **MCP calls are server-side only** — never call the MCP URL from the browser. `BULLHORN_MCP_API_KEY` stays on the api-server.
+2. **Bearer auth only — no cookies.** Every authenticated request carries `Authorization: Bearer <JWT>`. The server never sets a session cookie and the client never uses `credentials: 'include'`. Do not introduce cookie-based sessions without also adding CSRF protection — the switch silently turns CSRF from "not applicable" to "exposed".
+3. **CORS** — api-server reads `FRONTEND_URL` for the allowlist. Update both Railway services together if either URL changes.
+4. **Timestamps** — Bullhorn returns Unix ms. Always `new Date(ms)`, then format with `toLocaleDateString('en-US', { timeZone: 'America/Chicago' })`. Never math on raw ms for display.
+5. **Pagination** — Bullhorn default `count` is 20; req board uses 100+; handle pagination explicitly when needed.
+6. **TO_ONE fields** — request them by name in `fields` (e.g. `owner,clientCorporation`); Bullhorn returns the nested object automatically.
 
 ---
 
-## Build Order
+## Gotchas (read this before debugging)
 
-**Phase 1 — API Server**
-- [ ] Init Node.js/Express project in `server/`
-- [ ] Build `bullhorn.js` MCP client that calls the Railway MCP server
-- [ ] Implement `/api/jobs` endpoint with correct fields and WHERE clause
-- [ ] Implement `/api/placements` for active contractors
-- [ ] Implement `/api/stats` for header counts
-- [ ] Test all endpoints locally
+These are the traps that have cost real time on this codebase. Most are non-obvious from the code alone.
 
-**Phase 2 — Frontend**
-- [ ] Init Vite + React project in `client/`
-- [ ] Build `StatsStrip` component
-- [ ] Build `FilterBar` with Status, Type, Owner, Remote filters
-- [ ] Build `ReqBoard` main table with sorting
-- [ ] Build `StatusBadge` with color mapping
-- [ ] Build `JobDetail` slide-out panel with submissions
-- [ ] Wire up auto-refresh (5-minute interval)
+1. **`Placement` has no `isDeleted` field.** Adding `AND isDeleted = false` to a Placement query returns HTTP 400 and zero records. The generic isDeleted rule does NOT apply to Placement — only JobOrder / JobSubmission / Note / Candidate / etc. Bullhorn's schema is inconsistent here.
 
-**Phase 3 — Deploy**
-- [ ] Push to GitHub
-- [ ] Create Railway project with two services
-- [ ] Set env vars per service
-- [ ] Confirm live URL loads and data flows end-to-end
+2. **Override saves are optimistically locked.** `PATCH /api/req-board/jobs/:id/overrides` requires `If-Match: <version>` (from the prior read). A concurrent edit causes `409 OVERRIDE_CONFLICT`; the client `ConflictDialog` reloads-and-retries. If you bypass If-Match you will silently overwrite other users' edits.
 
----
+3. **READ_ONLY_MODE surfaces as `403 READ_ONLY_MODE`.** `server/lib/bullhorn.js` blocks mutating MCP tools when the env var is true. The route error handler converts to a 403 with `code: 'READ_ONLY_MODE'` so the UI can toast cleanly. Local Supabase writes are NOT blocked — only Bullhorn writes.
 
-## Questions to Resolve Early
+4. **Falloff rule:** statuses `['Archive', 'Placed', 'Lost', 'Wash', 'Filled']` (in `server/routes/jobs.js`) cause a req to disappear from both Req Boards 12 hours after the status change. **Called Shot jobs bypass this rule** so manually-flagged high-priority reqs don't vanish.
 
-1. **MCP auth method** — Does the existing Bullhorn MCP server use bearer token, API key header, or something else? Check the Railway env vars on your MCP server to confirm.
-2. **Office/branch field** — Confirm if jobs are tagged by office (Birmingham/Dallas/Nashville) via `branchCode` or another field — may want to add office filter.
-3. **"Called shots"** — This was a concept from the old req board (a manually-flagged high-priority req). Discuss whether to replicate via `type` (Priority A/B/C) or a custom field.
+5. **Auto-refresh is 20 seconds, not 5 minutes** (`client/src/modules/req-board/ReqBoardModule.jsx:16`). Plus a 5s relative-time ticker, plus an SSE event stream (`/api/req-board/jobs/events`) for realtime override merges. Auto-refresh pauses while the detail panel is open or any cell is being edited, to avoid clobbering in-flight saves.
+
+6. **3-layer rate limiting** in `server/index.js`:
+   - IP flood limiter — 1000 req/min per IP, **before** auth
+   - Per-user limiter — 200 req/min, keyed by Entra `oid` or IP, **after** auth
+   - Write limiter — 30 mutations/min per user
+   If a test or sync script is getting throttled, this is why.
+
+7. **MCP circuit breaker** (`server/lib/mcpBreaker.js`) trips after repeated failures and short-circuits subsequent MCP calls. If Bullhorn is down, expect the breaker to surface errors instead of long timeouts.
+
+8. **External-login lockout.** `/api/auth/external/login` rate-limits to 5 attempts per 15 min per IP; 10 consecutive failures triggers a 30-min lockout on the account. Useful to know when an external vendor user can't log in.
+
+9. **India Req Board shares everything with the regular board.** `IndiaReqBoardModule` is a thin wrapper over `ReqBoardModule` with `apiFilter={{ apt_india: true }}` and `permissionKey="india_req_board"`. Edits on either board hit the same Bullhorn record and the same `job_overrides` Supabase row. Backed by `/api/req-board/jobs` and `/api/req-board/stats` with the `?apt_india=true` query param. The flag is set via a checkbox column on the regular board; gated by the `india_req_board` module permission (off by default for everyone).
+
+10. **App version source of truth** is `client/src/lib/version.js` (currently `3.29.17`). Update on every prod deploy and add a changelog entry there — the in-app Changelog modal reads from this constant.
