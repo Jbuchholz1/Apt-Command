@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.17';
+export const APP_VERSION = '3.29.18';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.18',
+    date: '2026-05-22',
+    title: 'Org Flow — Clients page now scopes correctly to the signed-in user',
+    changes: [
+      { type: 'patch', text: 'Security fix: the Org Flow "My Clients" view now resolves the current user server-side instead of trusting the userId in the URL. Previously a user could have edited the URL to view another user\'s client list. Behavior on the page is unchanged — your own clients still load the same way. (Audit ref DRB-SEC-012.)' },
+    ],
+  },
   {
     version: '3.29.17',
     date: '2026-05-19',

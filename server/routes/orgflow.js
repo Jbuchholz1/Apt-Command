@@ -51,11 +51,18 @@ router.get('/users/me', async (req, res, next) => {
 // =============================================
 
 // GET /api/org-flow/clients — list clients (optional ?view=my for user's clients)
+//
+// SECURITY: the userId for "view=my" is resolved server-side from the
+// authenticated user, NOT from the query string. An earlier version accepted
+// ?userId=<arbitrary> and string-interpolated it into a PostgREST .or() filter
+// — an IDOR (any user could view any other user's clients by changing the URL)
+// plus a filter-injection vector. See SECURITY_AUDIT.md DRB-SEC-012.
 router.get('/clients', async (req, res, next) => {
   try {
     let userId = null;
-    if (req.query.view === 'my' && req.query.userId) {
-      userId = req.query.userId;
+    if (req.query.view === 'my') {
+      const me = await db.getUserByEmail(req.user?.email || '');
+      userId = me?.id || null;
     }
     const clients = await db.getClients(userId);
     res.json(clients);

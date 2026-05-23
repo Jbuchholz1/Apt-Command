@@ -713,6 +713,16 @@ async function getActiveUsers() {
 async function getClients(userId) {
   if (!supabase) return [];
 
+  // Defense-in-depth: userId is interpolated into a PostgREST .or() filter
+  // below. Any non-UUID value here is treated as a programmer error — refuse
+  // to query rather than risk filter injection. The route caller already
+  // resolves userId server-side from req.user (see DRB-SEC-012 in
+  // SECURITY_AUDIT.md), so this guard only catches future misuse.
+  if (userId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+    console.warn('[db] getClients: refusing non-UUID userId');
+    return [];
+  }
+
   let query = supabase
     .from('clients')
     .select('*, account_manager:user_profiles!created_by(email, full_name)')

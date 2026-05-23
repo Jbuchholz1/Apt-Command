@@ -1,13 +1,263 @@
 # Security Audit — APT Digital Req Board
 
-**Date:** 2026-04-29
+**Audit cycles:**
+- **Cycle 2 — re-audit:** 2026-05-22 (this section, top of doc)
+- **Cycle 1 — initial audit:** 2026-04-29 (preserved below as historical record)
+
+ID convention: `DRB-SEC-NNN` numbers are continuous across cycles. Cycle 1 covered 001–011; Cycle 2 adds 012–020. To see the status of a cycle-1 item, check the "Cycle 1 status snapshot" table below.
+
+---
+
+# Cycle 2 — re-audit (2026-05-22)
+
+**Auditor:** Claude (Opus 4.7)
+**Scope:** Re-verification of cycle 1 findings + new audit of code added since (Org Flow client management, external user accounts, expanded support module, project management, SharePoint nightly export, optimistic locking on overrides).
+**Mode:** Read-only audit. No code changes — findings only. (Action list at the bottom.)
+
+## Cycle 2 executive summary
+
+**Overall risk: LOW.** The April audit cycle delivered. Most cycle-1 mediums are closed; cycle-2 finds the codebase materially harder to attack than the April snapshot. **One genuinely exploitable issue** showed up in the Org Flow code shipped since April — DRB-SEC-012, an IDOR + PostgREST filter-injection in a single route.
+
+| Severity | Cycle 2 count | Headline |
+|---|---|---|
+| Critical | 0 | — |
+| **High** | **1** | Org Flow `userId` IDOR + PostgREST filter injection (DRB-SEC-012) |
+| Medium | 1 | `BULLHORN_MCP_URL` still in git history (DRB-SEC-013) |
+| Low | 4 | CORS `credentials: true` vestige; userEmail in `.or()`; no admin audit log; no per-entity write rate limit |
+| Informational | 3 | No error tracking; passwordMustChange not server-enforced; `scripts/export-prod-data.sql` untracked |
+
+**Act this week:**
+1. **DRB-SEC-012** — Fix Org Flow `userId` IDOR + add UUID validator
+2. **DRB-SEC-001** (carryover from cycle 1) — Flip `CSP_MODE` from `report-only` to `enforce` after verifying clean report logs
+3. **DRB-SEC-005** (carryover from cycle 1) — Upgrade `exceljs` to clear the `uuid` CVE
+
+## Cycle 1 status snapshot
+
+| ID | Title | Cycle 2 status | Notes |
+|---|---|---|---|
+| DRB-SEC-001 | CSP disabled | ⚠️ PARTIAL | Infrastructure shipped Apr; default still `report-only`. Needs flip to `enforce`. |
+| DRB-SEC-002 | File-upload mimetype-only | ✅ FIXED | Magic-byte verification + SVG denylist via `server/lib/imageUpload.js`. |
+| DRB-SEC-003 | Full datasets to all users | 🔴 OPEN | Per-route role-scoping not started. Same as April. |
+| DRB-SEC-004 | Hardcoded admin bootstrap | ✅ FIXED | `BOOTSTRAP_ADMIN_EMAILS` env var. |
+| DRB-SEC-005 | `uuid <14.0.0` CVE via exceljs | 🔴 OPEN | `npm audit` still flags it. |
+| DRB-SEC-006 | Lucene partial escape on email | ✅ FIXED | Strict regex validator at `server/lib/bullhorn.js:802-820`. |
+| DRB-SEC-007 | PII in MCP debug logs | 🔴 OPEN | Appointment payloads still logged in full at `server/lib/bullhorn.js` (lines ~626, 634, 648, 669, 692, 705). |
+| DRB-SEC-008 | No CSRF token (mitigated) | ✅ FIXED | Documented as Rule 2/7 in `server/CLAUDE.md`. |
+| DRB-SEC-009 | Graph token client-supplied | ℹ️ INFO | Unchanged; design choice still appropriate. |
+| DRB-SEC-010 | No branch protection / CI gates | ℹ️ INFO | Unchanged. |
+| DRB-SEC-011 | Stale memory note | ✅ FIXED | One-shot fix from April session. |
+
+Net: 5 fixed, 3 still open (DRB-SEC-001 partial, -003, -005, -007), 3 informational unchanged.
+
+## Cycle 2 methodology
+
+1. **Three parallel `Explore` agents** investigated three domains concurrently:
+   - Authentication, authorization, session handling, RBAC, IDOR.
+   - Injection (MCP WHERE, Supabase filters, XSS, formula, SSRF, mass assignment, CSRF, file upload, path traversal, prompt injection, open redirect).
+   - Secrets, data exposure, infra, logging, CSP/security headers, dependencies, git history.
+2. **Manual verification** of every High/Medium finding against actual file contents and git history. Several agent claims did not survive verification — listed under "Discarded false positives" below.
+3. **Cross-referenced** with the cycle 1 audit doc and the auto-memory project notes.
+
+## Cycle 2 findings — new
+
+### HIGH
+
+#### DRB-SEC-012 — Org Flow `userId` IDOR + PostgREST filter injection
+
+- **Where:** [server/routes/orgflow.js:54-63](server/routes/orgflow.js#L54), [server/lib/db.js:713-739](server/lib/db.js#L713) (especially line 730).
+- **What:** `GET /api/org-flow/clients?view=my&userId=<arbitrary>` accepts `userId` from the query string with **no validation and no check that the value belongs to `req.user`**. It is then string-interpolated directly into a PostgREST `.or()` filter:
+
+  ```js
+  // db.js:730
+  query = query.or(`created_by.eq.${userId},id.in.(${assignedClientIds.join(',')})`);
+  ```
+
+- **Two distinct issues in one route:**
+  1. **IDOR (horizontal privilege escalation).** Any authenticated user with `org_flow` module access can supply *another user's* `userId` and view the clients owned/assigned to that user. The route gating is module-level only; it never verifies that the requested userId matches the caller.
+  2. **PostgREST filter injection.** Because `userId` is not validated as a UUID, an attacker can inject filter syntax. A crafted `userId` like `00000000-0000-0000-0000-000000000000,id.gt.0` (URL-encoded) extends the `or` list, returning every client row.
+- **Why exploitable:** the `org_flow` module is granted broadly — it's the client-management surface. Any user with read access to their own clients gains the ability to enumerate every client in the database via this route, including assignment metadata. Defense layers that do **not** save you: the module gate is satisfied (attacker is a legitimate user), Supabase RLS is irrelevant because the server uses the `service_role` key, and rate limiting does not stop a single curated request.
+- **Fix sketch:**
+  1. **IDOR:** ignore `req.query.userId`. Resolve the caller's profile ID server-side from `req.user.email` (same lookup pattern as [`server/routes/orgflow.js:42-47`](server/routes/orgflow.js#L42) — `GET /users/me`).
+  2. **Injection defense (belt-and-suspenders):** add a UUID validator at the route boundary: `if (userId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) return 400`.
+- **Severity rationale:** HIGH, not Critical, because it requires an authenticated user. But this is the kind of bug a curious user finds by editing a URL.
+
+### MEDIUM
+
+#### DRB-SEC-013 — `BULLHORN_MCP_URL` is still in git history
+
+- **Where:** Commit `0543d3c` (initial commit) included a hardcoded fallback `const MCP_URL = process.env.BULLHORN_MCP_URL || 'https://bullhorn-mcp-production.up.railway.app/mcp';` in [server/lib/bullhorn.js](server/lib/bullhorn.js). Commit `0c4e0dd` ("Security hardening: MCP auth, prod guard, CORS, clean secrets") removed the fallback. **The URL remains visible in git history.**
+- **Why it matters:** anyone with read access to the repo (current or former collaborators) can recover the production MCP URL via `git log -S`. MCP now requires bearer auth (`BULLHORN_MCP_API_KEY`), so the URL alone is insufficient — but if that bearer ever leaks via logs, env-file copy, or a compromised workstation, the URL is the keyhole.
+- **Note on cycle 1 doc:** the April audit reported `git log --all --full-history -S 'BULLHORN_MCP_URL' returns nothing` (DRB-SEC-011, line 313). Re-verification shows the search **does** return commits — `git log --all -S 'BULLHORN_MCP_URL' --oneline` returns `b645fec`, `0c4e0dd`, `0543d3c`. The April claim was wrong, or the search syntax used then was different. Either way, the URL is in history today.
+- **Fix sketch (decide before implementing):**
+  - **Option A — clean history.** Use `git filter-repo` to remove the URL string. Force-push. Cost: all collaborators must re-clone; open PRs need rebasing; commit hashes shift.
+  - **Option B — rotate the MCP URL.** Redeploy the MCP server to a new Railway service name so the leaked URL no longer resolves. Update `BULLHORN_MCP_URL` env on the api-server. Cost: one MCP redeploy, brief downtime. Pair with rotating `BULLHORN_MCP_API_KEY`.
+  - **Option C — accept and document.** Bearer auth + circuit breaker + 30s timeout already mean an attacker with the URL but no key can only DoS the MCP, and the breaker would trip.
+  - **Recommendation: B.** Cheapest, decisive, and rotates the key as a side benefit.
+
+### LOW
+
+#### DRB-SEC-014 — CORS `credentials: true` is vestigial but still set
+
+- **Where:** [server/index.js:153](server/index.js#L153).
+- **What:** The CORS config sets `credentials: true` even though the app uses bearer-only auth. The inline comment correctly notes this is vestigial.
+- **Why it matters today:** nothing — no cookies are sent. But it primes the system for a footgun if cookies are ever added later without also adding CSRF protection.
+- **Fix sketch:** set `credentials: false` and update the comment. Cross-reference with Rule 2 in [server/CLAUDE.md](server/CLAUDE.md). One-liner; safe.
+
+#### DRB-SEC-015 — `userEmail` interpolated into Supabase `.or()` filter
+
+- **Where:** [server/lib/db.js:1384](server/lib/db.js#L1384) in `getUnreadCounts(userEmail)`:
+
+  ```js
+  .or(`submitted_by.eq.${userEmail},assigned_to.eq.${userEmail}`);
+  ```
+
+- **What:** Same pattern as DRB-SEC-012, but `userEmail` comes from the JWT (`req.user.email`), which is verified server-side. So it's only attacker-controlled if the IdP is compromised.
+- **Why it still matters:** if a future change makes `userEmail` flow from request input, this becomes injectable. Even today, an email with PostgREST-special characters (parens, commas) could produce malformed filters.
+- **Fix sketch:** validate email against a strict regex before interpolation, or pre-resolve to the user's profile ID and use `.in('submitted_by', [id])`.
+
+#### DRB-SEC-016 — No audit log for admin role / permission changes
+
+- **Where:** [server/routes/admin.js:34-73](server/routes/admin.js#L34) (`PATCH /api/admin/users/:id/role`) and other admin mutations.
+- **What:** Role changes write into the `user_profiles` row directly. No immutable audit trail of `who changed whom, when, from what role to what role`.
+- **Why it matters:** a rogue admin could promote themselves, do damage, then demote back. Without a separate append-only audit table, forensic reconstruction is impossible.
+- **Fix sketch:** new Supabase migration creating `admin_audit_log` (`actor_email`, `target_email`, `event`, `old_value`, `new_value`, `created_at`). Insert rows from `routes/admin.js` and `lib/roles.js` on role and permission changes. Never UPDATE or DELETE rows in this table.
+
+#### DRB-SEC-017 — No per-entity write rate limit
+
+- **Where:** [server/index.js:124-131](server/index.js#L124) — global per-user write limiter is 30/min.
+- **What:** A user can spam writes to a single Bullhorn record (status, notes) up to 30/min. Each write hits the Bullhorn API and pollutes Bullhorn audit logs.
+- **Why it matters:** internal abuse / noise / Bullhorn-API-cost concern. Not a confidentiality bug.
+- **Fix sketch:** per-entity write rate limit — e.g., max 3 writes per `jobId` per minute per user. In-memory map keyed by `user:jobId`, sliding window eviction.
+
+### INFORMATIONAL
+
+#### DRB-SEC-018 — No structured error tracking
+
+- All errors go to `console.error` on Railway with 7-day retention. No alerting, no aggregation, no PII filtering. Recommend Sentry or similar — `Sentry.init()` at the top of `server/index.js`, send error events, filter PII via `beforeSend`.
+
+#### DRB-SEC-019 — `password_must_change` not enforced server-side
+
+- External users with `password_must_change=true` see a modal in the client, but the server still accepts their API calls — the flag is purely advisory. A user who suppresses the modal (devtools, custom client) can keep using the initial password indefinitely.
+- Fix sketch (if strict enforcement desired): in `requireAuth()`, refuse requests when `req.user.pwMustChange === true` and `req.path !== '/api/auth/external/change-password'`.
+
+#### DRB-SEC-020 — `scripts/export-prod-data.sql` is untracked
+
+- Untracked at audit time per `git status`. The script is a SQL Editor copy-paste template — no secrets in the file, but it generates a destructive `TRUNCATE … CASCADE` dump in the prod SQL Editor. Verify before committing that the file contains only the template and not any captured output that might include real rows. Either commit cleanly or add to `.gitignore`.
+
+## Cycle 2 findings — false positives
+
+The Explore agents surfaced these claims that did not survive verification. Listed so they don't get raised again:
+
+- **"Supabase credentials committed to git history" (Agent 3, MEDIUM).** Wrong. `git ls-files | grep env` returns only `.env.example`. `git log --all --diff-filter=A --name-only` shows `.env.prod-supabase` and `.env.sandbox-supabase` were never added to git. They exist only on the local workstation (correctly), and `.gitignore` covers them by name.
+- **"CSP disabled by default" (Agent 3, MEDIUM).** Wrong. [server/index.js:57](server/index.js#L57) sets default to `report-only`, not off. The real issue is failure to promote to `enforce` — already tracked as DRB-SEC-001 (carryover from cycle 1).
+- **"MCP query injection via WHERE clauses."** Verified safe. All IDs flowing into WHERE clauses are parsed with `parseInt()`/`Number()` first; status values come from hardcoded constants.
+- **"XSS in UniversalSearch dangerouslySetInnerHTML."** Verified safe. The helper HTML-escapes input first, then re-permits only `<em>` / `<mark>` tags.
+- **"`exec_sql` calls user-controlled strings."** Verified safe. [db.js:45-47](server/lib/db.js#L45) documents that `exec_sql` is used only with string literals.
+- **"`credentials: 'include'` introduces CSRF."** Verified safe. Bearer-only is enforced; client never uses `credentials: 'include'`; no `Set-Cookie` headers are sent. (DRB-SEC-014 covers the leftover server-side setting.)
+
+## Cycle 2 — Verified-safe additions
+
+Strengths confirmed during cycle 2 that were not on cycle 1's list (or are worth re-confirming since the cycle-2 code has grown):
+
+| Control | Where | Notes |
+|---|---|---|
+| External JWT verification | [server/middleware/auth.js:53-95](server/middleware/auth.js#L53) | HS256 with issuer + audience checks; `pwUpdatedAt` claim invalidates tokens after password reset. |
+| Token dispatch by `iss` claim | [server/middleware/auth.js:157-161](server/middleware/auth.js#L157) | Azure and external verifiers can't be cross-fed. |
+| Module-level RBAC | [server/middleware/adminAuth.js:40-58](server/middleware/adminAuth.js#L40) | `requireModule(moduleKey, level)` enforced server-side; replaces ad-hoc admin/manager checks. |
+| External login lockout | [server/routes/auth.js](server/routes/auth.js) | 5 attempts/15min/IP; 10 fails → 30-min lockout per account. |
+| Supabase RLS posture | [015_revoke_public_role_grants.sql](server/migrations/015_revoke_public_role_grants.sql) | `anon` + `authenticated` revoked from all tables — only `service_role` accesses tables. |
+| Optimistic locking on overrides | [server/routes/jobs.js](server/routes/jobs.js) | `If-Match` header; 409 `OVERRIDE_CONFLICT` on race. |
+| Mass-assignment defenses | various write routes | Explicit field whitelists on Bullhorn writebacks and override patches. |
+| MCP read-only sandbox guard | [server/lib/bullhorn.js:47-52](server/lib/bullhorn.js#L47) | `READ_ONLY_MODE` blocks `update_entity`, `add_note`, `create_entity` at the chokepoint. |
+
+## Cycle 2 — what could NOT be verified
+
+Honest scope limits worth flagging:
+
+- **MCP server itself.** This audit looked at how the api-server *calls* the MCP. Whether the MCP service *enforces* bearer auth (rejects requests without `Authorization`) is a property of the MCP server's own code outside this repo. Test directly: `curl -i https://<MCP_URL>/mcp` with no auth header — expect 401.
+- **Supabase Storage bucket permissions.** Logo and screenshot buckets — public-read or signed-URL-only is a Supabase dashboard setting, not in code.
+- **Railway env var leakage.** Service env vars are only as secure as Railway's RBAC and the team's session hygiene.
+- **GitHub repo visibility.** Findings have higher severity if the repo is public. (Should be private.)
+
+## Cycle 2 — fix breakage risk (1-10)
+
+For each finding, an estimate of "likelihood that fixing it breaks something" — 1 = totally safe, 10 = will probably break stuff.
+
+| ID | Action | Risk | Notes |
+|---|---|---|---|
+| DRB-SEC-012 | Resolve userId server-side, add UUID validator | **2** | "My Clients" still works; identity comes from trusted source. |
+| DRB-SEC-001 (carryover) | Flip `CSP_MODE=enforce` | **4** | If any unexpected inline script or third-party domain exists, will break loudly. Reversible in 30s by flipping env back. |
+| DRB-SEC-005 (carryover) | Upgrade `exceljs` | **3** | Minor risk of subtle export formatting change. Test by running an export. |
+| DRB-SEC-007 (carryover) | Redact appointment-payload logs | **1** | Logs only — no behavior change. |
+| DRB-SEC-013 | Rotate MCP URL/key (Option B) | **5** | Brief MCP downtime during cutover. |
+| DRB-SEC-013 | History rewrite (Option A) | **8** | All collaborators re-clone; open PRs rebase; commit hashes shift. |
+| DRB-SEC-014 | Set `credentials: false` | **1** | No cookies in use. |
+| DRB-SEC-015 | Validate or parameterize userEmail | **2** | Only risk: unusual email under stricter format. |
+| DRB-SEC-016 | Add `admin_audit_log` table | **2** | Purely additive. |
+| DRB-SEC-017 | Per-entity write rate limit | **3** | Risk: legitimate bulk scripts hit the limit — needs sizing. |
+| DRB-SEC-018 | Sentry integration | **2** | Mostly additive; risk is sending PII to Sentry — filter via `beforeSend`. |
+| DRB-SEC-019 | Server-enforce passwordMustChange | **3** | Make sure change-password flow doesn't make blocked side calls. |
+| DRB-SEC-020 | Commit or `.gitignore` the SQL file | **1** | Filesystem decision. |
+
+## Cycle 2 — Prioritized remediation list
+
+| Priority | ID | Effort | Action |
+|---|---|---|---|
+| P0 (this week) | **DRB-SEC-012** | S | Fix Org Flow `userId` IDOR + add UUID validator |
+| P0 (this week) | DRB-SEC-001 | XS | Flip `CSP_MODE=enforce` after verifying `/api/csp-report` logs are clean |
+| P0 (this week) | DRB-SEC-005 | S | Upgrade `exceljs` (or `package.json` override pinning `uuid >= 14`) |
+| P1 (this month) | DRB-SEC-013 | M | Decide Option A vs B for MCP URL leak; recommend B (rotate URL/key) |
+| P1 (this month) | DRB-SEC-007 | XS | Redact appointment payloads from `console.log` calls in `lib/bullhorn.js` |
+| P1 (this month) | DRB-SEC-014 | XS | Set `credentials: false` in CORS |
+| P1 (this month) | DRB-SEC-015 | XS | Validate or parameterize `userEmail` in `getUnreadCounts` |
+| P2 (this quarter) | DRB-SEC-016 | M | Add `admin_audit_log` table + writes |
+| P2 (this quarter) | DRB-SEC-017 | M | Per-entity write rate limit |
+| P2 (this quarter) | DRB-SEC-003 | M-L | Per-route role-scoping of dataset routes (still open from cycle 1) |
+| P2 (this quarter) | DRB-SEC-010 | XS | Enable GitHub branch protection on `main` and `staging` |
+| P2 (this quarter) | DRB-SEC-018 | M | Sentry integration |
+| P3 (whenever) | DRB-SEC-020 | XS | Clean up `scripts/export-prod-data.sql` (commit or ignore) |
+| P3 (whenever) | DRB-SEC-019 | S | Server-side `passwordMustChange` enforcement if strict policy desired |
+
+Effort scale: XS = under 30min, S = 1–2h, M = half day, L = 1+ day.
+
+## Cycle 2 — Verification plan (when fixes land)
+
+**DRB-SEC-012 — Org Flow IDOR:**
+1. Log in as user A (Azure SSO).
+2. Find user A's Supabase profile ID via `GET /api/org-flow/users/me`.
+3. Look up another user B's profile ID (any way — e.g., from `/api/admin/users` if admin during the test).
+4. **Before fix:** `GET /api/org-flow/clients?view=my&userId=<B's id>` returns B's clients. **After fix:** the route ignores `userId` from query and returns only A's clients.
+5. Repeat with a non-UUID `userId=foo)bar` — before fix produces a Supabase error or unexpected rows; after fix returns 400.
+
+**DRB-SEC-001 — CSP enforce:**
+1. After flipping `CSP_MODE=enforce`, open the app in production.
+2. DevTools → Console.
+3. Exercise every module (Req Board, Org Flow, Reporting, Pipeline, Admin).
+4. Confirm no `Refused to load…` errors. If any appear, revert to `report-only`, fix the directive, retry.
+
+**DRB-SEC-005 — uuid upgrade:**
+1. `cd server && npm install exceljs@latest && npm audit --omit=dev --audit-level=moderate`.
+2. Trigger an Excel export end-to-end (`/api/req-board/jobs/export`) and confirm the workbook opens cleanly in Excel.
+
+**DRB-SEC-013 — MCP URL/key rotation (Option B):**
+1. Deploy MCP to a new Railway service URL.
+2. Update `BULLHORN_MCP_URL` and `BULLHORN_MCP_API_KEY` env on the api-server Railway service.
+3. Hit a few read endpoints (`/api/req-board/jobs`, `/api/req-board/stats`) and confirm 200s.
+4. Disable the old MCP service.
+
+---
+
+# Cycle 1 — initial audit (2026-04-29)
+
+_Preserved verbatim from the original audit for historical reference. For the current status of any cycle-1 finding, see the "Cycle 1 status snapshot" table at the top of cycle 2._
+
 **Repo:** `Claude Digital Req Board` (Railway-deployed Node.js + React SPA)
 **Scope:** Application code (server + client), configuration & secrets, dependencies, infrastructure posture, and a project-specific threat model.
 **Mode:** Identify-only, except for four zero-impact hardening fixes applied during the session (listed below). No behavioral changes.
 
 ---
 
-## Executive summary
+## Executive summary (cycle 1)
 
 **Overall risk: LOW–MEDIUM.** This is a small-team internal tool behind Microsoft Entra ID, with sound auth, role-gated admin routes, two-layer rate limiting, a CORS allowlist, server-side-only MCP credentials, and Supabase as the persistence layer (no on-disk DB). The codebase shows evidence of prior security work (Helmet middleware, formula-injection sanitization, an XSS-safe HTML-escape helper, optimistic locking on overrides).
 
@@ -43,7 +293,7 @@ The remaining concerns are defense-in-depth gaps and one `npm audit` finding, no
 
 ---
 
-## Methodology
+## Methodology (cycle 1)
 
 - Three parallel `Explore` agents inventoried server-side code, client-side code, and config/secrets/git history.
 - Spot-checked the highest-impact findings by reading the cited files directly.
@@ -55,7 +305,7 @@ The remaining concerns are defense-in-depth gaps and one `npm audit` finding, no
 
 ---
 
-## Threat model
+## Threat model (cycle 1)
 
 ### 1. Actors
 
@@ -120,7 +370,7 @@ The interesting boundary is the last one: the client passes its own Graph token 
 
 ---
 
-## Findings
+## Findings (cycle 1)
 
 > Each finding lists ID, severity, location with a quotable code reference, impact, and recommendation. Recommendations describe direction, not patches — the user can decide whether to schedule a fix.
 
@@ -312,9 +562,11 @@ No `.github/workflows/`, no required reviews, no automated `npm audit` in CI, no
 
 The previous `project_mcp_security.md` claimed MCP had no auth and the URL was committed to git. Verified false on 2026-04-29: MCP is Bearer-authed at [server/lib/bullhorn.js:52-54](server/lib/bullhorn.js:52); `git log --all --full-history -S 'BULLHORN_MCP_URL'` returns nothing. The memory file also contained a generated key value in plaintext — removed during this audit.
 
+> **Cycle 2 note (2026-05-22):** the `git log` claim above was wrong (or relied on different search syntax). `git log --all -S 'BULLHORN_MCP_URL' --oneline` does return commits including the initial commit. See cycle 2 DRB-SEC-013.
+
 ---
 
-## Verified-safe
+## Verified-safe (cycle 1)
 
 These controls were checked and pass. Listed so future audits don't redo the same investigation.
 
@@ -343,7 +595,7 @@ These controls were checked and pass. Listed so future audits don't redo the sam
 
 ---
 
-## Recommended user-run checks
+## Recommended user-run checks (cycle 1)
 
 These require live access I don't have from this session. One-line commands; paste output into the report or spawn a follow-up task.
 
@@ -374,7 +626,7 @@ These require live access I don't have from this session. One-line commands; pas
 
 ---
 
-## Appendix A — `npm audit` raw output
+## Appendix A — `npm audit` raw output (cycle 1)
 
 ### `server/`
 
@@ -416,7 +668,7 @@ Both packages share the finding because both depend on `exceljs` directly.
 
 ---
 
-## Appendix B — Files reviewed
+## Appendix B — Files reviewed (cycle 1)
 
 ### Server
 `server/index.js`, `server/middleware/auth.js`, `server/middleware/adminAuth.js`, `server/lib/bullhorn.js`, `server/lib/db.js`, `server/lib/excelSafe.js`, `server/lib/mcpBreaker.js`, `server/lib/orgflowSync.js`, `server/lib/roles.js`, `server/routes/admin.js`, `server/routes/clientHealth.js`, `server/routes/dashboard.js`, `server/routes/goals.js`, `server/routes/jobs.js`, `server/routes/operations.js`, `server/routes/orgflow.js`, `server/routes/performance.js`, `server/routes/placements.js`, `server/routes/reporting.js`, `server/routes/search.js`, `server/routes/stats.js`, `server/routes/support.js`, `server/routes/users.js`, `server/package.json`.
@@ -435,7 +687,7 @@ Both packages share the finding because both depend on `exceljs` directly.
 
 ---
 
-## Appendix C — Severity rationale
+## Appendix C — Severity rationale (cycle 1)
 
 This audit uses a four-axis judgement (likelihood, impact, blast radius, ease of fix), not numeric CVSS. The shape is:
 
