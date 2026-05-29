@@ -7,6 +7,7 @@ import { getFollowUpUrgency } from './lib/urgency';
 import EditableDate from './EditableDate';
 import EditableSelect from './EditableSelect';
 import EditableCell from './EditableCell';
+import { JOB_STATUSES } from './lib/statusConstants';
 
 const TYPE_OPTIONS = [
   'Direct Hire', 'Contract', 'Contract To Hire', 'Project',
@@ -25,9 +26,7 @@ const REMOTE_OPTIONS = [
   { value: 'Hybrid', label: 'Hybrid' },
 ];
 
-const STATUS_OPTIONS = [
-  'Accepting Candidates', 'Covered', 'Offer Out', 'Placed', 'Filled', 'Lost', 'Wash', 'Archive',
-].map(s => ({ value: s, label: s }));
+const STATUS_OPTIONS = JOB_STATUSES.map(s => ({ value: s, label: s }));
 
 // JobSubmission status options for the On The Board modal's per-candidate
 // status edit. Mirrors the SUBMISSION_STATUS_OPTIONS in JobDetail.jsx.

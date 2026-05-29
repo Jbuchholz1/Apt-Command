@@ -1,9 +1,5 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
-
-const STATUSES = [
-  'Accepting Candidates', 'Covered', 'Offer Out', 'Placed',
-  'Filled', 'Lost', 'Wash', 'Archive',
-];
+import { JOB_STATUSES } from './lib/statusConstants';
 
 const EMPLOYMENT_TYPES = ['Contract', 'Direct Hire', 'Contract To Hire', 'Project'];
 const REMOTE_OPTIONS = ['Yes', 'No', 'Hybrid'];
@@ -97,7 +93,7 @@ export default function FilterBar({ filters, onChange, jobs, redBoxCount }) {
         <label>Status</label>
         <MultiSelect
           label="Statuses"
-          options={STATUSES}
+          options={JOB_STATUSES}
           selected={filters.status || []}
           onChange={(val) => update('status', val)}
         />

@@ -23,69 +23,11 @@ function getCurrentPeriod() {
   return getPeriodForDate(new Date());
 }
 
-function periodBounds(period) {
-  const match = /^(\d{4})-Q([1-4])$/.exec(period);
-  if (!match) throw new Error(`Invalid period: ${period}`);
-  const fiscalYear = parseInt(match[1], 10);
-  const qNum = parseInt(match[2], 10);
-
-  const monthsFromFYStart = (qNum - 1) * 3;
-  const absStartMonth = FISCAL_YEAR_START_MONTH + monthsFromFYStart;
-
-  let startYear, startMonth;
-  if (absStartMonth > 12) {
-    startYear = fiscalYear;
-    startMonth = absStartMonth - 12;
-  } else {
-    startYear = FISCAL_YEAR_START_MONTH === 1 ? fiscalYear : fiscalYear - 1;
-    startMonth = absStartMonth;
-  }
-
-  const start = new Date(startYear, startMonth - 1, 1);
-  const end = new Date(startYear, startMonth - 1 + 3, 0, 23, 59, 59, 999);
-  return { start, end };
-}
-
-function shiftPeriod(period, delta) {
-  const match = /^(\d{4})-Q([1-4])$/.exec(period);
-  if (!match) throw new Error(`Invalid period: ${period}`);
-  const fiscalYear = parseInt(match[1], 10);
-  const qNum = parseInt(match[2], 10);
-
-  const totalQs = fiscalYear * 4 + (qNum - 1) + delta;
-  const newFY = Math.floor(totalQs / 4);
-  const newQ = (totalQs % 4) + 1;
-  return `${newFY}-Q${newQ}`;
-}
-
-function listPeriods(current = getCurrentPeriod(), before = 4, after = 2) {
-  const out = [];
-  for (let i = -before; i <= after; i++) {
-    out.push(shiftPeriod(current, i));
-  }
-  return out;
-}
-
-function periodProgress(period, now = new Date()) {
-  const { start, end } = periodBounds(period);
-  const total = end.getTime() - start.getTime();
-  const elapsed = Math.min(Math.max(now.getTime() - start.getTime(), 0), total);
-  return total === 0 ? 0 : elapsed / total;
-}
-
-function formatPeriod(period) {
-  const match = /^(\d{4})-Q([1-4])$/.exec(period);
-  if (!match) return period;
-  return `Q${match[2]} ${match[1]}`;
-}
-
+// Only getCurrentPeriod is consumed (server/routes/goals.js). The former
+// periodBounds / shiftPeriod / listPeriods / periodProgress / formatPeriod
+// helpers were exported but never imported anywhere, so they were removed —
+// see git history if a richer period API is ever needed again. (The client
+// keeps its own copy at client/src/modules/goal-tracking/lib/period.js.)
 module.exports = {
-  FISCAL_YEAR_START_MONTH,
   getCurrentPeriod,
-  getPeriodForDate,
-  periodBounds,
-  shiftPeriod,
-  listPeriods,
-  periodProgress,
-  formatPeriod,
 };

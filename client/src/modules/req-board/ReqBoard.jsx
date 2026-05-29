@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import StatusBadge from './StatusBadge';
+import { JOB_STATUSES } from './lib/statusConstants';
 import EditableCell from './EditableCell';
 import EditableSelect from './EditableSelect';
 import EditableDate from './EditableDate';
@@ -52,9 +53,7 @@ const TR_STYLES = {
   yellow: { backgroundColor: '#fef08a', color: '#854d0e' },
 };
 
-const STATUS_OPTIONS = [
-  'Accepting Candidates', 'Covered', 'Offer Out', 'Placed', 'Filled', 'Lost', 'Wash', 'Archive',
-].map(s => ({ value: s, label: s }));
+const STATUS_OPTIONS = JOB_STATUSES.map(s => ({ value: s, label: s }));
 
 const TYPE_OPTIONS = [
   'Direct Hire', 'Contract', 'Contract To Hire', 'Project',

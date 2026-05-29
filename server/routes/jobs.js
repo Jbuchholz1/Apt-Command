@@ -20,6 +20,16 @@ const requireRb = requireModule('req_board');
 const requireRbAdmin = requireModule('req_board', 'admin');
 const requirePipeline = requireModule('pipeline');
 
+// Statuses that fall off the active boards 12 h after the status change.
+// The GET handler hides them once they're past the 12 h window; the
+// bullhorn-update handler stamps `status_changed_at` for them so the fade is
+// measured from the precise change time (not Bullhorn's `dateLastModified`,
+// which any later edit resets). 'Filled' was added in v3.30.0. Defined once
+// here so the read and write paths can't drift — they did once: 'Filled' was
+// in the read list but missing from the write list, so filled reqs faded off
+// the unreliable dateLastModified fallback and lingered when edited.
+const FALLOFF_STATUSES = ['Archive', 'Placed', 'Lost', 'Wash', 'Filled'];
+
 // Strip HTML tags from user input to prevent stored XSS
 function sanitize(str) {
   if (!str || typeof str !== 'string') return str;
@@ -149,10 +159,8 @@ router.get('/', requireRb, async (req, res, next) => {
       }
     }
 
-    // Statuses that should fall off the board (only shown within 12hr window).
-    // 'Filled' was added in v3.30.0 alongside the India Req Board feature so
-    // filled reqs don't linger on the active boards forever.
-    const FALLOFF_STATUSES = ['Archive', 'Placed', 'Lost', 'Wash', 'Filled'];
+    // FALLOFF_STATUSES is module-scoped (shared with the bullhorn-update
+    // handler) so the read and write lists can't drift.
     const cutoffMs = Date.now() - (12 * 60 * 60 * 1000); // 12 hours ago
 
     // Merge open + recently closed + called-shot-only jobs, deduplicate by ID
@@ -937,7 +945,8 @@ router.post('/:id/bullhorn-update', requireRb, async (req, res, next) => {
     // swallowing the error — the two stores would otherwise drift.
     let warning = null;
     if (sanitized.status) {
-      const FALLOFF_STATUSES = ['Archive', 'Placed', 'Lost', 'Wash'];
+      // Module-level FALLOFF_STATUSES includes 'Filled', so filled reqs get a
+      // precise status_changed_at and fade reliably (not reset by later edits).
       const statusChangedAt = FALLOFF_STATUSES.includes(sanitized.status)
         ? new Date().toISOString()
         : null; // clear it when moving back to an active status

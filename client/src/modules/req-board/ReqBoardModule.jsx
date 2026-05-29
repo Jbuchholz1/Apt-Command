@@ -183,7 +183,9 @@ export default function ReqBoardModule({
     } finally {
       if (!silent) setLoading(false);
     }
-  }, []);
+    // apiFilter is stable per mount (regular board: null; India board: a
+    // module-level const), so this won't thrash the poll/ticker/SSE effect.
+  }, [apiFilter]);
 
   useEffect(() => {
     fetchData();
