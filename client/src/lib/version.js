@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.20';
+export const APP_VERSION = '3.29.21';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.21',
+    date: '2026-05-29',
+    title: 'Req Board — Filled reqs now fade reliably; internal cleanup',
+    changes: [
+      { type: 'patch', text: 'Fix: a req marked "Filled" is meant to drop off the board 12 hours after the status change, but the fade was being measured from Bullhorn\'s last-modified time instead of the precise status-change time — so editing any field on a Filled req reset the 12-hour timer and the req could linger on the board. Filled now behaves like the other fall-off statuses (Placed / Lost / Wash / Archive). Also internal-only, with no other user-visible change: de-duplicated the job-status list into one shared constant, documented four previously-undocumented server env vars, and removed dead code.' },
+    ],
+  },
   {
     version: '3.29.20',
     date: '2026-05-22',
