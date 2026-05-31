@@ -14,7 +14,7 @@ export const APP_VERSION = '3.29.23';
 export const CHANGELOG = [
   {
     version: '3.29.23',
-    date: '2026-05-29',
+    date: '2026-05-31',
     title: 'Security — patch tmp path-traversal advisory (DRB-SEC-022)',
     changes: [
       { type: 'patch', text: 'Cleared a high-severity Dependabot alert (GHSA-ph9p-34f9-6g65): the `tmp` package, pulled in transitively by exceljs, had a path-traversal flaw. Forced `tmp ^0.2.7` via package.json overrides in both server and client — exceljs itself is unchanged, since its `^0.2.0` range already allows the patched version. npm audit now reports 0 vulnerabilities in both projects. No user-visible change.' },
@@ -22,7 +22,7 @@ export const CHANGELOG = [
   },
   {
     version: '3.29.22',
-    date: '2026-05-29',
+    date: '2026-05-31',
     title: 'Reporting — chart names no longer overlap',
     changes: [
       { type: 'patch', text: 'On the Recruiter and Sales dashboard charts (New Input vs Goals, MAR Tracking, Leads Submitted), the names along the bottom axis overlapped when several people were shown. Names now wrap onto two lines — first name on top, last name beneath — so each label stays readable. Display-only; no data changes.' },
@@ -30,7 +30,7 @@ export const CHANGELOG = [
   },
   {
     version: '3.29.21',
-    date: '2026-05-29',
+    date: '2026-05-31',
     title: 'Req Board — Filled reqs now fade reliably; internal cleanup',
     changes: [
       { type: 'patch', text: 'Fix: a req marked "Filled" is meant to drop off the board 12 hours after the status change, but the fade was being measured from Bullhorn\'s last-modified time instead of the precise status-change time — so editing any field on a Filled req reset the 12-hour timer and the req could linger on the board. Filled now behaves like the other fall-off statuses (Placed / Lost / Wash / Archive). Also internal-only, with no other user-visible change: de-duplicated the job-status list into one shared constant, documented four previously-undocumented server env vars, and removed dead code.' },
