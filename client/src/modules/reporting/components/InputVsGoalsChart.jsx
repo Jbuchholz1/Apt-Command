@@ -1,5 +1,6 @@
 import { BarChart, Bar, Line, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { CHART_COLORS } from '../lib/constants';
+import NameTick from './NameTick';
 
 export default function InputVsGoalsChart({ recruiters, startDate, endDate }) {
   if (!recruiters || recruiters.length === 0) return null;
@@ -37,12 +38,7 @@ export default function InputVsGoalsChart({ recruiters, startDate, endDate }) {
       <ResponsiveContainer width="100%" height={320}>
         <ComposedChart data={data} barGap={4} margin={{ top: 10, right: 20, bottom: 30, left: 20 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-          <XAxis
-            dataKey="name"
-            tick={{ fontSize: 11 }}
-            interval={0}
-            angle={0}
-          />
+          <XAxis dataKey="name" tick={<NameTick />} interval={0} height={40} />
           <YAxis tickFormatter={formatDollar} tick={{ fontSize: 11 }} />
           <Tooltip formatter={(val) => formatDollar(val)} />
           <Legend />

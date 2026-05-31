@@ -1,5 +1,6 @@
 import { Bar, Line, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { CHART_COLORS } from '../lib/constants';
+import NameTick from './NameTick';
 
 const QUARTER_WEEKS = 13;
 
@@ -34,7 +35,7 @@ export default function GoalPointsChart({ recruiters, startDate, endDate, weekly
       <ResponsiveContainer width="100%" height={320}>
         <ComposedChart data={data} barGap={4} margin={{ top: 10, right: 20, bottom: 30, left: 20 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-          <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} />
+          <XAxis dataKey="name" tick={<NameTick />} interval={0} height={40} />
           <YAxis tick={{ fontSize: 11 }} />
           <Tooltip />
           <Legend />

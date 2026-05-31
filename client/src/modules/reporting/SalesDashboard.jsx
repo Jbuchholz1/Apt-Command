@@ -8,6 +8,7 @@ import DashboardFilters from './components/DashboardFilters';
 import TeamAlerts from './components/TeamAlerts';
 import { Bar, Line, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { CHART_COLORS } from './lib/constants';
+import NameTick from './components/NameTick';
 import { exportNodeToPdf } from './lib/pdfExport';
 
 const JOB_METRIC_ROWS = [
@@ -249,7 +250,7 @@ export default function SalesDashboard() {
               <ResponsiveContainer width="100%" height={320}>
                 <ComposedChart data={bonusData} barGap={4} margin={{ top: 10, right: 20, bottom: 30, left: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} />
+                  <XAxis dataKey="name" tick={<NameTick />} interval={0} height={40} />
                   <YAxis tickFormatter={(v) => `$${v.toLocaleString()}`} tick={{ fontSize: 11 }} />
                   <Tooltip formatter={(v) => `$${Number(v).toLocaleString()}`} />
                   <Legend />
@@ -273,7 +274,7 @@ export default function SalesDashboard() {
               <ResponsiveContainer width="100%" height={320}>
                 <ComposedChart data={marData} barGap={4} margin={{ top: 10, right: 20, bottom: 30, left: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} />
+                  <XAxis dataKey="name" tick={<NameTick />} interval={0} height={40} />
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip />
                   <Legend />

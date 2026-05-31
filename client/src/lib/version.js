@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.21';
+export const APP_VERSION = '3.29.22';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.22',
+    date: '2026-05-29',
+    title: 'Reporting — chart names no longer overlap',
+    changes: [
+      { type: 'patch', text: 'On the Recruiter and Sales dashboard charts (New Input vs Goals, MAR Tracking, Leads Submitted), the names along the bottom axis overlapped when several people were shown. Names now wrap onto two lines — first name on top, last name beneath — so each label stays readable. Display-only; no data changes.' },
+    ],
+  },
   {
     version: '3.29.21',
     date: '2026-05-29',
