@@ -31,6 +31,18 @@ ID convention: `DRB-SEC-NNN` numbers are continuous across cycles. Cycle 1 cover
 2. **DRB-SEC-001** (carryover from cycle 1) — Flip `CSP_MODE` from `report-only` to `enforce` after verifying clean report logs
 3. **DRB-SEC-005** (carryover from cycle 1) — Upgrade `exceljs` to clear the `uuid` CVE
 
+---
+
+## Post-cycle-2 findings (added after the 2026-05-22 snapshot)
+
+#### DRB-SEC-022 — `tmp` path-traversal (high) via exceljs — ✅ FIXED
+- **Found:** 2026-05-29 via Dependabot (alerts #14 server / #15 client), advisory GHSA-ph9p-34f9-6g65. Disclosed 2026-05-28 — *after* the cycle-2 sweep that cleared DRB-SEC-005, so it is a new advisory, not a regression of that fix.
+- **Issue:** `tmp@0.2.5` (path traversal via unsanitized `prefix`/`postfix`) pulled in transitively by `exceljs@4.4.0` (`tmp@^0.2.0`) in both server and client.
+- **Fix (v3.29.23):** added `"tmp": "^0.2.7"` to the `overrides` block of both `package.json` files — same mechanism as the DRB-SEC-005 `uuid`/`qs` overrides. `exceljs` is unchanged (its `^0.2.0` range already permits the patched `tmp`). `npm audit` reports 0 vulnerabilities in both projects after the fix.
+- **Breakage risk: 1/10** — patch-level bump of the temp-file helper exceljs uses for streaming writes; regression surface is limited to xlsx export (Req Board export button + nightly SharePoint export).
+
+> The cycle-2 severity counts above are a 2026-05-22 snapshot and are intentionally left unchanged for this post-snapshot item.
+
 ## Cycle 1 status snapshot
 
 | ID | Title | Cycle 2 status | Notes |

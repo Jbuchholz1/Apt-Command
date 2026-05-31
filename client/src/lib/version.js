@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.22';
+export const APP_VERSION = '3.29.23';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.23',
+    date: '2026-05-29',
+    title: 'Security — patch tmp path-traversal advisory (DRB-SEC-022)',
+    changes: [
+      { type: 'patch', text: 'Cleared a high-severity Dependabot alert (GHSA-ph9p-34f9-6g65): the `tmp` package, pulled in transitively by exceljs, had a path-traversal flaw. Forced `tmp ^0.2.7` via package.json overrides in both server and client — exceljs itself is unchanged, since its `^0.2.0` range already allows the patched version. npm audit now reports 0 vulnerabilities in both projects. No user-visible change.' },
+    ],
+  },
   {
     version: '3.29.22',
     date: '2026-05-29',
