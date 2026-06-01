@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.23';
+export const APP_VERSION = '3.29.24';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.24',
+    date: '2026-06-01',
+    title: 'Req Board — column header now stays frozen while scrolling',
+    changes: [
+      { type: 'patch', text: 'When you scroll down a long board, the column header row (Apt India, Pri, CS, Date, Status, …) now stays frozen at the top so you can always tell which column you\'re looking at. The toolbar, stats strip, and filter bar stay pinned above it; only the rows scroll. Applies to both the Req Board and the India Req Board.' },
+    ],
+  },
   {
     version: '3.29.23',
     date: '2026-05-31',
