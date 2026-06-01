@@ -18,10 +18,14 @@ const RECRUITER_TIERS = {
   'Meg Basden': 1,
   'Catherine Ross': 3,
   'Ked Bailey': 3,
+  'Ben Mahaffey': 3,
 };
 
-// Recruiting leaders — excluded from the recruiter dashboard
-const EXCLUDED_RECRUITERS = new Set(['Ben Mahaffey']);
+// Recruiting leaders — excluded from the recruiter dashboard.
+// Currently empty: Ben Mahaffey was added to the recruiter dashboard as a
+// Tier 3 recruiter (2026-06-01). Add a full name (Bullhorn firstName + ' ' +
+// lastName) here to hide someone from the dashboard again.
+const EXCLUDED_RECRUITERS = new Set([]);
 
 function getRecruiterTier(fullName) {
   return RECRUITER_TIERS[fullName] || 1;

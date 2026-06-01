@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.24';
+export const APP_VERSION = '3.29.25';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.25',
+    date: '2026-06-01',
+    title: 'Reporting — Ben Mahaffey added to the Recruiter Dashboard',
+    changes: [
+      { type: 'patch', text: 'Ben Mahaffey now appears on the Recruiter Dashboard (and the recruiting views that share its roster). He had been excluded as a recruiting leader; he is now included with a Tier 3 spread-rate goal of $9,000. No other recruiter\'s goals changed.' },
+    ],
+  },
   {
     version: '3.29.24',
     date: '2026-06-01',
