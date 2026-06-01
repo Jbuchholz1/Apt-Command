@@ -1032,6 +1032,26 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
     }
   };
 
+  // Remove a job from Called Shots by zeroing its called_shot_count override.
+  // The JobOrder itself is untouched — it stays on the req board; the row just
+  // drops out of the Called Shots list (which filters calledShotCount > 0) and
+  // the spread total recomputes. Optimistic: the row disappears immediately and
+  // rolls back with a toast if the Supabase save fails.
+  const handleRemoveCalledShot = async (job) => {
+    const previousCount = job.calledShotCount || 0;
+    if (previousCount === 0) return;
+    if (onJobUpdated) onJobUpdated(job.id, 'calledShotCount', 0);
+    await saveWithToast(
+      () => updateJobOverrides(job.id, { called_shot_count: 0 }),
+      {
+        failureMessage: 'Could not remove from Called Shots',
+        onRollback: () => {
+          if (onJobUpdated) onJobUpdated(job.id, 'calledShotCount', previousCount);
+        },
+      },
+    );
+  };
+
   const formatDate = (iso) => {
     if (!iso) return '—';
     return new Date(iso).toLocaleDateString('en-US', {
@@ -1773,6 +1793,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
             <table className="contractors-table">
               <thead>
                 <tr>
+                  <th aria-label="Remove from Called Shots" style={{ width: '34px' }}></th>
                   {[
                     { key: 'id', label: 'Req#' },
                     { key: 'title', label: 'Job Title' },
@@ -1794,6 +1815,14 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
               <tbody>
                 {filteredCalledShots.map(j => (
                   <tr key={j.id}>
+                    <td style={{ textAlign: 'center' }}>
+                      <button
+                        type="button"
+                        className="cs-remove-btn"
+                        title="Remove from Called Shots — resets # Shots to 0. The job stays on the req board."
+                        onClick={() => handleRemoveCalledShot(j)}
+                      >✕</button>
+                    </td>
                     <td><a href={`https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=JobOrder&id=${j.id}`} target="_blank" rel="noopener noreferrer" className="bh-link">{j.id}</a></td>
                     <td>{j.title || '—'}</td>
                     <td>{j.client || '—'}</td>
@@ -1819,7 +1848,7 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
                   </tr>
                 ))}
                 {filteredCalledShots.length === 0 && (
-                  <tr><td colSpan="10" style={{ textAlign: 'center', padding: '20px' }}>No called shots</td></tr>
+                  <tr><td colSpan="11" style={{ textAlign: 'center', padding: '20px' }}>No called shots</td></tr>
                 )}
               </tbody>
             </table>

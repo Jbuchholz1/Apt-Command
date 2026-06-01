@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.25';
+export const APP_VERSION = '3.29.26';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.26',
+    date: '2026-06-01',
+    title: 'Req Board — remove a job from Called Shots right in the popout',
+    changes: [
+      { type: 'patch', text: 'The Called Shots popout now has an X at the far left of each row. Click it to remove that job from Called Shots — it resets the # Shots counter to 0 and drops the row (and its spread) from the list. The job stays on the req board and nothing changes in Bullhorn; you can always call shots again from the board. Removal is instant and undoes itself with a toast if the save fails.' },
+    ],
+  },
   {
     version: '3.29.25',
     date: '2026-06-01',

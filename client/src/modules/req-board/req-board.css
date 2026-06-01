@@ -282,6 +282,23 @@
   background: #f1f5f9;
 }
 
+/* Per-row "remove" X (Called Shots modal — zeroes the called_shot_count override) */
+.cs-remove-btn {
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: #dc2626;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.cs-remove-btn:hover {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
 /* ---- Filter Bar ---- */
 .filter-bar {
   background: var(--surface);
