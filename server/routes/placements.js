@@ -1,5 +1,6 @@
 const express = require('express');
 const { getActivePlacements } = require('../lib/bullhorn');
+const { contractorWeeklySpread, permWeeklyFee } = require('../lib/spread');
 const { requireModule } = require('../middleware/adminAuth');
 
 const router = express.Router();
@@ -10,27 +11,55 @@ router.use(requireModule('req_board'));
 router.get('/', async (req, res, next) => {
   try {
     const result = await getActivePlacements();
-    const placements = (result?.data || []).map(p => ({
-      id: p.id,
-      candidate: p.candidate
-        ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim()
-        : null,
-      candidateId: p.candidate?.id || null,
-      jobTitle: p.jobOrder?.title || null,
-      jobOrderId: p.jobOrder?.id || null,
-      employmentType: p.employmentType || p.jobOrder?.employmentType || null,
-      dateBegin: p.dateBegin ? new Date(p.dateBegin).toISOString() : null,
-      dateEnd: p.dateEnd ? new Date(p.dateEnd).toISOString() : null,
-      payRate: p.payRate || null,
-      billRate: p.clientBillRate || null,
-      salary: p.salary || null,
-      fee: p.fee || null,
-      status: p.status,
-      am: p.jobOrder?.owner
-        ? `${(p.jobOrder.owner.firstName || '')[0] || ''}${(p.jobOrder.owner.lastName || '')[0] || ''}`.toUpperCase()
-        : '—',
-      tr: '*', // assignedUsers (TO_MANY) corrupts Bullhorn JSON when nested in jobOrder — default to *
-    }));
+    const placements = (result?.data || []).map(p => {
+      const employmentType = p.employmentType || p.jobOrder?.employmentType || null;
+      const payRate = p.payRate || null;
+      const billRate = p.clientBillRate || null;
+      // VMS Fee / Hourly Referral live on the originating submission, not the
+      // placement (see Placement.jobSubmission TO_ONE). customFloat2 = VMS Fee
+      // (whole percent), customFloat5 = Hourly Referral ($/hr).
+      const vmsFee = p.jobSubmission?.customFloat2 ?? null;
+      const hourlyReferral = p.jobSubmission?.customFloat5 ?? null;
+
+      // Weekly spread: perm fee for Direct Hire, otherwise the fee-aware
+      // contractor spread. feesMissing flags a contractor row that had to fall
+      // back to the legacy (no-fee) formula so the UI can render it red.
+      let spread = null;
+      let feesMissing = false;
+      if (employmentType === 'Direct Hire') {
+        spread = permWeeklyFee({ salary: p.salary, fee: p.fee });
+      } else {
+        const r = contractorWeeklySpread({ payRate, billRate, employmentType, vmsFee, hourlyReferral });
+        spread = r.spread;
+        feesMissing = r.spread != null && !r.hasFeeData;
+      }
+
+      return {
+        id: p.id,
+        candidate: p.candidate
+          ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim()
+          : null,
+        candidateId: p.candidate?.id || null,
+        jobTitle: p.jobOrder?.title || null,
+        jobOrderId: p.jobOrder?.id || null,
+        employmentType,
+        dateBegin: p.dateBegin ? new Date(p.dateBegin).toISOString() : null,
+        dateEnd: p.dateEnd ? new Date(p.dateEnd).toISOString() : null,
+        payRate,
+        billRate,
+        salary: p.salary || null,
+        fee: p.fee || null,
+        vmsFee,
+        hourlyReferral,
+        spread,
+        feesMissing,
+        status: p.status,
+        am: p.jobOrder?.owner
+          ? `${(p.jobOrder.owner.firstName || '')[0] || ''}${(p.jobOrder.owner.lastName || '')[0] || ''}`.toUpperCase()
+          : '—',
+        tr: '*', // assignedUsers (TO_MANY) corrupts Bullhorn JSON when nested in jobOrder — default to *
+      };
+    });
     res.json({ total: placements.length, data: placements });
   } catch (err) {
     next(err);

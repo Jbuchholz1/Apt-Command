@@ -289,7 +289,7 @@ async function getActivePlacements() {
   return paginatePlacementQuery('getActivePlacements', {
     entityType: 'Placement',
     where: "status = 'Approved' OR status = 'Active' OR status = 'Sabatical'",
-    fields: 'id,candidate(id,firstName,lastName),jobOrder(id,title,employmentType,owner(id,firstName,lastName)),dateBegin,dateEnd,payRate,clientBillRate,status,employmentType,salary,fee',
+    fields: 'id,candidate(id,firstName,lastName),jobOrder(id,title,employmentType,owner(id,firstName,lastName)),dateBegin,dateEnd,payRate,clientBillRate,status,employmentType,salary,fee,jobSubmission(id,customFloat2,customFloat5)',
     orderBy: '-dateBegin',
   });
 }
@@ -343,7 +343,7 @@ async function getOfferExtendedSubmissions() {
   return callTool('query_entity', {
     entityType: 'JobSubmission',
     where: "status = 'Offer Extended' AND isDeleted = false",
-    fields: 'id,candidate,jobOrder,status,dateAdded,payRate,billRate,salary',
+    fields: 'id,candidate,jobOrder,status,dateAdded,payRate,billRate,salary,customFloat2,customFloat5',
     orderBy: '-dateAdded',
     count: 500,
   });
@@ -359,7 +359,7 @@ async function getPendingPlacements() {
   return paginatePlacementQuery('getPendingPlacements', {
     entityType: 'Placement',
     where: "status = 'Pending'",
-    fields: 'id,candidate(id,firstName,lastName),jobOrder(id),status,dateBegin,payRate,clientBillRate,salary,fee',
+    fields: 'id,candidate(id,firstName,lastName),jobOrder(id),status,dateBegin,payRate,clientBillRate,salary,fee,jobSubmission(id,customFloat2,customFloat5)',
     orderBy: '-dateBegin',
   });
 }
@@ -385,7 +385,7 @@ async function getSubmittedPlacements() {
   return paginatePlacementQuery('getSubmittedPlacements', {
     entityType: 'Placement',
     where: "status = 'Submitted'",
-    fields: 'id,candidate(id,firstName,lastName),jobOrder(id),status,dateBegin,payRate,clientBillRate,salary,fee',
+    fields: 'id,candidate(id,firstName,lastName),jobOrder(id),status,dateBegin,payRate,clientBillRate,salary,fee,jobSubmission(id,customFloat2,customFloat5)',
     orderBy: '-dateBegin',
   });
 }

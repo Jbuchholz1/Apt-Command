@@ -777,23 +777,16 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
     return arr;
   }, [placements, contractorAmFilter, contractorTrFilter, contractorTypeFilter, contractorSort]);
 
-  // Sum of weekly spread: contractors use (BillRate - PayRate×1.25) × 40;
-  // Direct Hire placements add amortized perm fee = (Salary × Fee) / 26
-  // (canonical divisor matches formatJob() in server/routes/jobs.js).
-  // Sabatical contractors still appear in the list but don't count toward
-  // the total since they aren't actively billing.
+  // The server delivers each placement's weekly spread in p.spread — the
+  // fee-aware contractor spread (Bill − Bill×VMS% − Hourly Referral − Pay×Burden)
+  // × 40, or the amortized perm fee (Salary × Fee) / 26 for Direct Hire. See
+  // server/lib/spread.js. Sabatical contractors stay in the list but aren't
+  // actively billing, so they're excluded from the total.
   const filteredSpreadTotal = useMemo(() => {
-    return filteredPlacements.reduce((sum, p) => {
-      if (p.status === 'Sabatical') return sum;
-      if (p.employmentType === 'Direct Hire') {
-        if (!p.salary || !p.fee) return sum;
-        const perm = Math.round((p.salary * p.fee) / 26);
-        return sum + perm;
-      }
-      if (!p.billRate || !p.payRate) return sum;
-      const spread = Math.round((p.payRate * 1.25 - p.billRate) * 40 * -1);
-      return sum + spread;
-    }, 0);
+    return filteredPlacements.reduce(
+      (sum, p) => (p.status === 'Sabatical' ? sum : sum + (p.spread || 0)),
+      0
+    );
   }, [filteredPlacements]);
 
   const handleOpportunitiesClick = async () => {
@@ -1139,12 +1132,12 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
                     <span className="stat-tooltip-wrap stat-tooltip-below">
                       <span className="stat-tooltip-icon">&#9432;</span>
                       <span className="stat-tooltip-text">
-                        Contract: (Pay Rate × 1.25 − Bill Rate) × 40 × −1. Direct Hire: (Salary × Fee %) ÷ 26. Sum of all visible (filtered) contractors.
+                        Contract: (Bill − Bill×VMS% − Hourly Referral − Pay×Burden) × 40, Burden 1.25 (1.05 Corp-to-Corp). Direct Hire: (Salary × Fee %) ÷ 26. Sum of all visible (filtered) contractors, excluding Sabatical.
                       </span>
                     </span>
                   </div>
                   <div style={{ fontSize: '12px', fontWeight: 700, color: '#dc2626' }}>
-                    Total spread does not factor in VMS or Referral Fees
+                    Red spread = VMS Fee & Hourly Referral not yet entered (legacy estimate)
                   </div>
                 </div>
                 <button className="modal-close" onClick={() => setShowContractors(false)}>✕</button>
@@ -1208,14 +1201,14 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
                           onSave={(val) => handlePlacementDateSave(p, 'dateEnd', val)}
                           className={`cell-editable cell-date${p.dateEnd && new Date(p.dateEnd) < new Date() ? ' cell-date-expired' : ''}`}
                         />
-                        <td className="cell-money">
-                          {p.employmentType === 'Direct Hire'
-                            ? (p.salary && p.fee
-                              ? `$${Math.round(p.salary * p.fee / 26).toLocaleString('en-US')} Perm`
-                              : '—')
-                            : (p.billRate && p.payRate
-                              ? `$${Math.round(((p.payRate * 1.25 - p.billRate) * 40 * -1)).toLocaleString('en-US')} CE`
-                              : '—')}
+                        <td
+                          className="cell-money"
+                          style={p.feesMissing ? { color: '#dc2626', fontWeight: 700 } : undefined}
+                          title={p.feesMissing ? 'VMS Fee & Hourly Referral not entered on the submission — legacy estimate' : undefined}
+                        >
+                          {p.spread != null
+                            ? `$${Math.round(p.spread).toLocaleString('en-US')} ${p.employmentType === 'Direct Hire' ? 'Perm' : 'CE'}`
+                            : '—'}
                         </td>
                         <td>{p.status || '—'}</td>
                       </tr>
@@ -1607,7 +1600,13 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
                       onSave={(fields) => handleRatesSave(j, cand, fields)}
                       fallbackClick={onSelectJob ? () => { setShowFilled(false); onSelectJob(j.id); } : null}
                     />
-                    <td className="cell-money">{j.ceSpread ? fmtCurrency(j.ceSpread) : '—'}</td>
+                    <td
+                      className="cell-money"
+                      style={j.ceSpreadFeesMissing ? { color: '#dc2626', fontWeight: 700 } : undefined}
+                      title={j.ceSpreadFeesMissing ? 'VMS Fee & Hourly Referral not entered on the submission — legacy estimate' : undefined}
+                    >
+                      {j.ceSpread ? fmtCurrency(j.ceSpread) : '—'}
+                    </td>
                     <td className="cell-money">{j.permFee ? fmtCurrency(j.permFee) : '—'}</td>
                     {cand.submissionId ? (
                       <EditableSelect

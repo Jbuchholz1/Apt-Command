@@ -7,6 +7,7 @@ const {
   getOpportunityOverridesMap, upsertOpportunityOverride,
 } = require('../lib/db');
 const { buildReqBoardWorkbook } = require('../lib/exporters');
+const { contractorWeeklySpread } = require('../lib/spread');
 const { requireModule } = require('../middleware/adminAuth');
 const realtime = require('../lib/realtimeBroadcast');
 
@@ -648,6 +649,8 @@ router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
           recordBillRate: sub.billRate ?? null,
           recordSalary: sub.salary ?? null,
           recordFee: null,
+          recordVms: sub.customFloat2 ?? null,
+          recordHourlyReferral: sub.customFloat5 ?? null,
         },
       });
     }
@@ -673,6 +676,8 @@ router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
           recordBillRate: pl.clientBillRate ?? null,
           recordSalary: pl.salary ?? null,
           recordFee: pl.fee ?? null,
+          recordVms: pl.jobSubmission?.customFloat2 ?? null,
+          recordHourlyReferral: pl.jobSubmission?.customFloat5 ?? null,
         },
       });
     }
@@ -703,6 +708,8 @@ router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
           recordBillRate: pl.clientBillRate ?? null,
           recordSalary: pl.salary ?? null,
           recordFee: pl.fee ?? null,
+          recordVms: pl.jobSubmission?.customFloat2 ?? null,
+          recordHourlyReferral: pl.jobSubmission?.customFloat5 ?? null,
         },
       });
     }
@@ -776,11 +783,20 @@ router.get('/offer-out-candidates', requireRb, async (req, res, next) => {
       }
 
       if ((cand.recordPayRate || 0) > 1 && (cand.recordBillRate || 0) > 1) {
-        const multiplier = (job.employmentType || '').toLowerCase() === 'corp-to-corp' ? 1.05 : 1.25;
-        const ce = Math.round((cand.recordBillRate - cand.recordPayRate * multiplier) * 40 * 100) / 100;
-        rowJob.ceSpread = ce > 0 ? ce : null;
+        const { spread, hasFeeData } = contractorWeeklySpread({
+          payRate: cand.recordPayRate,
+          billRate: cand.recordBillRate,
+          employmentType: job.employmentType,
+          vmsFee: cand.recordVms,
+          hourlyReferral: cand.recordHourlyReferral,
+        });
+        rowJob.ceSpread = spread != null && spread > 0 ? spread : null;
+        // Both VMS Fee and Hourly Referral blank → legacy estimate; flag it so
+        // the On The Board modal can render the spread red.
+        rowJob.ceSpreadFeesMissing = rowJob.ceSpread != null && !hasFeeData;
       } else {
         rowJob.ceSpread = null;
+        rowJob.ceSpreadFeesMissing = false;
       }
 
       if ((cand.recordSalary || 0) > 0 && cand.recordFee) {
