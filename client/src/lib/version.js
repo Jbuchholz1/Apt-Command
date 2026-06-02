@@ -18,7 +18,7 @@ export const CHANGELOG = [
     title: 'Req Board — spread now factors in VMS Fee & Hourly Referral',
     changes: [
       { type: 'minor', text: 'Weekly spread on the On The Board counter and the Active Contractors modal now subtracts the VMS Fee and Hourly Referral entered on each candidate’s submission. The formula is (Bill − Bill×VMS% − Hourly Referral − Pay×Burden) × 40, with Burden 1.25 (1.05 for Corp-to-Corp). VMS Fee (a whole percent) and Hourly Referral ($/hr) are read from the submission. Direct Hire perm fees are unchanged.' },
-      { type: 'patch', text: 'When a contractor’s submission has neither a VMS Fee nor an Hourly Referral, the spread falls back to the legacy (Bill − Pay×Burden) × 40 estimate and is shown in red as a reminder to enter the fees. When both are present, both are subtracted.' },
+      { type: 'patch', text: 'When a contractor’s submission has neither a VMS Fee nor an Hourly Referral, the spread falls back to the legacy (Bill − Pay×Burden) × 40 estimate and is marked with an asterisk (*); a note at the top of each modal explains it. When both are present, both are subtracted.' },
       { type: 'patch', text: 'Fixed a bug where the Active Contractors spread (row and total) applied the 1.25 W2 burden to every contractor, including Corp-to-Corp, which should use 1.05 — Corp-to-Corp spreads were undercounted and are now correct. The Spread column in that modal is also now sortable (it previously did nothing).' },
     ],
   },

@@ -1136,8 +1136,8 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
                       </span>
                     </span>
                   </div>
-                  <div style={{ fontSize: '12px', fontWeight: 700, color: '#dc2626' }}>
-                    Red spread = VMS Fee & Hourly Referral not yet entered (legacy estimate)
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280' }}>
+                    Those marked with an "*" have no VMS or Referral fees on the associated placement
                   </div>
                 </div>
                 <button className="modal-close" onClick={() => setShowContractors(false)}>✕</button>
@@ -1201,14 +1201,11 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
                           onSave={(val) => handlePlacementDateSave(p, 'dateEnd', val)}
                           className={`cell-editable cell-date${p.dateEnd && new Date(p.dateEnd) < new Date() ? ' cell-date-expired' : ''}`}
                         />
-                        <td
-                          className="cell-money"
-                          style={p.feesMissing ? { color: '#dc2626', fontWeight: 700 } : undefined}
-                          title={p.feesMissing ? 'VMS Fee & Hourly Referral not entered on the submission — legacy estimate' : undefined}
-                        >
+                        <td className="cell-money">
                           {p.spread != null
                             ? `$${Math.round(p.spread).toLocaleString('en-US')} ${p.employmentType === 'Direct Hire' ? 'Perm' : 'CE'}`
                             : '—'}
+                          {p.feesMissing ? <span title="No VMS or Referral fees on the associated placement"> *</span> : null}
                         </td>
                         <td>{p.status || '—'}</td>
                       </tr>
@@ -1510,14 +1507,19 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
             <div className="modal-header">
               <h2>On The Board ({filteredFilled.length}{filledOwnerFilter ? ` of ${totalOfferExtended}` : ''})</h2>
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: 'auto' }}>
-                <div style={{ fontSize: '14px', fontWeight: 600, color: '#7c3aed' }}>
-                  Total Spread: {fmtCurrency(filledSpreadTotal)}/wk
-                  <span className="stat-tooltip-wrap stat-tooltip-below">
-                    <span className="stat-tooltip-icon">&#9432;</span>
-                    <span className="stat-tooltip-text">
-                      Sum of weekly CE spread + perm fee across all candidates shown.
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#7c3aed' }}>
+                    Total Spread: {fmtCurrency(filledSpreadTotal)}/wk
+                    <span className="stat-tooltip-wrap stat-tooltip-below">
+                      <span className="stat-tooltip-icon">&#9432;</span>
+                      <span className="stat-tooltip-text">
+                        Sum of weekly CE spread + perm fee across all candidates shown.
+                      </span>
                     </span>
-                  </span>
+                  </div>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280' }}>
+                    Those marked with an "*" have no VMS or Referral fees on the associated placement
+                  </div>
                 </div>
                 <button className="modal-close" onClick={() => setShowFilled(false)}>✕</button>
               </div>
@@ -1600,12 +1602,9 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
                       onSave={(fields) => handleRatesSave(j, cand, fields)}
                       fallbackClick={onSelectJob ? () => { setShowFilled(false); onSelectJob(j.id); } : null}
                     />
-                    <td
-                      className="cell-money"
-                      style={j.ceSpreadFeesMissing ? { color: '#dc2626', fontWeight: 700 } : undefined}
-                      title={j.ceSpreadFeesMissing ? 'VMS Fee & Hourly Referral not entered on the submission — legacy estimate' : undefined}
-                    >
+                    <td className="cell-money">
                       {j.ceSpread ? fmtCurrency(j.ceSpread) : '—'}
+                      {j.ceSpreadFeesMissing ? <span title="No VMS or Referral fees on the associated placement"> *</span> : null}
                     </td>
                     <td className="cell-money">{j.permFee ? fmtCurrency(j.permFee) : '—'}</td>
                     {cand.submissionId ? (
