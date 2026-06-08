@@ -9,9 +9,20 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.27';
+export const APP_VERSION = '3.29.28';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.28',
+    date: '2026-06-08',
+    title: 'Executive Reporting — Weekly tab rebuilt around 7 core metrics',
+    changes: [
+      { type: 'minor', text: 'The Weekly tab now shows exactly seven executive metrics: Headcount Change vs the prior week, New Reqs/Jobs, New Placements, Offers Extended, Spread Change vs the prior week, Client Submissions, and Attrition (placements that ended in the range). Each tile is clickable for a record-level breakdown. The pinned “New Input — Live” strip and the Monthly/Quarterly tabs are unchanged.' },
+      { type: 'minor', text: 'New Reqs, New Placements, and Client Submissions are now counted firm-wide (every record in the range, regardless of owner) rather than rolled up from the Sales/Recruiter dashboards — so the executive view reflects the whole company, not just non-leadership rosters.' },
+      { type: 'minor', text: 'New “Spread Change vs Prior Week” tile: totals the weekly spread of every active contractor as of this week’s end versus last week’s, using the same fee-aware formula as the Active Contractors modal (VMS Fee and Hourly Referral included). Both sides use current rates, so the change reflects who joined or rolled off — not mid-contract rate edits. Contractors missing fee data are counted as estimates and flagged in the tile.' },
+      { type: 'patch', text: 'Headcount Change now leads with the actual change (e.g. +3 / −2) instead of the current count, with the current and prior-week totals shown beneath. Attrition now lists placements whose end date falls in the range instead of counting backout notes.' },
+    ],
+  },
   {
     version: '3.29.27',
     date: '2026-06-02',

@@ -18,10 +18,11 @@ const {
   getActivePlacementsWithClient,
   getCheckinNotesForType,
   getBackoutNotesInRange,
-  countActivePlacementsAsOf,
+  getActivePlacementsAsOf,
   getOffboardsInWindow,
   getOffersExtendedInRange,
 } = require('../lib/bullhorn');
+const { contractorWeeklySpread, permWeeklyFee } = require('../lib/spread');
 const { getAllOverrides } = require('../lib/db');
 const { POINTS, EXCLUDED_RECRUITERS, getRecruiterTier, getSpreadGoal, bhLink } = require('../lib/recruiterConfig');
 const { SALES_POINTS, ACTIVITY_LABELS, ACTIVITY_ORDER, EXCLUDED_AMS, getAMTier, getAMSpreadGoal } = require('../lib/salesConfig');
@@ -1130,7 +1131,11 @@ async function sumNewInput(placements) {
 }
 
 // GET /api/reporting/executive-weekly?start=&end= (admin)
-// Returns: headcount Δ vs prior week, attrition, offers extended/accepted
+// Powers the Weekly tab's 7 executive metrics:
+//   1. headcount Δ (active contractors this week vs last)
+//   2. new reqs (firm-wide)            3. new placements (firm-wide)
+//   4. offers extended                 5. spread Δ vs prior week
+//   6. client submissions (firm-wide)  7. attrition (placements ended in range)
 router.get('/executive-weekly', requireExec, async (req, res, next) => {
   try {
     const { start, end } = req.query;
@@ -1141,80 +1146,151 @@ router.get('/executive-weekly', requireExec, async (req, res, next) => {
     const priorEndMs = startMs - 1;
 
     const [
-      currentCount,
-      priorCount,
-      backoutsRes,
-      offersExtendedRes,
+      activeNowRes,
+      activePriorRes,
+      newJobsRes,
       placementsInRangeRes,
-      activePlacementsRes,
+      offersExtendedRes,
+      clientSubsRes,
+      endedRes,
     ] = await Promise.all([
-      countActivePlacementsAsOf(endMs),
-      countActivePlacementsAsOf(priorEndMs),
-      getBackoutNotesInRange(startMs, endMs),
-      getOffersExtendedInRange(startMs, endMs),
+      getActivePlacementsAsOf(endMs),
+      getActivePlacementsAsOf(priorEndMs),
+      getNewJobsInRange(startMs, endMs),
       getPlacementsInRange(startMs, endMs),
-      getActivePlacementsWithClient(),
+      getOffersExtendedInRange(startMs, endMs),
+      getClientSubsInRange(startMs, endMs),
+      getOffboardsInWindow(startMs, endMs),
     ]);
 
-    const backouts = backoutsRes?.data || [];
+    const activeNow = activeNowRes?.data || [];
+    const activePrior = activePriorRes?.data || [];
+    const newJobs = newJobsRes?.data || [];
     const placementsInRange = placementsInRangeRes?.data || [];
     const offersExtendedList = offersExtendedRes?.data || [];
-    const offersExtended = offersExtendedList.length;
-    const offersAccepted = placementsInRange.length;
+    const clientSubs = clientSubsRes?.data || [];
+    const ended = endedRes?.data || [];
 
-    const headcountDetails = (activePlacementsRes?.data || []).map(p => ({
+    const fullName = (e) => (e ? `${e.firstName || ''} ${e.lastName || ''}`.trim() : '');
+
+    // --- #1 + #5: headcount and weekly-spread book, this week vs last ---
+    // Weekly spread per placement mirrors the Active Contractors modal
+    // (server/routes/placements.js): perm fee for Direct Hire, otherwise the
+    // fee-aware contractor spread (VMS Fee / Hourly Referral from the originating
+    // submission). Both points in time use current rates — the delta reflects who
+    // joined/left, not mid-contract rate edits.
+    const placementSpread = (p) => {
+      const employmentType = p.employmentType || p.jobOrder?.employmentType || null;
+      if (employmentType === 'Direct Hire') {
+        return { spread: permWeeklyFee({ salary: p.salary, fee: p.fee }), feesMissing: false };
+      }
+      const s = contractorWeeklySpread({
+        payRate: p.payRate,
+        billRate: p.clientBillRate,
+        employmentType,
+        vmsFee: p.jobSubmission?.customFloat2 ?? null,
+        hourlyReferral: p.jobSubmission?.customFloat5 ?? null,
+      });
+      return { spread: s.spread, feesMissing: s.spread != null && !s.hasFeeData };
+    };
+    const sumSpread = (list) => list.reduce((acc, p) => acc + (placementSpread(p).spread || 0), 0);
+
+    const currentSpread = Math.round(sumSpread(activeNow) * 100) / 100;
+    const priorSpread = Math.round(sumSpread(activePrior) * 100) / 100;
+
+    let feesMissingCount = 0;
+    const spreadDetails = activeNow.map((p) => {
+      const { spread, feesMissing } = placementSpread(p);
+      if (feesMissing) feesMissingCount++;
+      return {
+        id: p.id,
+        candidate: fullName(p.candidate),
+        jobTitle: p.jobOrder?.title || '',
+        client: p.jobOrder?.clientCorporation?.name || '',
+        empType: p.employmentType || p.jobOrder?.employmentType || '',
+        spread: spread != null ? Math.round(spread * 100) / 100 : null,
+        feesMissing,
+      };
+    });
+
+    const headcountDetails = activeNow.map((p) => ({
       id: p.id,
-      candidate: p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '',
+      candidate: fullName(p.candidate),
       jobTitle: p.jobOrder?.title || '',
       client: p.jobOrder?.clientCorporation?.name || '',
-      empType: p.employeeType || '',
+      empType: p.employmentType || p.jobOrder?.employmentType || '',
       dateBegin: p.dateBegin || null,
       dateEnd: p.dateEnd || null,
-      status: p.status || '',
     }));
 
-    const attritionDetails = backouts.map(b => ({
-      id: b.id,
-      candidate: b.candidateName || '',
-      target: `${b.targetEntityName || ''} ${b.targetEntityID || ''}`.trim(),
-      comment: (b.comment || '').slice(0, 250),
+    // --- #2: new reqs (firm-wide) ---
+    const newReqsDetails = newJobs.map((j) => ({
+      id: j.id,
+      jobId: j.id,
+      title: j.title || '',
+      client: j.clientCorporation?.name || '',
+      owner: fullName(j.owner),
+      openings: j.numOpenings ?? null,
     }));
 
-    const offersExtendedDetails = offersExtendedList.map(s => ({
+    // --- #3: new placements (firm-wide) ---
+    const newPlacementsDetails = placementsInRange.map((p) => ({
+      id: p.id,
+      placementId: p.id,
+      candidate: fullName(p.candidate),
+      jobTitle: p.jobOrder?.title || '',
+      client: p.jobOrder?.clientCorporation?.name || '',
+      dateBegin: p.dateBegin || null,
+    }));
+
+    // --- #4: offers extended ---
+    const offersExtendedDetails = offersExtendedList.map((s) => ({
       id: s.id,
-      type: 'Extended',
-      candidate: s.candidate ? `${s.candidate.firstName || ''} ${s.candidate.lastName || ''}`.trim() : '',
+      candidate: fullName(s.candidate),
       jobTitle: s.jobOrder?.title || '',
       client: s.jobOrder?.clientCorporation?.name || '',
       date: s.dateLastModified || s.dateAdded || null,
     }));
-    const offersAcceptedDetails = placementsInRange.map(p => ({
+
+    // --- #6: client submissions (firm-wide; Sendout entity) ---
+    const clientSubDetails = clientSubs.map((s) => ({
+      id: s.id,
+      candidate: fullName(s.candidate),
+      client: s.clientCorporation?.name || '',
+      recruiter: fullName(s.user),
+      date: s.dateAdded || null,
+    }));
+
+    // --- #7: attrition — placements whose end date falls in the range ---
+    const attritionDetails = ended.map((p) => ({
       id: p.id,
-      type: 'Accepted',
-      candidate: p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '',
+      candidate: fullName(p.candidate),
       jobTitle: p.jobOrder?.title || '',
       client: p.jobOrder?.clientCorporation?.name || '',
-      date: p.dateBegin || null,
+      empType: p.employmentType || '',
+      dateEnd: p.dateEnd || null,
     }));
 
     res.json({
       dateRange: { start, end },
       headcount: {
-        current: currentCount,
-        priorWeek: priorCount,
-        delta: currentCount - priorCount,
+        current: activeNow.length,
+        priorWeek: activePrior.length,
+        delta: activeNow.length - activePrior.length,
         details: headcountDetails,
       },
-      attrition: {
-        count: backouts.length,
-        details: attritionDetails,
+      newReqs: { count: newJobs.length, details: newReqsDetails },
+      newPlacements: { count: placementsInRange.length, details: newPlacementsDetails },
+      offersExtended: { count: offersExtendedList.length, details: offersExtendedDetails },
+      spread: {
+        current: currentSpread,
+        priorWeek: priorSpread,
+        delta: Math.round((currentSpread - priorSpread) * 100) / 100,
+        feesMissingCount,
+        details: spreadDetails,
       },
-      offers: {
-        extended: offersExtended,
-        accepted: offersAccepted,
-        total: offersExtended + offersAccepted,
-        details: [...offersExtendedDetails, ...offersAcceptedDetails],
-      },
+      clientSubmissions: { count: clientSubs.length, details: clientSubDetails },
+      attrition: { count: ended.length, details: attritionDetails },
     });
   } catch (err) {
     next(err);

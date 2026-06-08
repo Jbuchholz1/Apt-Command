@@ -922,6 +922,24 @@ async function countActivePlacementsAsOf(asOfMs) {
   return rows.filter(p => !p.dateEnd || p.dateEnd >= asOfMs).length;
 }
 
+// Full placement records (with the inputs needed to total weekly spread) for
+// every placement that was "active" as of a point in time — same population as
+// countActivePlacementsAsOf, but carrying rates, salary/fee, and the originating
+// submission's VMS Fee / Hourly Referral (customFloat2 / customFloat5, which live
+// on the submission, not the placement). Bullhorn can't express "dateEnd IS NULL"
+// in a WHERE clause, so we fetch everything begun on/before asOf (paginated to
+// avoid truncation) and filter the open/overlapping ones client-side.
+async function getActivePlacementsAsOf(asOfMs) {
+  const result = await paginatePlacementQuery('getActivePlacementsAsOf', {
+    entityType: 'Placement',
+    where: `dateBegin <= ${asOfMs} AND status <> 'Voided' AND isDeleted = false`,
+    fields: 'id,status,candidate(id,firstName,lastName),jobOrder(id,title,clientCorporation(name),employmentType),dateBegin,dateEnd,payRate,clientBillRate,salary,fee,employeeType,employmentType,jobSubmission(id,customFloat2,customFloat5)',
+    orderBy: 'id',
+  });
+  const rows = (result?.data || []).filter(p => !p.dateEnd || p.dateEnd >= asOfMs);
+  return { data: rows };
+}
+
 // Placements whose contract ends in the supplied window (used for off-board forecast).
 async function getOffboardsInWindow(startMs, endMs) {
   return callTool('query_entity', {
@@ -941,7 +959,7 @@ async function getOffersExtendedInRange(startMs, endMs) {
     dateField: 'dateLastModified',
     startMs, endMs,
     extraWhere: "AND status = 'Offer Extended' AND isDeleted = false",
-    fields: 'id,candidate,jobOrder,status,dateAdded,dateLastModified',
+    fields: 'id,candidate(id,firstName,lastName),jobOrder(id,title,clientCorporation(name)),status,dateAdded,dateLastModified',
   });
 }
 
@@ -1352,6 +1370,7 @@ module.exports = {
   getPlacementsForJobs,
   getBackoutNotesInRange,
   countActivePlacementsAsOf,
+  getActivePlacementsAsOf,
   getOffboardsInWindow,
   getOffersExtendedInRange,
   getCheckinNotesForType,
