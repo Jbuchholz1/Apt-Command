@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.28';
+export const APP_VERSION = '3.29.29';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.29',
+    date: '2026-06-09',
+    title: 'Sales Dashboard — Networking Event activity & clickable MAR Total',
+    changes: [
+      { type: 'minor', text: 'Added a new “Networking Event” activity type, worth 0.25 points per instance. It shows as its own row in the Sales Dashboard’s Metrics Summary and rolls into each AM’s MAR Total. Like every activity row, the count is pulled straight from Bullhorn appointments of that type.' },
+      { type: 'minor', text: 'The MAR Total row is now clickable. Click an Account Manager’s MAR to see every activity that built up to their score (date, type, client, subject), or click the firm-wide total at the far right to see all activities across all AMs in one list.' },
+    ],
+  },
   {
     version: '3.29.28',
     date: '2026-06-08',

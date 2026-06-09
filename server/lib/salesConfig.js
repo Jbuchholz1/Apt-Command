@@ -16,6 +16,7 @@ const SALES_POINTS = {
   'Solutions Touch': 1,  // "Sol Touch Points" in Canvas
   'Solutions Opp Uncovered': 4, // "Sol Opp Uncovered" in Canvas
   'BD Meeting': 3,
+  'Networking Event': 0.25,
 };
 
 // Display labels for activity types (Canvas naming)
@@ -37,6 +38,7 @@ const ACTIVITY_LABELS = {
   'Solutions Touch': 'Sol Touch Points',
   'Solutions Opp Uncovered': 'Sol Opp Uncovered',
   'BD Meeting': 'BD Meeting',
+  'Networking Event': 'Networking Event',
 };
 
 // Ordered list of activity types for display
@@ -45,6 +47,7 @@ const ACTIVITY_ORDER = [
   'Breakfast', 'Lunch', 'New Meeting', 'Req Qual', 'Referral Meeting',
   'Happy Hour', 'Dinner', 'OOA', 'Discovery', 'Solutions Pitch',
   'Solutions Touch', 'Solutions Opp Uncovered', 'BD Meeting',
+  'Networking Event',
 ];
 
 const TIERS = {

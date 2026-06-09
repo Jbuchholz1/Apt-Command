@@ -189,6 +189,20 @@ export default function SalesDashboard() {
 
   const ams = filteredAms;
 
+  // MAR Total drill-down — flatten every activity detail record (across all types)
+  // that contributed to the score, then reuse the activity detail modal.
+  const amActivityRecords = (am) => Object.values(am.activityDetails || {}).flat();
+  const openMarDetail = (am) => {
+    const records = amActivityRecords(am);
+    if (records.length === 0) return;
+    setModal({ amName: am.name, activityType: 'MAR Breakdown', records });
+  };
+  const openMarTotalDetail = () => {
+    const records = ams.flatMap(amActivityRecords);
+    if (records.length === 0) return;
+    setModal({ amName: 'All Account Managers', activityType: 'MAR Breakdown', records });
+  };
+
   if (roleLoading) return null;
   if (!hasAccess('reporting_sales')) return <AccessDenied />;
 
@@ -447,10 +461,21 @@ export default function SalesDashboard() {
                 </tr>
                 <tr className="bold-row">
                   <td className="row-label">MAR Total</td>
-                  {ams.map(am => (
-                    <td key={am.id} className="metric-val">{am.mar}</td>
-                  ))}
-                  <td className="metric-val total-col">
+                  {ams.map(am => {
+                    const hasRecords = amActivityRecords(am).length > 0;
+                    return (
+                      <td key={am.id}
+                        className={`metric-val ${hasRecords ? 'clickable-cell' : ''}`}
+                        onClick={() => openMarDetail(am)}
+                      >
+                        {am.mar}
+                      </td>
+                    );
+                  })}
+                  <td
+                    className={`metric-val total-col ${ams.some(am => amActivityRecords(am).length > 0) ? 'clickable-cell' : ''}`}
+                    onClick={openMarTotalDetail}
+                  >
                     {Math.round(ams.reduce((sum, am) => sum + am.mar, 0) * 100) / 100}
                   </td>
                 </tr>
