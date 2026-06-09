@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import './reporting.css';
-import { getSalesDashboard, exportSalesDashboard } from '../../lib/api';
+import { getSalesDashboard, exportSalesDashboard, updateAppointmentType } from '../../lib/api';
+import { showToast } from '../../lib/toast';
 import { useUserRole } from '../../lib/UserRoleContext';
 import AccessDenied from '../../components/AccessDenied';
 import DateRangePicker from './components/DateRangePicker';
@@ -42,6 +43,7 @@ export default function SalesDashboard() {
   const [filters, setFilters] = useState({ recruiters: [], clients: [] });
   const [modal, setModal] = useState(null); // { amName, activityType, records }
   const [modalSort, setModalSort] = useState({ key: null, dir: 'asc' });
+  const [savingApptId, setSavingApptId] = useState(null); // appt id being reclassified
   const [exportingPdf, setExportingPdf] = useState(false);
   const exportRef = useRef(null);
 
@@ -201,6 +203,31 @@ export default function SalesDashboard() {
     const records = ams.flatMap(amActivityRecords);
     if (records.length === 0) return;
     setModal({ amName: 'All Account Managers', activityType: 'MAR Breakdown', records });
+  };
+
+  // Reclassify an appointment's activity type in Bullhorn from the popout.
+  // Optimistically patch the open modal row, then refetch so every activity row
+  // and the MAR Total recount from the server. Revert + toast on failure.
+  const changeApptType = async (record, newKey) => {
+    if (!newKey || newKey === record.typeKey) return;
+    const newLabel = (data?.activityTypes || []).find(t => t.key === newKey)?.label || newKey;
+    const patchRow = (typeKey, type) => setModal(m => (m ? {
+      ...m,
+      records: m.records.map(r => (r.id === record.id ? { ...r, typeKey, type } : r)),
+    } : m));
+    const prevKey = record.typeKey, prevLabel = record.type;
+    patchRow(newKey, newLabel); // optimistic
+    setSavingApptId(record.id);
+    try {
+      await updateAppointmentType(record.id, newKey);
+      showToast(`Activity reclassified to ${newLabel}`);
+      fetchData(); // server recounts points + MAR
+    } catch (err) {
+      patchRow(prevKey, prevLabel); // revert
+      showToast(err.message || 'Failed to change activity type');
+    } finally {
+      setSavingApptId(null);
+    }
   };
 
   if (roleLoading) return null;
@@ -560,7 +587,18 @@ export default function SalesDashboard() {
                       ) : (
                         <>
                           <td>{r.date}</td>
-                          <td>{r.type}</td>
+                          <td>
+                            <select
+                              className="activity-type-select"
+                              value={r.typeKey || ''}
+                              disabled={savingApptId === r.id}
+                              onChange={(e) => changeApptType(r, e.target.value)}
+                            >
+                              {(data?.activityTypes || []).map(t => (
+                                <option key={t.key} value={t.key}>{t.label}</option>
+                              ))}
+                            </select>
+                          </td>
                           <td>{r.client || '—'}</td>
                           <td className="activity-modal-subject">{r.subject || '—'}</td>
                         </>

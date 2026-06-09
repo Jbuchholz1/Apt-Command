@@ -21,6 +21,7 @@ const {
   getActivePlacementsAsOf,
   getOffboardsInWindow,
   getOffersExtendedInRange,
+  updateAppointmentField,
 } = require('../lib/bullhorn');
 const { contractorWeeklySpread, permWeeklyFee } = require('../lib/spread');
 const { getAllOverrides } = require('../lib/db');
@@ -539,6 +540,7 @@ router.get('/sales-dashboard', requireSales, async (req, res, next) => {
           id: appt.id,
           date: formatDate(appt.dateBegin),
           type: ACTIVITY_LABELS[type] || type,
+          typeKey: type, // raw Bullhorn value — used by the type-edit dropdown
           subject: appt.subject || '',
           client: appt.clientContactReference?.clientCorporation?.name || appt.jobOrder?.clientCorporation?.name || '',
         });
@@ -567,10 +569,46 @@ router.get('/sales-dashboard', requireSales, async (req, res, next) => {
       return am;
     });
 
+    // Catalog of scored activity types for the type-edit dropdown.
+    const activityTypes = ACTIVITY_ORDER.map(key => ({
+      key,
+      label: ACTIVITY_LABELS[key] || key,
+      points: SALES_POINTS[key],
+    }));
+
     res.json({
       dateRange: { start, end },
       ams: amList,
+      activityTypes,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/reporting/appointments/:id/type — reclassify an appointment's
+// activity type in Bullhorn. The client refetches the dashboard afterward so
+// the old/new activity rows and the MAR Total recount from the server.
+// Gated by reporting_sales (anyone with Sales Dashboard access). In sandbox
+// the Bullhorn write is blocked by READ_ONLY_MODE and the global error handler
+// surfaces it as 403 READ_ONLY_MODE.
+router.post('/appointments/:id/type', requireSales, async (req, res, next) => {
+  try {
+    const apptId = parseInt(req.params.id, 10);
+    if (Number.isNaN(apptId)) {
+      return res.status(400).json({ error: 'Invalid appointment ID' });
+    }
+    const { type } = req.body || {};
+    if (!type || typeof type !== 'string') {
+      return res.status(400).json({ error: 'type is required' });
+    }
+    // Only scored activity types are accepted — keeps activities on the board
+    // with a known point value (matches the client dropdown).
+    if (SALES_POINTS[type] === undefined) {
+      return res.status(400).json({ error: `"${type}" is not a scored activity type` });
+    }
+    await updateAppointmentField(apptId, { type });
+    res.json({ ok: true, id: apptId, type, points: SALES_POINTS[type] });
   } catch (err) {
     next(err);
   }

@@ -447,6 +447,14 @@ async function updateClientCorporationField(clientCorpId, fields) {
   });
 }
 
+async function updateAppointmentField(appointmentId, fields) {
+  return callTool('update_entity', {
+    entityType: 'Appointment',
+    entityId: parseInt(appointmentId, 10),
+    fields,
+  });
+}
+
 async function getCorporateUsers() {
   return callTool('query_entity', {
     entityType: 'CorporateUser',
@@ -1349,6 +1357,7 @@ module.exports = {
   updateOpportunityField,
   updateSubmissionField,
   updateClientCorporationField,
+  updateAppointmentField,
   getCorporateUsers,
   getRecruiterUsers,
   getClientSubsInRange,

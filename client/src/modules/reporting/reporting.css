@@ -490,6 +490,20 @@
   border-top: 1px solid var(--border);
 }
 
+/* Editable activity-type dropdown inside the appointment detail popout */
+.activity-type-select {
+  font: inherit;
+  font-size: 12px;
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  max-width: 190px;
+}
+.activity-type-select:hover { border-color: var(--navy); }
+.activity-type-select:disabled { opacity: 0.6; cursor: progress; }
+
 /* ---- Dashboard Filters ---- */
 .dashboard-filters {
   background: var(--surface);

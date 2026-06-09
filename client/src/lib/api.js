@@ -214,6 +214,14 @@ export function getSalesDashboard(startDate, endDate) {
   return fetchAPI(`/api/reporting/sales-dashboard?start=${startDate}&end=${endDate}`);
 }
 
+// Reclassify an appointment's activity type in Bullhorn (Sales Dashboard popout).
+export function updateAppointmentType(id, type) {
+  return fetchAPI(`/api/reporting/appointments/${id}/type`, {
+    method: 'POST',
+    body: { type },
+  });
+}
+
 export function getTeamAlerts(team) {
   return fetchAPI(`/api/reporting/team-alerts?team=${encodeURIComponent(team)}`);
 }

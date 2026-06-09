@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.29';
+export const APP_VERSION = '3.29.30';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.30',
+    date: '2026-06-09',
+    title: 'Sales Dashboard — reclassify an activity type right from the popout',
+    changes: [
+      { type: 'minor', text: 'In the Sales Dashboard activity popouts (click any activity count, or an AM’s MAR Total), the Type column is now a dropdown. Changing it updates that appointment’s type in Bullhorn and the dashboard recounts automatically — the old activity row, the new one, and the MAR Total all reflect the new point value. The dropdown lists the scored activity types only.' },
+      { type: 'patch', text: 'Reclassifying writes straight to Bullhorn, so it is blocked in the sandbox (read-only) and surfaces a toast there. In production the change saves and the score updates within a moment.' },
+    ],
+  },
   {
     version: '3.29.29',
     date: '2026-06-09',
