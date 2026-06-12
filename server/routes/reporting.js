@@ -828,11 +828,41 @@ router.get('/sales-export', requireSales, async (req, res, next) => {
 
 const BH_BASE_ALERTS = 'https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm';
 
+// Parse a free-text override date (deadline / follow-up). Users type bare
+// "6/15" or "06/15/26"; bare `new Date('6/15')` parses to the YEAR 2001, which
+// made every year-less value read as long overdue. Mirrors the client-side
+// DailyBrief parser (Batch G): bare M/D => current year, rolling to next year
+// if >~9 months past (Dec→Jan wrap); full/ISO values fall through to native.
+function parseFlexibleDate(value) {
+  if (value == null || value === '') return null;
+  const str = String(value).trim();
+  const md = str.match(/^(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?$/);
+  if (md) {
+    const month = parseInt(md[1], 10);
+    const day = parseInt(md[2], 10);
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+    let year;
+    if (md[3]) {
+      year = parseInt(md[3], 10);
+      if (year < 100) year += 2000;
+    } else {
+      const now = new Date();
+      year = now.getFullYear();
+      const cand = new Date(year, month - 1, day).getTime();
+      if (now.getTime() - cand > 9 * 30 * 86400000) year += 1;
+    }
+    const t = new Date(year, month - 1, day).getTime();
+    return Number.isNaN(t) ? null : t;
+  }
+  const t = new Date(str).getTime();
+  return Number.isNaN(t) ? null : t;
+}
+
 function isOverdueDate(str, emptyPhrase) {
   if (!str || str.toLowerCase().includes(emptyPhrase)) return true;
-  const d = new Date(str);
-  if (isNaN(d.getTime())) return true;
-  return d <= new Date();
+  const ms = parseFlexibleDate(str);
+  if (ms == null) return true;
+  return ms <= Date.now();
 }
 
 // GET /api/reporting/team-alerts?team=recruiting|sales
