@@ -11,33 +11,57 @@ import IndiaReqBoardModule from './modules/india-req-board/IndiaReqBoardModule';
 import ComingSoon from './components/ComingSoon';
 import ErrorBoundary from './components/ErrorBoundary';
 
+// After a deploy, Railway replaces the hashed JS chunks. A tab opened before
+// the deploy will 404 when it lazily imports a now-missing chunk, which would
+// otherwise crash the whole app to the top-level ErrorBoundary. Wrap lazy() so
+// the first such failure triggers a one-time full reload (fetching the new
+// index + chunk manifest). A sessionStorage timestamp prevents a reload loop if
+// the import is genuinely broken — after the window, the error surfaces to the
+// ErrorBoundary as before.
+function lazyWithReload(importer) {
+  return lazy(() =>
+    importer().catch((err) => {
+      const KEY = 'apt:chunkReloadAt';
+      let last = 0;
+      try { last = Number(sessionStorage.getItem(KEY) || 0); } catch { /* storage disabled */ }
+      if (Date.now() - last > 10000) {
+        try { sessionStorage.setItem(KEY, String(Date.now())); } catch { /* ignore */ }
+        window.location.reload();
+        // Keep the Suspense fallback up until the reload takes effect.
+        return new Promise(() => {});
+      }
+      throw err;
+    }),
+  );
+}
+
 // Lazy-loaded route modules — code-split per chunk so users who never
 // visit these routes don't pay their bytes on initial load.
-const GoalTrackingModule = lazy(() => import('./modules/goal-tracking/GoalTrackingModule'));
-const ReportingModule = lazy(() => import('./modules/reporting/ReportingModule'));
-const ReportingHome = lazy(() => import('./modules/reporting/ReportingHome'));
-const RecruiterDashboard = lazy(() => import('./modules/reporting/RecruiterDashboard'));
-const SalesDashboard = lazy(() => import('./modules/reporting/SalesDashboard'));
-const ExecutiveDashboard = lazy(() => import('./modules/reporting/ExecutiveDashboard'));
-const ClientHealthModule = lazy(() => import('./modules/client-health/ClientHealthModule'));
-const OrgFlowModule = lazy(() => import('./modules/org-flow/OrgFlowModule'));
-const MyDashboard = lazy(() => import('./modules/performance/MyDashboard'));
-const PipelineModule = lazy(() => import('./modules/pipeline/PipelineModule'));
-const OpportunityPipeline = lazy(() => import('./modules/pipeline/OpportunityPipeline'));
-const AdminModule = lazy(() => import('./modules/admin/AdminModule'));
-const OperationsModule = lazy(() => import('./modules/operations/OperationsModule'));
-const OperationsHome = lazy(() => import('./modules/operations/OperationsHome'));
-const OnboardingTracking = lazy(() => import('./modules/operations/OnboardingTracking'));
-const COITracking = lazy(() => import('./modules/operations/COITracking'));
-const ContractTracking = lazy(() => import('./modules/operations/ContractTracking'));
-const ProjectManagementModule = lazy(() => import('./modules/project-management/ProjectManagementModule'));
-const ProjectsListView = lazy(() => import('./modules/project-management/ProjectsListView'));
-const ProjectBoard = lazy(() => import('./modules/project-management/ProjectBoard'));
-const SupportModule = lazy(() => import('./modules/support/SupportModule'));
-const SupportHome = lazy(() => import('./modules/support/SupportHome'));
-const HelpDocs = lazy(() => import('./modules/support/HelpDocs'));
-const FeedbackForm = lazy(() => import('./modules/support/FeedbackForm'));
-const SystemStatus = lazy(() => import('./modules/support/SystemStatus'));
+const GoalTrackingModule = lazyWithReload(() => import('./modules/goal-tracking/GoalTrackingModule'));
+const ReportingModule = lazyWithReload(() => import('./modules/reporting/ReportingModule'));
+const ReportingHome = lazyWithReload(() => import('./modules/reporting/ReportingHome'));
+const RecruiterDashboard = lazyWithReload(() => import('./modules/reporting/RecruiterDashboard'));
+const SalesDashboard = lazyWithReload(() => import('./modules/reporting/SalesDashboard'));
+const ExecutiveDashboard = lazyWithReload(() => import('./modules/reporting/ExecutiveDashboard'));
+const ClientHealthModule = lazyWithReload(() => import('./modules/client-health/ClientHealthModule'));
+const OrgFlowModule = lazyWithReload(() => import('./modules/org-flow/OrgFlowModule'));
+const MyDashboard = lazyWithReload(() => import('./modules/performance/MyDashboard'));
+const PipelineModule = lazyWithReload(() => import('./modules/pipeline/PipelineModule'));
+const OpportunityPipeline = lazyWithReload(() => import('./modules/pipeline/OpportunityPipeline'));
+const AdminModule = lazyWithReload(() => import('./modules/admin/AdminModule'));
+const OperationsModule = lazyWithReload(() => import('./modules/operations/OperationsModule'));
+const OperationsHome = lazyWithReload(() => import('./modules/operations/OperationsHome'));
+const OnboardingTracking = lazyWithReload(() => import('./modules/operations/OnboardingTracking'));
+const COITracking = lazyWithReload(() => import('./modules/operations/COITracking'));
+const ContractTracking = lazyWithReload(() => import('./modules/operations/ContractTracking'));
+const ProjectManagementModule = lazyWithReload(() => import('./modules/project-management/ProjectManagementModule'));
+const ProjectsListView = lazyWithReload(() => import('./modules/project-management/ProjectsListView'));
+const ProjectBoard = lazyWithReload(() => import('./modules/project-management/ProjectBoard'));
+const SupportModule = lazyWithReload(() => import('./modules/support/SupportModule'));
+const SupportHome = lazyWithReload(() => import('./modules/support/SupportHome'));
+const HelpDocs = lazyWithReload(() => import('./modules/support/HelpDocs'));
+const FeedbackForm = lazyWithReload(() => import('./modules/support/FeedbackForm'));
+const SystemStatus = lazyWithReload(() => import('./modules/support/SystemStatus'));
 
 function RouteFallback() {
   return (
