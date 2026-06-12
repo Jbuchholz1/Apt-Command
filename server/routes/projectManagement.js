@@ -7,7 +7,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { supabase } = require('../lib/db');
+const { supabase, selectAllRows } = require('../lib/db');
 const { requireModule } = require('../middleware/adminAuth');
 
 // Reads require basic access; mutations require admin level on this module.
@@ -92,12 +92,20 @@ router.get('/projects', async (req, res, next) => {
   try {
     if (!ensureSupabase(res)) return;
     const includeArchived = req.query.archived === 'true';
-    let query = supabase
-      .from('pm_projects')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (!includeArchived) query = query.is('archived_at', null);
-    const { data, error } = await query;
+    // Paginated: projects (esp. with ?archived=true) accumulate past 1000 over
+    // time. id is the unique tiebreaker for stable range pagination.
+    let data, error;
+    try {
+      data = await selectAllRows('pm.listProjects', () => {
+        let q = supabase
+          .from('pm_projects')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .order('id', { ascending: false });
+        if (!includeArchived) q = q.is('archived_at', null);
+        return q;
+      });
+    } catch (e) { error = e; }
     if (error) return dbErr(res, error);
     res.json({ data: data || [] });
   } catch (err) { next(err); }
@@ -131,6 +139,7 @@ router.post('/projects', requirePmAdmin, async (req, res, next) => {
       { name: 'In Progress', position: 2 },
       { name: 'Done', position: 3 },
     ].map(c => ({ ...c, project_id: project.id }));
+    // paginate-ok: insert .select() returns only the inserted default columns
     const { data: columns, error: colErr } = await supabase
       .from('pm_columns')
       .insert(defaults)
@@ -148,6 +157,7 @@ router.get('/projects/:id', async (req, res, next) => {
     const id = req.params.id;
     const [{ data: project, error: pErr }, { data: columns, error: cErr }, { data: tasks, error: tErr }] = await Promise.all([
       supabase.from('pm_projects').select('*').eq('id', id).maybeSingle(),
+      // paginate-ok: one board's columns and tasks (scoped by project_id)
       supabase.from('pm_columns').select('*').eq('project_id', id).order('position', { ascending: true }),
       supabase.from('pm_tasks').select('*').eq('project_id', id).order('position', { ascending: true }),
     ]);
@@ -307,6 +317,7 @@ router.post('/projects/:id/columns/reorder', requirePmAdmin, async (req, res, ne
       await supabase.from('pm_columns').update({ position: p }).eq('id', id).eq('project_id', req.params.id);
       p += 1;
     }
+    // paginate-ok: one project's columns (scoped by project_id)
     const { data } = await supabase
       .from('pm_columns')
       .select('*')
@@ -560,6 +571,7 @@ router.get('/tasks/:id/comments', async (req, res, next) => {
   try {
     if (!ensureSupabase(res)) return;
     if (!UUID_RE.test(req.params.id)) return badUuid(res, 'task');
+    // paginate-ok: one task's comments (scoped by task_id)
     const { data, error } = await supabase
       .from('pm_comments')
       .select('*')

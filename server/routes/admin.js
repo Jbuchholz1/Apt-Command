@@ -16,6 +16,8 @@ router.get('/users', async (req, res, next) => {
   try {
     if (!supabase) return res.status(503).json({ error: 'Database not configured' });
 
+    // paginate-ok: internal app users only (staff + a few vendor logins) — not
+    // candidates; human-scale and far under 1000. Revisit if logins approach it.
     const { data, error } = await supabase
       .from('user_profiles')
       .select('id, email, full_name, is_active, role, auth_provider')
@@ -130,6 +132,7 @@ router.get('/users/:id/permissions', async (req, res, next) => {
     if (userErr) throw userErr;
     if (!targetUser) return res.status(404).json({ error: 'User not found' });
 
+    // paginate-ok: one user's module permissions (≤ the module count)
     const { data: rows, error: permErr } = await supabase
       .from('user_module_permissions')
       .select('module_key, access_level, granted_by, granted_at')
@@ -221,6 +224,7 @@ router.put('/users/:id/permissions', requireModule('admin', 'admin'), async (req
       if (insErr) throw insErr;
     }
 
+    // paginate-ok: one user's module permissions (≤ the module count)
     const { data: updated } = await supabase
       .from('user_module_permissions')
       .select('module_key, access_level, granted_by, granted_at')

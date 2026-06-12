@@ -111,6 +111,7 @@ router.get('/logged-meeting-ids', async (req, res, next) => {
     if (!supabase) return res.json({ ids: [] });
 
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    // paginate-ok: one user's logged meetings in a 7-day window
     const { data, error } = await supabase
       .from('meeting_activity_logged')
       .select('outlook_event_id')

@@ -84,6 +84,7 @@ async function resolvePermissions(email) {
   const normalizedEmail = email.toLowerCase().trim();
 
   try {
+    // paginate-ok: one user's module permissions (≤ the module count)
     const { data, error } = await supabase
       .from('user_module_permissions')
       .select('module_key, access_level')

@@ -966,6 +966,18 @@ async function getEmployeesByClient(clientId) {
   return data || [];
 }
 
+// ALL employees across every client (firm-wide org overview). Paginated — the
+// employee table grows past PostgREST's 1000-row cap as org charts fill in.
+async function getAllEmployees() {
+  if (!supabase) return [];
+  return selectAllRows('getAllEmployees', () =>
+    supabase
+      .from('employees')
+      .select('id,client_id,name,role,email,num_ftes,num_contractors,reports_to_id')
+      .not('name', 'ilike', 'Default Contact%')
+      .order('id', { ascending: true }));
+}
+
 // Bulk dedupe-source for the Bullhorn contact sync. Pulls just the columns
 // the sync needs to decide insert-vs-skip across many clients in one query.
 // Chunks the .in() call because PostgREST puts the values in the URL, and
@@ -1996,7 +2008,8 @@ module.exports = {
   getClients, getClientById, getAllClients, getAllClientsLinkedToBullhorn,
   createClient, updateClient, deleteClient, bulkImportClients,
   bulkSyncBullhornClients, getSyncState, upsertSyncState,
-  getEmployeesByClient, getEmployeesForClientIds, createEmployee, updateEmployee, deleteEmployee,
+  getEmployeesByClient, getAllEmployees, getEmployeesForClientIds, createEmployee, updateEmployee, deleteEmployee,
+  selectAllRows,
   bulkDeleteEmployees, bulkInsertEmployees, updateEmployeePositions, resetEmployeePositions, bulkImportEmployees,
   getAssignments, createAssignment, deleteAssignment,
   uploadClientLogo, removeClientLogo,

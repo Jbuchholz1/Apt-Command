@@ -421,16 +421,15 @@ router.get('/contractor-counts', async (req, res, next) => {
 // GET /api/org-flow/client-health
 router.get('/client-health', async (req, res, next) => {
   try {
-    // Fetch all employees and contractor counts in parallel
-    const { supabase } = require('../lib/db');
-    if (!supabase) return res.json({});
+    // Fetch all employees (firm-wide, paginated so it can't truncate at 1000)
+    // and active placements in parallel.
+    if (!db.supabase) return res.json({});
 
-    const [employeesRes, placementsResult] = await Promise.all([
-      supabase.from('employees').select('id,client_id,name,role,email,num_ftes,num_contractors,reports_to_id').not('name', 'ilike', 'Default Contact%'),
+    const [employees, placementsResult] = await Promise.all([
+      db.getAllEmployees(),
       getActivePlacementsWithClient(),
     ]);
 
-    const employees = employeesRes?.data || [];
     const placements = placementsResult?.data || [];
 
     // Build live counts by email, split by type, and track individual placements
