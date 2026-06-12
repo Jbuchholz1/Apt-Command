@@ -158,16 +158,21 @@ ensureSchema();
 // with .range() until a short page so getAll* helpers never silently truncate
 // as these tables grow past 1000 rows. buildQuery() must return a FRESH query
 // builder each call and MUST apply a stable .order() (range windows over an
-// unordered set can overlap or miss rows). On a page error we return what we've
-// collected — callers treat partial/empty as a soft failure, same as before.
+// unordered set can overlap or miss rows). On a page error the default is to
+// return what we've collected (callers treat partial/empty as a soft failure).
+// Pass { throwOnError: true } for CACHED getters so a transient DB error rejects
+// the fetcher instead of resolving to an empty/partial set that cache.cached()
+// would then pin for the full TTL (see getAllOverrides — that pinned empty map
+// was a 30s board-wide override blackout on any Supabase blip).
 const PG_PAGE = 1000;
-async function selectAllRows(label, buildQuery) {
+async function selectAllRows(label, buildQuery, opts = {}) {
   const all = [];
   let from = 0;
   for (;;) {
     const { data, error } = await buildQuery().range(from, from + PG_PAGE - 1);
     if (error) {
       console.error(`[db] ${label} page (from ${from}) error:`, error.message);
+      if (opts.throwOnError) throw new Error(`${label} failed: ${error.message}`);
       break;
     }
     const rows = data || [];
@@ -182,7 +187,7 @@ async function getAllOverrides() {
   if (!supabase) return {};
   return cache.cached('overrides:all', OVERRIDES_TTL_MS, async () => {
     const data = await selectAllRows('getAllOverrides', () =>
-      supabase.from('job_overrides').select('*').order('job_id', { ascending: true }));
+      supabase.from('job_overrides').select('*').order('job_id', { ascending: true }), { throwOnError: true });
 
     const map = {};
     for (const row of data) {
@@ -438,7 +443,7 @@ async function getAllPlacementChecklist() {
   if (!supabase) return {};
   return cache.cached('placementChecklist:all', PLACEMENT_CHECKLIST_TTL_MS, async () => {
     const data = await selectAllRows('getAllPlacementChecklist', () =>
-      supabase.from('placement_checklist').select('*').order('placement_id', { ascending: true }));
+      supabase.from('placement_checklist').select('*').order('placement_id', { ascending: true }), { throwOnError: true });
 
     const map = {};
     for (const row of data) {

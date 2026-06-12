@@ -43,13 +43,23 @@ function set(key, value, ttlMs) {
 function bust(keyOrPrefix) {
   if (!keyOrPrefix) return;
   bustGen += 1;
+  // Also drop any in-flight fetch for the key(s): a read started BEFORE this
+  // write must not be handed to a caller that arrives AFTER it (it carries a
+  // pre-write snapshot). The bustGen guard already stops the old fetch from
+  // re-populating the store; clearing inflight makes post-write callers kick
+  // off a fresh fetch instead of joining the stale one. The ownership check in
+  // cached()'s finally keeps this race-safe.
   if (keyOrPrefix.endsWith(':*')) {
     const prefix = keyOrPrefix.slice(0, -1);
     for (const k of Array.from(store.keys())) {
       if (k.startsWith(prefix)) store.delete(k);
     }
+    for (const k of Array.from(inflight.keys())) {
+      if (k.startsWith(prefix)) inflight.delete(k);
+    }
   } else {
     store.delete(keyOrPrefix);
+    inflight.delete(keyOrPrefix);
   }
 }
 
@@ -71,7 +81,10 @@ async function cached(key, ttlMs, fetcher) {
       if (bustGen === startGen) set(key, value, ttlMs);
       return value;
     } finally {
-      inflight.delete(key);
+      // Only clear the inflight slot if it's still OURS. A bust() (or a newer
+      // cached() call) may have replaced it; deleting unconditionally would
+      // evict the newer fetch's promise and cause a redundant refetch.
+      if (inflight.get(key) === promise) inflight.delete(key);
     }
   })();
   inflight.set(key, promise);
