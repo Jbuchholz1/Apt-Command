@@ -25,6 +25,7 @@ const {
 const { POINTS, EXCLUDED_RECRUITERS, bhLink } = require('../lib/recruiterConfig');
 const { SALES_POINTS, EXCLUDED_AMS } = require('../lib/salesConfig');
 const { requireModule } = require('../middleware/adminAuth');
+const { parseCentralRange } = require('../lib/period');
 
 router.use(requireModule('client_health'));
 
@@ -141,12 +142,11 @@ function computeDirection(current, prior) {
 function parseDates(req) {
   const { start, end } = req.query;
   if (!start || !end) return null;
-  const startMs = new Date(start).getTime();
-  const endDate = new Date(end);
-  endDate.setHours(23, 59, 59, 999);
-  const endMs = endDate.getTime();
-  if (isNaN(startMs) || isNaN(endMs)) return null;
-  return { startMs, endMs, start, end };
+  // Central calendar-day bounds (see lib/period). Was UTC-midnight + server-local
+  // end, shifting the KPI window ~6h off Central.
+  const range = parseCentralRange(start, end);
+  if (!range) return null;
+  return { startMs: range.startMs, endMs: range.endMs, start, end };
 }
 
 // GET /api/client-health — client health TABLE. NOTE: this endpoint intentionally

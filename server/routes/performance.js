@@ -20,6 +20,7 @@ const { POINTS, bhLink } = require('../lib/recruiterConfig');
 const { SALES_POINTS, ACTIVITY_LABELS, ACTIVITY_ORDER } = require('../lib/salesConfig');
 const { resolveRole } = require('../lib/roles');
 const { requireModule } = require('../middleware/adminAuth');
+const { parseCentralRange } = require('../lib/period');
 
 router.use(requireModule('reporting_performance'));
 
@@ -73,10 +74,9 @@ router.get('/my-dashboard', async (req, res, next) => {
     const tier = corpUser.customDate3 ? 3 : 1;
     const spreadGoal = corpUser.customDate3 ? 9000 : 7000;
 
-    const startMs = new Date(start).getTime();
-    const endDate = new Date(end);
-    endDate.setHours(23, 59, 59, 999);
-    const endMs = endDate.getTime();
+    const range = parseCentralRange(start, end);
+    const startMs = range?.startMs;
+    const endMs = range?.endMs;
 
     if (isNaN(startMs) || isNaN(endMs)) {
       return res.status(400).json({ error: 'Invalid date format' });

@@ -28,6 +28,7 @@ const { getAllOverrides } = require('../lib/db');
 const { POINTS, EXCLUDED_RECRUITERS, getRecruiterTier, getSpreadGoal, bhLink } = require('../lib/recruiterConfig');
 const { SALES_POINTS, ACTIVITY_LABELS, ACTIVITY_ORDER, EXCLUDED_AMS, getAMTier, getAMSpreadGoal } = require('../lib/salesConfig');
 const { requireModule } = require('../middleware/adminAuth');
+const { parseCentralRange, centralDayStartMs } = require('../lib/period');
 
 // Reporting is split per sub-dashboard so admins can grant fine-grained access.
 const requireRecruiter = requireModule('reporting_recruiter');
@@ -57,10 +58,9 @@ router.get('/recruiter-dashboard', requireRecruiter, async (req, res, next) => {
       return res.status(400).json({ error: 'start and end query params required (ISO date)' });
     }
 
-    const startMs = new Date(start).getTime();
-    const endDate = new Date(end);
-    endDate.setHours(23, 59, 59, 999);
-    const endMs = endDate.getTime();
+    const range = parseCentralRange(start, end);
+    const startMs = range?.startMs;
+    const endMs = range?.endMs;
 
     if (isNaN(startMs) || isNaN(endMs)) {
       return res.status(400).json({ error: 'Invalid date format. Use ISO dates like 2026-04-01' });
@@ -347,10 +347,9 @@ router.get('/sales-dashboard', requireSales, async (req, res, next) => {
       return res.status(400).json({ error: 'start and end query params required (ISO date)' });
     }
 
-    const startMs = new Date(start).getTime();
-    const endDate = new Date(end);
-    endDate.setHours(23, 59, 59, 999);
-    const endMs = endDate.getTime();
+    const range = parseCentralRange(start, end);
+    const startMs = range?.startMs;
+    const endMs = range?.endMs;
 
     if (isNaN(startMs) || isNaN(endMs)) {
       return res.status(400).json({ error: 'Invalid date format' });
@@ -640,9 +639,9 @@ router.get('/recruiter-export', requireRecruiter, async (req, res, next) => {
     // Fetch data directly
     const { start, end } = req.query;
     if (!start || !end) return res.status(400).json({ error: 'start and end required' });
-    const startMs = new Date(start).getTime();
-    const endDate = new Date(end); endDate.setHours(23, 59, 59, 999);
-    const endMs = endDate.getTime();
+    const range = parseCentralRange(start, end);
+    const startMs = range?.startMs;
+    const endMs = range?.endMs;
 
     const [recruitersRes, subsRes, interviewsRes, placementsRes] = await Promise.all([
       getRecruiterUsers(), getClientSubsInRange(startMs, endMs),
@@ -739,9 +738,9 @@ router.get('/sales-export', requireSales, async (req, res, next) => {
   try {
     const { start, end } = req.query;
     if (!start || !end) return res.status(400).json({ error: 'start and end required' });
-    const startMs = new Date(start).getTime();
-    const endDate = new Date(end); endDate.setHours(23, 59, 59, 999);
-    const endMs = endDate.getTime();
+    const range = parseCentralRange(start, end);
+    const startMs = range?.startMs;
+    const endMs = range?.endMs;
 
     const amRes = await getAMUsers();
     const ams = (amRes?.data || []).filter(a => !EXCLUDED_AMS.has(`${a.firstName} ${a.lastName}`));
@@ -1015,10 +1014,9 @@ router.get('/executive-dashboard', requireExec, async (req, res, next) => {
       return res.status(400).json({ error: 'start and end query params required (ISO date)' });
     }
 
-    const startMs = new Date(start).getTime();
-    const endDate = new Date(end);
-    endDate.setHours(23, 59, 59, 999);
-    const endMs = endDate.getTime();
+    const range = parseCentralRange(start, end);
+    const startMs = range?.startMs;
+    const endMs = range?.endMs;
 
     if (isNaN(startMs) || isNaN(endMs)) {
       return res.status(400).json({ error: 'Invalid date format. Use ISO dates like 2026-04-01' });
@@ -1164,10 +1162,9 @@ router.get('/executive-dashboard', requireExec, async (req, res, next) => {
 // --- Helpers shared across the new executive endpoints ---
 
 function rangeMs(start, end) {
-  const startMs = new Date(start).getTime();
-  const endDate = new Date(end);
-  endDate.setHours(23, 59, 59, 999);
-  const endMs = endDate.getTime();
+  const range = parseCentralRange(start, end);
+  if (!range) return null;
+  const { startMs, endMs } = range;
   if (isNaN(startMs) || isNaN(endMs)) return null;
   return { startMs, endMs };
 }
@@ -1397,7 +1394,7 @@ router.get('/executive-monthly', requireExec, async (req, res, next) => {
 
     const now = Date.now();
     const thirtyDaysOut = now + 30 * 24 * 60 * 60 * 1000;
-    const yearStartMs = new Date(`${new Date().getFullYear()}-01-01T00:00:00`).getTime();
+    const yearStartMs = centralDayStartMs(`${new Date().getFullYear()}-01-01`);
 
     // Prior period for retention cohort = same-length window before [start, end]
     const windowMs = endMs - startMs;
