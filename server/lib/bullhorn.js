@@ -1,7 +1,15 @@
 const breaker = require('./mcpBreaker');
+const cache = require('./cache');
 
+// Short-TTL cache for the parameterless, high-frequency Bullhorn reads that the
+// board (every 20s per user) and stats/offer-out hammer. A TTL under the 20s
+// poll collapses N concurrent users into ~1 fetch per window — and crucially it
+// absorbs the extra calls introduced by full id-cursor pagination. A successful
+// mutation busts the whole 'bh:*' namespace (see callTool), so a user who just
+// wrote always sees fresh data on the next poll.
 const MCP_URL = process.env.BULLHORN_MCP_URL;
 const MCP_API_KEY = process.env.BULLHORN_MCP_API_KEY;
+const BH_READ_TTL_MS = parseInt(process.env.BH_READ_TTL_MS || '12000', 10);
 
 if (!MCP_URL) {
   console.error('[MCP] BULLHORN_MCP_URL not set — Bullhorn API calls will fail');
@@ -149,6 +157,14 @@ async function callTool(toolName, args = {}) {
 
   breaker.recordSuccess();
 
+  // A successful mutation can change what the cached board/stats/offer-out reads
+  // return, so drop the Bullhorn read cache. Reads refetch fresh on the next
+  // poll; cache.js's bust-generation guard prevents an in-flight read started
+  // before this write from re-populating stale data afterward.
+  if (MUTATING_TOOLS.has(toolName)) {
+    cache.bust('bh:*');
+  }
+
   // Extract text content from result
   const content = json.result?.content;
   if (!content || !content.length) {
@@ -179,24 +195,26 @@ const JOB_FIELDS = [
 ].join(',');
 
 async function getOpenJobs() {
-  return paginateQuery('getOpenJobs', {
+  return cache.cached('bh:openJobs', BH_READ_TTL_MS, () => paginateQuery('getOpenJobs', {
     entityType: 'JobOrder',
     where: 'isOpen = true AND isDeleted = false',
     fields: JOB_FIELDS,
     orderBy: '-dateAdded',
-  });
+  }));
 }
 
 // Jobs with status Archive/Placed/Lost/Wash modified recently — fetch wide window,
 // server-side logic uses status_changed_at for precise 12hr fall-off
 async function getRecentlyClosedJobs() {
   const cutoff = Date.now() - (48 * 60 * 60 * 1000); // 48 hours ago (wide net)
-  return paginateQuery('getRecentlyClosedJobs', {
+  // Note: the cutoff shifts each call, but a 12s TTL means cache entries within
+  // a poll window share an effectively-identical cutoff — acceptable drift.
+  return cache.cached('bh:recentlyClosedJobs', BH_READ_TTL_MS, () => paginateQuery('getRecentlyClosedJobs', {
     entityType: 'JobOrder',
     where: `isOpen = false AND isDeleted = false AND dateLastModified > ${cutoff} AND (status = 'Archive' OR status = 'Placed' OR status = 'Lost' OR status = 'Wash' OR status = 'Filled')`,
     fields: JOB_FIELDS,
     orderBy: '-dateLastModified',
-  });
+  }));
 }
 
 async function getAllJobs() {
@@ -353,12 +371,12 @@ function paginatePlacementQuery(label, baseArgs) {
 }
 
 async function getActivePlacements() {
-  return paginatePlacementQuery('getActivePlacements', {
+  return cache.cached('bh:activePlacements', BH_READ_TTL_MS, () => paginatePlacementQuery('getActivePlacements', {
     entityType: 'Placement',
     where: "status = 'Approved' OR status = 'Active' OR status = 'Sabatical'",
     fields: 'id,candidate(id,firstName,lastName),jobOrder(id,title,employmentType,owner(id,firstName,lastName)),dateBegin,dateEnd,payRate,clientBillRate,status,employmentType,salary,fee,jobSubmission(id,customFloat2,customFloat5)',
     orderBy: '-dateBegin',
-  });
+  }));
 }
 
 async function getPendingApprovedPlacements() {
@@ -405,12 +423,12 @@ async function getClientSubmissions(jobOrderIds) {
 // Submissions currently in "Offer Extended" status (corresponds to JobOrder "Offer Out" stage).
 // Used by the On The Board modal to show which candidate is on the board per filled job.
 async function getOfferExtendedSubmissions() {
-  return paginateQuery('getOfferExtendedSubmissions', {
+  return cache.cached('bh:offerExtendedSubs', BH_READ_TTL_MS, () => paginateQuery('getOfferExtendedSubmissions', {
     entityType: 'JobSubmission',
     where: "status = 'Offer Extended' AND isDeleted = false",
     fields: 'id,candidate,jobOrder,status,dateAdded,payRate,billRate,salary,customFloat2,customFloat5',
     orderBy: '-dateAdded',
-  });
+  }));
 }
 
 // Placements that haven't reached final approval yet. Used by the On The Board
@@ -420,12 +438,12 @@ async function getOfferExtendedSubmissions() {
 // adding it 400s the whole query. The CLAUDE.md `AND isDeleted = false` rule
 // does not apply here.
 async function getPendingPlacements() {
-  return paginatePlacementQuery('getPendingPlacements', {
+  return cache.cached('bh:pendingPlacements', BH_READ_TTL_MS, () => paginatePlacementQuery('getPendingPlacements', {
     entityType: 'Placement',
     where: "status = 'Pending'",
     fields: 'id,candidate(id,firstName,lastName),jobOrder(id),status,dateBegin,payRate,clientBillRate,salary,fee,jobSubmission(id,customFloat2,customFloat5)',
     orderBy: '-dateBegin',
-  });
+  }));
 }
 
 // Placements that have left the "On The Board" pipeline — either accepted
@@ -433,12 +451,12 @@ async function getPendingPlacements() {
 // drop matching (candidate, job) pairs from the On The Board counter so a
 // candidate doesn't linger after their placement reaches a terminal state.
 async function getOffBoardPlacements() {
-  return paginatePlacementQuery('getOffBoardPlacements', {
+  return cache.cached('bh:offBoardPlacements', BH_READ_TTL_MS, () => paginatePlacementQuery('getOffBoardPlacements', {
     entityType: 'Placement',
     where: "status = 'Approved' OR status = 'Active' OR status = 'Rejected' OR status = 'Completed' OR status = 'Terminated'",
     fields: 'id,candidate(id),jobOrder(id),status,dateAdded',
     orderBy: '-dateBegin',
-  });
+  }));
 }
 
 // Placements in the 'Submitted' state — earliest stage of the placement
@@ -446,20 +464,20 @@ async function getOffBoardPlacements() {
 // after the JobSubmission/JobOrder have flipped to Placed but the placement
 // record itself hasn't reached Pending → Approved yet.
 async function getSubmittedPlacements() {
-  return paginatePlacementQuery('getSubmittedPlacements', {
+  return cache.cached('bh:submittedPlacements', BH_READ_TTL_MS, () => paginatePlacementQuery('getSubmittedPlacements', {
     entityType: 'Placement',
     where: "status = 'Submitted'",
     fields: 'id,candidate(id,firstName,lastName),jobOrder(id),status,dateBegin,payRate,clientBillRate,salary,fee,jobSubmission(id,customFloat2,customFloat5)',
     orderBy: '-dateBegin',
-  });
+  }));
 }
 
 async function getOpenOpportunities() {
-  return paginateQuery('getOpenOpportunities', {
+  return cache.cached('bh:openOpportunities', BH_READ_TTL_MS, () => paginateQuery('getOpenOpportunities', {
     entityType: 'Opportunity',
     where: "isDeleted = false",
     fields: 'id,status',
-  });
+  }));
 }
 
 async function searchJobs(query) {
@@ -786,11 +804,11 @@ async function getSalesCommissions(placementIds) {
 // --- Client Health queries ---
 
 async function getActivePlacementsWithClient() {
-  return paginateQuery('getActivePlacementsWithClient', {
+  return cache.cached('bh:activePlacementsWithClient', BH_READ_TTL_MS, () => paginateQuery('getActivePlacementsWithClient', {
     entityType: 'Placement',
     where: "status IN ('Approved','Active')",
     fields: 'id,status,candidate(id,firstName,lastName,owner),owner,jobOrder(id,title,clientCorporation,owner,clientContact(id,firstName,lastName,email)),dateBegin,dateEnd,payRate,clientBillRate,salary,fee,employeeType',
-  });
+  }));
 }
 
 async function getRecentAppointments(sinceDateMs) {
