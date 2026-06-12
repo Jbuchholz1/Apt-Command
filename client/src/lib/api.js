@@ -19,6 +19,16 @@ async function getToken() {
     return { token: getExternalToken(), source: 'external' };
   }
 
+  // A stored external (vendor) token that's present but EXPIRED must still be
+  // treated as an external session, so the 401 path routes back to the app's
+  // own login. Previously it fell through to the MSAL branch below, bouncing
+  // expired vendors to login.microsoftonline.com — which they can't complete.
+  // Returning source:'external' (with no token) lets the 401 handler clear the
+  // stale token and redirect to '/'.
+  if (getExternalToken()) {
+    return { token: null, source: 'external' };
+  }
+
   if (!msalInstance) return { token: null, source: null };
   const accounts = msalInstance.getAllAccounts();
   if (accounts.length === 0) return { token: null, source: null };
