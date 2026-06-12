@@ -1028,14 +1028,17 @@ async function getPlacementsForJobs(jobIds) {
 
 async function getCorporateUserByEmail(email) {
   // Fetch all active users and match by email (case-insensitive). Paginated so
-  // a firm with >~200 active CorporateUsers doesn't drop users past the cap —
-  // a dropped user can't be matched and their Daily Brief silently breaks.
-  const result = await paginateQuery('getCorporateUserByEmail', {
+  // a firm with >~200 active CorporateUsers doesn't drop users past the cap.
+  // The result is identical regardless of `email` (we filter in JS), and this
+  // is called multiple times per Daily Brief / dashboard request across several
+  // routes — so cache the full list under one short-TTL key to collapse the
+  // burst into a single scan. Busted on any Bullhorn mutation like the others.
+  const result = await cache.cached('bh:corporateUsers', BH_READ_TTL_MS, () => paginateQuery('getCorporateUserByEmail', {
     entityType: 'CorporateUser',
     where: "isDeleted = false AND enabled = true",
     fields: 'id,firstName,lastName,email,customText1,customDate1,customDate3',
     orderBy: 'id',
-  });
+  }));
   const normalizedEmail = email.toLowerCase();
   const match = (result.data || []).find(u => u.email && u.email.toLowerCase() === normalizedEmail);
   return match || null;
