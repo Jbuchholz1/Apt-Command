@@ -9,9 +9,21 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.34';
+export const APP_VERSION = '3.29.35';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.35',
+    date: '2026-06-12',
+    title: 'Robustness round — overdue alerts, caching, resilience',
+    changes: [
+      { type: 'patch', text: 'Team Alerts no longer flags every contractor with a “6/15”-style deadline or follow-up as overdue — those dates are now read as this year (the same fix the Daily Brief already got).' },
+      { type: 'patch', text: 'A brief database hiccup can no longer make every job’s saved fields (recruiter, notes, follow-ups) vanish from the board for 30 seconds — the board now keeps showing the last good data and recovers on the next refresh.' },
+      { type: 'patch', text: 'Dashboards that look up your Bullhorn user now share one cached lookup per cycle instead of re-fetching the whole user list repeatedly.' },
+      { type: 'patch', text: 'Open date-pickers on the board now pause auto-refresh like other cells, so a background refresh can’t close them mid-edit.' },
+      { type: 'patch', text: 'Internal: nightly export can’t double-run, the support health check honors its 5-second timeout, edits made right after a save always read fresh data, and the Node runtime version is pinned.' },
+    ],
+  },
   {
     version: '3.29.34',
     date: '2026-06-12',
