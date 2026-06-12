@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.32';
+export const APP_VERSION = '3.29.33';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.33',
+    date: '2026-06-12',
+    title: 'Performance — board & dashboards stay fast under full pagination',
+    changes: [
+      { type: 'patch', text: 'The board now fetches the same heavy data once per short window and shares it across everyone viewing at the same time, instead of every open tab hitting Bullhorn independently. This keeps things fast now that every query pages through the full result set. Edits still appear immediately — saving refreshes the shared data right away.' },
+      { type: 'patch', text: 'The On The Board counter no longer re-pulls its (heavy) data on every background refresh and every live update — it refreshes on its own gentle cadence, cutting a large amount of redundant load.' },
+    ],
+  },
   {
     version: '3.29.32',
     date: '2026-06-12',
