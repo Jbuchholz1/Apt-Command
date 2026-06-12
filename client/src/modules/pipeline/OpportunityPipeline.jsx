@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getOpportunities, updateOpportunityInBullhorn, updateOpportunityOverride } from '../../lib/api';
+import { saveWithToast } from '../../lib/saveWithToast';
 import EditableDate from '../req-board/EditableDate';
 import EditableSelect from '../req-board/EditableSelect';
 import EditableCell from '../req-board/EditableCell';
@@ -216,42 +217,59 @@ export default function OpportunityPipeline() {
                         { value: 'Closed-Lost', label: 'Closed-Lost' },
                       ]}
                       onSave={async (newStatus) => {
-                        try {
-                          await updateOpportunityInBullhorn(o.id, { status: newStatus });
-                          setOpportunities(prev => prev.map(op =>
-                            op.id === o.id ? { ...op, status: newStatus } : op
-                          ));
-                        } catch (err) {
-                          console.error('Failed to update opportunity status:', err);
-                        }
+                        const previous = o.status;
+                        setOpportunities(prev => prev.map(op =>
+                          op.id === o.id ? { ...op, status: newStatus } : op
+                        ));
+                        await saveWithToast(
+                          () => updateOpportunityInBullhorn(o.id, { status: newStatus }),
+                          {
+                            failureMessage: 'Could not update opportunity status',
+                            onRollback: () => setOpportunities(prev => prev.map(op =>
+                              op.id === o.id ? { ...op, status: previous } : op
+                            )),
+                          },
+                        );
                       }}
                     />
                     <EditableDate
                       value={o.nextActivity}
                       className={isPastOrMissing(o.nextActivity) ? 'cell-date-expired' : ''}
                       onSave={async (tsValue) => {
-                        try {
-                          await updateOpportunityInBullhorn(o.id, { nextActivity: tsValue });
-                          setOpportunities(prev => prev.map(op =>
-                            op.id === o.id ? { ...op, nextActivity: tsValue ? new Date(tsValue).toISOString() : null } : op
-                          ));
-                        } catch (err) {
-                          console.error('Failed to update next activity:', err);
-                        }
+                        const previous = o.nextActivity;
+                        const next = tsValue ? new Date(tsValue).toISOString() : null;
+                        setOpportunities(prev => prev.map(op =>
+                          op.id === o.id ? { ...op, nextActivity: next } : op
+                        ));
+                        await saveWithToast(
+                          () => updateOpportunityInBullhorn(o.id, { nextActivity: tsValue }),
+                          {
+                            failureMessage: 'Could not update next activity',
+                            onRollback: () => setOpportunities(prev => prev.map(op =>
+                              op.id === o.id ? { ...op, nextActivity: previous } : op
+                            )),
+                          },
+                        );
                       }}
                     />
                     <EditableDate
                       value={o.expectedCloseDate}
                       className={isPastOrMissing(o.expectedCloseDate) ? 'cell-date-expired' : ''}
                       onSave={async (tsValue) => {
-                        try {
-                          await updateOpportunityInBullhorn(o.id, { expectedCloseDate: tsValue });
-                          setOpportunities(prev => prev.map(op =>
-                            op.id === o.id ? { ...op, expectedCloseDate: tsValue ? new Date(tsValue).toISOString() : null } : op
-                          ));
-                        } catch (err) {
-                          console.error('Failed to update expected close date:', err);
-                        }
+                        const previous = o.expectedCloseDate;
+                        const next = tsValue ? new Date(tsValue).toISOString() : null;
+                        setOpportunities(prev => prev.map(op =>
+                          op.id === o.id ? { ...op, expectedCloseDate: next } : op
+                        ));
+                        await saveWithToast(
+                          () => updateOpportunityInBullhorn(o.id, { expectedCloseDate: tsValue }),
+                          {
+                            failureMessage: 'Could not update expected close date',
+                            onRollback: () => setOpportunities(prev => prev.map(op =>
+                              op.id === o.id ? { ...op, expectedCloseDate: previous } : op
+                            )),
+                          },
+                        );
                       }}
                     />
                     <EditableCell
@@ -264,14 +282,15 @@ export default function OpportunityPipeline() {
                         setOpportunities(prev => prev.map(op =>
                           op.id === o.id ? { ...op, note: val } : op
                         ));
-                        try {
-                          await updateOpportunityOverride(o.id, { note: val });
-                        } catch (err) {
-                          console.error('Failed to save opportunity note:', err);
-                          setOpportunities(prev => prev.map(op =>
-                            op.id === o.id ? { ...op, note: previousNote } : op
-                          ));
-                        }
+                        await saveWithToast(
+                          () => updateOpportunityOverride(o.id, { note: val }),
+                          {
+                            failureMessage: 'Could not save note',
+                            onRollback: () => setOpportunities(prev => prev.map(op =>
+                              op.id === o.id ? { ...op, note: previousNote } : op
+                            )),
+                          },
+                        );
                       }}
                     />
                     <td className="pipeline-money">{o.dealValue ? fmtCurrency(o.dealValue) : '—'}</td>
