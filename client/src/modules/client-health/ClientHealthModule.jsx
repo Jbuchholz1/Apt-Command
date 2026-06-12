@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import './client-health.css';
 import { getClientHealth, getCompanyKPIs, exportHealthDashboard } from '../../lib/api';
 import GaugeCard from './GaugeCard';
@@ -123,16 +123,15 @@ export default function ClientHealthModule() {
   const [sortKey, setSortKey] = useState('health');
   const [sortDir, setSortDir] = useState('desc');
 
+  // Health table only. KPIs are fetched by the effect below (single owner) to
+  // avoid the prior race where fetchData AND the filter effect both set kpis on
+  // a date change, last-to-resolve winning with no ordering guard.
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const [res, kpiRes] = await Promise.all([
-        getClientHealth(startDate, endDate),
-        getCompanyKPIs(startDate, endDate),
-      ]);
+      const res = await getClientHealth(startDate, endDate);
       setData(res);
-      setKpis(kpiRes);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -142,7 +141,10 @@ export default function ClientHealthModule() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Refetch KPIs when health filter changes to scope to those clients
+  // Sole owner of KPI fetching. A monotonic request id guards against
+  // out-of-order responses (rapid date/filter changes) clobbering the gauges
+  // with a stale payload; failures are logged, not silently swallowed.
+  const kpiReqId = useRef(0);
   useEffect(() => {
     if (!data?.clients) return;
     const filteredClients = healthFilter
@@ -156,9 +158,10 @@ export default function ClientHealthModule() {
     });
     const ids = scopedClients.map(c => c.id);
     const needsFilter = healthFilter || filters.clients.length > 0 || filters.owners.length > 0;
+    const reqId = ++kpiReqId.current;
     getCompanyKPIs(startDate, endDate, needsFilter ? ids : null)
-      .then(setKpis)
-      .catch(() => {});
+      .then(r => { if (reqId === kpiReqId.current) setKpis(r); })
+      .catch(err => { if (reqId === kpiReqId.current) console.error('Failed to load client-health KPIs:', err); });
   }, [healthFilter, filters, data, startDate, endDate]);
 
   const clientOptions = useMemo(() => {
@@ -259,7 +262,7 @@ export default function ClientHealthModule() {
           {kpis.gauges.map((g, i) => (
             <GaugeCard key={i} {...g} onClick={(label, details) => setGaugeModal({ label, details })} />
           ))}
-          <div className="kpi-quarter">{kpis.quarter}</div>
+          <div className="kpi-quarter">{kpis.rangeLabel}</div>
         </div>
       )}
 
