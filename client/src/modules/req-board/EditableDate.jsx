@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, memo } from 'react';
+import { useEditingSignal } from './EditingContext';
 
 /**
  * Inline-editable table cell with a date picker.
@@ -7,6 +8,10 @@ import { useState, useRef, useEffect, memo } from 'react';
 function EditableDate({ value, onSave, className }) {
   const [editing, setEditing] = useState(false);
   const inputRef = useRef(null);
+  // Tell the board-wide editing context we're live, so auto-refresh / SSE
+  // merges pause while a date picker is open (matches EditableCell). Without
+  // this, a poll mid-edit could clobber the open picker.
+  useEditingSignal(editing);
 
   // Convert ISO date string to YYYY-MM-DD for input
   const toInputDate = (val) => {
