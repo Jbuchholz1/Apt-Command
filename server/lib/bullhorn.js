@@ -74,7 +74,7 @@ async function callTool(toolName, args = {}) {
   // Local Supabase writes (overrides, notes, goals, etc.) are unaffected —
   // they don't go through callTool().
   if (READ_ONLY_MODE && MUTATING_TOOLS.has(toolName)) {
-    console.warn(`[READ_ONLY_MODE] Blocked Bullhorn ${toolName}`, { args });
+    console.warn(`[READ_ONLY_MODE] Blocked Bullhorn ${toolName}`, { args: redactForLog(args) });
     const err = new Error('Bullhorn writes are disabled in sandbox (READ_ONLY_MODE).');
     err.code = 'READ_ONLY_MODE';
     err.statusCode = 403;

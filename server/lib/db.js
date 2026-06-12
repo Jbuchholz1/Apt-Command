@@ -1114,7 +1114,9 @@ async function bulkImportEmployees(clientId, toInsert, toUpdate, validRows) {
   let processedCount = 0;
   const warnings = [];
 
-  // Update existing employees
+  // Update existing employees. Scope each update to THIS client_id as well as
+  // the row id, so a payload carrying employee ids from another client can't
+  // modify rows outside the client whose import this is (cross-client write).
   for (const emp of toUpdate) {
     const { error } = await supabase
       .from('employees')
@@ -1123,7 +1125,8 @@ async function bulkImportEmployees(clientId, toInsert, toUpdate, validRows) {
         department: emp.department, phone: emp.phone,
         num_contractors: emp.num_contractors, num_apt_contractors: emp.num_apt_contractors,
       })
-      .eq('id', emp.id);
+      .eq('id', emp.id)
+      .eq('client_id', clientId);
     if (!error) processedCount++;
   }
 
@@ -1555,10 +1558,14 @@ async function createKnownIssue({ title, description, severity, created_by }) {
 
 async function updateKnownIssue(id, updates) {
   if (!supabase) return null;
-  updates.updated_at = new Date().toISOString();
+  // Whitelist editable columns (defense-in-depth) so a caller can't set id /
+  // created_at / created_by or any other column via a raw updates object.
+  const ALLOWED = ['title', 'description', 'severity', 'status', 'resolved_at'];
+  const clean = { updated_at: new Date().toISOString() };
+  for (const k of ALLOWED) if (updates[k] !== undefined) clean[k] = updates[k];
   const { data, error } = await supabase
     .from('known_issues')
-    .update(updates)
+    .update(clean)
     .eq('id', id)
     .select()
     .maybeSingle();

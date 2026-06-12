@@ -22,6 +22,8 @@ const {
   getOffboardsInWindow,
   getOffersExtendedInRange,
   updateAppointmentField,
+  getCorporateUserByEmail,
+  callTool,
 } = require('../lib/bullhorn');
 const { contractorWeeklySpread, permWeeklyFee } = require('../lib/spread');
 const { getAllOverrides } = require('../lib/db');
@@ -606,6 +608,28 @@ router.post('/appointments/:id/type', requireSales, async (req, res, next) => {
     if (SALES_POINTS[type] === undefined) {
       return res.status(400).json({ error: `"${type}" is not a scored activity type` });
     }
+
+    // Ownership: a Sales user may only reclassify their OWN appointments —
+    // otherwise one AM could rewrite another AM's activity types and shift MAR
+    // attribution. Sales-admins (and global managers/admins) may reclassify any.
+    // The email→CorporateUser mapping is the same one the Daily Brief / My
+    // Dashboard already rely on, so it's proven for these internal users.
+    const isSalesAdmin = req.user?.permissions?.reporting_sales === 'admin'
+      || req.user?.role === 'admin' || req.user?.role === 'manager';
+    if (!isSalesAdmin) {
+      const me = await getCorporateUserByEmail(req.user.email);
+      const apptRes = await callTool('query_entity', {
+        entityType: 'Appointment',
+        where: `id = ${apptId}`,
+        fields: 'id,owner(id)',
+        count: 1,
+      });
+      const ownerId = apptRes?.data?.[0]?.owner?.id;
+      if (!me || !ownerId || me.id !== ownerId) {
+        return res.status(403).json({ error: 'You can only reclassify your own activities' });
+      }
+    }
+
     await updateAppointmentField(apptId, { type });
     res.json({ ok: true, id: apptId, type, points: SALES_POINTS[type] });
   } catch (err) {

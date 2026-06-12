@@ -19,6 +19,17 @@ const loginLimiter = rateLimit({
   message: { error: 'Too many login attempts — try again in a few minutes' },
 });
 
+// Change-password is CPU-heavy (bcrypt) and lives on the /api/auth router, which
+// is mounted BEFORE the global per-user write limiter — so without its own limit
+// it could be hammered. Cap per IP. (Default keyGenerator is IPv6-safe in v8.)
+const changePasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many password-change attempts — try again in a few minutes' },
+});
+
 // POST /api/auth/external/login — public, rate-limited.
 // Body: { email, password }
 router.post('/external/login', loginLimiter, async (req, res, next) => {
@@ -94,7 +105,7 @@ router.post('/external/login', loginLimiter, async (req, res, next) => {
 
 // POST /api/auth/external/change-password — authenticated, external sessions only.
 // Body: { currentPassword, newPassword }
-router.post('/external/change-password', requireAuth, async (req, res, next) => {
+router.post('/external/change-password', changePasswordLimiter, requireAuth, async (req, res, next) => {
   try {
     if (!supabase) return res.status(503).json({ error: 'Database not configured' });
     if (req.user?.provider !== 'external') {

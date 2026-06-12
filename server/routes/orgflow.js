@@ -132,12 +132,18 @@ router.delete('/clients/:id', async (req, res, next) => {
 // POST /api/org-flow/clients/import — bulk import clients from parsed Excel data
 router.post('/clients/import', async (req, res, next) => {
   try {
-    const { rows, currentUserId } = req.body;
+    const { rows } = req.body;
     if (!rows || !Array.isArray(rows)) return res.status(400).json({ error: 'rows array required' });
 
     // Resolve emails to user IDs
     const allUsers = await db.getActiveUsers();
     const emailToIdMap = new Map(allUsers.map(u => [u.email.toLowerCase(), u.id]));
+
+    // Derive the importing user's id SERVER-SIDE from their auth identity.
+    // The old code trusted a `currentUserId` from the request body and used it
+    // as created_by for new AND name-matched existing clients — letting any
+    // org_flow user reassign ownership of existing clients to an arbitrary id.
+    const currentUserId = emailToIdMap.get((req.user?.email || '').toLowerCase()) || null;
 
     // Get existing clients for insert-vs-update logic
     const existingClients = await db.getClients();

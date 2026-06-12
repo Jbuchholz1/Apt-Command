@@ -237,7 +237,7 @@ router.get('/tickets', async (req, res, next) => {
     // If ?email= is provided and differs from caller, require manager/admin
     if (targetEmail && targetEmail !== req.user.email) {
       const role = await resolveRole(req.user.email);
-      if (role !== 'admin' && role !== 'manager') {
+      if (role !== 'admin' && role !== 'manager' && req.user.permissions?.support !== 'admin') {
         return res.status(403).json({ error: "Forbidden — manager or admin required to view other users' tickets" });
       }
       const tickets = await db.getSupportTickets({ submittedBy: targetEmail });
@@ -249,9 +249,11 @@ router.get('/tickets', async (req, res, next) => {
       return res.json(tickets);
     }
 
-    // All tickets — requires admin
+    // All tickets — requires admin (global admin OR Support module-admin: the
+    // module-admin grant is what lets someone manage the support queue, so it
+    // must also satisfy the "view all" / comment checks, not just global role).
     const role = await resolveRole(req.user.email);
-    if (role !== 'admin') {
+    if (role !== 'admin' && req.user.permissions?.support !== 'admin') {
       return res.status(403).json({ error: 'Forbidden — admin access required' });
     }
 
@@ -319,7 +321,7 @@ async function loadTicketForComment(req, res) {
   }
   const isSubmitter = ticket.submitted_by === req.user.email;
   const role = await resolveRole(req.user.email);
-  const isAdmin = role === 'admin';
+  const isAdmin = role === 'admin' || req.user.permissions?.support === 'admin';
   if (!isSubmitter && !isAdmin) {
     res.status(403).json({ error: 'Forbidden — only the submitter or an admin can view/comment on this ticket' });
     return null;

@@ -121,9 +121,16 @@ router.post('/', async (req, res, next) => {
       return res.status(403).json({ error: 'Only managers/admins can create top-level or company-priority goals' });
     }
 
+    // Filing a goal owned by someone else is a manager action (otherwise any
+    // user could assign goals to colleagues).
+    const requestedOwner = (req.body.owner_email || email).toLowerCase();
+    if (requestedOwner !== email && !(await isManager(req))) {
+      return res.status(403).json({ error: 'Only managers/admins can create goals owned by another user' });
+    }
+
     const goal = await db.createGoal({
       ...req.body,
-      owner_email: (req.body.owner_email || email).toLowerCase(),
+      owner_email: requestedOwner,
       owner_name: req.body.owner_name || req.user?.name || '',
       created_by: email,
     });
@@ -145,6 +152,15 @@ router.patch('/:id', async (req, res, next) => {
     // Only managers/admins can toggle is_company_priority
     if (typeof req.body.is_company_priority === 'boolean' && !(await isManager(req))) {
       return res.status(403).json({ error: 'Only managers/admins can change company-priority flag' });
+    }
+    // Promoting a goal to top level via PATCH (parent_id → null) is the same
+    // privilege as creating one — mirror the create-time manager gate so it
+    // can't be bypassed through update. Same for reassigning ownership.
+    if ('parent_id' in req.body && !req.body.parent_id && !(await isManager(req))) {
+      return res.status(403).json({ error: 'Only managers/admins can promote a goal to top level' });
+    }
+    if (req.body.owner_email && req.body.owner_email.toLowerCase() !== owner && !(await isManager(req))) {
+      return res.status(403).json({ error: 'Only managers/admins can reassign goal ownership' });
     }
 
     const oldCurrent = row.goal.current_value;
