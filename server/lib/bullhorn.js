@@ -119,18 +119,31 @@ async function callTool(toolName, args = {}) {
     throw new Error(`MCP request failed: ${res.status} ${res.statusText}`);
   }
 
-  // Response is SSE format — parse the data line
-  const text = await res.text();
-  const dataLine = text.split('\n').find(l => l.startsWith('data: '));
-  if (!dataLine) {
+  // Response is SSE format — parse the data line. Reading or parsing the body
+  // can fail (connection dropped mid-body, malformed payload); both are
+  // transport/protocol failures, so settle the breaker via recordFailure() on
+  // EVERY exit path. Without this, a probe that dies here in half-open state
+  // never releases its in-flight slot and the breaker wedges open forever.
+  let json;
+  try {
+    const text = await res.text();
+    const dataLine = text.split('\n').find(l => l.startsWith('data: '));
+    if (!dataLine) {
+      throw new Error('No data in MCP response');
+    }
+    json = JSON.parse(dataLine.slice(6));
+  } catch (err) {
     breaker.recordFailure();
-    throw new Error('No data in MCP response');
+    throw err;
   }
 
-  const json = JSON.parse(dataLine.slice(6));
   if (json.error) {
-    // Application-level error from MCP: don't trip the breaker (the channel
-    // is healthy; the request was rejected by the tool). Just surface it.
+    // Application-level error from MCP: the transport is healthy (we received a
+    // well-formed JSON-RPC response), so record a SUCCESS — this both releases
+    // the half-open probe slot and correctly closes the breaker — then surface
+    // the tool's error. A probe returning 200 + json.error must NOT leave the
+    // breaker stuck in half-open.
+    breaker.recordSuccess();
     throw new Error(`MCP error: ${json.error.message}`);
   }
 
@@ -271,15 +284,23 @@ async function paginatePlacementQuery(label, baseArgs) {
   while (start < MAX) {
     const page = await callTool('query_entity', { ...baseArgs, count: PAGE, start });
     const rows = page?.data || [];
+    // An empty page is the only reliable end-of-data signal. APT's MCP caps
+    // responses at ~200 rows even when count:500 is requested, so the FIRST
+    // page is already "short" — the old `rows.length < PAGE` break truncated
+    // every placement query after page 1 (mirrors getActiveClientCorporations,
+    // which had the same bug and was fixed the same way).
+    if (rows.length === 0) return { data: all };
     if (start === 0) {
       firstSeenId = rows[0]?.id ?? null;
-    } else if (rows.length > 0 && rows[0].id === firstSeenId) {
+    } else if (rows[0].id === firstSeenId) {
       console.warn(`[${label}] MCP ignored \`start\` offset — pagination not honored. Returning first page only.`);
       return { data: all };
     }
     all.push(...rows);
-    if (rows.length < PAGE) return { data: all };
-    start += PAGE;
+    // Advance by the rows actually returned (not the requested PAGE) so the
+    // offset stays correct under the server-side cap — `start += PAGE` would
+    // skip rows whenever the server returns fewer than PAGE.
+    start += rows.length;
   }
   console.warn(`[${label}] Hit ${MAX}-record sanity cap — Bullhorn may have more rows beyond this point`);
   return { data: all };
