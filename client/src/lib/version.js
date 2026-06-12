@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.36';
+export const APP_VERSION = '3.29.37';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.37',
+    date: '2026-06-12',
+    title: 'Check-in completion accuracy (30-day vs 90-day)',
+    changes: [
+      { type: 'patch', text: 'The TR/AM 30-day and 90-day check-in gauges (Client Health) and the overdue-check-in list (My Dashboard) now count the two milestones separately instead of marking both done off a single check-in. They credit a milestone per distinct check-in day on file — so a contractor with one check-in shows the 30-day done and the 90-day still pending, and two check-ins logged the same day count as one. Completion percentages will drop to their true values.' },
+    ],
+  },
   {
     version: '3.29.36',
     date: '2026-06-12',
