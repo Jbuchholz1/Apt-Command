@@ -9,9 +9,17 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.38';
+export const APP_VERSION = '3.29.39';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.39',
+    date: '2026-06-12',
+    title: 'Data completeness — full results everywhere they grow large',
+    changes: [
+      { type: 'patch', text: 'Closed the remaining places where long lists could quietly stop at a cap as the underlying data grows: vendor contracts, support tickets, the Org Flow employee sync, active-user lists, and goal lists now return every matching record. Combined with the earlier reporting fixes, dashboards, exports, and boards now pull complete result sets rather than the first page.' },
+    ],
+  },
   {
     version: '3.29.38',
     date: '2026-06-12',
