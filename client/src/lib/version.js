@@ -9,9 +9,18 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.39';
+export const APP_VERSION = '3.29.40';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.40',
+    date: '2026-06-12',
+    title: 'Data completeness — final sweep + a permanent safeguard',
+    changes: [
+      { type: 'patch', text: 'Closed the last two spots where large lists could cap out as data grows: the Org Flow client-health view (all employees) and the Project Management projects list now return every record.' },
+      { type: 'patch', text: 'Added an automated build-time safeguard that blocks any future change from reintroducing a partial-results query, so “when I ask for data I get all of it” stays true going forward. This runs only during development/deploy checks — no effect on the live app’s speed or behavior.' },
+    ],
+  },
   {
     version: '3.29.39',
     date: '2026-06-12',
