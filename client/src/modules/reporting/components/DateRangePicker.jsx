@@ -1,3 +1,5 @@
+import { toLocalYMD } from '../../../lib/localDate';
+
 export default function DateRangePicker({ startDate, endDate, onStartChange, onEndChange }) {
   const today = new Date();
 
@@ -8,7 +10,7 @@ export default function DateRangePicker({ startDate, endDate, onStartChange, onE
     return date;
   };
 
-  const toISO = (d) => d.toISOString().slice(0, 10);
+  const toISO = toLocalYMD;
 
   const setThisWeek = () => {
     const sun = getSunday(today);

@@ -9,9 +9,10 @@ import TabNav from './executive/components/TabNav';
 import WeeklyTab from './executive/WeeklyTab';
 import MonthlyTab from './executive/MonthlyTab';
 import QuarterlyTab from './executive/QuarterlyTab';
+import { toLocalYMD } from '../../lib/localDate';
 
 function toISODate(d) {
-  return d.toISOString().slice(0, 10);
+  return toLocalYMD(d);
 }
 
 function getWeekRange() {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import './client-health.css';
 import { getClientHealth, getCompanyKPIs, exportHealthDashboard } from '../../lib/api';
+import { toLocalYMD } from '../../lib/localDate';
 import GaugeCard from './GaugeCard';
 import DateRangePicker from '../reporting/components/DateRangePicker';
 import ModuleSplash from '../../components/ModuleSplash';
@@ -95,8 +96,8 @@ function getDefaultDates() {
   const qMonth = Math.floor(now.getMonth() / 3) * 3;
   const qStart = new Date(now.getFullYear(), qMonth, 1);
   return {
-    start: qStart.toISOString().slice(0, 10),
-    end: now.toISOString().slice(0, 10),
+    start: toLocalYMD(qStart),
+    end: toLocalYMD(now),
   };
 }
 

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import './reporting.css';
 import { getSalesDashboard, exportSalesDashboard, updateAppointmentType } from '../../lib/api';
 import { showToast } from '../../lib/toast';
+import { toLocalYMD } from '../../lib/localDate';
 import { useUserRole } from '../../lib/UserRoleContext';
 import AccessDenied from '../../components/AccessDenied';
 import DateRangePicker from './components/DateRangePicker';
@@ -27,8 +28,8 @@ function getDefaultDates() {
   const sunday = new Date(today);
   sunday.setDate(today.getDate() - today.getDay());
   return {
-    start: sunday.toISOString().slice(0, 10),
-    end: today.toISOString().slice(0, 10),
+    start: toLocalYMD(sunday),
+    end: toLocalYMD(today),
   };
 }
 
