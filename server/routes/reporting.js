@@ -863,15 +863,13 @@ router.get('/team-alerts', requireTeamAlertsAccess, async (req, res, next) => {
     const activePlacements = placementsRes?.data || [];
     const checkinNotes = team === 'recruiting' ? trCheckins : amCheckins;
 
-    // Build set of candidate IDs with check-in notes
-    const candidateIdsWithCheckin = new Set();
-    const checkinData = checkinNotes?.data || [];
-    for (const n of checkinData) {
-      const entities = n.personReference ? [n.personReference] : [];
-      for (const e of entities) {
-        if (e.id) candidateIdsWithCheckin.add(e.id);
-      }
-    }
+    // getCheckinNotesForType() already resolves the Set of person IDs that have
+    // at least one check-in note (from each note's targetEntityID where
+    // targetEntityName = 'User'). The previous code rebuilt this set from a
+    // `.data` / `personReference` shape the helper never returns, so the set was
+    // ALWAYS empty and every aged placement got flagged 'overdue check-in'
+    // regardless of real notes. Consume the helper's resolved output instead.
+    const candidateIdsWithCheckin = checkinNotes?.candidateIdsWithCheckin || new Set();
 
     const now = Date.now();
     const DAY_MS = 24 * 60 * 60 * 1000;
