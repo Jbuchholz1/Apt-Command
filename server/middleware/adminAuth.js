@@ -58,6 +58,20 @@ function requireModule(moduleKey, level = 'basic') {
 }
 
 /**
+ * Middleware — allow only internal (Azure SSO) staff; block external vendor
+ * logins (req.user.provider === 'external'). Used for endpoints that expose
+ * firm-wide Bullhorn data — Universal Search and the Daily Brief dashboard —
+ * which external vendors must not reach. requireAuth still runs first, so
+ * req.user is always present here.
+ */
+function requireInternal(req, res, next) {
+  if (req.user?.provider === 'external') {
+    return res.status(403).json({ error: 'Forbidden — internal staff only' });
+  }
+  next();
+}
+
+/**
  * Legacy — requires global admin tier. Kept for back-compat where a route
  * gates on the global role (e.g. role-change endpoint). For module access,
  * prefer requireModule.
@@ -86,4 +100,4 @@ async function requireManager(req, res, next) {
   next();
 }
 
-module.exports = { requireAdmin, requireManager, requireModule, attachPermissions };
+module.exports = { requireAdmin, requireManager, requireModule, requireInternal, attachPermissions };

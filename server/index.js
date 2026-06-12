@@ -5,6 +5,7 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const { ipKeyGenerator } = require('express-rate-limit');
 const { requireAuth } = require('./middleware/auth');
+const { requireInternal } = require('./middleware/adminAuth');
 
 const jobsRouter = require('./routes/jobs');
 const placementsRouter = require('./routes/placements');
@@ -247,10 +248,12 @@ app.use('/api/support', supportRouter);
 app.use('/api/goals', goalsRouter);
 // Project Management module (admin/manager only — gated inside the router)
 app.use('/api/project-management', projectManagementRouter);
-// Universal Search
-app.use('/api/search', searchRouter);
-// Daily Brief role-aware tiles
-app.use('/api/dashboard', dashboardRouter);
+// Universal Search — internal staff only (exposes firm-wide Bullhorn data)
+app.use('/api/search', requireInternal, searchRouter);
+// Daily Brief role-aware tiles — internal staff only (candidate/contact PII +
+// Bullhorn meeting writes). Both were previously reachable by any token,
+// including external vendor logins.
+app.use('/api/dashboard', requireInternal, dashboardRouter);
 // User management
 app.use('/api/users', usersRouter);
 app.use('/api/admin', adminRouter);
