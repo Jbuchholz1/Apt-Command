@@ -102,83 +102,93 @@ async function callTool(toolName, args = {}) {
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000); // 30-second timeout
+  // Single 30s deadline covering BOTH the response headers AND the body read.
+  // The abort signal is passed to fetch, so firing it also aborts an in-progress
+  // res.text() — previously the timeout was cleared as soon as headers arrived,
+  // leaving the body read able to hang on undici's much longer default.
+  const timeout = setTimeout(() => controller.abort(), 30000);
 
-  let res;
   try {
-    res = await fetch(MCP_URL, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-  } catch (err) {
-    breaker.recordFailure();
-    if (err.name === 'AbortError') {
-      throw new Error(`MCP request timed out after 30s (tool: ${toolName})`);
+    let res;
+    try {
+      res = await fetch(MCP_URL, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+    } catch (err) {
+      breaker.recordFailure();
+      if (err.name === 'AbortError') {
+        throw new Error(`MCP request timed out after 30s (tool: ${toolName})`);
+      }
+      throw err;
     }
-    throw err;
+
+    if (!res.ok) {
+      breaker.recordFailure();
+      throw new Error(`MCP request failed: ${res.status} ${res.statusText}`);
+    }
+
+    // Response is SSE format — parse the data line. Reading or parsing the body
+    // can fail (connection dropped mid-body, malformed payload, or the 30s
+    // deadline aborting the stream); all are transport/protocol failures, so
+    // settle the breaker via recordFailure() on EVERY exit path. Without this, a
+    // probe that dies here in half-open never releases its in-flight slot and
+    // the breaker wedges open forever.
+    let json;
+    try {
+      const text = await res.text();
+      const dataLine = text.split('\n').find(l => l.startsWith('data: '));
+      if (!dataLine) {
+        throw new Error('No data in MCP response');
+      }
+      json = JSON.parse(dataLine.slice(6));
+    } catch (err) {
+      breaker.recordFailure();
+      if (err.name === 'AbortError') {
+        throw new Error(`MCP response body timed out after 30s (tool: ${toolName})`);
+      }
+      throw err;
+    }
+
+    if (json.error) {
+      // Application-level error from MCP: the transport is healthy (we received a
+      // well-formed JSON-RPC response), so record a SUCCESS — this both releases
+      // the half-open probe slot and correctly closes the breaker — then surface
+      // the tool's error. A probe returning 200 + json.error must NOT leave the
+      // breaker stuck in half-open.
+      breaker.recordSuccess();
+      throw new Error(`MCP error: ${json.error.message}`);
+    }
+
+    breaker.recordSuccess();
+
+    // A successful mutation can change what the cached board/stats/offer-out reads
+    // return, so drop the Bullhorn read cache. Reads refetch fresh on the next
+    // poll; cache.js's bust-generation guard prevents an in-flight read started
+    // before this write from re-populating stale data afterward.
+    if (MUTATING_TOOLS.has(toolName)) {
+      cache.bust('bh:*');
+    }
+
+    // Extract text content from result
+    const content = json.result?.content;
+    if (!content || !content.length) {
+      return null;
+    }
+
+    const textContent = content.find(c => c.type === 'text');
+    if (!textContent) return null;
+
+    // Try to parse as JSON; if not valid JSON, return the raw text
+    try {
+      return JSON.parse(textContent.text);
+    } catch {
+      return { message: textContent.text };
+    }
   } finally {
     clearTimeout(timeout);
-  }
-
-  if (!res.ok) {
-    breaker.recordFailure();
-    throw new Error(`MCP request failed: ${res.status} ${res.statusText}`);
-  }
-
-  // Response is SSE format — parse the data line. Reading or parsing the body
-  // can fail (connection dropped mid-body, malformed payload); both are
-  // transport/protocol failures, so settle the breaker via recordFailure() on
-  // EVERY exit path. Without this, a probe that dies here in half-open state
-  // never releases its in-flight slot and the breaker wedges open forever.
-  let json;
-  try {
-    const text = await res.text();
-    const dataLine = text.split('\n').find(l => l.startsWith('data: '));
-    if (!dataLine) {
-      throw new Error('No data in MCP response');
-    }
-    json = JSON.parse(dataLine.slice(6));
-  } catch (err) {
-    breaker.recordFailure();
-    throw err;
-  }
-
-  if (json.error) {
-    // Application-level error from MCP: the transport is healthy (we received a
-    // well-formed JSON-RPC response), so record a SUCCESS — this both releases
-    // the half-open probe slot and correctly closes the breaker — then surface
-    // the tool's error. A probe returning 200 + json.error must NOT leave the
-    // breaker stuck in half-open.
-    breaker.recordSuccess();
-    throw new Error(`MCP error: ${json.error.message}`);
-  }
-
-  breaker.recordSuccess();
-
-  // A successful mutation can change what the cached board/stats/offer-out reads
-  // return, so drop the Bullhorn read cache. Reads refetch fresh on the next
-  // poll; cache.js's bust-generation guard prevents an in-flight read started
-  // before this write from re-populating stale data afterward.
-  if (MUTATING_TOOLS.has(toolName)) {
-    cache.bust('bh:*');
-  }
-
-  // Extract text content from result
-  const content = json.result?.content;
-  if (!content || !content.length) {
-    return null;
-  }
-
-  const textContent = content.find(c => c.type === 'text');
-  if (!textContent) return null;
-
-  // Try to parse as JSON; if not valid JSON, return the raw text
-  try {
-    return JSON.parse(textContent.text);
-  } catch {
-    return { message: textContent.text };
   }
 }
 
