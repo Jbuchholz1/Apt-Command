@@ -78,4 +78,18 @@ async function cached(key, ttlMs, fetcher) {
   return promise;
 }
 
+// Periodic sweep. get() and bust() only evict lazily (on access), so expired
+// entries from parameterized keys — e.g. per-query/per-user search caches that
+// are never read again — would otherwise sit in the Map forever and grow the
+// store without bound. Sweep expired entries on an interval. .unref() so this
+// timer never keeps the process alive on its own (clean shutdown).
+const SWEEP_MS = parseInt(process.env.CACHE_SWEEP_MS || '60000', 10);
+const sweepTimer = setInterval(() => {
+  const now = Date.now();
+  for (const [k, entry] of store) {
+    if (entry.expiresAt <= now) store.delete(k);
+  }
+}, SWEEP_MS);
+if (typeof sweepTimer.unref === 'function') sweepTimer.unref();
+
 module.exports = { get, set, bust, clear, cached };
