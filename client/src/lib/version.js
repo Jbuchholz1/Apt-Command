@@ -15,12 +15,15 @@ export const CHANGELOG = [
   {
     version: '3.29.31',
     date: '2026-06-12',
-    title: 'Reliability fixes — Team Alerts check-ins, board stability, security patch',
+    title: 'Reliability & security fixes — Team Alerts, board stability, hardening',
     changes: [
       { type: 'patch', text: 'Team Alerts no longer flags every aged contractor as having an overdue check-in. The check-in lookup was reading an empty list, so the “overdue check-in” column fired for everyone regardless of real TR/AM 30·90 notes — now it correctly suppresses contractors who already have a check-in on file.' },
       { type: 'patch', text: 'Active Contractors and the metrics built on placements no longer silently stop at ~200 rows. Placement lookups now page through the full result set, so larger contractor counts are reported in full.' },
-      { type: 'patch', text: 'Hardened the Bullhorn connection’s circuit breaker so a hiccup during recovery can no longer wedge it shut — previously a specific failure mid-recovery could block all Bullhorn traffic until the server restarted.' },
-      { type: 'patch', text: 'Security: patched two high-severity advisories in a routing dependency (react-router) — open-redirect and denial-of-service. No functional change.' },
+      { type: 'patch', text: 'The India Req Board’s Active Contractors list now correctly shows only India-flagged contractors instead of the firm-wide list.' },
+      { type: 'patch', text: 'Hardened the Bullhorn connection’s circuit breaker so a hiccup during recovery can no longer wedge it shut — previously a specific failure mid-recovery could block all Bullhorn traffic until the server restarted. Breaker waits now return a proper “temporarily unavailable” status.' },
+      { type: 'patch', text: 'Vendor (external) logins that expire now return you to the APT sign-in page instead of bouncing to a Microsoft login you can’t complete.' },
+      { type: 'patch', text: 'Universal Search no longer counts against the per-user write limit, so heavy searching can’t trigger spurious “too many updates” errors on board edits.' },
+      { type: 'patch', text: 'Server now drains in-flight requests on redeploy instead of cutting them off, and patched two high-severity advisories in a routing dependency (react-router). Internal hardening — no visible change.' },
     ],
   },
   {
