@@ -1353,6 +1353,7 @@ async function createAppointmentAttendee({ appointmentId, clientContactId, candi
 
 module.exports = {
   CLIENT_SUB_STATUSES,
+  paginateQuery,
   getOpenJobs,
   getRecentlyClosedJobs,
   getAllJobs,

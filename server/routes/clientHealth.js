@@ -19,6 +19,7 @@ const {
   getPlacementsForJobs,
   getBackoutNotesInRange,
   getCheckinNotesForType,
+  paginateQuery,
   callTool,
 } = require('../lib/bullhorn');
 const { POINTS, EXCLUDED_RECRUITERS, bhLink } = require('../lib/recruiterConfig');
@@ -35,28 +36,32 @@ function calcHealth(placements, activities) {
 }
 
 // === Framework scoring (parallel rollout) ===
-// Thresholds and appointment type strings are placeholders; swap in confirmed
-// Bullhorn values here without editing the logic below.
+// Appointment type strings MUST match the raw Bullhorn Appointment.type values —
+// the same keys used in salesConfig.SALES_POINTS (matched verbatim via REAL_SET.has(type)).
+// The earlier placeholders ('In Person Meetings' plural, 'Sol Disc Meeting',
+// 'Sol Pitch Meeting') never matched, so those meetings scored zero. Corrected to
+// the confirmed Bullhorn values: singular 'In Person Meeting', 'Discovery',
+// 'Solutions Pitch' (the Canvas labels 'Sol Disc/Pitch Meeting' are display-only).
 const HEALTH_CONFIG = {
   REAL_MEETING_TYPES: [
-    'In Person Meetings',
+    'In Person Meeting',
     'New Meeting',
     'Req Qual',
     'Referral Meeting',
     'OOA',
     'Dinner',
-    'Sol Disc Meeting',
-    'Sol Pitch Meeting',
+    'Discovery',
+    'Solutions Pitch',
   ],
   IN_PERSON_TYPES: [
-    'In Person Meetings',
+    'In Person Meeting',
     'New Meeting',
     'Req Qual',
     'Referral Meeting',
     'OOA',
     'Dinner',
-    'Sol Disc Meeting',
-    'Sol Pitch Meeting',
+    'Discovery',
+    'Solutions Pitch',
   ],
   ONBOARDING_DAYS: 90,
   DIRECTION_THRESHOLD: 0.20,
@@ -144,7 +149,11 @@ function parseDates(req) {
   return { startMs, endMs, start, end };
 }
 
-// GET /api/client-health?start=2026-01-01&end=2026-04-09
+// GET /api/client-health — client health TABLE. NOTE: this endpoint intentionally
+// uses ROLLING windows (14 / 90 / 180 days from now) for its scoring, and does
+// NOT honor start/end. The date picker's range drives the KPI gauges only
+// (GET /kpis). Don't add start/end handling here without reworking the rolling
+// framework windows — see finding U/clientHealth date-range note.
 router.get('/', async (req, res, next) => {
   try {
     // Existing scoring uses 14-day window; framework scoring uses 90/180 day windows.
@@ -273,11 +282,14 @@ router.get('/', async (req, res, next) => {
     const earliestContactDate = {};
     try {
       const clientIdsArr = [...allClientIds];
-      const contactRes = await callTool('query_entity', {
+      // Paginate — a single count:500 page truncated under APT's ~200-row MCP
+      // cap, so companies past the cap silently lost their earliest-contact date
+      // (defaulting their onboarding tier). (The wrapped Bullhorn helpers were
+      // paginated in the truncation sweep; this inline query was missed.)
+      const contactRes = await paginateQuery('clientHealth:earliestContacts', {
         entityType: 'ClientContact',
         where: `clientCorporation.id IN (${clientIdsArr.join(',')}) AND isDeleted = false`,
         fields: 'id,dateAdded,clientCorporation',
-        count: 500,
       });
       for (const contact of contactRes?.data || []) {
         const companyId = contact.clientCorporation?.id;
@@ -661,11 +673,22 @@ router.get('/kpis', async (req, res, next) => {
     const totalMAR = Math.round(marDetails.reduce((s, p) => s + p.mar, 0) * 100) / 100;
     totalNewInput = Math.round(totalNewInput * 100) / 100;
 
-    // Dynamic MAR target: (recruiters × 26/wk + AMs × 30/wk) × 13 weeks
-    const marTarget = (recruiters.length * 26 + ams.length * 30) * 13;
+    // Dynamic MAR target scaled to the SELECTED range. Was hardcoded to 13
+    // weeks (one quarter), so viewing one week showed a target ~13x too high.
+    // rangeWeeks also rescales the Input target below.
+    const rangeWeeks = Math.max(1, (endMs - startMs) / (7 * 86400000));
+    const marTarget = Math.round((recruiters.length * 26 + ams.length * 30) * rangeWeeks);
 
     // --- Backout % (from NoteEntity where note.action = 'Backout', deduplicated) ---
-    const backoutNotes = backoutNotesRes?.data || [];
+    let backoutNotes = backoutNotesRes?.data || [];
+    if (clientIdFilter) {
+      // Scope the numerator to the same clients as the (already-filtered)
+      // denominator: keep only backout notes for candidates in the filtered
+      // placement set. Without this, a firm-wide numerator over a filtered
+      // denominator inflates the gauge and can exceed 100%.
+      const filteredCandidateIds = new Set(placements.map(p => p.candidate?.id).filter(Boolean));
+      backoutNotes = backoutNotes.filter(n => n.candidateId && filteredCandidateIds.has(n.candidateId));
+    }
     const totalPlacements = placements.length;
     const backoutCount = backoutNotes.length;
     const backoutPct = totalPlacements > 0 ? Math.round((backoutCount / totalPlacements) * 100) : 0;
@@ -805,7 +828,7 @@ router.get('/kpis', async (req, res, next) => {
       rangeLabel,
       gauges: [
         { label: 'MAR Total', value: totalMAR, target: marTarget, format: 'number', details: marDetails },
-        { label: 'Input', value: totalNewInput, target: 40000, format: 'currency', details: inputDetails },
+        { label: 'Input', value: totalNewInput, target: Math.round(40000 * (rangeWeeks / 13)), format: 'currency', details: inputDetails },
         { label: 'A/B Fill Ratio - Staffing', value: abFillRatio, target: 60, format: 'percent', details: fillDetails, tooltip: 'Fills / Total Openings for A & B priority staffing jobs in the date range' },
         { label: 'Backout %', value: backoutPct, target: 10, format: 'percent', invert: true, details: backoutDetails, tooltip: 'Backout Notes / Total Placements in the date range. Lower is better.' },
         { label: 'Fill Ratio - Project', value: projFillRatio, target: 60, format: 'percent', details: projFillDetails, tooltip: 'Fills / Total Openings for Project-type jobs in the date range' },
