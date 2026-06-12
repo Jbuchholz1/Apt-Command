@@ -239,17 +239,25 @@ export default function StatsStrip({ stats, jobs, loading, onJobUpdated, onSelec
   const [permSort, setPermSort] = useState({ key: 'id', dir: 'desc' });
   const [missedSort, setMissedSort] = useState({ key: 'id', dir: 'desc' });
 
-  // Keep the On The Board rows fresh: load on mount and re-load whenever the
-  // parent refreshes jobs (auto-refresh ticks every 5 min). Rows are
-  // self-contained (server hydrates the job payload), so this counter is
-  // independent of the board's current filter/visibility state.
+  // Keep the On The Board rows fresh WITHOUT re-fetching this heavy endpoint on
+  // every board change. This effect used to key off `jobs`, so it re-ran on
+  // every 20s poll AND every SSE override event (each replaces the jobs array) —
+  // hammering /offer-out-candidates, the heaviest stats endpoint. The rows are
+  // self-contained (the server hydrates the job payload), so they don't depend
+  // on the board's current jobs/filter state. Fetch on mount + a slow 60s
+  // interval instead; the server short-TTL-caches the underlying Bullhorn reads
+  // and busts on writes, so a change made via a modal shows up within a cycle.
   useEffect(() => {
     let cancelled = false;
-    getOfferOutCandidates()
-      .then(res => { if (!cancelled) setFilledRows(res.data || []); })
-      .catch(err => console.error('Failed to load offer-out candidates:', err));
-    return () => { cancelled = true; };
-  }, [jobs]);
+    const load = () => {
+      getOfferOutCandidates()
+        .then(res => { if (!cancelled) setFilledRows(res.data || []); })
+        .catch(err => console.error('Failed to load offer-out candidates:', err));
+    };
+    load();
+    const interval = setInterval(load, 60000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
 
   // Compute stats from jobs array
   const acceptingCandidates = stats?.acceptingCandidates ?? 0;
