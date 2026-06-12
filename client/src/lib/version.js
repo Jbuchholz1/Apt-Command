@@ -9,9 +9,20 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.40';
+export const APP_VERSION = '3.29.41';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.41',
+    date: '2026-06-12',
+    title: 'Security — access control & permission fixes',
+    changes: [
+      { type: 'patch', text: 'Universal Search and the Daily Brief dashboards are now restricted to internal staff; external vendor logins can no longer reach them.' },
+      { type: 'patch', text: 'Tightened permissions so users can only act on their own data: Sales activity reclassification is limited to the activity’s owner (or a Sales admin), goals can’t be promoted to top-level or reassigned by non-managers, and Org Flow imports can no longer reassign client ownership or edit another client’s employees.' },
+      { type: 'patch', text: 'Support module-admins can now properly view and comment on the tickets they’re allowed to manage (previously required global admin).' },
+      { type: 'patch', text: 'Internal hardening: redacted note text from sandbox logs, locked down a known-issues update path, and rate-limited password changes.' },
+    ],
+  },
   {
     version: '3.29.40',
     date: '2026-06-12',
