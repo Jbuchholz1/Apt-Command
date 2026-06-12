@@ -645,7 +645,11 @@ async function paginatedQuery({ entityType, dateField, startMs, endMs, extraWher
 
   while (chunkStart < endMs) {
     const chunkEnd = Math.min(chunkStart + CHUNK_MS, endMs);
-    const where = `${dateField} > ${chunkStart} AND ${dateField} < ${chunkEnd} ${extraWhere}`.trim();
+    // Half-open interval [chunkStart, chunkEnd): `>=` on the start so a record
+    // landing exactly on an internal 30-day boundary isn't dropped by both
+    // adjacent chunks (the old `> chunkStart AND < chunkEnd` lost seam records).
+    // Each record now falls in exactly one chunk — no overlap, no gap.
+    const where = `${dateField} >= ${chunkStart} AND ${dateField} < ${chunkEnd} ${extraWhere}`.trim();
     // Paginate WITHIN each 30-day chunk. The old code took a single capped page
     // per chunk, so any 30-day window with more than ~200 matching rows (common
     // for sales appointments / client subs across the whole team) was silently
