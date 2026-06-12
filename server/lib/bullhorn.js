@@ -179,12 +179,11 @@ const JOB_FIELDS = [
 ].join(',');
 
 async function getOpenJobs() {
-  return callTool('query_entity', {
+  return paginateQuery('getOpenJobs', {
     entityType: 'JobOrder',
     where: 'isOpen = true AND isDeleted = false',
     fields: JOB_FIELDS,
     orderBy: '-dateAdded',
-    count: 200,
   });
 }
 
@@ -192,22 +191,20 @@ async function getOpenJobs() {
 // server-side logic uses status_changed_at for precise 12hr fall-off
 async function getRecentlyClosedJobs() {
   const cutoff = Date.now() - (48 * 60 * 60 * 1000); // 48 hours ago (wide net)
-  return callTool('query_entity', {
+  return paginateQuery('getRecentlyClosedJobs', {
     entityType: 'JobOrder',
     where: `isOpen = false AND isDeleted = false AND dateLastModified > ${cutoff} AND (status = 'Archive' OR status = 'Placed' OR status = 'Lost' OR status = 'Wash' OR status = 'Filled')`,
     fields: JOB_FIELDS,
     orderBy: '-dateLastModified',
-    count: 100,
   });
 }
 
 async function getAllJobs() {
-  return callTool('query_entity', {
+  return paginateQuery('getAllJobs', {
     entityType: 'JobOrder',
     where: 'isDeleted = false',
     fields: JOB_FIELDS,
     orderBy: '-dateAdded',
-    count: 200,
   });
 }
 
@@ -262,12 +259,11 @@ const CLIENT_SUB_STATUSES = [
 
 async function getSubmissions(jobOrderId) {
   const statusList = CLIENT_SUB_STATUSES.map(s => `'${s}'`).join(',');
-  return callTool('query_entity', {
+  return paginateQuery('getSubmissions', {
     entityType: 'JobSubmission',
     where: `jobOrder.id = ${parseInt(jobOrderId, 10)} AND status IN (${statusList}) AND isDeleted = false`,
     fields: 'id,candidate,status,dateAdded,source,sendingUser',
     orderBy: '-dateAdded',
-    count: 500,
   });
 }
 
@@ -391,32 +387,29 @@ async function getClientSubmissions(jobOrderIds) {
     for (let i = 0; i < numeric.length; i += CHUNK) {
       chunks.push(numeric.slice(i, i + CHUNK));
     }
-    const results = await Promise.all(chunks.map(ids => callTool('query_entity', {
+    const results = await Promise.all(chunks.map(ids => paginateQuery('getClientSubmissions:chunk', {
       entityType: 'JobSubmission',
       where: `jobOrder.id IN (${ids.join(',')}) AND status IN (${statusList}) AND isDeleted = false`,
       fields: 'id,jobOrder,dateAdded,status',
-      count: 500,
     })));
     return { data: results.flatMap(r => r?.data || []) };
   }
 
-  return callTool('query_entity', {
+  return paginateQuery('getClientSubmissions:global', {
     entityType: 'JobSubmission',
     where: `status IN (${statusList}) AND isDeleted = false`,
     fields: 'id,jobOrder,dateAdded,status',
-    count: 500,
   });
 }
 
 // Submissions currently in "Offer Extended" status (corresponds to JobOrder "Offer Out" stage).
 // Used by the On The Board modal to show which candidate is on the board per filled job.
 async function getOfferExtendedSubmissions() {
-  return callTool('query_entity', {
+  return paginateQuery('getOfferExtendedSubmissions', {
     entityType: 'JobSubmission',
     where: "status = 'Offer Extended' AND isDeleted = false",
     fields: 'id,candidate,jobOrder,status,dateAdded,payRate,billRate,salary,customFloat2,customFloat5',
     orderBy: '-dateAdded',
-    count: 500,
   });
 }
 
@@ -462,11 +455,10 @@ async function getSubmittedPlacements() {
 }
 
 async function getOpenOpportunities() {
-  return callTool('query_entity', {
+  return paginateQuery('getOpenOpportunities', {
     entityType: 'Opportunity',
     where: "isDeleted = false",
     fields: 'id,status',
-    count: 500,
   });
 }
 
@@ -527,21 +519,19 @@ async function updateAppointmentField(appointmentId, fields) {
 }
 
 async function getCorporateUsers() {
-  return callTool('query_entity', {
+  return paginateQuery('getCorporateUsers', {
     entityType: 'CorporateUser',
     where: 'isDeleted = false AND enabled = true',
     fields: 'id,firstName,lastName,email,customText1',
-    count: 100,
   });
 }
 
 async function getOpenOpportunitiesFull() {
-  return callTool('query_entity', {
+  return paginateQuery('getOpenOpportunitiesFull', {
     entityType: 'Opportunity',
     where: "isDeleted = false",
     fields: 'id,title,status,owner,clientCorporation,clientContact,customDate1,dateAdded,expectedCloseDate,dealValue,weightedDealValue',
     orderBy: '-dateAdded',
-    count: 500,
   });
 }
 
@@ -555,12 +545,11 @@ async function getOpportunityById(opportunityId) {
 }
 
 async function getClientContactsForCorp(clientCorpId) {
-  return callTool('query_entity', {
+  return paginateQuery('getClientContactsForCorp', {
     entityType: 'ClientContact',
     where: `clientCorporation.id = ${parseInt(clientCorpId, 10)} AND isDeleted = false`,
     fields: 'id,firstName,lastName,email',
     orderBy: 'lastName',
-    count: 200,
   });
 }
 
@@ -677,11 +666,10 @@ async function paginatedQuery({ entityType, dateField, startMs, endMs, extraWher
 // --- Reporting: date-range queries ---
 
 async function getRecruiterUsers() {
-  return callTool('query_entity', {
+  return paginateQuery('getRecruiterUsers', {
     entityType: 'CorporateUser',
     where: "isDeleted = false AND enabled = true AND customText1 = 'Recruiter'",
     fields: 'id,firstName,lastName,email,customText1,customDate1,customDate3',
-    count: 50,
   });
 }
 
@@ -728,22 +716,20 @@ async function getLeadsInRange(startMs, endMs) {
 async function getRecruitingCommissions(placementIds) {
   if (!placementIds.length) return { data: [] };
   const idList = placementIds.join(',');
-  return callTool('query_entity', {
+  return paginateQuery('getRecruitingCommissions', {
     entityType: 'PlacementCommission',
     where: `placement.id IN (${idList}) AND role = 'Recruiting'`,
     fields: 'id,user,role,commissionPercentage,placement',
-    count: 500,
   });
 }
 
 // --- Sales reporting queries ---
 
 async function getAMUsers() {
-  return callTool('query_entity', {
+  return paginateQuery('getAMUsers', {
     entityType: 'CorporateUser',
     where: "isDeleted = false AND enabled = true AND customText1 = 'Account Manager'",
     fields: 'id,firstName,lastName,email,customText1,customDate1,customDate3',
-    count: 50,
   });
 }
 
@@ -786,43 +772,39 @@ async function getClosedJobsInRange(startMs, endMs) {
 async function getSalesCommissions(placementIds) {
   if (!placementIds.length) return { data: [] };
   const idList = placementIds.join(',');
-  return callTool('query_entity', {
+  return paginateQuery('getSalesCommissions', {
     entityType: 'PlacementCommission',
     where: `placement.id IN (${idList}) AND role = 'Sales'`,
     fields: 'id,user,role,commissionPercentage,placement',
-    count: 500,
   });
 }
 
 // --- Client Health queries ---
 
 async function getActivePlacementsWithClient() {
-  return callTool('query_entity', {
+  return paginateQuery('getActivePlacementsWithClient', {
     entityType: 'Placement',
     where: "status IN ('Approved','Active')",
     fields: 'id,status,candidate(id,firstName,lastName,owner),owner,jobOrder(id,title,clientCorporation,owner,clientContact(id,firstName,lastName,email)),dateBegin,dateEnd,payRate,clientBillRate,salary,fee,employeeType',
-    count: 500,
   });
 }
 
 async function getRecentAppointments(sinceDateMs) {
-  return callTool('query_entity', {
+  return paginateQuery('getRecentAppointments', {
     entityType: 'Appointment',
     where: `dateBegin > ${sinceDateMs} AND isDeleted = false`,
     fields: 'id,type,subject,dateBegin,owner(id,firstName,lastName),clientContactReference(id,firstName,lastName,clientCorporation),jobOrder(id,clientCorporation)',
     orderBy: '-dateBegin',
-    count: 500,
   });
 }
 
 async function getClientCorporations(clientIds) {
   if (!clientIds.length) return { data: [] };
   const idList = clientIds.join(',');
-  return callTool('query_entity', {
+  return paginateQuery('getClientCorporations', {
     entityType: 'ClientCorporation',
     where: `id IN (${idList})`,
     fields: 'id,name,status,owners',
-    count: 500,
   });
 }
 
@@ -837,74 +819,20 @@ async function getClientCorporations(clientIds) {
 // page is full. Incremental runs filter by dateLastModified and almost
 // always fit in a single page.
 async function getActiveClientCorporations(sinceMs = 0) {
-  const PAGE_SIZE = 500;
   const fields = 'id,name,status,dateAdded,dateLastModified,owners';
-
-  if (sinceMs > 0) {
-    return callTool('query_entity', {
-      entityType: 'ClientCorporation',
-      where: `dateLastModified > ${sinceMs}`,
-      fields,
-      orderBy: '-dateLastModified',
-      count: PAGE_SIZE,
-    });
-  }
-
-  // Full scan — paginate by id. orderBy: 'id' so the cursor (max id seen)
-  // monotonically advances; loop until a page returns less than PAGE_SIZE.
-  // Per-page failures are caught and retried once; if a page still fails
-  // we break with what we have so the sync surfaces partial progress
-  // instead of a hard 500 to the user.
-  const allCorps = [];
-  let lastId = 0;
-  let pages = 0;
-  let pageErrors = 0;
-  while (true) {
-    let result;
-    try {
-      result = await callTool('query_entity', {
-        entityType: 'ClientCorporation',
-        where: `id > ${lastId}`,
-        fields,
-        orderBy: 'id',
-        count: PAGE_SIZE,
-      });
-    } catch (err) {
-      pageErrors++;
-      console.warn(`[bullhorn] page ${pages + 1} (id > ${lastId}) failed, retrying: ${err.message}`);
-      try {
-        result = await callTool('query_entity', {
-          entityType: 'ClientCorporation',
-          where: `id > ${lastId}`,
-          fields,
-          orderBy: 'id',
-          count: PAGE_SIZE,
-        });
-      } catch (retryErr) {
-        console.warn(`[bullhorn] retry failed: ${retryErr.message} — returning partial result`);
-        break;
-      }
-    }
-    if (result?.message && !Array.isArray(result?.data)) {
-      console.warn(`[bullhorn] page ${pages + 1} returned non-JSON: ${String(result.message).slice(0, 200)}`);
-      break;
-    }
-    const corps = result?.data || [];
-    pages++;
-    if (corps.length === 0) break;
-    allCorps.push(...corps);
-    lastId = corps[corps.length - 1].id;
-    // Don't bail on corps.length < PAGE_SIZE — APT's MCP caps responses
-    // at 200 even when count: 500 is requested, so the early-break stopped
-    // pagination after page 1 last time. Keep going until a page is empty.
-    // Safety: hard cap at 100 pages (~50,000 corps).
-    if (pages >= 100) {
-      console.warn('[bullhorn] getActiveClientCorporations hit 100-page safety cap');
-      break;
-    }
-  }
-  console.log(`[bullhorn] full ClientCorporation scan: ${allCorps.length} corps in ${pages} pages, ${pageErrors} retries`);
-  return { data: allCorps };
+  // Both the incremental (dateLastModified > sinceMs) and full-scan paths now
+  // run through the shared id-cursor paginator. The incremental path used to
+  // take a single capped page, so a bulk update touching >~200 corps was
+  // silently dropped from the sync (finding U38); it now pages fully too.
+  const where = sinceMs > 0 ? `dateLastModified > ${sinceMs}` : '';
+  const result = await paginateQuery('getActiveClientCorporations', {
+    entityType: 'ClientCorporation',
+    where,
+    fields,
+    orderBy: 'id',
+  });
+  console.log(`[bullhorn] ClientCorporation scan: ${result.data.length} corps (sinceMs=${sinceMs})`);
+  return result;
 }
 
 async function getABJobs(startMs, endMs) {
@@ -912,11 +840,10 @@ async function getABJobs(startMs, endMs) {
   if (startMs && endMs) {
     where += ` AND customDate1 > ${startMs} AND customDate1 < ${endMs}`;
   }
-  return callTool('query_entity', {
+  return paginateQuery('getABJobs', {
     entityType: 'JobOrder',
     where,
     fields: 'id,title,type,status,numOpenings,owner,clientCorporation',
-    count: 500,
   });
 }
 
@@ -925,11 +852,10 @@ async function getProjectJobs(startMs, endMs) {
   if (startMs && endMs) {
     where += ` AND customDate1 > ${startMs} AND customDate1 < ${endMs}`;
   }
-  return callTool('query_entity', {
+  return paginateQuery('getProjectJobs', {
     entityType: 'JobOrder',
     where,
     fields: 'id,title,type,status,numOpenings,owner,clientCorporation,employmentType',
-    count: 500,
   });
 }
 
@@ -977,11 +903,14 @@ const ALLOWED_CHECKIN_TYPES = new Set(['TR 30/90', 'AM 30/90']);
 // Count of placements that were "active" as of a specific point in time.
 // Active = dateBegin <= asOf AND (dateEnd is null OR dateEnd >= asOf), excluding voided.
 async function countActivePlacementsAsOf(asOfMs) {
-  const result = await callTool('query_entity', {
+  // Was a single count:1000 page — but the MCP caps near ~200, so the headcount
+  // metric this feeds (Exec Weekly) silently undercounted once the firm had
+  // more than a couple hundred placements begun on/before the date. Paginate.
+  const result = await paginateQuery('countActivePlacementsAsOf', {
     entityType: 'Placement',
     where: `dateBegin <= ${asOfMs} AND status <> 'Voided' AND isDeleted = false`,
     fields: 'id,dateBegin,dateEnd,status',
-    count: 1000,
+    orderBy: 'id',
   });
   const rows = result?.data || [];
   return rows.filter(p => !p.dateEnd || p.dateEnd >= asOfMs).length;
@@ -1007,12 +936,11 @@ async function getActivePlacementsAsOf(asOfMs) {
 
 // Placements whose contract ends in the supplied window (used for off-board forecast).
 async function getOffboardsInWindow(startMs, endMs) {
-  return callTool('query_entity', {
+  return paginateQuery('getOffboardsInWindow', {
     entityType: 'Placement',
     where: `dateEnd >= ${startMs} AND dateEnd <= ${endMs} AND status <> 'Voided' AND isDeleted = false`,
     fields: 'id,candidate(id,firstName,lastName),jobOrder(id,title,clientCorporation(name)),dateEnd,status,employmentType,payRate,clientBillRate',
     orderBy: 'dateEnd',
-    count: 200,
   });
 }
 
@@ -1034,12 +962,14 @@ async function getCheckinNotesForType(actionType) {
   }
   // Query ALL checkin notes (no date range — we need full history for active placements)
   // Filter to targetEntityName = 'User' to get only candidate-linked rows
-  // (each note creates rows for User, Placement, JobOrder — we only need User)
-  const result = await callTool('query_entity', {
+  // (each note creates rows for User, Placement, JobOrder — we only need User).
+  // Paginated: full history across all contractors easily exceeds the ~200 cap,
+  // and a truncated set here makes Team Alerts under-suppress overdue check-ins.
+  const result = await paginateQuery('getCheckinNotesForType', {
     entityType: 'NoteEntity',
     where: `note.action = '${actionType}' AND note.isDeleted = false AND targetEntityName = 'User'`,
     fields: 'id,note,targetEntityID',
-    count: 500,
+    orderBy: 'id',
   });
 
   // Collect unique candidate IDs that have at least one checkin note
@@ -1056,21 +986,23 @@ async function getCheckinNotesForType(actionType) {
 async function getPlacementsForJobs(jobIds) {
   if (!jobIds.length) return { data: [] };
   const idList = jobIds.join(',');
-  return callTool('query_entity', {
+  return paginateQuery('getPlacementsForJobs', {
     entityType: 'Placement',
     where: `jobOrder.id IN (${idList})`,
     fields: 'id,jobOrder,status',
-    count: 500,
+    orderBy: 'id',
   });
 }
 
 async function getCorporateUserByEmail(email) {
-  // Fetch all active users and match by email (case-insensitive)
-  const result = await callTool('query_entity', {
+  // Fetch all active users and match by email (case-insensitive). Paginated so
+  // a firm with >~200 active CorporateUsers doesn't drop users past the cap —
+  // a dropped user can't be matched and their Daily Brief silently breaks.
+  const result = await paginateQuery('getCorporateUserByEmail', {
     entityType: 'CorporateUser',
     where: "isDeleted = false AND enabled = true",
     fields: 'id,firstName,lastName,email,customText1,customDate1,customDate3',
-    count: 100,
+    orderBy: 'id',
   });
   const normalizedEmail = email.toLowerCase();
   const match = (result.data || []).find(u => u.email && u.email.toLowerCase() === normalizedEmail);
@@ -1090,23 +1022,21 @@ const IN_PLAY_STATUSES = [
 
 async function getInPlaySubmissionsForUser(userId) {
   const statusList = IN_PLAY_STATUSES.map(s => `'${s}'`).join(',');
-  return callTool('query_entity', {
+  return paginateQuery('getInPlaySubmissionsForUser', {
     entityType: 'JobSubmission',
     where: `sendingUser.id = ${parseInt(userId, 10)} AND status IN (${statusList}) AND isDeleted = false`,
     fields: 'id,status,dateAdded,candidate(id,firstName,lastName),jobOrder(id,title,clientCorporation(id,name))',
     orderBy: '-dateAdded',
-    count: 500,
   });
 }
 
 // ClientContacts owned by the given user. Powers the AM "Stale Client Contacts" tile.
 async function getClientContactsOwnedBy(userId) {
-  return callTool('query_entity', {
+  return paginateQuery('getClientContactsOwnedBy', {
     entityType: 'ClientContact',
     where: `owners.id = ${parseInt(userId, 10)} AND isDeleted = false`,
     fields: 'id,firstName,lastName,email,clientCorporation(id,name)',
     orderBy: 'lastName',
-    count: 500,
   });
 }
 
