@@ -194,7 +194,7 @@ async function getRecentlyClosedJobs() {
   const cutoff = Date.now() - (48 * 60 * 60 * 1000); // 48 hours ago (wide net)
   return callTool('query_entity', {
     entityType: 'JobOrder',
-    where: `isOpen = false AND isDeleted = false AND dateLastModified > ${cutoff} AND (status = 'Archive' OR status = 'Placed' OR status = 'Lost' OR status = 'Wash')`,
+    where: `isOpen = false AND isDeleted = false AND dateLastModified > ${cutoff} AND (status = 'Archive' OR status = 'Placed' OR status = 'Lost' OR status = 'Wash' OR status = 'Filled')`,
     fields: JOB_FIELDS,
     orderBy: '-dateLastModified',
     count: 100,
