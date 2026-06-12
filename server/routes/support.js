@@ -33,15 +33,24 @@ router.get('/health', async (req, res, next) => {
       (async () => {
         const { callTool } = require('../lib/bullhorn');
         const start = Date.now();
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
+        // Cap the health probe at 5s. The old AbortController/timeout was dead
+        // code — callTool() doesn't accept a signal, so the abort never fired
+        // and a slow MCP could hang this probe for callTool's full 30s. Race the
+        // call against a timer instead so health reflects "slow" promptly.
+        let timer;
+        const deadline = new Promise((_, reject) => {
+          timer = setTimeout(() => reject(new Error('health check timed out after 5s')), 5000);
+        });
         try {
-          await callTool('search_jobs', { query: 'health_check', count: 1 });
-          clearTimeout(timeout);
+          await Promise.race([
+            callTool('search_jobs', { query: 'health_check', count: 1 }),
+            deadline,
+          ]);
           return { status: 'healthy', responseTimeMs: Date.now() - start };
         } catch (err) {
-          clearTimeout(timeout);
           return { status: 'down', error: err.message, responseTimeMs: Date.now() - start };
+        } finally {
+          clearTimeout(timer);
         }
       })(),
       // 2. Supabase ping
