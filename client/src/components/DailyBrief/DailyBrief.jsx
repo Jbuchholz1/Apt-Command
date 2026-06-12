@@ -34,9 +34,40 @@ import './daily-brief.css';
 
 const TWO_WEEKS_MS = 14 * 86400000;
 
+// Parses both Bullhorn timestamps (ms number / ISO string) AND the free-text
+// override fields (deadline, follow-up), which users type as bare "6/15" or
+// "06/15/26". `new Date('6/15')` parses to the YEAR 2001, so a year-less
+// deadline was always in the past and got flagged "missed" forever. For a bare
+// month/day we assume the current year, rolling to next year if that date is
+// more than ~9 months past (handles the Dec→Jan wrap). Full/ISO values fall
+// through to native Date parsing unchanged.
 function parseDateFlexible(value) {
-  if (!value) return null;
-  const t = new Date(value).getTime();
+  if (value == null || value === '') return null;
+  if (typeof value === 'number') return Number.isNaN(value) ? null : value;
+
+  const str = String(value).trim();
+  // Bare US month/day, optional year: 6/15, 06/15, 6-15, 6/15/26, 6/15/2026.
+  const md = str.match(/^(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?$/);
+  if (md) {
+    const month = parseInt(md[1], 10);
+    const day = parseInt(md[2], 10);
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+    let year;
+    if (md[3]) {
+      year = parseInt(md[3], 10);
+      if (year < 100) year += 2000;
+    } else {
+      const now = new Date();
+      year = now.getFullYear();
+      const candidate = new Date(year, month - 1, day).getTime();
+      const NINE_MONTHS_MS = 9 * 30 * 86400000;
+      if (now.getTime() - candidate > NINE_MONTHS_MS) year += 1;
+    }
+    const d = new Date(year, month - 1, day).getTime();
+    return Number.isNaN(d) ? null : d;
+  }
+
+  const t = new Date(str).getTime();
   return Number.isNaN(t) ? null : t;
 }
 
