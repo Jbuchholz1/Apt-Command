@@ -271,39 +271,89 @@ async function getSubmissions(jobOrderId) {
   });
 }
 
-// Walks all pages of a Placement query so the result is never silently
-// truncated. Guards against an MCP server that ignores `start` by checking
-// whether page N+1 starts with the same record as page 0 — if so, we stop
-// rather than loop forever. Also stops at MAX as a runaway safety net.
-async function paginatePlacementQuery(label, baseArgs) {
-  const PAGE = 500;
-  const MAX = 5000;
+// --- Generic cap-proof pagination -------------------------------------------
+//
+// APT's MCP caps query responses at ~200 rows even when a larger `count` is
+// requested, and it does NOT reliably honor a `start` offset. The only
+// pagination approach proven against this tenant (see getActiveClientCorporations)
+// is an ID CURSOR: order by id ascending and ask for `id > <last id seen>` each
+// page until a page comes back empty.
+//
+// paginateQuery walks every page of ANY query_entity call this way, so a result
+// is never silently truncated by the cap. It:
+//   - parenthesizes the caller's WHERE before appending the cursor, so an OR
+//     clause (e.g. "status = 'A' OR status = 'B'") is not mis-bound;
+//   - guarantees a top-level `id` is selected (the cursor needs it);
+//   - retries a failed page once, then returns partial rather than throwing;
+//   - bails if the cursor fails to advance (defends against an unordered or
+//     id-less response) instead of looping forever;
+//   - re-applies the caller's intended orderBy client-side, since the wire
+//     order is forced to id-ascending.
+function getPath(obj, path) {
+  return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
+}
+
+async function paginateQuery(label, baseArgs, opts = {}) {
+  const PAGE = opts.page || 500;
+  const MAX_PAGES = opts.maxPages || 200;
+  const baseWhere = baseArgs.where ? `(${baseArgs.where}) AND ` : '';
+  const fields = /(^|,)\s*id\s*(,|$)/.test(baseArgs.fields) ? baseArgs.fields : `id,${baseArgs.fields}`;
   const all = [];
-  let start = 0;
-  let firstSeenId = null;
-  while (start < MAX) {
-    const page = await callTool('query_entity', { ...baseArgs, count: PAGE, start });
-    const rows = page?.data || [];
-    // An empty page is the only reliable end-of-data signal. APT's MCP caps
-    // responses at ~200 rows even when count:500 is requested, so the FIRST
-    // page is already "short" — the old `rows.length < PAGE` break truncated
-    // every placement query after page 1 (mirrors getActiveClientCorporations,
-    // which had the same bug and was fixed the same way).
-    if (rows.length === 0) return { data: all };
-    if (start === 0) {
-      firstSeenId = rows[0]?.id ?? null;
-    } else if (rows[0].id === firstSeenId) {
-      console.warn(`[${label}] MCP ignored \`start\` offset — pagination not honored. Returning first page only.`);
-      return { data: all };
+  let lastId = 0;
+  let pages = 0;
+  while (pages < MAX_PAGES) {
+    const args = { entityType: baseArgs.entityType, where: `${baseWhere}id > ${lastId}`, fields, orderBy: 'id', count: PAGE };
+    let res;
+    try {
+      res = await callTool('query_entity', args);
+    } catch (err) {
+      console.warn(`[${label}] page ${pages + 1} (id > ${lastId}) failed, retrying: ${err.message}`);
+      try {
+        res = await callTool('query_entity', args);
+      } catch (retryErr) {
+        console.warn(`[${label}] retry failed: ${retryErr.message} — returning partial (${all.length} rows)`);
+        break;
+      }
     }
+    if (res?.message && !Array.isArray(res?.data)) {
+      console.warn(`[${label}] page ${pages + 1} returned non-JSON: ${String(res.message).slice(0, 200)}`);
+      break;
+    }
+    const rows = res?.data || [];
+    pages++;
+    if (rows.length === 0) break;
     all.push(...rows);
-    // Advance by the rows actually returned (not the requested PAGE) so the
-    // offset stays correct under the server-side cap — `start += PAGE` would
-    // skip rows whenever the server returns fewer than PAGE.
-    start += rows.length;
+    const maxId = Number(rows[rows.length - 1].id);
+    if (!(maxId > lastId)) {
+      console.warn(`[${label}] id cursor did not advance (lastId=${lastId}) — stopping; result may be partial`);
+      break;
+    }
+    lastId = maxId;
+    if (pages >= MAX_PAGES) {
+      console.warn(`[${label}] hit ${MAX_PAGES}-page safety cap — more rows may exist beyond id ${lastId}`);
+    }
   }
-  console.warn(`[${label}] Hit ${MAX}-record sanity cap — Bullhorn may have more rows beyond this point`);
+  const ob = baseArgs.orderBy;
+  if (ob && ob !== 'id') {
+    const desc = ob.startsWith('-');
+    const field = desc ? ob.slice(1) : ob;
+    all.sort((a, b) => {
+      const av = getPath(a, field);
+      const bv = getPath(b, field);
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      if (av === bv) return 0;
+      return (av < bv ? -1 : 1) * (desc ? -1 : 1);
+    });
+  }
   return { data: all };
+}
+
+// Backwards-compatible alias — every Placement reader already calls this name.
+// Now backed by the generic id-cursor paginator above.
+function paginatePlacementQuery(label, baseArgs) {
+  return paginateQuery(label, baseArgs);
 }
 
 async function getActivePlacements() {
@@ -606,17 +656,18 @@ async function paginatedQuery({ entityType, dateField, startMs, endMs, extraWher
 
   while (chunkStart < endMs) {
     const chunkEnd = Math.min(chunkStart + CHUNK_MS, endMs);
-    const where = `${dateField} > ${chunkStart} AND ${dateField} < ${chunkEnd} ${extraWhere}`;
-    const result = await callTool('query_entity', {
+    const where = `${dateField} > ${chunkStart} AND ${dateField} < ${chunkEnd} ${extraWhere}`.trim();
+    // Paginate WITHIN each 30-day chunk. The old code took a single capped page
+    // per chunk, so any 30-day window with more than ~200 matching rows (common
+    // for sales appointments / client subs across the whole team) was silently
+    // truncated. id-cursor pagination collects the full window.
+    const { data } = await paginateQuery(`paginatedQuery:${entityType}`, {
       entityType,
       where,
       fields,
       orderBy: `-${dateField}`,
-      count: 500,
     });
-    if (result?.data) {
-      allData.push(...result.data);
-    }
+    allData.push(...data);
     chunkStart = chunkEnd;
   }
 
@@ -697,34 +748,19 @@ async function getAMUsers() {
 }
 
 async function getAppointmentsInRange(startMs, endMs, ownerIds) {
-  // Bullhorn caps query results at 500. For long date ranges we split into
-  // 30-day chunks and merge to avoid data truncation.
-  const CHUNK_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+  // Sales activity (MAR) volume across the whole AM team easily exceeds the
+  // ~200-row cap inside a single 30-day window, so this MUST paginate within
+  // each chunk — delegate to paginatedQuery, which now does exactly that.
   const ownerClause = (ownerIds && ownerIds.length > 0)
     ? ` AND owner.id IN (${ownerIds.join(',')})`
     : '';
-  const fields = 'id,type,dateBegin,owner,candidateReference,jobOrder(id,title,clientCorporation),subject,clientContactReference(id,clientCorporation)';
-
-  const allData = [];
-  let chunkStart = startMs;
-
-  while (chunkStart < endMs) {
-    const chunkEnd = Math.min(chunkStart + CHUNK_MS, endMs);
-    const where = `dateBegin > ${chunkStart} AND dateBegin < ${chunkEnd} AND isDeleted = false${ownerClause}`;
-    const result = await callTool('query_entity', {
-      entityType: 'Appointment',
-      where,
-      fields,
-      orderBy: '-dateBegin',
-      count: 500,
-    });
-    if (result?.data) {
-      allData.push(...result.data);
-    }
-    chunkStart = chunkEnd;
-  }
-
-  return { data: allData };
+  return paginatedQuery({
+    entityType: 'Appointment',
+    dateField: 'dateBegin',
+    startMs, endMs,
+    extraWhere: `AND isDeleted = false${ownerClause}`,
+    fields: 'id,type,dateBegin,owner,candidateReference,jobOrder(id,title,clientCorporation),subject,clientContactReference(id,clientCorporation)',
+  });
 }
 
 async function getNewJobsInRange(startMs, endMs) {
