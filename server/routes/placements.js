@@ -1,5 +1,6 @@
 const express = require('express');
 const { getActivePlacements } = require('../lib/bullhorn');
+const { getAllOverrides } = require('../lib/db');
 const { contractorWeeklySpread, permWeeklyFee } = require('../lib/spread');
 const { requireModule } = require('../middleware/adminAuth');
 
@@ -8,10 +9,27 @@ const router = express.Router();
 router.use(requireModule('req_board'));
 
 // GET /api/placements — Active placements (active contractors)
+// `?apt_india=true` scopes the list to contractors whose job is India-flagged
+// (via job_overrides.apt_india), mirroring the same filter on /stats. Without
+// this, the India Req Board's Active Contractors modal showed firm-wide rows.
 router.get('/', async (req, res, next) => {
   try {
-    const result = await getActivePlacements();
-    const placements = (result?.data || []).map(p => {
+    const aptIndiaOnly = req.query.apt_india === 'true';
+    const [result, overrides] = await Promise.all([
+      getActivePlacements(),
+      aptIndiaOnly ? getAllOverrides() : Promise.resolve({}),
+    ]);
+    let rows = result?.data || [];
+    if (aptIndiaOnly) {
+      const indiaJobIds = new Set(
+        Object.entries(overrides)
+          .filter(([, ov]) => ov && (ov.apt_india === true || ov.apt_india === 'true'))
+          .map(([id]) => parseInt(id, 10))
+          .filter(id => !Number.isNaN(id)),
+      );
+      rows = rows.filter(p => p.jobOrder && indiaJobIds.has(p.jobOrder.id));
+    }
+    const placements = rows.map(p => {
       const employmentType = p.employmentType || p.jobOrder?.employmentType || null;
       const payRate = p.payRate || null;
       const billRate = p.clientBillRate || null;
