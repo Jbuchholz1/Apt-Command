@@ -107,9 +107,14 @@ const ipFloodLimiter = rateLimit({
 
 // Fall back to the library's IPv6-safe IP keying when we don't have an authed user
 // (dev mode or unauthenticated routes that still hit this limiter).
-const userKey = (req, res) => {
+const userKey = (req) => {
   if (req.user && req.user.id) return `u:${req.user.id}`;
-  return `ip:${ipKeyGenerator(req, res)}`;
+  // express-rate-limit v8's ipKeyGenerator takes (ip, ipv6Subnet?) — it must be
+  // passed req.ip (a string), NOT the (req, res) pair the old code used, which
+  // returned the literal '[object Object]' and collapsed every keyless request
+  // into ONE shared bucket. Passing req.ip restores the intended IPv6-safe /56
+  // subnet normalization.
+  return `ip:${ipKeyGenerator(req.ip)}`;
 };
 
 const userGeneralLimiter = rateLimit({
@@ -210,7 +215,12 @@ app.use('/api', requireAuth);
 // Per-user rate limits — applied after auth so they key off req.user.id.
 app.use('/api', userGeneralLimiter);
 app.use('/api', (req, res, next) => {
-  if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(req.method)) {
+  // Universal Search is a read that happens to use POST (it carries a query
+  // body), so exempt it from the 30/min mutation budget — otherwise active
+  // searching burns the same budget real saves need and surfaces as spurious
+  // 429s on board edits. (req.path is mount-relative to '/api' here.)
+  const isSearch = req.path === '/search' || req.path.startsWith('/search/');
+  if (!isSearch && ['POST', 'PATCH', 'PUT', 'DELETE'].includes(req.method)) {
     return userWriteLimiter(req, res, next);
   }
   next();
@@ -273,7 +283,7 @@ app.use((err, req, res, next) => {
   }
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`API server running on port ${PORT}`);
   console.log(`Auth: ${process.env.AZURE_TENANT_ID ? 'Microsoft SSO enabled' : 'DEV MODE (no auth)'}`);
   // Single shared Supabase Realtime subscription for the Req Board.
@@ -286,6 +296,43 @@ app.listen(PORT, () => {
   } catch (err) {
     console.warn('[realtime] init failed:', err && err.message);
   }
+});
+
+// --- Graceful shutdown for Railway redeploys ---
+// Railway sends SIGTERM before replacing a container, then SIGKILL after a
+// grace period. Stop accepting new connections and let in-flight requests
+// (including Bullhorn writes) drain rather than severing them mid-flight.
+let shuttingDown = false;
+function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[shutdown] ${signal} received — draining connections`);
+  server.close(() => {
+    console.log('[shutdown] all connections closed — exiting');
+    process.exit(0);
+  });
+  // Hard cap so a stuck connection (e.g. an open SSE stream) can't block the
+  // redeploy indefinitely.
+  setTimeout(() => {
+    console.warn('[shutdown] drain timed out after 10s — forcing exit');
+    process.exit(0);
+  }, 10000).unref();
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
+// --- Last-resort process guards ---
+// Without these, an unhandled promise rejection (e.g. a fire-and-forget
+// Bullhorn note push that rejects) or an uncaught exception crashes the
+// process with no context. Log rejections loudly and keep serving; on an
+// uncaught exception the process state is unknown, so log and exit (Railway
+// restarts the container).
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', (reason && (reason.stack || reason.message)) || reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', (err && (err.stack || err.message)) || err);
+  process.exit(1);
 });
 
 // Background: sync Bullhorn ClientCorporations into Org Flow every 30 min.
