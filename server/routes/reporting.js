@@ -1144,11 +1144,18 @@ function rangeMs(start, end) {
 
 // Sums spread × sales commission % across a list of placements.
 // Mirrors the formula in /executive-dashboard's currentNewInput.
-async function sumNewInput(placements) {
-  if (!placements?.length) return 0;
+// Fetch sales commissions ONCE and compute both the New-Input total and the
+// per-placement detail rows from the same data. The Exec endpoint previously
+// called sumNewInput() (which fetches commissions) AND then re-fetched the
+// identical commissions to build the modal's detail rows — two identical heavy,
+// now-paginated getSalesCommissions calls per request over the same placement
+// ids. This unifies them.
+async function newInputBreakdown(placements) {
+  if (!placements?.length) return { total: 0, details: [] };
   const pIds = placements.map(p => p.id);
   const salesCommRes = await getSalesCommissions(pIds);
   let total = 0;
+  const details = [];
   for (const c of (salesCommRes?.data || [])) {
     const p = placements.find(pl => pl.id === c.placement?.id);
     if (!p || !c.commissionPercentage) continue;
@@ -1161,9 +1168,24 @@ async function sumNewInput(placements) {
     if (empType === 'perm' && sal > 0 && feeRate > 0) spread = sal * feeRate / 26;
     else if (empType === 'corp-to-corp' && bill > 0 && pay > 0) spread = (bill - pay * 1.05) * 40;
     else if (bill > 0 && pay > 0) spread = (bill - pay * 1.25) * 40;
-    total += spread * (c.commissionPercentage || 1);
+    const contribution = spread * (c.commissionPercentage || 1);
+    total += contribution;
+    details.push({
+      id: p.id,
+      candidate: p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '',
+      jobTitle: p.jobOrder?.title || '',
+      client: p.jobOrder?.clientCorporation?.name || '',
+      dateBegin: p.dateBegin || null,
+      input: Math.round(contribution * 100) / 100,
+    });
   }
-  return Math.round(total * 100) / 100;
+  return { total: Math.round(total * 100) / 100, details };
+}
+
+// Back-compat: callers that only need the total.
+async function sumNewInput(placements) {
+  const { total } = await newInputBreakdown(placements);
+  return total;
 }
 
 // GET /api/reporting/executive-weekly?start=&end= (admin)
@@ -1431,36 +1453,10 @@ router.get('/executive-monthly', requireExec, async (req, res, next) => {
       status: p.status || '',
     }));
 
-    // YTD GP details — recompute per-placement input for the modal
+    // YTD GP total + per-placement detail for the modal, from ONE commission
+    // fetch (previously sumNewInput + a duplicate getSalesCommissions pass).
     const ytdPlacements = ytdPlacementsRes?.data || [];
-    const ytdGp = await sumNewInput(ytdPlacements);
-    let ytdDetails = [];
-    if (ytdPlacements.length > 0) {
-      const pIds = ytdPlacements.map(p => p.id);
-      const salesCommRes = await getSalesCommissions(pIds);
-      for (const c of (salesCommRes?.data || [])) {
-        const p = ytdPlacements.find(pl => pl.id === c.placement?.id);
-        if (!p || !c.commissionPercentage) continue;
-        const bill = Number(p.clientBillRate) || 0;
-        const pay = Number(p.payRate) || 0;
-        const sal = Number(p.salary) || 0;
-        const feeRate = Number(p.fee) || 0;
-        const empType = (p.employeeType || '').toLowerCase();
-        let spread = 0;
-        if (empType === 'perm' && sal > 0 && feeRate > 0) spread = sal * feeRate / 26;
-        else if (empType === 'corp-to-corp' && bill > 0 && pay > 0) spread = (bill - pay * 1.05) * 40;
-        else if (bill > 0 && pay > 0) spread = (bill - pay * 1.25) * 40;
-        const input = Math.round(spread * (c.commissionPercentage || 1) * 100) / 100;
-        ytdDetails.push({
-          id: p.id,
-          candidate: p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '',
-          jobTitle: p.jobOrder?.title || '',
-          client: p.jobOrder?.clientCorporation?.name || '',
-          dateBegin: p.dateBegin || null,
-          input,
-        });
-      }
-    }
+    const { total: ytdGp, details: ytdDetails } = await newInputBreakdown(ytdPlacements);
     ytdDetails.sort((a, b) => b.input - a.input);
 
     // Net hires detail — list new hires + backout records
