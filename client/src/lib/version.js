@@ -9,9 +9,19 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.31';
+export const APP_VERSION = '3.29.32';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.32',
+    date: '2026-06-12',
+    title: 'No more silent data truncation — full pagination everywhere',
+    changes: [
+      { type: 'patch', text: 'Reports, dashboards, and boards now pull the COMPLETE set of matching records instead of stopping at the data source’s ~200-row-per-query limit. Previously any busy window — a month of sales activities across all AMs, client submissions team-wide, active contractors, commissions, check-in notes — could be silently cut off, undercounting totals. Every such lookup now pages through to the end.' },
+      { type: 'patch', text: 'Executive headcount, MAR/activity scores, Client Health metrics, and Team Alerts check-ins are affected most — their numbers may rise to reflect records that were previously being dropped. The new numbers are the correct, complete ones.' },
+      { type: 'patch', text: 'Locally-stored data (req overrides, placement checklist, COI records, Org Flow clients) is also fully paged now, so nothing is hidden once those tables grow past 1,000 rows.' },
+    ],
+  },
   {
     version: '3.29.31',
     date: '2026-06-12',
