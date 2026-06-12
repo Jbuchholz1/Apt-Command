@@ -25,9 +25,14 @@ export function subscribeEventStream(path, handlers = {}) {
     try {
       token = await getApiToken();
     } catch (err) {
-      // No token = not signed in. Bail out — the parent's auth flow will
-      // redirect; no point reconnecting in a tight loop until then.
-      if (onError) onError(err);
+      // A THROW here is typically transient (a network blip during MSAL silent
+      // refresh) — not a clean "signed out", which returns a null token and is
+      // handled by the 401 branch below. The old code bailed permanently on any
+      // throw, so one transient hiccup killed the SSE stream until a full
+      // remount. Reconnect with backoff instead; if the user really is signed
+      // out, api.js's getToken triggers the MSAL redirect and the backoff stays
+      // capped so this never tight-loops.
+      scheduleReconnect(err);
       return;
     }
 
