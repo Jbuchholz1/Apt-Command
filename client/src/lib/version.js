@@ -9,9 +9,21 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.35';
+export const APP_VERSION = '3.29.36';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.36',
+    date: '2026-06-12',
+    title: 'Client Health — gauge & scoring accuracy',
+    changes: [
+      { type: 'patch', text: 'Real-meeting scoring now recognizes In Person Meetings, Discovery, and Solutions Pitch appointments — previously those types silently scored zero because the names didn’t match Bullhorn.' },
+      { type: 'patch', text: 'Backout % no longer inflates (or exceeds 100%) when you filter to specific clients — the rate is now scoped to the same clients on both sides.' },
+      { type: 'patch', text: 'Gauge targets (MAR Total, Input) now scale to the date range you pick instead of always assuming a full quarter, so a one-week view shows a one-week target.' },
+      { type: 'patch', text: 'The Backout % gauge now shows green when you’re under your target instead of red, and the KPI period label displays again.' },
+      { type: 'patch', text: 'Changing the date or filters no longer races competing requests that could leave the gauges showing stale numbers, and the client-contact lookup behind onboarding tiers no longer truncates for large client lists.' },
+    ],
+  },
   {
     version: '3.29.35',
     date: '2026-06-12',
