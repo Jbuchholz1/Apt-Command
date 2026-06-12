@@ -9,9 +9,21 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.33';
+export const APP_VERSION = '3.29.34';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.34',
+    date: '2026-06-12',
+    title: 'Reliability round — deadlines, pipeline saves, deploy resilience',
+    changes: [
+      { type: 'patch', text: 'Daily Brief deadlines and follow-ups typed as “6/15” are now read as this year instead of the year 2001 — so they no longer all show up as “missed.”' },
+      { type: 'patch', text: 'Pipeline edits (status, next activity, expected close, note) now show a clear error and roll back if the save fails, instead of looking like they saved when they didn’t.' },
+      { type: 'patch', text: 'After a new version deploys, an open tab that hits a now-stale page chunk reloads itself once automatically instead of showing an error screen.' },
+      { type: 'patch', text: 'The live update stream recovers from a brief network hiccup instead of silently going quiet until you reload.' },
+      { type: 'patch', text: 'Internal: the Bullhorn connection’s 30-second timeout now covers slow response bodies too, and the Executive report no longer fetches the same commission data twice.' },
+    ],
+  },
   {
     version: '3.29.33',
     date: '2026-06-12',
