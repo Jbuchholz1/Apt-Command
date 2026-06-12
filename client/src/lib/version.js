@@ -9,9 +9,19 @@
  * Update this file with every deploy.
  */
 
-export const APP_VERSION = '3.29.37';
+export const APP_VERSION = '3.29.38';
 
 export const CHANGELOG = [
+  {
+    version: '3.29.38',
+    date: '2026-06-12',
+    title: 'Reporting now runs on Central time + a board save-conflict fix',
+    changes: [
+      { type: 'patch', text: 'IMPORTANT — Reporting, Client Health, and My Dashboard now count every date range by Central-time calendar days. Previously the windows were computed in UTC, so activity logged after about 6–7 PM Central was counted on the next day and range edges were off by several hours. Your totals may shift as a result — the new numbers are the correct, Central-time ones.' },
+      { type: 'patch', text: 'Dashboard default ranges and the This Week / Last Week / This Month presets no longer jump a day ahead when used in the evening.' },
+      { type: 'patch', text: 'Fixed a Req Board issue where editing a job from a Stats popout could reset its version counter and cause spurious “someone else edited this” conflicts (or mask a real one) on the main board. Edits now track versions consistently.' },
+    ],
+  },
   {
     version: '3.29.37',
     date: '2026-06-12',
