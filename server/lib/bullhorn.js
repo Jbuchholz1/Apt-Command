@@ -240,11 +240,14 @@ async function getAllJobs() {
 async function getJobsByIds(ids) {
   const numeric = (ids || []).map(i => parseInt(i, 10)).filter(i => !Number.isNaN(i));
   if (numeric.length === 0) return { data: [] };
-  return callTool('query_entity', {
+  // Paginate: an id-list with more than the MCP's ~200-row cap would otherwise
+  // return only the first ~200 of the requested ids. paginateQuery walks the
+  // full id-set via its cursor.
+  return paginateQuery('getJobsByIds', {
     entityType: 'JobOrder',
     where: `id IN (${numeric.join(',')}) AND isDeleted = false`,
     fields: JOB_FIELDS,
-    count: 500,
+    orderBy: 'id',
   });
 }
 

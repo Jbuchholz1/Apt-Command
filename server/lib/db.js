@@ -607,19 +607,14 @@ function pickContractFields(input) {
 
 async function listVendorContracts() {
   if (!supabase) return [];
-  return cache.cached('vendorContracts:all', VENDOR_CONTRACTS_TTL_MS, async () => {
-    const { data, error } = await supabase
-      .from('vendor_contracts')
-      .select('*')
-      .order('contract_end_date', { ascending: true, nullsFirst: false })
-      .order('vendor_name', { ascending: true });
-
-    if (error) {
-      console.error('[db] listVendorContracts error:', error.message);
-      return [];
-    }
-    return data || [];
-  });
+  return cache.cached('vendorContracts:all', VENDOR_CONTRACTS_TTL_MS, async () =>
+    selectAllRows('listVendorContracts', () =>
+      supabase
+        .from('vendor_contracts')
+        .select('*')
+        .order('contract_end_date', { ascending: true, nullsFirst: false })
+        .order('vendor_name', { ascending: true })
+        .order('id', { ascending: true })));
 }
 
 async function createVendorContract(fields, createdBy) {
@@ -722,13 +717,13 @@ async function getUserByEmail(email) {
 
 async function getActiveUsers() {
   if (!supabase) return [];
-  const { data, error } = await supabase
-    .from('user_profiles')
-    .select('*')
-    .eq('is_active', true)
-    .order('full_name', { nullsFirst: false });
-  if (error) { console.error('[db] getActiveUsers error:', error.message); return []; }
-  return data || [];
+  return selectAllRows('getActiveUsers', () =>
+    supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('is_active', true)
+      .order('full_name', { nullsFirst: false })
+      .order('id', { ascending: true }));
 }
 
 // =============================================
@@ -981,15 +976,16 @@ async function getEmployeesForClientIds(clientIds) {
   const out = [];
   for (let i = 0; i < clientIds.length; i += CHUNK) {
     const chunk = clientIds.slice(i, i + CHUNK);
-    const { data, error } = await supabase
-      .from('employees')
-      .select('id, client_id, email, bullhorn_contact_id')
-      .in('client_id', chunk);
-    if (error) {
-      console.error('[db] getEmployeesForClientIds error:', error.message);
-      throw error;
-    }
-    if (data) out.push(...data);
+    // Paginate within the chunk: a chunk of clients can collectively own >1000
+    // employees, which the single .in() select would silently cap at PostgREST's
+    // 1000-row limit. throwOnError preserves this function's prior throw-on-fail.
+    const rows = await selectAllRows('getEmployeesForClientIds', () =>
+      supabase
+        .from('employees')
+        .select('id, client_id, email, bullhorn_contact_id')
+        .in('client_id', chunk)
+        .order('id', { ascending: true }), { throwOnError: true });
+    out.push(...rows);
   }
   return out;
 }
@@ -1291,16 +1287,15 @@ async function getSupportTickets({ submittedBy }) {
   // Auto-close resolved tickets older than 72 hours
   await autoCloseResolvedTickets();
 
-  let query = supabase
-    .from('support_tickets')
-    .select('*')
-    .order('created_at', { ascending: false });
-  if (submittedBy) {
-    query = query.eq('submitted_by', submittedBy);
-  }
-  const { data, error } = await query;
-  if (error) { console.error('[db] getSupportTickets error:', error.message); return []; }
-  return data || [];
+  return selectAllRows('getSupportTickets', () => {
+    let q = supabase
+      .from('support_tickets')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false });
+    if (submittedBy) q = q.eq('submitted_by', submittedBy);
+    return q;
+  });
 }
 
 async function autoCloseResolvedTickets() {
@@ -1646,23 +1641,25 @@ async function cascadeCheckinToAncestors(goalId, createdBy) {
 
 async function listGoals(period) {
   if (!supabase) return { goals: [], tasks: [] };
-  const { data: goals, error } = await supabase
-    .from('goals')
-    .select('*')
-    .eq('period', period)
-    .is('archived_at', null)
-    .order('sort_order', { ascending: true })
-    .order('created_at', { ascending: true });
-  if (error) { console.error('[db] listGoals error:', error.message); return { goals: [], tasks: [] }; }
-  const goalIds = (goals || []).map(g => g.id);
+  const goals = await selectAllRows('listGoals:goals', () =>
+    supabase
+      .from('goals')
+      .select('*')
+      .eq('period', period)
+      .is('archived_at', null)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true })
+      .order('id', { ascending: true }));
+  const goalIds = goals.map(g => g.id);
   let tasks = [];
   if (goalIds.length > 0) {
-    const { data } = await supabase
-      .from('goal_tasks').select('*').in('goal_id', goalIds)
-      .order('sort_order', { ascending: true }).order('created_at', { ascending: true });
-    tasks = data || [];
+    tasks = await selectAllRows('listGoals:tasks', () =>
+      supabase
+        .from('goal_tasks').select('*').in('goal_id', goalIds)
+        .order('sort_order', { ascending: true }).order('created_at', { ascending: true })
+        .order('id', { ascending: true }));
   }
-  const withProgress = await Promise.all((goals || []).map(async g => ({
+  const withProgress = await Promise.all(goals.map(async g => ({
     ...g,
     live_progress_pct: await computeGoalProgress(g.id),
   })));
@@ -1671,21 +1668,23 @@ async function listGoals(period) {
 
 async function listArchivedGoals(period) {
   if (!supabase) return { goals: [], tasks: [] };
-  const { data: goals, error } = await supabase
-    .from('goals')
-    .select('*')
-    .eq('period', period)
-    .not('archived_at', 'is', null)
-    .order('archived_at', { ascending: false });
-  if (error) { console.error('[db] listArchivedGoals error:', error.message); return { goals: [], tasks: [] }; }
-  const goalIds = (goals || []).map(g => g.id);
+  const goals = await selectAllRows('listArchivedGoals:goals', () =>
+    supabase
+      .from('goals')
+      .select('*')
+      .eq('period', period)
+      .not('archived_at', 'is', null)
+      .order('archived_at', { ascending: false })
+      .order('id', { ascending: false }));
+  const goalIds = goals.map(g => g.id);
   let tasks = [];
   if (goalIds.length > 0) {
-    const { data } = await supabase
-      .from('goal_tasks').select('*').in('goal_id', goalIds);
-    tasks = data || [];
+    tasks = await selectAllRows('listArchivedGoals:tasks', () =>
+      supabase
+        .from('goal_tasks').select('*').in('goal_id', goalIds)
+        .order('id', { ascending: true }));
   }
-  return { goals: goals || [], tasks };
+  return { goals, tasks };
 }
 
 async function countArchivedGoals(period) {
