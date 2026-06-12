@@ -334,9 +334,20 @@ async function upsertOverrides(jobId, updatesInput, options = {}) {
   // Legacy path: no optimistic locking. Field-level last-write-wins.
   const row = { job_id: jobId, ...updates };
   if (schemaFeatures.jobOverridesVersion) {
-    // When the column exists but the caller didn't opt in, still bump so
-    // a concurrent versioned writer can detect our write.
-    row.version = (typeof expectedVersion === 'number' ? expectedVersion : 0) + 1;
+    // Bump MONOTONICALLY from the current stored version (or 0 for a new row).
+    // The old `(expectedVersion ?? 0) + 1` reset version to 1 on every
+    // unversioned write (e.g. StatsStrip modal edits), corrupting the counter
+    // the main board's optimistic locking relies on — making its next save
+    // spuriously 409 or, ABA-style, mask a real conflict. Read-then-bump has a
+    // tiny TOCTOU window, but these are low-contention modal writes and a lost
+    // increment is harmless for a forward-only conflict counter (the versioned
+    // If-Match path above still guards the high-contention board cells).
+    const { data: existing } = await supabase
+      .from('job_overrides')
+      .select('version')
+      .eq('job_id', jobId)
+      .maybeSingle();
+    row.version = (Number(existing?.version) || 0) + 1;
   }
   const { data, error } = await supabase
     .from('job_overrides')
