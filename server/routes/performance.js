@@ -585,7 +585,7 @@ async function buildOverdueTasks(userId, email, followUps) {
 // --- Shared: build follow-up checkin list for a user ---
 // ownerPath: 'candidate' = filter by candidate.owner.id (TR), 'jobOrder' = filter by jobOrder.owner.id (AM)
 function buildFollowUps(activePlacements, checkinResult, userId, ownerPath) {
-  const { candidateIdsWithCheckin } = checkinResult;
+  const { checkinDaysByCandidate } = checkinResult;
   const now = Date.now();
   const DAY_MS = 24 * 60 * 60 * 1000;
   const BH_BASE = 'https://cls42.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm';
@@ -607,15 +607,16 @@ function buildFollowUps(activePlacements, checkinResult, userId, ownerPath) {
     const client = p.jobOrder?.clientCorporation?.name || '';
     const jobTitle = p.jobOrder?.title || '';
     const startDate = formatDate(p.dateBegin);
-    const hasCheckin = candidateId && candidateIdsWithCheckin.has(candidateId);
+    // Distinct check-in days disambiguate the shared 30/90 action: the 1st day
+    // satisfies the 30-day, the 2nd satisfies the 90-day. Same as the Client
+    // Health gauge, so the two modules agree on identical data.
+    const distinctCheckinDays = candidateId ? (checkinDaysByCandidate.get(candidateId)?.size || 0) : 0;
 
     const thirtyDue = daysSinceStart >= 30;
     const ninetyDue = daysSinceStart >= 90;
 
-    let thirtyStatus = 'Not yet due';
-    let ninetyStatus = 'Not yet due';
-    if (thirtyDue) thirtyStatus = hasCheckin ? 'Done' : 'Overdue';
-    if (ninetyDue) ninetyStatus = hasCheckin ? 'Done' : 'Overdue';
+    const thirtyStatus = thirtyDue ? (distinctCheckinDays >= 1 ? 'Done' : 'Overdue') : 'Not yet due';
+    const ninetyStatus = ninetyDue ? (distinctCheckinDays >= 2 ? 'Done' : 'Overdue') : 'Not yet due';
 
     items.push({
       candidateId: candidateId || null,

@@ -758,7 +758,7 @@ router.get('/kpis', async (req, res, next) => {
     const DAY_MS = 24 * 60 * 60 * 1000;
 
     function buildCheckinGauge(activePlacements, checkinResult, label) {
-      const { candidateIdsWithCheckin } = checkinResult;
+      const { checkinDaysByCandidate } = checkinResult;
       let totalDue = 0;
       let totalCompleted = 0;
       const details = [];
@@ -774,29 +774,32 @@ router.get('/kpis', async (req, res, next) => {
         const candidateName = p.candidate ? `${p.candidate.firstName || ''} ${p.candidate.lastName || ''}`.trim() : '';
         const client = p.jobOrder?.clientCorporation?.name || '';
         const startDate = new Date(p.dateBegin).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
-        const hasCheckin = candidateId && candidateIdsWithCheckin.has(candidateId);
+        // Distinct calendar days (CT) this candidate has a 30/90 check-in note.
+        // The 30-day and 90-day check-ins share ONE Bullhorn action (TR/AM
+        // 30/90) logged ~60 days apart, while same-day double-entries are one
+        // check-in entered twice. So two DISTINCT days = both milestones; the
+        // same day twice = one. (Replaces the old single boolean that credited
+        // both milestones off any one note — systematically overstating it.)
+        const distinctCheckinDays = candidateId
+          ? (checkinDaysByCandidate.get(candidateId)?.size || 0)
+          : 0;
 
-        // 30-day checkin
         const thirtyDue = daysSinceStart >= 30;
         const ninetyDue = daysSinceStart >= 90;
+        const due = (thirtyDue ? 1 : 0) + (ninetyDue ? 1 : 0);
 
-        if (thirtyDue) totalDue++;
-        if (ninetyDue) totalDue++;
+        // Completed = distinct check-in days, capped by what's actually due
+        // (so a 40-day placement with two check-in days still only credits the
+        // 30-day — the 90-day isn't due yet). "Late still counts": a note's mere
+        // existence on a distinct day completes the milestone, no timing window.
+        const completed = Math.min(distinctCheckinDays, due);
+        totalDue += due;
+        totalCompleted += completed;
 
-        // We know checkins happened but can't distinguish 30 vs 90 from the note data alone.
-        // Count completed = min(notes for this candidate, checkins due) as best approximation.
-        // For the gauge we use total notes vs total due across all placements.
-        let thirtyStatus = 'Not yet due';
-        let ninetyStatus = 'Not yet due';
-
-        if (thirtyDue) {
-          thirtyStatus = hasCheckin ? 'Done' : 'Overdue';
-          if (hasCheckin) totalCompleted++;
-        }
-        if (ninetyDue) {
-          ninetyStatus = hasCheckin ? 'Done' : 'Overdue';
-          if (hasCheckin) totalCompleted++;
-        }
+        // Per-milestone status for the detail table: the 1st distinct check-in
+        // day satisfies the 30-day, the 2nd satisfies the 90-day.
+        const thirtyStatus = thirtyDue ? (distinctCheckinDays >= 1 ? 'Done' : 'Overdue') : 'Not yet due';
+        const ninetyStatus = ninetyDue ? (distinctCheckinDays >= 2 ? 'Done' : 'Overdue') : 'Not yet due';
 
         const candidateOwner = p.candidate?.owner ? `${p.candidate.owner.firstName || ''} ${p.candidate.owner.lastName || ''}`.trim() : '';
         const jobOwner = p.jobOrder?.owner ? `${p.jobOrder.owner.firstName || ''} ${p.jobOrder.owner.lastName || ''}`.trim() : '';

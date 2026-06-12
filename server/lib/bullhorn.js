@@ -1000,19 +1000,28 @@ async function getCheckinNotesForType(actionType) {
   const result = await paginateQuery('getCheckinNotesForType', {
     entityType: 'NoteEntity',
     where: `note.action = '${actionType}' AND note.isDeleted = false AND targetEntityName = 'User'`,
-    fields: 'id,note,targetEntityID',
+    fields: 'id,note(id,dateAdded),targetEntityID',
     orderBy: 'id',
   });
 
-  // Collect unique candidate IDs that have at least one checkin note
-  const candidateIdsWithCheckin = new Set();
+  // Per-candidate set of DISTINCT check-in days (America/Chicago calendar day).
+  // The 30-day and 90-day check-ins share this single action and are logged
+  // ~60 days apart, so the count of distinct days tells the milestones apart;
+  // a same-day double-entry collapses to one day. Consumers:
+  //   - Client Health check-in gauges: completed = min(distinct days, due).
+  //   - Team Alerts: only needs "has any check-in" → candidateIdsWithCheckin.
+  const checkinDaysByCandidate = new Map(); // candidateId -> Set<'YYYY-MM-DD' CT>
   for (const row of (result?.data || [])) {
-    if (row.targetEntityID) {
-      candidateIdsWithCheckin.add(row.targetEntityID);
-    }
+    const cid = row.targetEntityID;
+    if (!cid) continue;
+    const ms = Number(row.note?.dateAdded);
+    let set = checkinDaysByCandidate.get(cid);
+    if (!set) { set = new Set(); checkinDaysByCandidate.set(cid, set); }
+    if (ms) set.add(new Date(ms).toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }));
   }
+  const candidateIdsWithCheckin = new Set(checkinDaysByCandidate.keys());
 
-  return { totalNotes: candidateIdsWithCheckin.size, candidateIdsWithCheckin };
+  return { totalNotes: candidateIdsWithCheckin.size, candidateIdsWithCheckin, checkinDaysByCandidate };
 }
 
 async function getPlacementsForJobs(jobIds) {
