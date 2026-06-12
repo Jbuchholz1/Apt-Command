@@ -154,20 +154,38 @@ ensureSchema();
  * Get all overrides as a map keyed by job_id.
  * Cached briefly to absorb load spikes; busted on every override write.
  */
+// PostgREST caps a select at 1000 rows per request. selectAllRows pages through
+// with .range() until a short page so getAll* helpers never silently truncate
+// as these tables grow past 1000 rows. buildQuery() must return a FRESH query
+// builder each call and MUST apply a stable .order() (range windows over an
+// unordered set can overlap or miss rows). On a page error we return what we've
+// collected — callers treat partial/empty as a soft failure, same as before.
+const PG_PAGE = 1000;
+async function selectAllRows(label, buildQuery) {
+  const all = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await buildQuery().range(from, from + PG_PAGE - 1);
+    if (error) {
+      console.error(`[db] ${label} page (from ${from}) error:`, error.message);
+      break;
+    }
+    const rows = data || [];
+    all.push(...rows);
+    if (rows.length < PG_PAGE) break;
+    from += PG_PAGE;
+  }
+  return all;
+}
+
 async function getAllOverrides() {
   if (!supabase) return {};
   return cache.cached('overrides:all', OVERRIDES_TTL_MS, async () => {
-    const { data, error } = await supabase
-      .from('job_overrides')
-      .select('*');
-
-    if (error) {
-      console.error('[db] getAllOverrides error:', error.message);
-      return {};
-    }
+    const data = await selectAllRows('getAllOverrides', () =>
+      supabase.from('job_overrides').select('*').order('job_id', { ascending: true }));
 
     const map = {};
-    for (const row of (data || [])) {
+    for (const row of data) {
       map[row.job_id] = row;
     }
     return map;
@@ -419,17 +437,11 @@ async function addNote(jobId, comment, createdBy) {
 async function getAllPlacementChecklist() {
   if (!supabase) return {};
   return cache.cached('placementChecklist:all', PLACEMENT_CHECKLIST_TTL_MS, async () => {
-    const { data, error } = await supabase
-      .from('placement_checklist')
-      .select('*');
-
-    if (error) {
-      console.error('[db] getAllPlacementChecklist error:', error.message);
-      return {};
-    }
+    const data = await selectAllRows('getAllPlacementChecklist', () =>
+      supabase.from('placement_checklist').select('*').order('placement_id', { ascending: true }));
 
     const map = {};
-    for (const row of (data || [])) {
+    for (const row of data) {
       map[row.placement_id] = row;
     }
     return map;
@@ -495,16 +507,13 @@ const COI_UPDATABLE = new Set(['client_name', 'coi_link', 'expiration_date']);
 
 async function getAllCOIRecords() {
   if (!supabase) return [];
-  const { data, error } = await supabase
-    .from('coi_records')
-    .select('*')
-    .order('expiration_date', { ascending: true, nullsFirst: false })
-    .order('created_at', { ascending: false });
-  if (error) {
-    console.error('[db] getAllCOIRecords error:', error.message);
-    return [];
-  }
-  return data || [];
+  // Stable tiebreaker (id) appended so range pagination can't overlap/miss rows
+  // where expiration_date/created_at tie.
+  return selectAllRows('getAllCOIRecords', () =>
+    supabase.from('coi_records').select('*')
+      .order('expiration_date', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: true }));
 }
 
 async function createCOIRecord({ client_name, coi_link, expiration_date, created_by }) {
@@ -764,11 +773,8 @@ async function getClientById(clientId) {
 // Do NOT expose this through user-facing endpoints; use getClients(userId).
 async function getAllClients() {
   if (!supabase) return [];
-  const { data, error } = await supabase
-    .from('clients')
-    .select('id, name, bullhorn_client_id, created_by');
-  if (error) { console.error('[db] getAllClients error:', error.message); return []; }
-  return data || [];
+  return selectAllRows('getAllClients', () =>
+    supabase.from('clients').select('id, name, bullhorn_client_id, created_by').order('id', { ascending: true }));
 }
 
 // Org Flow clients that have been linked to a Bullhorn ClientCorporation —
@@ -776,12 +782,10 @@ async function getAllClients() {
 // can map back to a Supabase row).
 async function getAllClientsLinkedToBullhorn() {
   if (!supabase) return [];
-  const { data, error } = await supabase
-    .from('clients')
-    .select('id, bullhorn_client_id')
-    .not('bullhorn_client_id', 'is', null);
-  if (error) { console.error('[db] getAllClientsLinkedToBullhorn error:', error.message); return []; }
-  return data || [];
+  return selectAllRows('getAllClientsLinkedToBullhorn', () =>
+    supabase.from('clients').select('id, bullhorn_client_id')
+      .not('bullhorn_client_id', 'is', null)
+      .order('id', { ascending: true }));
 }
 
 async function createClient(name, createdBy) {
