@@ -1,5 +1,18 @@
-function getColor(pct, invert) {
-  const p = invert ? 100 - pct : pct;
+// Color by value relative to target. For invert gauges (lower is better, e.g.
+// Backout %), being AT or UNDER target is good (green) and color degrades as the
+// value exceeds the target. The old `100 - pct` flip colored an 8%/10% backout
+// (comfortably under target) fully red, because it measured "consumption of the
+// 0–100 fill" rather than performance against the threshold.
+function getColor(value, target, invert) {
+  if (value == null || !(target > 0)) return '#16a34a';
+  const ratio = value / target;
+  if (invert) {
+    if (ratio <= 1) return '#16a34a';   // at/under the limit — good
+    if (ratio <= 1.25) return '#eab308';
+    if (ratio <= 1.5) return '#f97316';
+    return '#dc2626';
+  }
+  const p = ratio * 100;                // higher is better
   if (p >= 80) return '#16a34a';
   if (p >= 50) return '#eab308';
   if (p >= 25) return '#f97316';
@@ -26,7 +39,7 @@ function describeArc(cx, cy, radius, startDeg, endDeg) {
 
 export default function GaugeCard({ label, value, target, format, invert, placeholder, details, onClick, tooltip }) {
   const pct = (value !== null && target > 0) ? Math.min((value / target) * 100, 100) : 0;
-  const color = placeholder ? '#e2e8f0' : getColor(pct, invert);
+  const color = placeholder ? '#e2e8f0' : getColor(value, target, invert);
 
   const radius = 45;
   const cx = 60;
