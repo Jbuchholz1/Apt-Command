@@ -30,6 +30,9 @@ class CircuitOpenError extends Error {
     super(msg);
     this.name = 'CircuitOpenError';
     this.code = 'MCP_CIRCUIT_OPEN';
+    // 503 Service Unavailable — the breaker is shedding load while Bullhorn
+    // recovers; this is a transient upstream outage, not a server bug (500).
+    this.statusCode = 503;
   }
 }
 

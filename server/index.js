@@ -253,15 +253,17 @@ app.use('/api/stats', statsRouter);
 app.use((err, req, res, next) => {
   console.error(`[ERROR] ${req.method} ${req.path}:`, err.message);
 
-  // Typed errors (have err.statusCode or err.code) are intentional and
-  // safe to surface — e.g., READ_ONLY_MODE (403) from the sandbox guard,
-  // OVERRIDE_CONFLICT (409), validation errors. Plain Errors fall through
-  // to the generic 500 to avoid leaking internals.
-  if (err.statusCode || err.code) {
-    return res.status(err.statusCode || 500).json({
-      error: err.message,
-      code: err.code,
-    });
+  // Only surface details for errors WE intentionally threw with a numeric HTTP
+  // statusCode (e.g. READ_ONLY_MODE 403, MCP_CIRCUIT_OPEN 503). The previous
+  // `err.statusCode || err.code` test also matched any error carrying a string
+  // `code` — which Supabase PostgrestErrors (PGRST116, 23505, …) and Node
+  // system errors (ECONNREFUSED, ENOTFOUND) all do — and echoed their raw
+  // .message to the caller, leaking DB table/column/constraint names and system
+  // internals on any 500-class failure. App errors that need a specific client
+  // response and carry only a `code` (OVERRIDE_CONFLICT, STATUS_COLUMN_MISSING)
+  // are handled in their own route handlers and never reach here.
+  if (typeof err.statusCode === 'number' && err.statusCode >= 400 && err.statusCode < 600) {
+    return res.status(err.statusCode).json({ error: err.message, code: err.code });
   }
 
   if (IS_PROD) {
